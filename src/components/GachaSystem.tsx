@@ -107,6 +107,9 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             description: reward.description || 'สกิลที่ได้รับจากตู้กาชา',
             category: 'general',
             orvRank: fallbackRank,
+            battleEffect: /สะท้อน|reflect/i.test(`${reward.name} ${reward.description}`) ? 'reflect' : /ฟื้น|รักษา|heal/i.test(`${reward.name} ${reward.description}`) ? 'heal' : /ป้องกัน|เกราะ|โล่|shield/i.test(`${reward.name} ${reward.description}`) ? 'defense' : 'damage',
+            battlePower: 5,
+            cooldownTurns: 0,
           };
           newSkillsToAdd.push({
             ...skillReward,
@@ -138,6 +141,10 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         const existingSkill = existingSkills.find(s => s.name === newSkill.name);
         if (existingSkill) {
           existingSkill.level = Math.min(10, existingSkill.level + 1);
+          existingSkill.battleEffect = newSkill.battleEffect ?? existingSkill.battleEffect;
+          existingSkill.battlePower = newSkill.battlePower ?? existingSkill.battlePower;
+          existingSkill.cooldownTurns = newSkill.cooldownTurns ?? existingSkill.cooldownTurns;
+          existingSkill.cooldown = newSkill.cooldown ?? existingSkill.cooldown;
         } else {
           existingSkills.push(newSkill);
         }
