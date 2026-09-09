@@ -1178,8 +1178,9 @@ export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect
         : text.includes("สตัน") || text.includes("มึนงง") || text.includes("stun") ? "stun"
           : text.includes("ฟื้น") || text.includes("รักษา") || text.includes("heal") ? "heal" : "damage");
   const percent = Number(text.match(/(\d+)\s*%/)?.[1] || 0);
-  const parsedCooldown = Number(String(skill.cooldown || "").match(/\d+/)?.[0] || 0);
-  const cooldownTurns = Math.max(0, Math.min(99, Math.round(skill.cooldownTurns ?? parsedCooldown)));
+  // Skills created before cooldownTurns existed use the migration default of 3 turns.
+  const configuredCooldown = skill.cooldownTurns == null ? 3 : skill.cooldownTurns;
+  const cooldownTurns = Math.max(0, Math.min(99, Math.round(configuredCooldown)));
   const power = Math.max(1, skill.battlePower ?? (effect === "reflect" ? percent || 35 : effect === "defense" ? 5 : 5));
   return { effect, power, cooldownTurns };
 }
