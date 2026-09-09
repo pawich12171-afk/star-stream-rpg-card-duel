@@ -1246,24 +1246,25 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       faces: config.faces,
     };
     const skillProfile = skill ? getBattleSkillProfile(skill) : null;
+    const skillName = skill?.name || "สกิล";
     result = rollBattleAttack(current, defender, diceConfig);
     if (skillProfile) {
       result.skillEffect = skillProfile.effect;
       result.skillPower = skillProfile.power;
       if (skillProfile.effect === "damage") {
         result.damage += skillProfile.power;
-        result.message += ` • ใช้สกิล ${skill.name} เพิ่มดาเมจ ${skillProfile.power}`;
+        result.message += ` • ใช้สกิล ${skillName} เพิ่มดาเมจ ${skillProfile.power}`;
       } else if (skillProfile.effect === "heal") {
         result.heal += skillProfile.power;
-        result.message += ` • ใช้สกิล ${skill.name} ฟื้นฟู ${skillProfile.power}`;
+        result.message += ` • ใช้สกิล ${skillName} ฟื้นฟู ${skillProfile.power}`;
       } else if (skillProfile.effect === "defense") {
         current.defenseValue = skillProfile.power;
         current.defenseTurns = 1;
-        result.message += ` • ใช้สกิล ${skill.name} ป้องกันดาเมจ ${skillProfile.power} ในเทิร์นถัดไป`;
+        result.message += ` • ใช้สกิล ${skillName} ป้องกันดาเมจ ${skillProfile.power} ในเทิร์นถัดไป`;
       } else if (skillProfile.effect === "reflect") {
         current.reflectPercent = Math.min(100, skillProfile.power);
         current.reflectTurns = 1;
-        result.message += ` • ใช้สกิล ${skill.name} สะท้อนดาเมจ ${current.reflectPercent}% ในเทิร์นถัดไป`;
+        result.message += ` • ใช้สกิล ${skillName} สะท้อนดาเมจ ${current.reflectPercent}% ในเทิร์นถัดไป`;
       }
     }
     if (result.face.effect === "defense") {
