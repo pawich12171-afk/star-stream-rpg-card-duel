@@ -489,7 +489,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       itemData,
       characteristic: newRewardType === 'characteristic' ? newRewardCharacteristic.trim() : undefined,
       skillData: newRewardType === 'skill' ? {
-        id: `skill-template-1788949150649`,
+        id: `skill-template-${Date.now()}`,
         name: newRewardName.trim(),
         level: 1,
         multiplier: 1,
