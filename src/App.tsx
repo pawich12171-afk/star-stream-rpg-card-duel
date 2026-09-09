@@ -198,6 +198,36 @@ export default function App() {
     });
   };
 
+  const handleReviewQuestProof = async (targetCharId: string, questId: string, approve: boolean): Promise<boolean> => {
+    const target = characters.find(character => character.id === targetCharId);
+    const quest = target?.quests?.find(item => item.id === questId);
+    if (!target || !quest) return false;
+    const nextCount = approve ? quest.currentCount : Math.max(0, quest.currentCount - 1);
+    const completed = approve && nextCount >= Math.max(1, quest.targetCount || 1);
+    const updatedQuest: Quest = {
+      ...quest,
+      currentCount: nextCount,
+      isCompleted: completed,
+      reviewStatus: approve ? (completed ? 'approved' : 'none') : 'rejected',
+    };
+    const reviewNotification = {
+      id: 'notif-quest-review-' + Date.now(),
+      title: approve ? 'แอดมินอนุมัติหลักฐานภารกิจ' : 'แอดมินไม่อนุมัติหลักฐานภารกิจ',
+      message: approve
+        ? (completed ? 'ภารกิจ “' + quest.title + '” สำเร็จแล้ว กดรับรางวัลได้เลย' : 'หลักฐานผ่านแล้ว ความคืบหน้าภารกิจ “' + quest.title + '” เพิ่มขึ้น')
+        : 'หลักฐานของภารกิจ “' + quest.title + '” ยังไม่ผ่าน กรุณาส่งรูปใหม่',
+      timestamp: Date.now(),
+      read: false,
+      type: 'quest' as const,
+    };
+    return handleUpdateCharacter({
+      ...target,
+      quests: (target.quests || []).map(item => item.id === questId ? updatedQuest : item),
+      notifications: [reviewNotification, ...(target.notifications || [])],
+      lastUpdated: Date.now(),
+    });
+  };
+
   const handleTransferCoins = async (senderId: string, recipientId: string, amount: number) => {
     try {
       const result = await transferCoinsBetweenCharacters(senderId, recipientId, amount);
@@ -522,6 +552,7 @@ export default function App() {
             onGrantItem={grantItemToPlayer}
             onRemoveItem={removeItemFromPlayer}
             onAssignQuest={handleAssignQuest}
+            onReviewQuestProof={handleReviewQuestProof}
             onAddGachaReward={addGachaRewardToDB}
             onDeleteGachaReward={deleteGachaRewardFromDB}
             onUpdateGachaConfig={updateGachaConfigInDB}
