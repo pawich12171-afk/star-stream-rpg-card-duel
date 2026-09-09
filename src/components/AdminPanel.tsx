@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CharacterProfile, Item, GachaReward, GachaConfig, GachaRarity } from '../types';
+import { CharacterProfile, Item, GachaReward, GachaConfig, GachaRarity, MAX_GACHA_REWARDS } from '../types';
 import { 
   ShieldCheck, 
   Coins, 
@@ -439,6 +439,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     e.preventDefault();
     if (!newRewardName.trim()) {
       alert('กรุณากรอกชื่อของรางวัลกาชา');
+      return;
+    }
+
+    if (gachaRewards.length >= MAX_GACHA_REWARDS) {
+      alert(`ตู้กาชาเต็มแล้ว เพิ่มได้สูงสุด ${MAX_GACHA_REWARDS} รายการ`);
       return;
     }
 
@@ -1651,6 +1656,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <Plus className="w-4 h-4 text-amber-400" />
                 เพิ่มของรางวัลใหม่ในตู้กาชา
+                <span className="ml-auto text-[10px] text-slate-400">{gachaRewards.length}/{MAX_GACHA_REWARDS}</span>
               </h3>
               <form onSubmit={handleCreateReward} className="space-y-3">
                 <div>
@@ -1763,7 +1769,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow cursor-pointer transition-all"
+                  disabled={gachaRewards.length >= MAX_GACHA_REWARDS}
+                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-950 font-black text-xs shadow cursor-pointer transition-all"
                 >
                   เพิ่มของรางวัลลงตู้กาชา
                 </button>
