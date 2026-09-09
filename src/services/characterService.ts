@@ -69,6 +69,8 @@ let localShopItems: Item[] = (() => {
 
 let gachaDefaultsMigrationStarted = false;
 
+const gachaRewardsListeners = new Set<(rewards: GachaReward[]) => void>();
+
 let localGachaRewards: GachaReward[] = (() => {
   try {
     const saved = localStorage.getItem('starstream_gacha_rewards');
@@ -76,6 +78,11 @@ let localGachaRewards: GachaReward[] = (() => {
   } catch (e) {}
   return INITIAL_GACHA_REWARDS;
 })();
+
+function notifyGachaRewards() {
+  const snapshot = [...localGachaRewards].sort((a, b) => (Number(a.rate) || 0) - (Number(b.rate) || 0));
+  gachaRewardsListeners.forEach(listener => listener(snapshot));
+}
 
 let localGachaConfig: GachaConfig = (() => {
   try {
@@ -380,6 +387,8 @@ export async function deleteShopItem(itemId: string): Promise<void> {
 
 // Subscribe to Gacha Rewards
 export function subscribeToGachaRewards(callback: (rewards: GachaReward[]) => void) {
+  gachaRewardsListeners.add(callback);
+
   try {
     const q = collection(db, GACHA_REWARDS_COLLECTION);
     const unsub = onSnapshot(q, (snapshot) => {
@@ -437,8 +446,12 @@ async function migrateDefaultGachaRewards(currentRewards: GachaReward[]) {
       };
       broadcast.addEventListener('message', handleBroadcast);
     }
-    return unsub;
+    return () => {
+      gachaRewardsListeners.delete(callback);
+      unsub();
+    };
   } catch (err) {
+    gachaRewardsListeners.delete(callback);
     callback(localGachaRewards);
     return () => {};
   }
@@ -497,6 +510,7 @@ export async function saveGachaReward(reward: GachaReward): Promise<void> {
   localGachaRewards = [fullReward, ...localGachaRewards.filter(r => r.id !== id)];
   saveLocalAll();
   broadcast?.postMessage({ type: 'GACHA_REWARDS_UPDATE' });
+  notifyGachaRewards();
 
   try {
     await setDoc(doc(db, GACHA_REWARDS_COLLECTION, id), fullReward);
@@ -510,6 +524,7 @@ export async function deleteGachaReward(rewardId: string): Promise<void> {
   localGachaRewards = localGachaRewards.filter(r => r.id !== rewardId);
   saveLocalAll();
   broadcast?.postMessage({ type: 'GACHA_REWARDS_UPDATE' });
+  notifyGachaRewards();
 
   try {
     await deleteDoc(doc(db, GACHA_REWARDS_COLLECTION, rewardId));
