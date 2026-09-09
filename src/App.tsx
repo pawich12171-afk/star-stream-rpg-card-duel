@@ -119,7 +119,8 @@ export default function App() {
   const currentUser = characters.find(c => c.id === currentUserId) || characters[0];
 
   // Handlers
-  const handleUpdateCharacter = async (updated: CharacterProfile) => {
+  const handleUpdateCharacter = async (updated: CharacterProfile): Promise<boolean> => {
+    const previous = characters.find(character => character.id === updated.id);
     // Update the visible state immediately; Firestore realtime listeners can lag
     // or be unavailable when the app is running in local fallback mode.
     setCharacters(prev => {
@@ -128,7 +129,27 @@ export default function App() {
         ? prev.map(character => character.id === updated.id ? updated : character)
         : [...prev, updated];
     });
-    await updateCharacterInDB(updated);
+    try {
+      await updateCharacterInDB(updated);
+      return true;
+    } catch (error) {
+      if (previous) {
+        setCharacters(prev => prev.map(character => character.id === previous.id ? previous : character));
+      }
+      console.error('Failed to persist character update:', error);
+      alert('บันทึกข้อมูลตัวละครไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+      return false;
+    }
+  };
+
+  const handleAddShopItem = async (item: Item): Promise<void> => {
+    await addShopItemToDB(item);
+    setShopItems(prev => [item, ...prev.filter(existing => existing.id !== item.id)]);
+  };
+
+  const handleDeleteShopItem = async (itemId: string): Promise<void> => {
+    await deleteShopItemFromDB(itemId);
+    setShopItems(prev => prev.filter(item => item.id !== itemId));
   };
 
   const handleCreateCharacter = async (newChar: CharacterProfile) => {
@@ -409,8 +430,8 @@ export default function App() {
             character={currentUser}
             shopItems={shopItems}
             onUpdateCharacter={handleUpdateCharacter}
-            onAddShopItem={addShopItemToDB}
-            onDeleteShopItem={deleteShopItemFromDB}
+            onAddShopItem={handleAddShopItem}
+            onDeleteShopItem={handleDeleteShopItem}
             isAdmin={isAdminMode}
           />
         )}
@@ -458,8 +479,8 @@ export default function App() {
             gachaConfig={gachaConfig}
             onUpdateCharacterCoins={handleUpdateCharacterCoins}
             onSetCharacterCoins={handleSetCharacterCoins}
-            onAddShopItem={addShopItemToDB}
-            onDeleteShopItem={deleteShopItemFromDB}
+            onAddShopItem={handleAddShopItem}
+            onDeleteShopItem={handleDeleteShopItem}
             onGrantItem={grantItemToPlayer}
             onRemoveItem={removeItemFromPlayer}
             onAddGachaReward={addGachaRewardToDB}
