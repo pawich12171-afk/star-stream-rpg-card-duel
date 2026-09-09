@@ -103,6 +103,9 @@ function stripUndefined<T>(value: T): T {
 const pendingGachaRewards = new Map<string, GachaReward>();
 const pendingGachaDeletes = new Set<string>();
 
+// Keep a local write ahead of an older Firestore realtime snapshot.
+const pendingCharacterUpdates = new Map<string, CharacterProfile>();
+
 let localGachaConfig: GachaConfig = (() => {
   try {
     const saved = localStorage.getItem('starstream_gacha_config');
@@ -198,7 +201,14 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
       const list: CharacterProfile[] = [];
       snapshot.forEach((docSnap) => {
         const raw = { ...docSnap.data(), id: docSnap.id } as CharacterProfile;
-        const synced = syncCharacterHealth(raw);
+        const pending = pendingCharacterUpdates.get(raw.id);
+        const source = pending && (Number(pending.lastUpdated) || 0) > (Number(raw.lastUpdated) || 0)
+          ? pending
+          : raw;
+        const synced = syncCharacterHealth(source);
+        if (pending && (Number(raw.lastUpdated) || 0) >= (Number(pending.lastUpdated) || 0)) {
+          pendingCharacterUpdates.delete(raw.id);
+        }
         list.push(synced);
 
         // Auto-fix legacy inflated HP or corrupted values in Firestore
@@ -308,7 +318,8 @@ export async function updateCharacterData(char: CharacterProfile): Promise<void>
     lastUpdated: Date.now(),
   };
 
-  // Update local
+  // Update local and protect it from an older realtime snapshot.
+  pendingCharacterUpdates.set(updated.id, updated);
   localCharacters = localCharacters.map(c => c.id === updated.id ? updated : c);
   if (!localCharacters.some(c => c.id === updated.id)) {
     localCharacters.push(updated);
