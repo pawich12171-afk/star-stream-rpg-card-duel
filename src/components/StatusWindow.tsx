@@ -59,6 +59,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [newSkillCategory, setNewSkillCategory] = useState<'general' | 'innate' | 'stigma' | 'story'>('general');
   const [newSkillORVRank, setNewSkillORVRank] = useState<ORVSkillRank>('rare');
   const [newSkillPerk10, setNewSkillPerk10] = useState('');
+  const [newSkillBattleEffect, setNewSkillBattleEffect] = useState<NonNullable<Skill['battleEffect']>>('damage');
+  const [newSkillBattlePower, setNewSkillBattlePower] = useState(5);
+  const [newSkillCooldownTurns, setNewSkillCooldownTurns] = useState(3);
 
   const [showHpBreakdown, setShowHpBreakdown] = useState(false);
   const [showStatEditModal, setShowStatEditModal] = useState(false);
@@ -240,6 +243,10 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       orvRank: newSkillORVRank,
       perkLevel10: newSkillPerk10.trim() || undefined,
       description: newSkillDesc.trim() || 'วิชาพิเศษที่สร้างสรรค์โดยผู้ใช้งาน',
+      battleEffect: newSkillBattleEffect,
+      battlePower: Math.max(1, Number(newSkillBattlePower) || 1),
+      cooldownTurns: Math.max(0, Math.min(99, Number(newSkillCooldownTurns) || 0)),
+      cooldown: Number(newSkillCooldownTurns) > 0 ? `${newSkillCooldownTurns} เทิร์น` : undefined,
       upgradeCount: 0,
     };
 
@@ -262,6 +269,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     setNewSkillName('');
     setNewSkillDesc('');
     setNewSkillPerk10('');
+    setNewSkillBattleEffect('damage');
+    setNewSkillBattlePower(5);
+    setNewSkillCooldownTurns(3);
     setShowAddSkillModal(false);
   };
 
@@ -862,6 +872,22 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                   placeholder="เขียนบรรยายผลของสกิล ดาเมจ หรือเกราะป้องกัน..."
                   className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white focus:border-cyan-500 outline-none resize-none"
                 />
+              </div>
+
+              <div className="rounded-2xl border border-cyan-500/20 bg-cyan-950/20 p-3 space-y-2">
+                <label className="text-cyan-200 font-bold block mb-1">หมวดหมู่ผลต่อสู้จริง</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <select value={newSkillBattleEffect} onChange={(e) => setNewSkillBattleEffect(e.target.value as NonNullable<Skill['battleEffect']>)} className="w-full px-2.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none cursor-pointer">
+                    <option value="damage">โจมตี / ดาเมจ</option>
+                    <option value="heal">ฟื้นฟู HP</option>
+                    <option value="defense">โล่ / ป้องกัน</option>
+                    <option value="reflect">สะท้อนดาเมจ</option>
+                    <option value="stun">ควบคุม / สตัน</option>
+                  </select>
+                  <input type="number" min={1} value={newSkillBattlePower} onChange={(e) => setNewSkillBattlePower(Number(e.target.value))} placeholder="พลังเอฟเฟกต์" className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none" />
+                  <input type="number" min={0} max={99} value={newSkillCooldownTurns} onChange={(e) => setNewSkillCooldownTurns(Number(e.target.value))} placeholder="คูลดาวน์ (เทิร์น)" className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none" />
+                </div>
+                <p className="text-[10px] leading-4 text-slate-400">เลือกผลต่อสู้ที่ต้องการให้สกิลทำงานจริงในสนามรบ</p>
               </div>
 
               <div>
