@@ -131,6 +131,13 @@ let localDuelRooms: CardDuelRoom[] = (() => {
   } catch (e) {}
   return [];
 })();
+const duelRoomListeners = new Set<(rooms: CardDuelRoom[]) => void>();
+
+function notifyDuelRooms() {
+  const snapshot = [...localDuelRooms].sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt));
+  duelRoomListeners.forEach(listener => listener(snapshot));
+}
+
 
 function saveLocalAll() {
   try {
@@ -749,6 +756,8 @@ export async function removeItemFromPlayer(
 
 // Subscribe to Card Duel Rooms
 export function subscribeToDuelRooms(callback: (rooms: CardDuelRoom[]) => void) {
+  duelRoomListeners.add(callback);
+
   try {
     const q = collection(db, CARD_DUEL_ROOMS_COLLECTION);
     const unsub = onSnapshot(q, (snapshot) => {
@@ -760,27 +769,39 @@ export function subscribeToDuelRooms(callback: (rooms: CardDuelRoom[]) => void) 
         list.sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt));
         localDuelRooms = list;
         saveLocalAll();
-        callback(list);
-      } else {
-        callback(localDuelRooms);
       }
+      notifyDuelRooms();
     }, (err) => {
       console.warn("Duel rooms listener error, using local:", err);
-      callback(localDuelRooms);
+      notifyDuelRooms();
     });
 
     if (broadcast) {
       const handleBroadcast = (ev: MessageEvent) => {
-        if (ev.data?.type === 'DUEL_ROOMS_UPDATE') {
-          callback(localDuelRooms);
+        if (ev.data?.type !== 'DUEL_ROOMS_UPDATE') return;
+        if (ev.data.room?.id) {
+          localDuelRooms = [ev.data.room, ...localDuelRooms.filter(room => room.id !== ev.data.room.id)];
+        } else if (ev.data.roomId) {
+          localDuelRooms = localDuelRooms.filter(room => room.id !== ev.data.roomId);
         }
+        saveLocalAll();
+        notifyDuelRooms();
       };
       broadcast.addEventListener('message', handleBroadcast);
+      return () => {
+        duelRoomListeners.delete(callback);
+        broadcast.removeEventListener('message', handleBroadcast);
+        unsub();
+      };
     }
-    return unsub;
+
+    return () => {
+      duelRoomListeners.delete(callback);
+      unsub();
+    };
   } catch (err) {
-    callback(localDuelRooms);
-    return () => {};
+    notifyDuelRooms();
+    return () => duelRoomListeners.delete(callback);
   }
 }
 
@@ -796,7 +817,8 @@ export async function createDuelRoom(room: CardDuelRoom): Promise<string> {
 
   localDuelRooms = [fullRoom, ...localDuelRooms.filter(r => r.id !== id)];
   saveLocalAll();
-  broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE' });
+  notifyDuelRooms();
+  broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE', room: fullRoom });
 
   // If invitedPlayerId or opponentId is specified, notify them!
   const targetOpponentId = room.invitedPlayerId || room.opponentId;
@@ -834,7 +856,8 @@ export async function updateDuelRoom(room: CardDuelRoom): Promise<void> {
   };
   localDuelRooms = localDuelRooms.map(r => r.id === updated.id ? updated : r);
   saveLocalAll();
-  broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE' });
+  notifyDuelRooms();
+  broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE', room: updated });
 
   try {
     await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), updated);
@@ -897,7 +920,8 @@ export async function acceptDuelChallenge(roomId: string, opponent: CharacterPro
 export async function cancelDuelRoom(roomId: string): Promise<void> {
   localDuelRooms = localDuelRooms.filter(r => r.id !== roomId);
   saveLocalAll();
-  broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE' });
+  notifyDuelRooms();
+  broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE', roomId });
 
   try {
     await deleteDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, roomId));
