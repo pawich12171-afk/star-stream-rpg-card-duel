@@ -90,9 +90,26 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             instanceId: `inv-gacha-${Date.now()}-${i}`,
             isEquipped: false,
           });
-        } else if (reward.type === 'skill' && reward.skillData) {
+        } else if (reward.type === 'skill') {
+          // Older/admin-created skill rewards may not have skillData.
+          // Build a valid skill from the reward itself so the pull is never lost.
+          const fallbackRank: Skill['orvRank'] =
+            reward.rarity === 'mythic' ? 'myth' :
+            reward.rarity === 'legendary' ? 'legendary' :
+            reward.rarity === 'epic' ? 'hero' :
+            reward.rarity === 'rare' ? 'rare' : 'general';
+          const skillReward: Skill = reward.skillData || {
+            id: reward.id,
+            name: reward.name.replace(/^สกิล:\s*/i, ''),
+            level: 1,
+            multiplier: 1,
+            type: 'วิชาจากกาชา',
+            description: reward.description || 'สกิลที่ได้รับจากตู้กาชา',
+            category: 'general',
+            orvRank: fallbackRank,
+          };
           newSkillsToAdd.push({
-            ...reward.skillData,
+            ...skillReward,
             id: `skill-gacha-${Date.now()}-${i}`,
             upgradeCount: 0,
           });
