@@ -140,6 +140,30 @@ function notifyDuelRooms() {
   duelRoomListeners.forEach(listener => listener(snapshot));
 }
 
+function applyDuelRoomSnapshot(snapshot: any) {
+  const list: CardDuelRoom[] = [];
+  snapshot.forEach((docSnap: any) => {
+    const raw = { ...docSnap.data(), id: docSnap.id } as CardDuelRoom;
+    const hasLocalPendingWrite = docSnap.metadata?.hasPendingWrites === true;
+    const pending = pendingDuelRooms.get(raw.id);
+    if (pending && hasLocalPendingWrite) {
+      list.push(pending);
+    } else {
+      if (pending) pendingDuelRooms.delete(raw.id);
+      if (!pendingDuelDeletes.has(raw.id) || hasLocalPendingWrite) list.push(raw);
+    }
+  });
+
+  pendingDuelRooms.forEach((pending) => {
+    if (!list.some(room => room.id === pending.id) && !pendingDuelDeletes.has(pending.id)) list.push(pending);
+  });
+
+  list.sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt));
+  localDuelRooms = list;
+  saveLocalAll();
+  notifyDuelRooms();
+}
+
 
 function saveLocalAll() {
   try {
@@ -763,30 +787,21 @@ export function subscribeToDuelRooms(callback: (rooms: CardDuelRoom[]) => void) 
   try {
     const q = collection(db, CARD_DUEL_ROOMS_COLLECTION);
     const unsub = onSnapshot(q, (snapshot) => {
-      const list: CardDuelRoom[] = [];
-      snapshot.forEach((doc) => {
-        const raw = { ...doc.data(), id: doc.id } as CardDuelRoom;
-        if (pendingDuelDeletes.has(raw.id)) return;
-        const pending = pendingDuelRooms.get(raw.id);
-        const rawTime = Number(raw.updatedAt || raw.createdAt || 0);
-        const pendingTime = Number(pending?.updatedAt || pending?.createdAt || 0);
-        const source = pending && pendingTime > rawTime ? pending : raw;
-        if (pending && rawTime >= pendingTime) pendingDuelRooms.delete(raw.id);
-        list.push(source);
-      });
-      pendingDuelRooms.forEach((pending) => {
-        if (!list.some(room => room.id === pending.id) && !pendingDuelDeletes.has(pending.id)) list.push(pending);
-      });
-      if (list.length > 0) {
-        list.sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt));
-        localDuelRooms = list;
-        saveLocalAll();
-      }
-      notifyDuelRooms();
+      applyDuelRoomSnapshot(snapshot);
     }, (err) => {
-      console.warn("Duel rooms listener error, using local:", err);
+      console.warn("Duel rooms listener error, polling Firestore:", err);
       notifyDuelRooms();
     });
+
+    const pollTimer = setInterval(async () => {
+      if (pendingDuelRooms.size > 0 || pendingDuelDeletes.size > 0) return;
+      try {
+        const polledSnapshot = await getDocs(q);
+        applyDuelRoomSnapshot(polledSnapshot);
+      } catch (err) {
+        console.warn("Duel rooms polling error:", err);
+      }
+    }, 2500);
 
     if (broadcast) {
       const handleBroadcast = (ev: MessageEvent) => {
@@ -807,12 +822,14 @@ export function subscribeToDuelRooms(callback: (rooms: CardDuelRoom[]) => void) 
       return () => {
         duelRoomListeners.delete(callback);
         broadcast.removeEventListener('message', handleBroadcast);
+        clearInterval(pollTimer);
         unsub();
       };
     }
 
     return () => {
       duelRoomListeners.delete(callback);
+      clearInterval(pollTimer);
       unsub();
     };
   } catch (err) {
@@ -860,14 +877,20 @@ export async function createDuelRoom(room: CardDuelRoom): Promise<string> {
 
   try {
     await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, id), fullRoom);
-  } catch (err) {
-    console.warn("Error creating duel room in Firestore:", err);
+  } catch (err: any) {
+    pendingDuelRooms.delete(id);
+    localDuelRooms = localDuelRooms.filter(r => r.id !== id);
+    saveLocalAll();
+    notifyDuelRooms();
+    console.error("Error creating duel room in Firestore:", err);
+    throw new Error("ไม่สามารถสร้างห้องดวลบนเซิร์ฟเวอร์ได้");
   }
   return id;
 }
 
 // Update Card Duel Room
 export async function updateDuelRoom(room: CardDuelRoom): Promise<void> {
+  const previous = localDuelRooms.find(r => r.id === room.id);
   const updated = {
     ...room,
     updatedAt: Date.now()
@@ -881,8 +904,14 @@ export async function updateDuelRoom(room: CardDuelRoom): Promise<void> {
 
   try {
     await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), updated);
-  } catch (err) {
-    console.warn("Error updating duel room in Firestore:", err);
+  } catch (err: any) {
+    pendingDuelRooms.delete(updated.id);
+    if (previous) localDuelRooms = localDuelRooms.map(r => r.id === updated.id ? previous : r);
+    else localDuelRooms = localDuelRooms.filter(r => r.id !== updated.id);
+    saveLocalAll();
+    notifyDuelRooms();
+    console.error("Error updating duel room in Firestore:", err);
+    throw new Error("ซิงก์การเล่นไปยังเครื่องอื่นไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่");
   }
 }
 
