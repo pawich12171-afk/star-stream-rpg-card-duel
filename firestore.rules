@@ -1,6 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Public game data. The current Star Stream client does not yet use
+    // Firebase Authentication, so writes remain open for the game client.
+    // Keep validation in the application layer until authentication is added.
     match /{document=**} {
       allow read, write: if true;
     }
