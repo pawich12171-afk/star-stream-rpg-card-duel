@@ -330,6 +330,7 @@ export interface BattleCombatant {
   reflectPercent?: number;
   reflectTurns?: number;
   skillCooldowns?: Record<string, number>;
+  adminStatusEffects?: AdminStatusEffect[];
 }
 
 export interface BattleLogEntry {
