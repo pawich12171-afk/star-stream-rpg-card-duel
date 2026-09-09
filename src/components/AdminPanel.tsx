@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CharacterProfile, Item, GachaReward, GachaConfig, GachaRarity, MAX_GACHA_REWARDS } from '../types';
+import { CharacterProfile, Item, Skill, GachaReward, GachaConfig, GachaRarity, MAX_GACHA_REWARDS } from '../types';
 import { 
   ShieldCheck, 
   Coins, 
