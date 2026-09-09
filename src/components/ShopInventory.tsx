@@ -28,8 +28,8 @@ import { syncCharacterHealth } from '../utils/healthSystem';
 interface ShopInventoryProps {
   character: CharacterProfile;
   shopItems: Item[];
-  onUpdateCharacter: (updated: CharacterProfile) => void;
-  onAddShopItem?: (item: Item) => void;
+  onUpdateCharacter: (updated: CharacterProfile) => void | Promise<boolean | void>;
+  onAddShopItem?: (item: Item) => void | Promise<void>;
   onDeleteShopItem?: (itemId: string) => void;
   isAdmin: boolean;
 }
@@ -291,7 +291,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   };
 
   // Use Item handler
-  const handleUseItem = (invItem: InventoryItem) => {
+  const handleUseItem = async (invItem: InventoryItem) => {
     let updatedChar = { ...character };
     let effectMessage = '';
 
@@ -375,7 +375,14 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       ...(updatedChar.notifications || []),
     ];
 
-    onUpdateCharacter(updatedChar);
+    try {
+      const saved = await onUpdateCharacter(updatedChar);
+      if (saved === false) return;
+    } catch (error) {
+      console.error('Failed to save item use:', error);
+      alert('ใช้ไอเทมแล้ว แต่บันทึกลงฐานข้อมูลไม่สำเร็จ กรุณารีเฟรชแล้วลองใหม่');
+      return;
+    }
     alert(`ใช้งานสำเร็จ! ${effectMessage}`);
   };
 
@@ -413,7 +420,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   };
 
   // Admin create new item in shop
-  const handleAdminSubmitItem = (e: React.FormEvent) => {
+  const handleAdminSubmitItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim() || !onAddShopItem) return;
 
@@ -434,7 +441,13 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       equipped: false,
     };
 
-    onAddShopItem(created);
+    try {
+      await onAddShopItem(created);
+    } catch (error) {
+      console.error('Failed to save shop item:', error);
+      alert('บันทึกไอเทมลงฐานข้อมูลไม่สำเร็จ กรุณาลองใหม่');
+      return;
+    }
     setShowAddItemModal(false);
     setNewItemName('');
     setNewItemDesc('');
