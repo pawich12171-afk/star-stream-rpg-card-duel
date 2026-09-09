@@ -294,6 +294,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newRewardCoinAmount, setNewRewardCoinAmount] = useState(2500);
   const [newRewardSelectedShopItemId, setNewRewardSelectedShopItemId] = useState(shopItems[0]?.id || '');
   const [newRewardCharacteristic, setNewRewardCharacteristic] = useState('');
+  const [newRewardBattleEffect, setNewRewardBattleEffect] = useState<NonNullable<Skill['battleEffect']>>('damage');
+  const [newRewardBattlePower, setNewRewardBattlePower] = useState(5);
+  const [newRewardCooldownTurns, setNewRewardCooldownTurns] = useState(0);
 
   // Inline edit rate map
   const [editingRates, setEditingRates] = useState<Record<string, number>>({});
@@ -485,6 +488,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       coinAmount: newRewardType === 'coin' ? newRewardCoinAmount : undefined,
       itemData,
       characteristic: newRewardType === 'characteristic' ? newRewardCharacteristic.trim() : undefined,
+      skillData: newRewardType === 'skill' ? {
+        id: `skill-template-1788949150649`,
+        name: newRewardName.trim(),
+        level: 1,
+        multiplier: 1,
+        type: 'สกิลต่อสู้จากกาชา',
+        category: 'general',
+        description: newRewardDesc.trim() || 'สกิลต่อสู้ที่ได้รับจากตู้กาชา',
+        battleEffect: newRewardBattleEffect,
+        battlePower: Math.max(1, Number(newRewardBattlePower) || 1),
+        cooldownTurns: Math.max(0, Number(newRewardCooldownTurns) || 0),
+        cooldown: Number(newRewardCooldownTurns) > 0 ? `${newRewardCooldownTurns} เทิร์น` : undefined,
+      } : undefined,
     };
 
     try {
@@ -492,6 +508,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setNewRewardName('');
       setNewRewardDesc('');
       setNewRewardCharacteristic('');
+      setNewRewardBattleEffect('damage');
+      setNewRewardBattlePower(5);
+      setNewRewardCooldownTurns(0);
       alert(`เพิ่มของรางวัล "${reward.name}" เข้าตู้กาชาสำเร็จ!`);
     } catch (error) {
       console.error('Error saving gacha reward:', error);
@@ -1854,6 +1873,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       placeholder="เช่น ผู้ดูดาราเริ่มต้น"
                       className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-cyan-200 text-xs outline-none focus:border-cyan-400"
                     />
+                  </div>
+                )}
+
+                {newRewardType === 'skill' && (
+                  <div className="space-y-2 rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-3">
+                    <div className="text-[11px] font-bold text-cyan-200">หมวดหมู่สกิลในสนามรบ</div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <select value={newRewardBattleEffect} onChange={(e) => setNewRewardBattleEffect(e.target.value as NonNullable<Skill['battleEffect']>)} className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white outline-none">
+                        <option value="damage">โจมตี / ดาเมจ</option>
+                        <option value="heal">ฟื้นฟู HP</option>
+                        <option value="defense">โล่ / ป้องกัน</option>
+                        <option value="reflect">สะท้อนดาเมจ</option>
+                        <option value="stun">ควบคุม / สตัน</option>
+                      </select>
+                      <input type="number" min={1} value={newRewardBattlePower} onChange={(e) => setNewRewardBattlePower(Number(e.target.value))} placeholder="พลังผลลัพธ์" className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white outline-none" />
+                      <input type="number" min={0} max={99} value={newRewardCooldownTurns} onChange={(e) => setNewRewardCooldownTurns(Number(e.target.value))} placeholder="คูลดาวน์ (เทิร์น)" className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white outline-none" />
+                    </div>
+                    <p className="text-[10px] leading-4 text-slate-400">สกิลที่สร้างจะถูกบันทึกพร้อมประเภท พลัง และคูลดาวน์ จึงนำไปใช้ในสนามรบได้ทันทีหลังได้รับจากกาชา</p>
                   </div>
                 )}
                   <label className="text-xs text-slate-300 block mb-1">อัตราออก (Rate %)</label>
