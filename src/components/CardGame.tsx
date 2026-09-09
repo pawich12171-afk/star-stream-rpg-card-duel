@@ -111,6 +111,7 @@ export const CardGame: React.FC<CardGameProps> = ({
   const [createBetAmount, setCreateBetAmount] = useState<number>(500);
   const [targetInviteeId, setTargetInviteeId] = useState<string>('');
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [isRoomActionPending, setIsRoomActionPending] = useState(false);
 
   // Single Player AI mode state
   const [aiBetAmount, setAiBetAmount] = useState<number>(200);
@@ -238,142 +239,144 @@ export const CardGame: React.FC<CardGameProps> = ({
 
   // Multiplayer Gameplay: Hit
   const handleRoomHit = async () => {
-    if (!activeRoom || activeRoom.status === 'completed') return;
+    if (!activeRoom || activeRoom.status === 'completed' || isRoomActionPending) return;
     const isCreator = isUserCreatorInActiveRoom;
-    const remainingDeck = [...(activeRoom.deck || [])];
-    const newCard = remainingDeck.pop();
-    if (!newCard) return;
+    const isMyTurn = (activeRoom.turn === 'creator' && isCreator) || (activeRoom.turn === 'opponent' && !isCreator);
+    if (!isMyTurn) return;
 
-    let creatorHand = [...activeRoom.creatorHand];
-    let opponentHand = [...activeRoom.opponentHand];
-    let creatorStanding = activeRoom.creatorStanding;
-    let opponentStanding = activeRoom.opponentStanding;
+    setIsRoomActionPending(true);
+    try {
+      const remainingDeck = [...(activeRoom.deck || [])];
+      const newCard = remainingDeck.pop();
+      if (!newCard) return;
 
-    if (isCreator) {
-      creatorHand.push(newCard);
-    } else {
-      opponentHand.push(newCard);
-    }
+      let creatorHand = [...activeRoom.creatorHand];
+      let opponentHand = [...activeRoom.opponentHand];
+      const creatorStanding = activeRoom.creatorStanding;
+      const opponentStanding = activeRoom.opponentStanding;
+      if (isCreator) creatorHand.push(newCard);
+      else opponentHand.push(newCard);
 
-    const s1 = calculateHandScore(creatorHand);
-    const s2 = calculateHandScore(opponentHand);
+      const s1 = calculateHandScore(creatorHand);
+      const s2 = calculateHandScore(opponentHand);
+      let winner: 'creator' | 'opponent' | 'tie' | null = null;
+      let resultReason = '';
+      let isFinished = false;
 
-    let winner: 'creator' | 'opponent' | 'tie' | null = null;
-    let resultReason = '';
-    let isFinished = false;
-
-    if (s1 === 21) {
-      winner = 'creator';
-      resultReason = `${activeRoom.creatorName} ได้ 21 แต้ม ชนะทันที!`;
-      isFinished = true;
-    } else if (s2 === 21) {
-      winner = 'opponent';
-      resultReason = `${activeRoom.opponentName} ได้ 21 แต้ม ชนะทันที!`;
-      isFinished = true;
-    } else if (s1 > 21) {
-      winner = 'opponent';
-      resultReason = `${activeRoom.creatorName} แต้มเกิน 21 (${s1} แต้ม - Bust!)`;
-      isFinished = true;
-    } else if (s2 > 21) {
-      winner = 'creator';
-      resultReason = `${activeRoom.opponentName} แต้มเกิน 21 (${s2} แต้ม - Bust!)`;
-      isFinished = true;
-    }
-
-    let nextTurn = activeRoom.turn;
-    if (!isFinished) {
-      if (isCreator) {
-        if (!opponentStanding) nextTurn = 'opponent';
-      } else {
-        if (!creatorStanding) nextTurn = 'creator';
+      if (s1 === 21) {
+        winner = 'creator';
+        resultReason = activeRoom.creatorName + ' ได้ 21 แต้ม ชนะทันที!';
+        isFinished = true;
+      } else if (s2 === 21) {
+        winner = 'opponent';
+        resultReason = activeRoom.opponentName + ' ได้ 21 แต้ม ชนะทันที!';
+        isFinished = true;
+      } else if (s1 > 21) {
+        winner = 'opponent';
+        resultReason = activeRoom.creatorName + ' แต้มเกิน 21 (' + s1 + ' แต้ม - Bust!)';
+        isFinished = true;
+      } else if (s2 > 21) {
+        winner = 'creator';
+        resultReason = activeRoom.opponentName + ' แต้มเกิน 21 (' + s2 + ' แต้ม - Bust!)';
+        isFinished = true;
       }
-    }
 
-    const updated: CardDuelRoom = {
-      ...activeRoom,
-      creatorHand,
-      opponentHand,
-      deck: remainingDeck,
-      turn: nextTurn,
-      winner: isFinished ? winner : undefined,
-      resultReason: isFinished ? resultReason : undefined,
-      status: isFinished ? 'completed' : 'in_progress',
-      updatedAt: Date.now(),
-    };
-
-    await updateDuelRoom(updated);
-
-    if (isFinished && winner) {
-      const creatorChar = allCharacters.find(c => c.id === activeRoom.creatorId);
-      const opponentChar = allCharacters.find(c => c.id === activeRoom.opponentId);
-      if (winner === 'creator' && creatorChar && opponentChar) {
-        await settleCard21Bet(creatorChar, opponentChar, activeRoom.betAmount, false, resultReason);
-      } else if (winner === 'opponent' && creatorChar && opponentChar) {
-        await settleCard21Bet(opponentChar, creatorChar, activeRoom.betAmount, false, resultReason);
+      let nextTurn = activeRoom.turn;
+      if (!isFinished) {
+        nextTurn = isCreator
+          ? (opponentStanding ? 'creator' : 'opponent')
+          : (creatorStanding ? 'opponent' : 'creator');
       }
+
+      const updated: CardDuelRoom = {
+        ...activeRoom,
+        creatorHand,
+        opponentHand,
+        deck: remainingDeck,
+        turn: nextTurn,
+        winner: isFinished ? winner : undefined,
+        resultReason: isFinished ? resultReason : undefined,
+        status: isFinished ? 'completed' : 'in_progress',
+        updatedAt: Date.now(),
+      };
+      await updateDuelRoom(updated);
+
+      if (isFinished && winner) {
+        const creatorChar = allCharacters.find(c => c.id === activeRoom.creatorId);
+        const opponentChar = allCharacters.find(c => c.id === activeRoom.opponentId);
+        if (winner === 'creator' && creatorChar && opponentChar) {
+          await settleCard21Bet(creatorChar, opponentChar, activeRoom.betAmount, false, resultReason);
+        } else if (winner === 'opponent' && creatorChar && opponentChar) {
+          await settleCard21Bet(opponentChar, creatorChar, activeRoom.betAmount, false, resultReason);
+        }
+      }
+    } catch (err: any) {
+      alert(err?.message || 'ไม่สามารถจั่วไพ่ได้ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsRoomActionPending(false);
     }
   };
 
   // Multiplayer Gameplay: Stand
   const handleRoomStand = async () => {
-    if (!activeRoom || activeRoom.status === 'completed') return;
+    if (!activeRoom || activeRoom.status === 'completed' || isRoomActionPending) return;
     const isCreator = isUserCreatorInActiveRoom;
-    let creatorStanding = activeRoom.creatorStanding;
-    let opponentStanding = activeRoom.opponentStanding;
+    const isMyTurn = (activeRoom.turn === 'creator' && isCreator) || (activeRoom.turn === 'opponent' && !isCreator);
+    if (!isMyTurn) return;
 
-    if (isCreator) {
-      creatorStanding = true;
-    } else {
-      opponentStanding = true;
-    }
+    setIsRoomActionPending(true);
+    try {
+      let creatorStanding = activeRoom.creatorStanding;
+      let opponentStanding = activeRoom.opponentStanding;
+      if (isCreator) creatorStanding = true;
+      else opponentStanding = true;
 
-    const s1 = calculateHandScore(activeRoom.creatorHand);
-    const s2 = calculateHandScore(activeRoom.opponentHand);
+      const s1 = calculateHandScore(activeRoom.creatorHand);
+      const s2 = calculateHandScore(activeRoom.opponentHand);
+      let winner: 'creator' | 'opponent' | 'tie' | null = null;
+      let resultReason = '';
+      let isFinished = false;
 
-    let winner: 'creator' | 'opponent' | 'tie' | null = null;
-    let resultReason = '';
-    let isFinished = false;
-
-    if (creatorStanding && opponentStanding) {
-      isFinished = true;
-      if (s1 > s2) {
-        winner = 'creator';
-        resultReason = `${activeRoom.creatorName} (${s1} แต้ม) ชนะ ${activeRoom.opponentName} (${s2} แต้ม)`;
-      } else if (s2 > s1) {
-        winner = 'opponent';
-        resultReason = `${activeRoom.opponentName} (${s2} แต้ม) ชนะ ${activeRoom.creatorName} (${s1} แต้ม)`;
-      } else {
-        winner = 'tie';
-        resultReason = `เสมอด้วยคะแนนเท่ากัน (${s1} แต้ม)`;
+      if (creatorStanding && opponentStanding) {
+        isFinished = true;
+        if (s1 > s2) {
+          winner = 'creator';
+          resultReason = activeRoom.creatorName + ' (' + s1 + ' แต้ม) ชนะ ' + activeRoom.opponentName + ' (' + s2 + ' แต้ม)';
+        } else if (s2 > s1) {
+          winner = 'opponent';
+          resultReason = activeRoom.opponentName + ' (' + s2 + ' แต้ม) ชนะ ' + activeRoom.creatorName + ' (' + s1 + ' แต้ม)';
+        } else {
+          winner = 'tie';
+          resultReason = 'เสมอด้วยคะแนนเท่ากัน (' + s1 + ' แต้ม)';
+        }
       }
-    }
 
-    let nextTurn = activeRoom.turn;
-    if (!isFinished) {
-      nextTurn = isCreator ? 'opponent' : 'creator';
-    }
+      const nextTurn = isFinished ? activeRoom.turn : (isCreator ? 'opponent' : 'creator');
+      const updated: CardDuelRoom = {
+        ...activeRoom,
+        creatorStanding,
+        opponentStanding,
+        turn: nextTurn,
+        winner: isFinished ? winner : undefined,
+        resultReason: isFinished ? resultReason : undefined,
+        status: isFinished ? 'completed' : 'in_progress',
+        updatedAt: Date.now(),
+      };
+      await updateDuelRoom(updated);
 
-    const updated: CardDuelRoom = {
-      ...activeRoom,
-      creatorStanding,
-      opponentStanding,
-      turn: nextTurn,
-      winner: isFinished ? winner : undefined,
-      resultReason: isFinished ? resultReason : undefined,
-      status: isFinished ? 'completed' : 'in_progress',
-      updatedAt: Date.now(),
-    };
-
-    await updateDuelRoom(updated);
-
-    if (isFinished && winner && winner !== 'tie') {
-      const creatorChar = allCharacters.find(c => c.id === activeRoom.creatorId);
-      const opponentChar = allCharacters.find(c => c.id === activeRoom.opponentId);
-      if (winner === 'creator' && creatorChar && opponentChar) {
-        await settleCard21Bet(creatorChar, opponentChar, activeRoom.betAmount, false, resultReason);
-      } else if (winner === 'opponent' && creatorChar && opponentChar) {
-        await settleCard21Bet(opponentChar, creatorChar, activeRoom.betAmount, false, resultReason);
+      if (isFinished && winner && winner !== 'tie') {
+        const creatorChar = allCharacters.find(c => c.id === activeRoom.creatorId);
+        const opponentChar = allCharacters.find(c => c.id === activeRoom.opponentId);
+        if (winner === 'creator' && creatorChar && opponentChar) {
+          await settleCard21Bet(creatorChar, opponentChar, activeRoom.betAmount, false, resultReason);
+        } else if (winner === 'opponent' && creatorChar && opponentChar) {
+          await settleCard21Bet(opponentChar, creatorChar, activeRoom.betAmount, false, resultReason);
+        }
       }
+    } catch (err: any) {
+      alert(err?.message || 'ไม่สามารถจบเทิร์นได้ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsRoomActionPending(false);
     }
   };
 
@@ -818,17 +821,19 @@ export const CardGame: React.FC<CardGameProps> = ({
                         (activeRoom.turn === 'opponent' && isUserOpponentInActiveRoom && !activeRoom.opponentStanding)) && (
                         <div className="flex items-center gap-2.5">
                           <button
-                            onClick={handleRoomHit}
+                            onClick={() => void handleRoomHit()}
+                             disabled={isRoomActionPending}
                             className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs shadow-md cursor-pointer flex items-center gap-1.5"
                           >
                             <Sparkles className="w-3.5 h-3.5" />
-                            จั่วไพ่ (Hit)
+                            {isRoomActionPending ? 'กำลังบันทึก...' : 'จั่วไพ่ (Hit)'}
                           </button>
                           <button
-                            onClick={handleRoomStand}
+                            onClick={() => void handleRoomStand()}
+                             disabled={isRoomActionPending}
                             className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-600 font-bold text-xs shadow-md cursor-pointer"
                           >
-                            พอแล้ว / หมอบ (Stand)
+                            {isRoomActionPending ? 'กำลังบันทึก...' : 'พอแล้ว / หมอบ (Stand)'}
                           </button>
                         </div>
                       )}
