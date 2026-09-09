@@ -121,6 +121,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'shop' | 'inventory'>('shop');
   const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
 
   // Serialize purchases so rapid clicks cannot calculate from the same stale character.
   const characterRef = useRef(character);
@@ -250,12 +251,19 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const handleBuyItem = (item: Item) => {
     purchaseQueueRef.current = purchaseQueueRef.current.then(async () => {
       const currentCharacter = characterRef.current;
-      if (currentCharacter.coins < item.price) {
+      const coins = Number(currentCharacter.coins);
+      const price = Number(item.price);
+      if (!Number.isFinite(price) || price <= 0) {
+        alert('ไอเทมนี้มีราคาไม่ถูกต้อง กรุณาแจ้ง Admin');
+        return;
+      }
+      if (!Number.isFinite(coins) || coins < price) {
         alert('เหรียญไม่เพียงพอ! กรุณาสะสมเหรียญหรือให้ Admin เพิ่มเหรียญให้');
         return;
       }
 
-      const newCoins = currentCharacter.coins - item.price;
+      setBuyingItemId(item.id);
+      const newCoins = coins - price;
       const existingIndex = (currentCharacter.inventory || []).findIndex(i => i.id === item.id && !i.isEquipped);
       const updatedInventory: InventoryItem[] = [...(currentCharacter.inventory || [])];
 
@@ -303,6 +311,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         console.error('Failed to save purchase:', error);
         alert('ซื้อไอเทมแล้ว แต่บันทึกไม่สำเร็จ กรุณาลองใหม่');
         return;
+      } finally {
+        setBuyingItemId(current => current === item.id ? null : current);
       }
 
       confetti({
@@ -638,8 +648,9 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
 
                     <button
                       id={`btn-buy-${item.id}`}
+                      type="button"
                       onClick={() => handleBuyItem(item)}
-                      disabled={character.coins < item.price}
+                      disabled={buyingItemId === item.id || Number(character.coins) < Number(item.price)}
                       className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
                         character.coins >= item.price
                           ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-900/30'
@@ -647,7 +658,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                       }`}
                     >
                       <ShoppingBag className="w-3.5 h-3.5" />
-                      {character.coins >= item.price ? 'ซื้อไอเทม' : 'เหรียญไม่พอ'}
+                      {buyingItemId === item.id ? 'กำลังซื้อ...' : Number(character.coins) >= Number(item.price) ? 'ซื้อไอเทม' : 'เหรียญไม่พอ'}
                     </button>
                   </div>
                 </div>
