@@ -44,6 +44,8 @@ export interface EquippedBonus {
 
 export type GachaRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
 
+export const MAX_GACHA_REWARDS = 20;
+
 export interface Item {
   id: string;
   name: string;
