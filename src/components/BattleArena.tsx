@@ -28,7 +28,7 @@ const inputClass = 'w-full rounded-xl border border-slate-700 bg-slate-950/80 px
 const buttonClass = 'rounded-xl px-3 py-2 text-xs font-black transition-all';
 
 function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): BattleCombatant {
-  return { id: `player:${character.id}`, sourceId: character.id, name: character.displayName, avatarUrl: character.avatarUrl, type: 'player', team, stats: { ...character.stats }, hp: character.hp, maxHp: character.maxHp };
+  return { id: `player:${character.id}`, sourceId: character.id, name: character.displayName, avatarUrl: character.avatarUrl, type: 'player', team, stats: { ...character.stats }, hp: character.hp, maxHp: character.maxHp, adminStatusEffects: character.adminStatusEffects?.map(effect => ({ ...effect })) };
 }
 
 function makeBotCombatant(bot: BattleBot, team: 'a' | 'b'): BattleCombatant {
@@ -142,7 +142,13 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   const persistBattleHp = async (room: BattleRoom) => {
     await Promise.all([...room.teamA, ...room.teamB].filter(unit => unit.type === 'player').map(async unit => {
       const character = allCharacters.find(item => item.id === unit.sourceId);
-      if (character && character.hp !== unit.hp) await updateCharacterInDB({ ...character, hp: Math.max(0, Math.min(character.maxHp, unit.hp)), lastUpdated: Date.now() });
+      if (!character) return;
+      const activeEffects = unit.adminStatusEffects?.filter(effect => effect.remaining > 0) ?? unit.adminStatusEffects;
+      const statusSummary = activeEffects?.map(effect => `${effect.mode === 'buff' ? '✨' : '⚠️'} ${effect.name} (${effect.remaining}/${effect.duration})`).join(' · ') || '';
+      const statusPatch = unit.adminStatusEffects === undefined ? {} : { adminStatusEffects: activeEffects || [], statusBuffs: statusSummary };
+      if (character.hp !== unit.hp || unit.adminStatusEffects !== undefined) {
+        await updateCharacterInDB({ ...character, ...statusPatch, hp: Math.max(0, Math.min(character.maxHp, unit.hp)), lastUpdated: Date.now() });
+      }
     }));
   };
 
