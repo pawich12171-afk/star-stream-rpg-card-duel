@@ -18,6 +18,11 @@ import {
   GachaReward, 
   GachaConfig, 
   CardDuelRoom,
+  BattleConfig,
+  BattleBot,
+  BattleRoom,
+  BattleCombatant,
+  BattleRollResult,
   MAX_GACHA_REWARDS
 } from "../types";
 import { 
@@ -991,3 +996,231 @@ export const addGachaRewardToDB = saveGachaReward;
 export const updateGachaRewardInDB = saveGachaReward;
 export const saveGachaConfig = updateGachaConfig;
 export const updateGachaConfigInDB = updateGachaConfig;
+
+
+// TEAM BATTLE DATA AND RULES
+const BATTLE_CONFIG_COLLECTION = "battle_config";
+const BATTLE_BOTS_COLLECTION = "battle_bots";
+const BATTLE_ROOMS_COLLECTION = "battle_rooms";
+
+export const DEFAULT_BATTLE_CONFIG: BattleConfig = {
+  id: "main",
+  enabled: true,
+  sides: 6,
+  strengthPerDamage: 3,
+  faces: [
+    { face: 1, effect: "miss", value: 0, label: "พลาด", description: "การโจมตีไม่สร้างความเสียหาย" },
+    { face: 2, effect: "damage", value: 1, label: "โจมตีปกติ", description: "ดาเมจพื้นฐาน" },
+    { face: 3, effect: "damage", value: 1, label: "โจมตีปกติ", description: "ดาเมจพื้นฐาน" },
+    { face: 4, effect: "damage", value: 1.5, label: "โจมตีหนัก", description: "ดาเมจพื้นฐาน x1.5" },
+    { face: 5, effect: "critical", value: 2, label: "คริติคอล", description: "ดาเมจพื้นฐาน x2" },
+    { face: 6, effect: "heal", value: 2, label: "ฟื้นฟู", description: "ฟื้น HP 2 หน่วย" },
+  ],
+  updatedAt: Date.now(),
+};
+
+let localBattleConfig: BattleConfig = (() => {
+  try {
+    const saved = localStorage.getItem("starstream_battle_config");
+    if (saved) return JSON.parse(saved);
+  } catch (e) {}
+  return DEFAULT_BATTLE_CONFIG;
+})();
+let localBattleBots: BattleBot[] = (() => {
+  try {
+    const saved = localStorage.getItem("starstream_battle_bots");
+    if (saved) return JSON.parse(saved);
+  } catch (e) {}
+  return [];
+})();
+let localBattleRooms: BattleRoom[] = (() => {
+  try {
+    const saved = localStorage.getItem("starstream_battle_rooms");
+    if (saved) return JSON.parse(saved);
+  } catch (e) {}
+  return [];
+})();
+const battleConfigListeners = new Set<(config: BattleConfig) => void>();
+const battleBotListeners = new Set<(bots: BattleBot[]) => void>();
+const battleRoomListeners = new Set<(rooms: BattleRoom[]) => void>();
+
+function saveBattleLocal() {
+  try {
+    localStorage.setItem("starstream_battle_config", JSON.stringify(localBattleConfig));
+    localStorage.setItem("starstream_battle_bots", JSON.stringify(localBattleBots));
+    localStorage.setItem("starstream_battle_rooms", JSON.stringify(localBattleRooms));
+  } catch (e) {}
+}
+function notifyBattleConfig() { battleConfigListeners.forEach(listener => listener(localBattleConfig)); }
+function notifyBattleBots() { battleBotListeners.forEach(listener => listener([...localBattleBots])); }
+function notifyBattleRooms() { battleRoomListeners.forEach(listener => listener([...localBattleRooms])); }
+
+export function subscribeToBattleConfig(callback: (config: BattleConfig) => void) {
+  callback(localBattleConfig);
+  battleConfigListeners.add(callback);
+  try {
+    return onSnapshot(doc(db, BATTLE_CONFIG_COLLECTION, "main"), (snapshot) => {
+      if (snapshot.exists()) {
+        localBattleConfig = { ...DEFAULT_BATTLE_CONFIG, ...snapshot.data(), id: "main" } as BattleConfig;
+        saveBattleLocal();
+        callback(localBattleConfig);
+      }
+    }, () => callback(localBattleConfig));
+  } catch (err) {
+    return () => {};
+  }
+}
+
+export function subscribeToBattleBots(callback: (bots: BattleBot[]) => void) {
+  callback(localBattleBots);
+  battleBotListeners.add(callback);
+  try {
+    return onSnapshot(collection(db, BATTLE_BOTS_COLLECTION), (snapshot) => {
+      if (snapshot.empty) return;
+      localBattleBots = snapshot.docs.map(item => ({ ...item.data(), id: item.id } as BattleBot));
+      saveBattleLocal();
+      callback(localBattleBots);
+    }, () => callback(localBattleBots));
+  } catch (err) {
+    return () => {};
+  }
+}
+
+export function subscribeToBattleRooms(callback: (rooms: BattleRoom[]) => void) {
+  callback(localBattleRooms);
+  battleRoomListeners.add(callback);
+  try {
+    return onSnapshot(collection(db, BATTLE_ROOMS_COLLECTION), (snapshot) => {
+      if (snapshot.empty) return;
+      localBattleRooms = snapshot.docs
+        .map(item => ({ ...item.data(), id: item.id } as BattleRoom))
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      saveBattleLocal();
+      callback(localBattleRooms);
+    }, () => callback(localBattleRooms));
+  } catch (err) {
+    return () => {};
+  }
+}
+
+export async function saveBattleConfig(config: BattleConfig): Promise<void> {
+  const next = { ...config, id: "main", updatedAt: Date.now() };
+  localBattleConfig = next;
+  saveBattleLocal();
+  notifyBattleConfig();
+  await setDoc(doc(db, BATTLE_CONFIG_COLLECTION, "main"), sanitizeForFirestore(next));
+}
+
+export async function saveBattleBot(bot: BattleBot): Promise<void> {
+  const id = bot.id || "bot-" + Date.now();
+  const next = { ...bot, id, createdAt: bot.createdAt || Date.now(), updatedAt: Date.now() };
+  localBattleBots = [next, ...localBattleBots.filter(item => item.id !== id)];
+  saveBattleLocal();
+  notifyBattleBots();
+  await setDoc(doc(db, BATTLE_BOTS_COLLECTION, id), sanitizeForFirestore(next));
+}
+
+export async function deleteBattleBot(botId: string): Promise<void> {
+  localBattleBots = localBattleBots.filter(bot => bot.id !== botId);
+  saveBattleLocal();
+  notifyBattleBots();
+  await deleteDoc(doc(db, BATTLE_BOTS_COLLECTION, botId));
+}
+
+export async function createBattleRoom(room: BattleRoom): Promise<string> {
+  const id = room.id || "battle-" + Date.now();
+  const next = { ...room, id, createdAt: room.createdAt || Date.now(), updatedAt: Date.now() };
+  localBattleRooms = [next, ...localBattleRooms.filter(item => item.id !== id)];
+  saveBattleLocal();
+  notifyBattleRooms();
+  await setDoc(doc(db, BATTLE_ROOMS_COLLECTION, id), sanitizeForFirestore(next));
+  return id;
+}
+
+export async function updateBattleRoom(room: BattleRoom): Promise<void> {
+  const next = { ...room, updatedAt: Date.now() };
+  localBattleRooms = [next, ...localBattleRooms.filter(item => item.id !== next.id)];
+  saveBattleLocal();
+  notifyBattleRooms();
+  await setDoc(doc(db, BATTLE_ROOMS_COLLECTION, next.id), sanitizeForFirestore(next));
+}
+
+export async function deleteBattleRoom(roomId: string): Promise<void> {
+  localBattleRooms = localBattleRooms.filter(room => room.id !== roomId);
+  saveBattleLocal();
+  notifyBattleRooms();
+  await deleteDoc(doc(db, BATTLE_ROOMS_COLLECTION, roomId));
+}
+
+export function rollBattleAttack(attacker: BattleCombatant, defender: BattleCombatant, config: BattleConfig): BattleRollResult {
+  const sides = Math.max(2, config.sides || 6);
+  const roll = Math.floor(Math.random() * sides) + 1;
+  const face = config.faces.find(item => item.face === roll) || {
+    face: roll, effect: "damage" as const, value: 1, label: "โจมตีปกติ", description: "ดาเมจพื้นฐาน"
+  };
+  const baseDamage = Math.max(1, Math.floor((attacker.stats?.strength || 0) / Math.max(1, config.strengthPerDamage || 3)));
+  let damage = 0;
+  let heal = 0;
+  if (face.effect === "damage" || face.effect === "critical" || face.effect === "stun") {
+    damage = Math.max(0, Math.round(baseDamage * Math.max(0, face.value || 1)));
+  }
+  if (face.effect === "heal") heal = Math.max(1, Math.round(face.value || 1));
+  const message = face.effect === "miss"
+    ? attacker.name + " ทอยได้หน้า " + roll + " — " + face.label
+    : face.effect === "heal"
+      ? attacker.name + " ทอยได้หน้า " + roll + " — " + face.label + " ฟื้น HP " + heal
+      : attacker.name + " ทอยได้หน้า " + roll + " — " + face.label + " สร้างดาเมจ " + damage;
+  return { roll, face, damage, heal, message };
+}
+
+function getBattleCombatants(room: BattleRoom): BattleCombatant[] {
+  return [...room.teamA, ...room.teamB];
+}
+function getNextBattleActor(room: BattleRoom, actorId: string): BattleCombatant | undefined {
+  const all = getBattleCombatants(room);
+  const start = Math.max(0, all.findIndex(item => item.id === actorId));
+  for (let step = 1; step <= all.length; step += 1) {
+    const candidate = all[(start + step) % all.length];
+    if (candidate && candidate.hp > 0) return candidate;
+  }
+  return undefined;
+}
+
+export function resolveBattleTurn(room: BattleRoom, config: BattleConfig): { room: BattleRoom; result: BattleRollResult | null } {
+  if (room.status !== "active") return { room, result: null };
+  const nextRoom: BattleRoom = {
+    ...room,
+    teamA: room.teamA.map(item => ({ ...item })),
+    teamB: room.teamB.map(item => ({ ...item })),
+    log: [...(room.log || [])],
+  };
+  const all = getBattleCombatants(nextRoom);
+  const actor = all.find(item => item.id === nextRoom.turnActorId) || all.find(item => item.hp > 0);
+  if (!actor || actor.hp <= 0) return { room, result: null };
+  const opponentTeam = actor.team === "a" ? nextRoom.teamB : nextRoom.teamA;
+  const defender = opponentTeam.find(item => item.hp > 0);
+  if (!defender) return { room: { ...nextRoom, status: "completed", winnerTeam: actor.team }, result: null };
+  const current = all.find(item => item.id === actor.id) as BattleCombatant;
+  let result: BattleRollResult | null = null;
+  if ((current.stunnedTurns || 0) > 0) {
+    current.stunnedTurns = Math.max(0, (current.stunnedTurns || 0) - 1);
+    nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: current.name + " ถูกสตัน จึงเสียเทิร์น", effect: "stun_skip" });
+  } else {
+    result = rollBattleAttack(current, defender, config);
+    if (result.damage > 0) defender.hp = Math.max(0, defender.hp - result.damage);
+    if (result.heal > 0) current.hp = Math.min(current.maxHp, current.hp + result.heal);
+    if (result.face.effect === "stun" && defender.hp > 0) defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
+    nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: result.message + (result.face.effect === "stun" ? " และทำให้เป้าหมายติดสตัน" : ""), roll: result.roll, damage: result.damage, effect: result.face.effect });
+  }
+  const remainingOpponent = opponentTeam.filter(item => item.hp > 0);
+  if (remainingOpponent.length === 0) {
+    nextRoom.status = "completed";
+    nextRoom.winnerTeam = actor.team;
+    nextRoom.turnActorId = current.id;
+    return { room: nextRoom, result };
+  }
+  const nextActor = getNextBattleActor(nextRoom, current.id);
+  nextRoom.turnActorId = nextActor?.id || current.id;
+  nextRoom.round = (nextRoom.round || 1) + (nextActor?.team === "a" && current.team === "b" ? 1 : 0);
+  return { room: nextRoom, result };
+}
