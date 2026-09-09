@@ -33,6 +33,7 @@ import { Leaderboard } from './components/Leaderboard';
 import { QuestNotification } from './components/QuestNotification';
 import { QuestBoard } from './components/QuestBoard';
 import { AdminPanel } from './components/AdminPanel';
+import { AdminCharacterBalancePanel } from './components/AdminCharacterBalancePanel';
 import { TransferModal } from './components/TransferModal';
 import { CharacterSelectModal } from './components/CharacterSelectModal';
 import { CreateCharacterModal } from './components/CreateCharacterModal';
@@ -590,6 +591,13 @@ export default function App() {
             onResetToDefaults={() => { void resetDatabaseToDefaults(); }}
           />
         )}
+        {activeTab === 'admin' && (
+          <AdminCharacterBalancePanel
+            characters={characters}
+            onUpdateCharacter={handleUpdateCharacter}
+          />
+        )}
+
       </main>
 
       {/* Modals */}
