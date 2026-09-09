@@ -37,6 +37,7 @@ import { TransferModal } from './components/TransferModal';
 import { CharacterSelectModal } from './components/CharacterSelectModal';
 import { CreateCharacterModal } from './components/CreateCharacterModal';
 import { ProfileCustomizerModal } from './components/ProfileCustomizerModal';
+import { BattleArena } from './components/BattleArena';
 import { 
   Users, 
   ShoppingBag, 
@@ -50,12 +51,13 @@ import {
   Sparkles,
   Radio,
   Activity,
-  ScrollText
+  ScrollText,
+  Swords
 } from 'lucide-react';
 import confetti from './utils/confetti';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'card_game' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'admin'>('status');
+  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'card_game' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin'>('status');
 
   // Real-time State
   const [characters, setCharacters] = useState<CharacterProfile[]>([]);
@@ -392,6 +394,15 @@ export default function App() {
           </button>
 
           <button
+            id="nav-tab-battle"
+            onClick={() => setActiveTab('battle')}
+            className={'star-nav-tab px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ' + (activeTab === 'battle' ? 'is-active text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800/60')}
+          >
+            <Swords className="w-4 h-4" />
+            สนามรบทีม (Battle Arena)
+          </button>
+
+          <button
             id="nav-tab-gacha"
             onClick={() => setActiveTab('gacha')}
              className={`star-nav-tab px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
@@ -493,6 +504,14 @@ export default function App() {
             onAddShopItem={handleAddShopItem}
             onDeleteShopItem={handleDeleteShopItem}
             isAdmin={isAdminMode}
+          />
+        )}
+
+        {activeTab === 'battle' && (
+          <BattleArena
+            currentUser={currentUser}
+            allCharacters={characters}
+            isAdmin={isAdminMode || currentUser.role === 'admin'}
           />
         )}
 
