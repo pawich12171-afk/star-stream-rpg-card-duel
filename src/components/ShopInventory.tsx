@@ -264,8 +264,14 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
 
       setBuyingItemId(item.id);
       const newCoins = coins - price;
-      const existingIndex = (currentCharacter.inventory || []).findIndex(i => i.id === item.id && !i.isEquipped);
-      const updatedInventory: InventoryItem[] = [...(currentCharacter.inventory || [])];
+      const currentInventory: InventoryItem[] = (currentCharacter.inventory || []).map((invItem, index) => ({
+        ...invItem,
+        // Legacy inventory records may not have an instanceId. Give them a stable fallback
+        // so React cannot reuse one card for another item after a purchase.
+        instanceId: invItem.instanceId || `legacy-${invItem.id}-${index}`,
+      }));
+      const existingIndex = currentInventory.findIndex(i => i.id === item.id && !i.isEquipped);
+      const updatedInventory: InventoryItem[] = [...currentInventory];
 
       if (existingIndex > -1 && item.category === 'consumable') {
         updatedInventory[existingIndex] = {
@@ -674,7 +680,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-white flex items-center gap-2">
               <Package className="w-4 h-4 text-cyan-400" />
-              ไอเทมในกระเป๋าของคุณ ({character.inventory?.length || 0} ชิ้น)
+              ไอเทมในกระเป๋าของคุณ ({(character.inventory || []).reduce((total, item) => total + Math.max(1, Number(item.quantity) || 1), 0)} ชิ้น)
             </h2>
           </div>
 
@@ -691,14 +697,15 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {character.inventory.map(invItem => {
+              {character.inventory.map((invItem, index) => {
+                const inventoryKey = invItem.instanceId || `legacy-${invItem.id}-${index}`;
                 const rarityInfo = getRarityBadge(invItem.rarity);
                 const isMaxHpBooster = invItem.effectType === 'boost_max_hp' || invItem.name.includes('ทองคำ') || invItem.name.includes('Max HP') || invItem.name.includes('หยาดโลหิต');
                 const isHealHp = invItem.effectType === 'heal_hp';
 
                 return (
                   <div
-                    key={invItem.instanceId}
+                    key={inventoryKey}
                     className={`rounded-3xl p-5 border transition-all flex flex-col justify-between space-y-4 shadow-xl ${
                       invItem.isEquipped
                         ? 'bg-slate-900/95 border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.2)]'
@@ -780,7 +787,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                       <div className="flex items-center gap-2">
                         {invItem.category === 'equipment' ? (
                           <button
-                            id={`btn-equip-${invItem.instanceId}`}
+                            id={`btn-equip-${inventoryKey}`}
                             onClick={() => handleToggleEquip(invItem)}
                             className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                               invItem.isEquipped
@@ -792,7 +799,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                           </button>
                         ) : (
                           <button
-                            id={`btn-use-${invItem.instanceId}`}
+                            id={`btn-use-${inventoryKey}`}
                             onClick={() => handleUseItem(invItem)}
                             className="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow shadow-emerald-900/30 transition-all cursor-pointer flex items-center gap-1.5"
                           >
