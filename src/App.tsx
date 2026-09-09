@@ -4,7 +4,8 @@ import {
   Item, 
   GachaReward, 
   GachaConfig, 
-  CardDuelRoom 
+  CardDuelRoom,
+  Quest
 } from './types';
 import { 
   subscribeToCharacters, 
@@ -30,6 +31,7 @@ import { CardGame } from './components/CardGame';
 import { GachaSystem } from './components/GachaSystem';
 import { Leaderboard } from './components/Leaderboard';
 import { QuestNotification } from './components/QuestNotification';
+import { QuestBoard } from './components/QuestBoard';
 import { AdminPanel } from './components/AdminPanel';
 import { TransferModal } from './components/TransferModal';
 import { CharacterSelectModal } from './components/CharacterSelectModal';
@@ -47,12 +49,13 @@ import {
   ChevronDown,
   Sparkles,
   Radio,
-  Activity
+  Activity,
+  ScrollText
 } from 'lucide-react';
 import confetti from './utils/confetti';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'card_game' | 'gacha' | 'rankings' | 'notifications' | 'admin'>('status');
+  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'card_game' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'admin'>('status');
 
   // Real-time State
   const [characters, setCharacters] = useState<CharacterProfile[]>([]);
@@ -173,6 +176,25 @@ export default function App() {
     void handleUpdateCharacter({
       ...target,
       coins: Math.max(0, newCoins),
+    });
+  };
+
+  const handleAssignQuest = async (targetCharId: string, quest: Quest): Promise<boolean> => {
+    const target = characters.find(character => character.id === targetCharId);
+    if (!target) return false;
+    const assignedNotification = {
+      id: 'notif-quest-assigned-' + Date.now(),
+      title: 'ได้รับภารกิจใหม่จากแอดมิน',
+      message: 'ภารกิจ “' + quest.title + '” ถูกมอบหมายให้คุณแล้ว เปิดเมนูภารกิจเพื่อดูรายละเอียด',
+      timestamp: Date.now(),
+      read: false,
+      type: 'quest' as const,
+    };
+    return handleUpdateCharacter({
+      ...target,
+      quests: [quest, ...(target.quests || [])],
+      notifications: [assignedNotification, ...(target.notifications || [])],
+      lastUpdated: Date.now(),
     });
   };
 
@@ -385,6 +407,14 @@ export default function App() {
 
           {/* ADMIN TAB - ALWAYS ACCESSIBLE */}
           <button
+            id="nav-tab-quests"
+            onClick={() => setActiveTab('quests')}
+            className={'star-nav-tab px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ' + (activeTab === 'quests' ? 'is-active text-amber-200 font-black shadow-[0_0_20px_rgba(245,158,11,0.24)]' : 'text-amber-400 hover:bg-amber-950/40 border border-amber-500/40')}
+          >
+            <ScrollText className="w-4 h-4" />
+            ภารกิจ
+          </button>
+          <button
             id="nav-tab-admin"
             onClick={() => setActiveTab('admin')}
              className={`star-nav-tab px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
@@ -471,6 +501,14 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'quests' && (
+          <QuestBoard
+            character={currentUser}
+            shopItems={shopItems}
+            onUpdateCharacter={handleUpdateCharacter}
+          />
+        )}
+
         {activeTab === 'admin' && (
           <AdminPanel
             characters={characters}
@@ -483,6 +521,7 @@ export default function App() {
             onDeleteShopItem={handleDeleteShopItem}
             onGrantItem={grantItemToPlayer}
             onRemoveItem={removeItemFromPlayer}
+            onAssignQuest={handleAssignQuest}
             onAddGachaReward={addGachaRewardToDB}
             onDeleteGachaReward={deleteGachaRewardFromDB}
             onUpdateGachaConfig={updateGachaConfigInDB}
