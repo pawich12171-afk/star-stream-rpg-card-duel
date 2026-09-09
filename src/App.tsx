@@ -91,6 +91,10 @@ export default function App() {
       if (chars.length > 0) {
         setCurrentUserId(prev => {
           if (prev && chars.some(c => c.id === prev)) return prev;
+          try {
+            const saved = localStorage.getItem('starstream_current_user_id');
+            if (saved && chars.some(c => c.id === saved)) return saved;
+          } catch (e) {}
           return chars[0].id;
         });
       }
@@ -122,6 +126,13 @@ export default function App() {
   }, []);
 
   const currentUser = characters.find(c => c.id === currentUserId) || characters[0];
+
+  const handleSelectCharacter = (charId: string) => {
+    setCurrentUserId(charId);
+    try {
+      localStorage.setItem('starstream_current_user_id', charId);
+    } catch (e) {}
+  };
 
   // Handlers
   const handleUpdateCharacter = async (updated: CharacterProfile): Promise<boolean> => {
@@ -537,7 +548,7 @@ export default function App() {
             characters={characters}
             currentUserId={currentUser.id}
             onSelectCharacter={(c) => {
-              setCurrentUserId(c.id);
+              handleSelectCharacter(c.id);
               setActiveTab('status');
             }}
           />
@@ -595,7 +606,7 @@ export default function App() {
         onClose={() => setIsCharSelectOpen(false)}
         characters={characters}
         currentCharacterId={currentUser.id}
-        onSelect={(c) => setCurrentUserId(c.id)}
+        onSelect={(c) => handleSelectCharacter(c.id)}
         onOpenCreate={() => setIsCreateCharOpen(true)}
       />
 
@@ -611,7 +622,7 @@ export default function App() {
         onClose={() => setIsProfileCustomizerOpen(false)}
         onSave={handleUpdateCharacter}
         allCharacters={characters}
-        onSelectCharacter={(c) => setCurrentUserId(c.id)}
+        onSelectCharacter={(c) => handleSelectCharacter(c.id)}
       />
     </div>
   );

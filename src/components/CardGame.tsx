@@ -294,8 +294,8 @@ export const CardGame: React.FC<CardGameProps> = ({
         opponentHand,
         deck: remainingDeck,
         turn: nextTurn,
-        winner: isFinished ? winner : undefined,
-        resultReason: isFinished ? resultReason : undefined,
+        winner: isFinished ? winner : null,
+        resultReason: isFinished ? resultReason : '',
         status: isFinished ? 'completed' : 'in_progress',
         updatedAt: Date.now(),
       };
@@ -357,8 +357,8 @@ export const CardGame: React.FC<CardGameProps> = ({
         creatorStanding,
         opponentStanding,
         turn: nextTurn,
-        winner: isFinished ? winner : undefined,
-        resultReason: isFinished ? resultReason : undefined,
+        winner: isFinished ? winner : null,
+        resultReason: isFinished ? resultReason : '',
         status: isFinished ? 'completed' : 'in_progress',
         updatedAt: Date.now(),
       };

@@ -876,7 +876,7 @@ export async function createDuelRoom(room: CardDuelRoom): Promise<string> {
   }
 
   try {
-    await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, id), fullRoom);
+    await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, id), sanitizeForFirestore(fullRoom));
   } catch (err: any) {
     pendingDuelRooms.delete(id);
     localDuelRooms = localDuelRooms.filter(r => r.id !== id);
@@ -903,7 +903,7 @@ export async function updateDuelRoom(room: CardDuelRoom): Promise<void> {
   broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE', room: updated });
 
   try {
-    await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), updated);
+    await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), sanitizeForFirestore(updated));
   } catch (err: any) {
     pendingDuelRooms.delete(updated.id);
     if (previous) localDuelRooms = localDuelRooms.map(r => r.id === updated.id ? previous : r);
