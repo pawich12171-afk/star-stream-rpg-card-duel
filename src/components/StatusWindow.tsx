@@ -66,6 +66,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [tempHp, setTempHp] = useState(character.hp);
   const [tempMaxHp, setTempMaxHp] = useState(character.maxHp);
   const [tempBuffs, setTempBuffs] = useState(character.statusBuffs || '');
+  const [tempCharacteristics, setTempCharacteristics] = useState<string[]>(character.characteristics || []);
+  const [newCharacteristic, setNewCharacteristic] = useState('');
 
   const healthData = calculateCharacterHealth(character);
 
@@ -263,6 +265,26 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     setShowAddSkillModal(false);
   };
 
+  const handleAddCharacteristic = () => {
+    const value = newCharacteristic.trim();
+    if (!value) return;
+
+    const alreadyExists = tempCharacteristics.some(
+      characteristic => characteristic.trim().toLowerCase() === value.toLowerCase()
+    );
+    if (alreadyExists) {
+      setNewCharacteristic('');
+      return;
+    }
+
+    setTempCharacteristics([...tempCharacteristics, value]);
+    setNewCharacteristic('');
+  };
+
+  const handleRemoveCharacteristic = (index: number) => {
+    setTempCharacteristics(tempCharacteristics.filter((_, i) => i !== index));
+  };
+
   const handleSaveStats = () => {
     const updated = {
       ...character,
@@ -270,6 +292,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       hp: tempHp,
       maxHp: tempMaxHp,
       statusBuffs: tempBuffs,
+      characteristics: tempCharacteristics,
     };
     onUpdateCharacter(syncCharacterHealth(updated));
     setShowStatEditModal(false);
@@ -380,6 +403,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                   setTempHp(character.hp);
                   setTempMaxHp(character.maxHp);
                   setTempBuffs(character.statusBuffs || '');
+                  setTempCharacteristics(character.characteristics || []);
+                  setNewCharacteristic('');
                   setShowStatEditModal(true);
                 }}
                 className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl border border-slate-700 transition-all cursor-pointer"
@@ -957,6 +982,55 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                   placeholder="เช่น บัฟสายลมศักดิ์สิทธิ์ (Stack) - ความเร็วพุ่งทะยาน +15%..."
                   className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none focus:border-cyan-500"
                 />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">คุณลักษณะตัวละคร</label>
+                <div className="min-h-10 p-2 rounded-xl bg-slate-950 border border-slate-700 flex flex-wrap gap-1.5 items-center">
+                  {tempCharacteristics.map((characteristic, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-cyan-950/70 text-cyan-200 border border-cyan-700/60 text-xs font-semibold"
+                    >
+                      {characteristic}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCharacteristic(index)}
+                        className="text-cyan-400 hover:text-rose-300 cursor-pointer"
+                        aria-label="ลบคุณลักษณะ"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                  {tempCharacteristics.length === 0 && (
+                    <span className="text-slate-500 text-xs">ยังไม่มีคุณลักษณะ</span>
+                  )}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <input
+                    id="input-new-characteristic"
+                    type="text"
+                    value={newCharacteristic}
+                    onChange={(e) => setNewCharacteristic(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCharacteristic();
+                      }
+                    }}
+                    placeholder="เช่น ผู้ดูดาราเริ่มต้น"
+                    className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none focus:border-cyan-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCharacteristic}
+                    className="px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    เพิ่ม
+                  </button>
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
