@@ -70,10 +70,16 @@ export interface InventoryItem extends Item {
   isEquipped?: boolean;
 }
 
+export type QuestKind = 'progress' | 'question' | 'proof';
+export type QuestReviewStatus = 'none' | 'pending' | 'approved' | 'rejected';
+
 export interface Quest {
   id: string;
   title: string;
   description: string;
+  kind?: QuestKind;
+  question?: string;
+  answer?: string;
   targetCount: number;
   currentCount: number;
   rewardCoins: number;
@@ -81,6 +87,10 @@ export interface Quest {
   isCompleted: boolean;
   isClaimed: boolean;
   createdAt: number;
+  proofDataUrl?: string;
+  proofNote?: string;
+  proofSubmittedAt?: number;
+  reviewStatus?: QuestReviewStatus;
 }
 
 export interface NotificationItem {
