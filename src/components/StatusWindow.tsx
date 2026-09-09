@@ -653,6 +653,20 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                 <p className="text-cyan-200/90">{character.statusBuffs}</p>
               </div>
             )}
+            {character.adminStatusEffects && character.adminStatusEffects.filter(effect => effect.remaining > 0).length > 0 && (
+              <div className="mt-3 rounded-2xl border border-amber-700/60 bg-amber-950/30 p-3.5 text-xs leading-relaxed">
+                <span className="font-bold text-amber-300 block mb-2">BUFF / DEBUFF ที่กำลังทำงาน:</span>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {character.adminStatusEffects.filter(effect => effect.remaining > 0).map(effect => (
+                    <div key={effect.id} className={`rounded-xl border px-3 py-2 ${effect.mode === 'buff' ? 'border-emerald-700/60 bg-emerald-950/30' : 'border-rose-700/60 bg-rose-950/30'}`}>
+                      <div className={effect.mode === 'buff' ? 'font-bold text-emerald-200' : 'font-bold text-rose-200'}>{effect.mode === 'buff' ? '✨ BUFF' : '⚠️ DEBUFF'} • {effect.name}</div>
+                      <div className="mt-1 text-[11px] text-slate-300">พลัง {effect.power} • เหลือ {effect.remaining}/{effect.duration} รอบ</div>
+                      <div className="mt-1 text-[10px] text-slate-500">{effect.description}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
