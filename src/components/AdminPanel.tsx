@@ -435,7 +435,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // Create Gacha Reward Handler
-  const handleCreateReward = (e: React.FormEvent) => {
+  const handleCreateReward = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRewardName.trim()) {
       alert('กรุณากรอกชื่อของรางวัลกาชา');
@@ -467,22 +467,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       characteristic: newRewardType === 'characteristic' ? newRewardCharacteristic.trim() : undefined,
     };
 
-    onAddGachaReward(reward);
-    setNewRewardName('');
-    setNewRewardDesc('');
-    setNewRewardCharacteristic('');
-    alert(`เพิ่มของรางวัล "${reward.name}" เข้าตู้กาชาสำเร็จ!`);
+    try {
+      await onAddGachaReward(reward);
+      setNewRewardName('');
+      setNewRewardDesc('');
+      setNewRewardCharacteristic('');
+      alert(`เพิ่มของรางวัล "${reward.name}" เข้าตู้กาชาสำเร็จ!`);
+    } catch (error) {
+      console.error('Error saving gacha reward:', error);
+      alert('บันทึกของรางวัลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+    }
   };
 
   // Save Inline Rate Change
-  const handleSaveRateChange = (reward: GachaReward) => {
+  const handleSaveRateChange = async (reward: GachaReward) => {
     const newRate = editingRates[reward.id];
     if (newRate === undefined || isNaN(newRate)) return;
-    onAddGachaReward({
-      ...reward,
-      rate: Number(newRate),
-    });
-    alert(`อัปเดตเรทของ "${reward.name}" เป็น ${newRate}% เรียบร้อยแล้ว!`);
+    try {
+      await onAddGachaReward({
+        ...reward,
+        rate: Number(newRate),
+      });
+      setEditingRates(prev => {
+        const next = { ...prev };
+        delete next[reward.id];
+        return next;
+      });
+      alert(`อัปเดตเรทของ "${reward.name}" เป็น ${newRate}% เรียบร้อยแล้ว!`);
+    } catch (error) {
+      console.error('Error saving gacha rate:', error);
+      alert('บันทึกเรทไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+    }
   };
 
   return (
