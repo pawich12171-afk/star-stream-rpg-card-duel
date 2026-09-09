@@ -132,6 +132,8 @@ let localDuelRooms: CardDuelRoom[] = (() => {
   return [];
 })();
 const duelRoomListeners = new Set<(rooms: CardDuelRoom[]) => void>();
+const pendingDuelRooms = new Map<string, CardDuelRoom>();
+const pendingDuelDeletes = new Set<string>();
 
 function notifyDuelRooms() {
   const snapshot = [...localDuelRooms].sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt));
@@ -763,7 +765,17 @@ export function subscribeToDuelRooms(callback: (rooms: CardDuelRoom[]) => void) 
     const unsub = onSnapshot(q, (snapshot) => {
       const list: CardDuelRoom[] = [];
       snapshot.forEach((doc) => {
-        list.push({ ...doc.data(), id: doc.id } as CardDuelRoom);
+        const raw = { ...doc.data(), id: doc.id } as CardDuelRoom;
+        if (pendingDuelDeletes.has(raw.id)) return;
+        const pending = pendingDuelRooms.get(raw.id);
+        const rawTime = Number(raw.updatedAt || raw.createdAt || 0);
+        const pendingTime = Number(pending?.updatedAt || pending?.createdAt || 0);
+        const source = pending && pendingTime > rawTime ? pending : raw;
+        if (pending && rawTime >= pendingTime) pendingDuelRooms.delete(raw.id);
+        list.push(source);
+      });
+      pendingDuelRooms.forEach((pending) => {
+        if (!list.some(room => room.id === pending.id) && !pendingDuelDeletes.has(pending.id)) list.push(pending);
       });
       if (list.length > 0) {
         list.sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt));
@@ -780,8 +792,12 @@ export function subscribeToDuelRooms(callback: (rooms: CardDuelRoom[]) => void) 
       const handleBroadcast = (ev: MessageEvent) => {
         if (ev.data?.type !== 'DUEL_ROOMS_UPDATE') return;
         if (ev.data.room?.id) {
+          pendingDuelRooms.set(ev.data.room.id, ev.data.room);
+          pendingDuelDeletes.delete(ev.data.room.id);
           localDuelRooms = [ev.data.room, ...localDuelRooms.filter(room => room.id !== ev.data.room.id)];
         } else if (ev.data.roomId) {
+          pendingDuelDeletes.add(ev.data.roomId);
+          pendingDuelRooms.delete(ev.data.roomId);
           localDuelRooms = localDuelRooms.filter(room => room.id !== ev.data.roomId);
         }
         saveLocalAll();
@@ -815,6 +831,8 @@ export async function createDuelRoom(room: CardDuelRoom): Promise<string> {
     updatedAt: Date.now()
   };
 
+  pendingDuelRooms.set(id, fullRoom);
+  pendingDuelDeletes.delete(id);
   localDuelRooms = [fullRoom, ...localDuelRooms.filter(r => r.id !== id)];
   saveLocalAll();
   notifyDuelRooms();
@@ -854,6 +872,8 @@ export async function updateDuelRoom(room: CardDuelRoom): Promise<void> {
     ...room,
     updatedAt: Date.now()
   };
+  pendingDuelRooms.set(updated.id, updated);
+  pendingDuelDeletes.delete(updated.id);
   localDuelRooms = localDuelRooms.map(r => r.id === updated.id ? updated : r);
   saveLocalAll();
   notifyDuelRooms();
@@ -918,6 +938,8 @@ export async function acceptDuelChallenge(roomId: string, opponent: CharacterPro
 
 // Cancel or Delete Card Duel Room
 export async function cancelDuelRoom(roomId: string): Promise<void> {
+  pendingDuelDeletes.add(roomId);
+  pendingDuelRooms.delete(roomId);
   localDuelRooms = localDuelRooms.filter(r => r.id !== roomId);
   saveLocalAll();
   notifyDuelRooms();
