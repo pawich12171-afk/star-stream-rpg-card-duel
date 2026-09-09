@@ -51,6 +51,7 @@ interface AdminPanelProps {
   onGrantItem?: (targetId: string, item: Item, quantity: number) => Promise<{ success: boolean; message: string }>;
   onRemoveItem?: (targetId: string, instanceId: string, quantity?: number) => Promise<{ success: boolean; message: string }>;
   onAssignQuest?: (targetId: string, quest: Quest) => Promise<boolean>;
+  onReviewQuestProof?: (targetId: string, questId: string, approve: boolean) => Promise<boolean>;
 }
 
 const AVAILABLE_SHOP_ICONS = [
@@ -215,6 +216,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onGrantItem,
   onRemoveItem,
   onAssignQuest,
+  onReviewQuestProof,
 }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'shop' | 'inventory_spawner' | 'gacha_manage' | 'quests'>('users');
   const [searchTerm, setSearchTerm] = useState('');
@@ -223,6 +225,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const [questTitle, setQuestTitle] = useState('');
   const [questDescription, setQuestDescription] = useState('');
+  const [questKind, setQuestKind] = useState<'progress' | 'question' | 'proof'>('progress');
+  const [questQuestion, setQuestQuestion] = useState('');
+  const [questAnswer, setQuestAnswer] = useState('');
   const [questTargetCount, setQuestTargetCount] = useState(1);
   const [questRewardCoins, setQuestRewardCoins] = useState(500);
   const [questRewardItemName, setQuestRewardItemName] = useState('');
@@ -526,10 +531,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       alert('กรุณากรอกชื่อภารกิจ');
       return;
     }
+    if (questKind === 'question' && (!questQuestion.trim() || !questAnswer.trim())) {
+      alert('กรุณากรอกคำถามและคำตอบของภารกิจ');
+      return;
+    }
     const quest: Quest = {
       id: 'quest-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
       title: questTitle.trim(),
       description: questDescription.trim() || 'ภารกิจพิเศษจากแอดมิน Star Stream',
+      kind: questKind,
+      question: questKind === 'question' ? questQuestion.trim() : undefined,
+      answer: questKind === 'question' ? questAnswer.trim() : undefined,
       targetCount: Math.max(1, Number(questTargetCount) || 1),
       currentCount: 0,
       rewardCoins: Math.max(0, Number(questRewardCoins) || 0),
@@ -542,12 +554,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (success) {
       setQuestTitle('');
       setQuestDescription('');
+      setQuestQuestion('');
+      setQuestAnswer('');
       setQuestTargetCount(1);
       setQuestRewardCoins(500);
       setQuestRewardItemName('');
       alert('มอบภารกิจ “' + quest.title + '” ให้ผู้เล่นสำเร็จแล้ว');
     }
   };
+
+  const pendingProofs = characters.flatMap(character => (character.quests || [])
+    .filter(quest => quest.reviewStatus === 'pending' && quest.proofDataUrl)
+    .map(quest => ({ character, quest })));
 
   return (
     <div className="space-y-6">
@@ -1585,58 +1603,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {/* ==================== TAB 4: GACHA SYSTEM ADMIN ==================== */}
       {activeTab === 'quests' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <form onSubmit={handleAssignQuest} className="lg:col-span-2 bg-slate-900 border border-cyan-500/30 rounded-3xl p-6 space-y-5 shadow-xl">
-            <div>
-              <h3 className="text-sm font-black text-white flex items-center gap-2"><ScrollText className="w-4 h-4 text-cyan-300" />สร้างภารกิจและมอบหมาย</h3>
-              <p className="text-xs text-slate-400 mt-1">เลือกผู้เล่น แล้วสร้างภารกิจเฉพาะคนได้ทันที</p>
-            </div>
-            <div>
-              <label className="text-xs text-slate-300 block mb-1">ผู้เล่นเป้าหมาย</label>
-              <select value={selectedCharId} onChange={e => setSelectedCharId(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none focus:border-cyan-400">
-                <option value="">เลือกผู้เล่น</option>
-                {characters.map(char => <option key={char.id} value={char.id}>{char.displayName} (@{char.username})</option>)}
-              </select>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs text-slate-300 block mb-1">ชื่อภารกิจ *</label>
-                <input value={questTitle} onChange={e => setQuestTitle(e.target.value)} placeholder="เช่น พิชิตศึกดวลไพ่" className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none focus:border-cyan-400" />
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <form onSubmit={handleAssignQuest} className="lg:col-span-2 bg-slate-900 border border-cyan-500/30 rounded-3xl p-6 space-y-5 shadow-xl">
+              <div><h3 className="text-sm font-black text-white flex items-center gap-2"><ScrollText className="w-4 h-4 text-cyan-300" />สร้างภารกิจและมอบหมาย</h3><p className="text-xs text-slate-400 mt-1">เลือกผู้เล่น แล้วกำหนดวิธีทำภารกิจให้ชัดเจน</p></div>
+              <div><label className="text-xs text-slate-300 block mb-1">ผู้เล่นเป้าหมาย</label><select value={selectedCharId} onChange={e => setSelectedCharId(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none focus:border-cyan-400"><option value="">เลือกผู้เล่น</option>{characters.map(char => <option key={char.id} value={char.id}>{char.displayName} (@{char.username})</option>)}</select></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label className="text-xs text-slate-300 block mb-1">ชื่อภารกิจ *</label><input value={questTitle} onChange={e => setQuestTitle(e.target.value)} placeholder="เช่น ตอบคำถามจากแอดมิน" className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none focus:border-cyan-400" /></div>
+                <div><label className="text-xs text-slate-300 block mb-1">วิธีทำภารกิจ</label><select value={questKind} onChange={e => { const value=e.target.value as 'progress' | 'question' | 'proof'; setQuestKind(value); if(value==='question') setQuestTargetCount(1); }} className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none focus:border-cyan-400"><option value="question">ตอบคำถาม</option><option value="proof">ส่งรูปหลักฐาน</option><option value="progress">เพิ่มความคืบหน้า + ส่งรูป</option></select></div>
               </div>
-              <div>
-                <label className="text-xs text-slate-300 block mb-1">จำนวนเป้าหมาย</label>
-                <input type="number" min="1" value={questTargetCount} onChange={e => setQuestTargetCount(Number(e.target.value))} className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono outline-none focus:border-cyan-400" />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-slate-300 block mb-1">รายละเอียดภารกิจ</label>
-              <textarea value={questDescription} onChange={e => setQuestDescription(e.target.value)} rows={3} placeholder="อธิบายสิ่งที่ผู้เล่นต้องทำ" className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none focus:border-cyan-400 resize-none" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs text-slate-300 block mb-1">รางวัล Coins</label>
-                <input type="number" min="0" value={questRewardCoins} onChange={e => setQuestRewardCoins(Number(e.target.value))} className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono outline-none focus:border-amber-400" />
-              </div>
-              <div>
-                <label className="text-xs text-slate-300 block mb-1">ไอเทมรางวัล (จากร้านค้า)</label>
-                <select value={questRewardItemName} onChange={e => setQuestRewardItemName(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none focus:border-purple-400">
-                  <option value="">ไม่รับไอเทม</option>
-                  {shopItems.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
-                </select>
-              </div>
-            </div>
-            <button type="submit" className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-2"><ScrollText className="w-4 h-4" />มอบภารกิจให้ผู้เล่น</button>
-          </form>
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
-            <h3 className="text-sm font-bold text-white">วิธีทำงาน</h3>
-            <div className="space-y-3 text-xs text-slate-400 leading-relaxed">
-              <p>1. เลือกผู้เล่นที่ต้องการมอบหมาย</p>
-              <p>2. ตั้งเป้าหมายและรางวัล แล้วกดมอบภารกิจ</p>
-              <p>3. ผู้เล่นจะได้รับแจ้งเตือนทันที</p>
-              <p>4. ผู้เล่นเปิดเมนู “ภารกิจ” เพื่อดูความคืบหน้าและรับรางวัล</p>
-            </div>
-            <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 text-[11px] text-amber-200">ความคืบหน้าจะเริ่มที่ 0 และใช้ฟิลด์ currentCount ของภารกิจเป็นจุดเชื่อมกับกิจกรรมในเกมต่อไป</div>
+              <div><label className="text-xs text-slate-300 block mb-1">รายละเอียดภารกิจ</label><textarea value={questDescription} onChange={e => setQuestDescription(e.target.value)} rows={2} placeholder="อธิบายสิ่งที่ผู้เล่นต้องทำ" className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none focus:border-cyan-400 resize-none" /></div>
+              {questKind === 'question' && <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl bg-purple-500/5 border border-purple-500/20 p-3"><div><label className="text-xs text-purple-200 block mb-1">คำถาม *</label><textarea value={questQuestion} onChange={e => setQuestQuestion(e.target.value)} rows={3} placeholder="เช่น ดาวเคราะห์ใดอยู่ใกล้ดวงอาทิตย์ที่สุด" className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none resize-none" /></div><div><label className="text-xs text-purple-200 block mb-1">คำตอบที่ถูกต้อง *</label><input value={questAnswer} onChange={e => setQuestAnswer(e.target.value)} placeholder="เช่น ดาวพุธ" className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none" /></div></div>}
+              {questKind !== 'question' && <div><label className="text-xs text-slate-300 block mb-1">จำนวนครั้งที่ต้องส่งหลักฐาน</label><input type="number" min="1" value={questTargetCount} onChange={e => setQuestTargetCount(Number(e.target.value))} className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono outline-none focus:border-cyan-400" /></div>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="text-xs text-slate-300 block mb-1">รางวัล Coins</label><input type="number" min="0" value={questRewardCoins} onChange={e => setQuestRewardCoins(Number(e.target.value))} className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono outline-none focus:border-amber-400" /></div><div><label className="text-xs text-slate-300 block mb-1">ไอเทมรางวัล</label><select value={questRewardItemName} onChange={e => setQuestRewardItemName(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none focus:border-purple-400"><option value="">ไม่รับไอเทม</option>{shopItems.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}</select></div></div>
+              <button type="submit" className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-2"><ScrollText className="w-4 h-4" />มอบภารกิจให้ผู้เล่น</button>
+            </form>
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl"><h3 className="text-sm font-bold text-white">วิธีทำงาน</h3><div className="space-y-3 text-xs text-slate-400 leading-relaxed"><p>• ตอบคำถาม: ผู้เล่นพิมพ์คำตอบและระบบตรวจทันที</p><p>• ส่งรูปหลักฐาน: แอดมินต้องอนุมัติก่อนภารกิจสำเร็จ</p><p>• เพิ่มความคืบหน้า: ทุกครั้งที่ส่งรูปจะเพิ่ม 1 ครั้ง</p></div></div>
           </div>
+          {pendingProofs.length > 0 && <div className="bg-slate-900 border border-cyan-500/30 rounded-3xl p-6 space-y-4"><div><h3 className="text-sm font-black text-white">หลักฐานรอตรวจ ({pendingProofs.length})</h3><p className="text-xs text-slate-400 mt-1">ตรวจรูปของผู้เล่น แล้วกดอนุมัติหรือไม่อนุมัติ</p></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{pendingProofs.map(({ character, quest }) => <div key={character.id + '-' + quest.id} className="rounded-2xl bg-slate-950/70 border border-slate-800 p-4 space-y-3"><div className="flex justify-between gap-3"><div><div className="text-xs font-bold text-white">{quest.title}</div><div className="text-[11px] text-cyan-300">ผู้เล่น: {character.displayName}</div></div><div className="text-[10px] text-slate-500">{quest.currentCount}/{quest.targetCount}</div></div><img src={quest.proofDataUrl} alt="หลักฐานภารกิจ" className="w-full max-h-64 object-contain rounded-xl bg-black/40" />{quest.proofNote && <div className="text-[11px] text-slate-300">หมายเหตุ: {quest.proofNote}</div>}<div className="grid grid-cols-2 gap-2"><button type="button" onClick={async () => { const ok=await onReviewQuestProof?.(character.id, quest.id, true); if(ok) alert('อนุมัติหลักฐานแล้ว'); }} className="py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer">อนุมัติ</button><button type="button" onClick={async () => { const ok=await onReviewQuestProof?.(character.id, quest.id, false); if(ok) alert('ส่งกลับให้ผู้เล่นแล้ว'); }} className="py-2 rounded-xl bg-rose-600/80 hover:bg-rose-600 text-white text-xs font-bold cursor-pointer">ไม่อนุมัติ</button></div></div>)}</div></div>}
         </div>
       )}
 
