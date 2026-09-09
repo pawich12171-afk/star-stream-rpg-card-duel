@@ -222,3 +222,89 @@ export interface CardDuelRoom {
   createdAt: number;
   updatedAt: number;
 }
+
+
+// TEAM BATTLE TYPES
+export type BattleMode = 'pvp' | 'pve';
+export type BattleDiceEffect = 'damage' | 'critical' | 'heal' | 'miss' | 'stun';
+
+export interface BattleDiceFace {
+  face: number;
+  effect: BattleDiceEffect;
+  value: number;
+  label: string;
+  description: string;
+}
+
+export interface BattleConfig {
+  id: string;
+  enabled: boolean;
+  sides: number;
+  strengthPerDamage: number;
+  faces: BattleDiceFace[];
+  updatedAt: number;
+}
+
+export interface BattleBot {
+  id: string;
+  name: string;
+  description: string;
+  avatarUrl: string;
+  isBoss: boolean;
+  stats: CharacterStats;
+  hp: number;
+  maxHp: number;
+  aiProfile?: 'balanced' | 'aggressive' | 'defensive';
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type BattleCombatantType = 'player' | 'bot';
+
+export interface BattleCombatant {
+  id: string;
+  sourceId: string;
+  name: string;
+  avatarUrl: string;
+  type: BattleCombatantType;
+  team: 'a' | 'b';
+  stats: CharacterStats;
+  hp: number;
+  maxHp: number;
+  isBoss?: boolean;
+  stunnedTurns?: number;
+}
+
+export interface BattleLogEntry {
+  id: string;
+  timestamp: number;
+  actorName: string;
+  message: string;
+  roll?: number;
+  damage?: number;
+  effect?: BattleDiceEffect | 'stun_skip';
+}
+
+export interface BattleRoom {
+  id: string;
+  mode: BattleMode;
+  status: 'active' | 'completed' | 'cancelled';
+  createdBy: string;
+  createdByName: string;
+  teamA: BattleCombatant[];
+  teamB: BattleCombatant[];
+  turnActorId: string;
+  round: number;
+  log: BattleLogEntry[];
+  winnerTeam?: 'a' | 'b' | 'draw';
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface BattleRollResult {
+  roll: number;
+  face: BattleDiceFace;
+  damage: number;
+  heal: number;
+  message: string;
+}
