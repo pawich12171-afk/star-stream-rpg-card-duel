@@ -623,6 +623,15 @@ export const INITIAL_GACHA_REWARDS: GachaReward[] = [
     coinAmount: 2000,
   },
   {
+    id: "gacha-characteristic-starter",
+    name: "คุณลักษณะ: ผู้ดูดาราเริ่มต้น",
+    type: "characteristic",
+    rate: 5,
+    rarity: "common",
+    description: "คุณลักษณะเริ่มต้นจากกลุ่มดาวผู้สนับสนุน",
+    characteristic: "ผู้ดูดาราเริ่มต้น",
+  },
+  {
     id: "gacha-coin-copper",
     name: "เหรียญรางวัลดวงดาว (800 Coins)",
     type: "coin",
