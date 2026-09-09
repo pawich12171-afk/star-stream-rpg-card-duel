@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDocs,
+  getDoc,
   setDoc,
   updateDoc,
   onSnapshot,
@@ -386,26 +387,40 @@ export function subscribeToGachaRewards(callback: (rewards: GachaReward[]) => vo
       snapshot.forEach((doc) => {
         list.push({ ...doc.data(), id: doc.id } as GachaReward);
       });
-      const missingDefaults = INITIAL_GACHA_REWARDS.filter(
-        defaultReward => !list.some(reward => reward.id === defaultReward.id)
-      );
-      const mergedList = [...list, ...missingDefaults].sort((a, b) => a.rate - b.rate);
+async function migrateDefaultGachaRewards(currentRewards: GachaReward[]) {
+  if (gachaDefaultsMigrationStarted) return;
+  gachaDefaultsMigrationStarted = true;
 
-      if (missingDefaults.length > 0 && !gachaDefaultsMigrationStarted) {
-        gachaDefaultsMigrationStarted = true;
-        void Promise.all(
-          missingDefaults.map(reward =>
-            setDoc(doc(db, GACHA_REWARDS_COLLECTION, reward.id), reward)
-          )
-        ).catch(err => {
-          console.warn("Error migrating default gacha rewards:", err);
-        });
-      }
+  try {
+    const markerRef = doc(db, GACHA_CONFIG_COLLECTION, "gacha-defaults-v1");
+    const markerSnap = await getDoc(markerRef);
+    if (markerSnap.exists()) return;
 
-      if (mergedList.length > 0) {
-        localGachaRewards = mergedList;
+    const missingDefaults = INITIAL_GACHA_REWARDS.filter(
+      defaultReward => !currentRewards.some(reward => reward.id === defaultReward.id)
+    );
+    await Promise.all(
+      missingDefaults.map(reward =>
+        setDoc(doc(db, GACHA_REWARDS_COLLECTION, reward.id), reward)
+      )
+    );
+    await setDoc(markerRef, {
+      version: 1,
+      migratedAt: Date.now(),
+    });
+  } catch (err) {
+    gachaDefaultsMigrationStarted = false;
+    console.warn("Error migrating default gacha rewards:", err);
+  }
+}
+
+      void migrateDefaultGachaRewards(list);
+
+      if (list.length > 0) {
+        list.sort((a, b) => a.rate - b.rate);
+        localGachaRewards = list;
         saveLocalAll();
-        callback(mergedList);
+        callback(list);
       } else {
         callback(localGachaRewards);
       }
