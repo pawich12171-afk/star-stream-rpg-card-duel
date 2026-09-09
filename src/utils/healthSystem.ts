@@ -58,7 +58,6 @@ export function getSkillHpBonus(skill: {
   const mult = Math.max(1, skill.multiplier || 1);
   const name = skill.name || '';
   const desc = skill.description || '';
-
   const isVitality =
     name.includes('บัว') || name.includes('ม่าน') || name.includes('เกราะ') ||
     name.includes('เลือด') || name.includes('พลังชีวิต') || name.includes('HP') ||
@@ -72,7 +71,6 @@ export function getSkillHpBonus(skill: {
     skill.category === 'innate' || skill.category === 'story';
 
   if (!isVitality) return Math.max(0, Math.floor((lvl - 1) * 0.25) * mult);
-
   const baseBonus = 1;
   const levelGrowth = (lvl - 1) * 0.55;
   return Math.max(1, Math.round((baseBonus + levelGrowth) * mult));
@@ -183,24 +181,19 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   return { baseHp: BASE_HP, statBonusHp, effectiveStrength, effectiveDurability, titleBonusHp, storyBonusHp, skillBonusHp, itemBonusHp: equipHpBonus, totalMaxHp, formulaDescription, itemsList };
 }
 
-/**
- * ซิงค์ค่าพลังชีวิตให้สมดุลเสมอ โดยอิงจากสูตรคำนวณจริง
- * จะลบล้างค่าเลือดที่ค้างสูงผิดปกติในอดีต (เช่น 1500, 800, 950) ให้กลับมาสู่มาตรฐานทันที
- */
 export function syncCharacterHealth(character: CharacterProfile): CharacterProfile {
   if (!character) return character;
   const healthData = calculateCharacterHealth(character);
 
-  // Admin MAX HP modifiers are temporary overlays on top of the normal HP formula.
-  // Previously syncCharacterHealth always replaced maxHp with the formula result,
-  // so a nerf such as -10 appeared briefly and then reverted on the next realtime snapshot.
-  const maxHpDelta = (character.adminBalanceModifiers || [])
-    .filter(modifier => modifier.kind === 'hp' && modifier.id.startsWith('admin-maxhp-'))
-    .reduce((sum, modifier) => sum + (modifier.mode === 'buff' ? (modifier.amount || 0) : -(modifier.amount || 0)), 0);
+  // Keep administrator MAX HP modifiers applied during every realtime sync.
+  // Without this overlay, Firestore updates recalculate the normal HP formula
+  // and overwrite a persistent admin NERF/BUFF such as MAX HP -10.
+  const adminMaxHpDelta = (character.adminBalanceModifiers || [])
+    .filter(m => m.kind === 'hp' && m.id.startsWith('admin-maxhp-'))
+    .reduce((sum, m) => sum + (m.mode === 'buff' ? (m.amount || 0) : -(m.amount || 0)), 0);
+  const targetMaxHp = Math.max(1, healthData.totalMaxHp + adminMaxHpDelta);
 
-  const targetMaxHp = Math.max(1, healthData.totalMaxHp + maxHpDelta);
   let newHp = character.hp;
-
   if (
     typeof newHp !== 'number' ||
     !Number.isFinite(newHp) ||
@@ -210,7 +203,7 @@ export function syncCharacterHealth(character: CharacterProfile): CharacterProfi
     character.maxHp === 800 ||
     character.maxHp === 950
   ) {
-    newHp = Math.min(targetMaxHp, targetMaxHp);
+    newHp = targetMaxHp;
   }
 
   return {
