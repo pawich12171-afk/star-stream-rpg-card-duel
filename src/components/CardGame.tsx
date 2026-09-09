@@ -6,7 +6,8 @@ import {
   createDuelRoom, 
   acceptDuelChallenge, 
   cancelDuelRoom, 
-  updateDuelRoom 
+  updateDuelRoom,
+  syncDuelRoomById 
 } from '../services/characterService';
 import { 
   Gamepad2, 
@@ -27,7 +28,8 @@ import {
   ArrowRight,
   ShieldCheck,
   XCircle,
-  Play
+  Play,
+  RefreshCw
 } from 'lucide-react';
 import confetti from '../utils/confetti';
 
@@ -167,6 +169,26 @@ export const CardGame: React.FC<CardGameProps> = ({
   const activeRoom = duelRooms.find(r => r.id === currentActiveRoomId);
   const isUserCreatorInActiveRoom = activeRoom?.creatorId === currentUser.id;
   const isUserOpponentInActiveRoom = activeRoom?.opponentId === currentUser.id;
+
+  // Active room real-time background sync heartbeat
+  const [isSyncing, setIsSyncing] = useState(false);
+  useEffect(() => {
+    if (!currentActiveRoomId) return;
+    const interval = setInterval(async () => {
+      await syncDuelRoomById(currentActiveRoomId);
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [currentActiveRoomId]);
+
+  const handleManualSync = async () => {
+    if (!currentActiveRoomId) return;
+    setIsSyncing(true);
+    try {
+      await syncDuelRoomById(currentActiveRoomId);
+    } finally {
+      setTimeout(() => setIsSyncing(false), 500);
+    }
+  };
 
   // Handle Create Duel Room & Invite
   const handleCreateRoom = async (e: React.FormEvent) => {
@@ -627,6 +649,15 @@ export const CardGame: React.FC<CardGameProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleManualSync}
+                    disabled={isSyncing}
+                    className="px-3 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
+                    title="รีเฟรชข้อมูลและซิงก์สถานะห้องดวล"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-cyan-200' : ''}`} />
+                    <span>{isSyncing ? 'กำลังซิงก์...' : 'ซิงก์สถานะ'}</span>
+                  </button>
                   {activeRoom.status === 'waiting' && isUserCreatorInActiveRoom && (
                     <button
                       onClick={() => handleCancelRoom(activeRoom.id)}
@@ -818,7 +849,7 @@ export const CardGame: React.FC<CardGameProps> = ({
 
                       {/* Controls enabled if it's the user's turn */}
                       {((activeRoom.turn === 'creator' && isUserCreatorInActiveRoom && !activeRoom.creatorStanding) ||
-                        (activeRoom.turn === 'opponent' && isUserOpponentInActiveRoom && !activeRoom.opponentStanding)) && (
+                        (activeRoom.turn === 'opponent' && isUserOpponentInActiveRoom && !activeRoom.opponentStanding)) ? (
                         <div className="flex items-center gap-2.5">
                           <button
                             onClick={() => void handleRoomHit()}
@@ -834,6 +865,21 @@ export const CardGame: React.FC<CardGameProps> = ({
                             className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-600 font-bold text-xs shadow-md cursor-pointer"
                           >
                             {isRoomActionPending ? 'กำลังบันทึก...' : 'พอแล้ว / หมอบ (Stand)'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                          </span>
+                          <span>กำลังรออีกฝ่ายเล่น...</span>
+                          <button
+                            onClick={handleManualSync}
+                            disabled={isSyncing}
+                            className="text-cyan-400 hover:text-cyan-300 underline cursor-pointer ml-1"
+                          >
+                            {isSyncing ? 'กำลังซิงก์...' : 'แตะเพื่อซิงก์สถานะ'}
                           </button>
                         </div>
                       )}

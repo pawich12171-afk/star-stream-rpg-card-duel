@@ -146,7 +146,7 @@ function applyDuelRoomSnapshot(snapshot: any) {
     const raw = { ...docSnap.data(), id: docSnap.id } as CardDuelRoom;
     const hasLocalPendingWrite = docSnap.metadata?.hasPendingWrites === true;
     const pending = pendingDuelRooms.get(raw.id);
-    if (pending && hasLocalPendingWrite) {
+    if (pending && (hasLocalPendingWrite || (pending.updatedAt && raw.updatedAt && pending.updatedAt > raw.updatedAt))) {
       list.push(pending);
     } else {
       if (pending) pendingDuelRooms.delete(raw.id);
@@ -794,14 +794,24 @@ export function subscribeToDuelRooms(callback: (rooms: CardDuelRoom[]) => void) 
     });
 
     const pollTimer = setInterval(async () => {
-      if (pendingDuelRooms.size > 0 || pendingDuelDeletes.size > 0) return;
+      // Automatically flush any pending room writes to Firestore
+      if (pendingDuelRooms.size > 0) {
+        for (const [id, pendingRoom] of Array.from(pendingDuelRooms.entries())) {
+          try {
+            await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, id), sanitizeForFirestore(pendingRoom));
+            pendingDuelRooms.delete(id);
+          } catch (e) {
+            // Keep in pending for next flush attempt
+          }
+        }
+      }
       try {
         const polledSnapshot = await getDocs(q);
         applyDuelRoomSnapshot(polledSnapshot);
       } catch (err) {
         console.warn("Duel rooms polling error:", err);
       }
-    }, 2500);
+    }, 2000);
 
     if (broadcast) {
       const handleBroadcast = (ev: MessageEvent) => {
@@ -905,7 +915,6 @@ export async function createDuelRoom(room: CardDuelRoom): Promise<string> {
 
 // Update Card Duel Room
 export async function updateDuelRoom(room: CardDuelRoom): Promise<void> {
-  const previous = localDuelRooms.find(r => r.id === room.id);
   const updated = {
     ...room,
     updatedAt: Date.now()
@@ -918,33 +927,78 @@ export async function updateDuelRoom(room: CardDuelRoom): Promise<void> {
   broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE', room: updated });
 
   const cleaned = sanitizeForFirestore(updated);
+
+  // Write with a timeout so slow networks (e.g. mobile 0.40 KB/s) never hang the app
+  const doWrite = async () => {
+    let t: any;
+    const timeout = new Promise<never>((_, reject) => {
+      t = setTimeout(() => reject(new Error('timeout')), 3500);
+    });
+    try {
+      await Promise.race([
+        setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), cleaned),
+        timeout
+      ]);
+      clearTimeout(t);
+      pendingDuelRooms.delete(updated.id);
+    } catch (err) {
+      clearTimeout(t);
+      throw err;
+    }
+  };
+
   try {
-    await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), cleaned);
-    pendingDuelRooms.delete(updated.id);
+    await doWrite();
   } catch (err: any) {
-    console.warn("Firestore update duel room error:", err?.code, err?.message);
-    if (err?.code === 'unavailable' || err?.message?.includes('offline') || err?.message?.includes('unavailable')) {
-      // Offline / reconnecting: keep move registered locally and sync in background
+    console.warn("Direct Firestore updateDuelRoom deferred or timed out:", err?.message || err);
+    // Keep in pendingDuelRooms! The poll loop and syncDuelRoomById will automatically flush it to Firestore.
+    // Also schedule immediate retries
+    [800, 2000, 4000].forEach((delay) => {
       setTimeout(async () => {
+        if (!pendingDuelRooms.has(updated.id)) return;
         try {
           await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), cleaned);
           pendingDuelRooms.delete(updated.id);
         } catch (retryErr) {
-          console.warn("Background update retry failed:", retryErr);
+          // Will be retried on next poll
         }
-      }, 1500);
-      return;
-    }
-
-    pendingDuelRooms.delete(updated.id);
-    if (previous) localDuelRooms = localDuelRooms.map(r => r.id === updated.id ? previous : r);
-    else localDuelRooms = localDuelRooms.filter(r => r.id !== updated.id);
-    saveLocalAll();
-    notifyDuelRooms();
-    console.error("Error updating duel room in Firestore:", err);
-    const detail = err?.message ? ` (${err.message})` : '';
-    throw new Error(`ซิงก์การเล่นไปยังเครื่องอื่นไม่สำเร็จ${detail} กรุณารีเฟรชหน้าจอแล้วลองใหม่`);
+      }, delay);
+    });
   }
+}
+
+// Force-sync a specific duel room by ID from Firestore and flush any local pending writes
+export async function syncDuelRoomById(roomId: string): Promise<CardDuelRoom | null> {
+  // 1. Flush any pending write for this room
+  const pending = pendingDuelRooms.get(roomId);
+  if (pending) {
+    try {
+      await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, roomId), sanitizeForFirestore(pending));
+      pendingDuelRooms.delete(roomId);
+    } catch (e) {
+      console.warn("Could not flush pending room yet during sync:", e);
+    }
+  }
+
+  // 2. Fetch fresh room doc from Firestore
+  try {
+    const snap = await getDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, roomId));
+    if (snap.exists()) {
+      const room = { ...snap.data(), id: snap.id } as CardDuelRoom;
+      const currentPending = pendingDuelRooms.get(roomId);
+      // If we still have an unflushed pending action that is newer, don't overwrite with older remote
+      if (currentPending && currentPending.updatedAt && room.updatedAt && currentPending.updatedAt > room.updatedAt) {
+        return currentPending;
+      }
+      localDuelRooms = [room, ...localDuelRooms.filter(r => r.id !== roomId)];
+      saveLocalAll();
+      notifyDuelRooms();
+      return room;
+    }
+  } catch (err) {
+    console.warn("syncDuelRoomById getDoc error:", err);
+  }
+  return null;
 }
 
 // Accept Card Duel Challenge / Join Room
