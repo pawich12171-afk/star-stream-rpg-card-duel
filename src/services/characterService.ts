@@ -19,10 +19,13 @@ import {
   GachaConfig, 
   CardDuelRoom,
   BattleConfig,
+  BattleDiceConfig,
   BattleBot,
   BattleRoom,
   BattleCombatant,
   BattleRollResult,
+  BattleSkillEffect,
+  Skill,
   MAX_GACHA_REWARDS
 } from "../types";
 import { 
@@ -1016,6 +1019,21 @@ export const DEFAULT_BATTLE_CONFIG: BattleConfig = {
     { face: 5, effect: "critical", value: 2, label: "คริติคอล", description: "ดาเมจพื้นฐาน x2" },
     { face: 6, effect: "heal", value: 2, label: "ฟื้นฟู", description: "ฟื้น HP 2 หน่วย" },
   ],
+  bossDice: {
+    enabled: true,
+    sides: 8,
+    strengthPerDamage: 2,
+    faces: [
+      { face: 1, effect: "miss", value: 0, label: "พลาด", description: "บอสพลาดการโจมตี" },
+      { face: 2, effect: "damage", value: 1, label: "กรงเล็บอสูร", description: "ดาเมจบอสพื้นฐาน" },
+      { face: 3, effect: "damage", value: 1.5, label: "คำรามทำลาย", description: "ดาเมจบอส x1.5" },
+      { face: 4, effect: "defense", value: 5, label: "เกราะบอส", description: "ลดดาเมจที่ได้รับ 5 ในเทิร์นถัดไป" },
+      { face: 5, effect: "critical", value: 2, label: "คริติคอลบอส", description: "ดาเมจบอส x2" },
+      { face: 6, effect: "heal", value: 4, label: "ฟื้นฟูบอส", description: "บอสฟื้น HP 4 หน่วย" },
+      { face: 7, effect: "reflect", value: 35, label: "สะท้อนคำสาป", description: "สะท้อนดาเมจ 35% ในเทิร์นถัดไป" },
+      { face: 8, effect: "stun", value: 1, label: "ทุบให้สตัน", description: "สร้างดาเมจและทำให้เป้าหมายเสียเทิร์น" },
+    ],
+  },
   updatedAt: Date.now(),
 };
 
@@ -1152,7 +1170,18 @@ export async function deleteBattleRoom(roomId: string): Promise<void> {
   await deleteDoc(doc(db, BATTLE_ROOMS_COLLECTION, roomId));
 }
 
-export function rollBattleAttack(attacker: BattleCombatant, defender: BattleCombatant, config: BattleConfig): BattleRollResult {
+export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect; power: number } {
+  const text = `${skill.name || ""} ${skill.description || ""} ${skill.type || ""}`.toLowerCase();
+  const effect = skill.battleEffect
+    || (text.includes("สะท้อน") || text.includes("reflect") ? "reflect"
+      : text.includes("ป้องกัน") || text.includes("เกราะ") || text.includes("ม่าน") || text.includes("shield") ? "defense"
+        : text.includes("ฟื้น") || text.includes("รักษา") || text.includes("heal") ? "heal" : "damage");
+  const percent = Number(text.match(/(\d+)\s*%/)?.[1] || 0);
+  const power = Math.max(1, skill.battlePower ?? (effect === "reflect" ? percent || 35 : 5));
+  return { effect, power };
+}
+
+export function rollBattleAttack(attacker: BattleCombatant, defender: BattleCombatant, config: BattleDiceConfig): BattleRollResult {
   const sides = Math.max(2, config.sides || 6);
   const roll = Math.floor(Math.random() * sides) + 1;
   const face = config.faces.find(item => item.face === roll) || {
@@ -1169,6 +1198,10 @@ export function rollBattleAttack(attacker: BattleCombatant, defender: BattleComb
     ? attacker.name + " ทอยได้หน้า " + roll + " — " + face.label
     : face.effect === "heal"
       ? attacker.name + " ทอยได้หน้า " + roll + " — " + face.label + " ฟื้น HP " + heal
+      : face.effect === "defense"
+        ? attacker.name + " ทอยได้หน้า " + roll + " — " + face.label + " ลดดาเมจ " + Math.max(0, Math.round(face.value || 0)) + " ในเทิร์นถัดไป"
+        : face.effect === "reflect"
+          ? attacker.name + " ทอยได้หน้า " + roll + " — " + face.label + " สะท้อนดาเมจ " + Math.max(0, Math.round(face.value || 0)) + "%"
       : attacker.name + " ทอยได้หน้า " + roll + " — " + face.label + " สร้างดาเมจ " + damage;
   return { roll, face, damage, heal, message };
 }
@@ -1186,7 +1219,7 @@ function getNextBattleActor(room: BattleRoom, actorId: string): BattleCombatant 
   return undefined;
 }
 
-export function resolveBattleTurn(room: BattleRoom, config: BattleConfig): { room: BattleRoom; result: BattleRollResult | null } {
+export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?: Skill): { room: BattleRoom; result: BattleRollResult | null } {
   if (room.status !== "active") return { room, result: null };
   const nextRoom: BattleRoom = {
     ...room,
@@ -1206,8 +1239,59 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig): { roo
     current.stunnedTurns = Math.max(0, (current.stunnedTurns || 0) - 1);
     nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: current.name + " ถูกสตัน จึงเสียเทิร์น", effect: "stun_skip" });
   } else {
-    result = rollBattleAttack(current, defender, config);
-    if (result.damage > 0) defender.hp = Math.max(0, defender.hp - result.damage);
+    const diceConfig = current.isBoss && config.bossDice?.enabled ? config.bossDice : {
+      enabled: true,
+      sides: config.sides,
+      strengthPerDamage: config.strengthPerDamage,
+      faces: config.faces,
+    };
+    const skillProfile = skill ? getBattleSkillProfile(skill) : null;
+    result = rollBattleAttack(current, defender, diceConfig);
+    if (skillProfile) {
+      result.skillEffect = skillProfile.effect;
+      result.skillPower = skillProfile.power;
+      if (skillProfile.effect === "damage") {
+        result.damage += skillProfile.power;
+        result.message += ` • ใช้สกิล ${skill.name} เพิ่มดาเมจ ${skillProfile.power}`;
+      } else if (skillProfile.effect === "heal") {
+        result.heal += skillProfile.power;
+        result.message += ` • ใช้สกิล ${skill.name} ฟื้นฟู ${skillProfile.power}`;
+      } else if (skillProfile.effect === "defense") {
+        current.defenseValue = skillProfile.power;
+        current.defenseTurns = 1;
+        result.message += ` • ใช้สกิล ${skill.name} ป้องกันดาเมจ ${skillProfile.power} ในเทิร์นถัดไป`;
+      } else if (skillProfile.effect === "reflect") {
+        current.reflectPercent = Math.min(100, skillProfile.power);
+        current.reflectTurns = 1;
+        result.message += ` • ใช้สกิล ${skill.name} สะท้อนดาเมจ ${current.reflectPercent}% ในเทิร์นถัดไป`;
+      }
+    }
+    if (result.face.effect === "defense") {
+      current.defenseValue = Math.max(current.defenseValue || 0, Math.max(0, Math.round(result.face.value || 0)));
+      current.defenseTurns = 1;
+    }
+    if (result.face.effect === "reflect") {
+      current.reflectPercent = Math.max(current.reflectPercent || 0, Math.min(100, Math.round(result.face.value || 0)));
+      current.reflectTurns = 1;
+    }
+    if (result.damage > 0) {
+      const blocked = Math.min(result.damage, defender.defenseTurns ? (defender.defenseValue || 0) : 0);
+      const finalDamage = Math.max(0, result.damage - blocked);
+      defender.hp = Math.max(0, defender.hp - finalDamage);
+      if (blocked > 0) {
+        result.message += ` • ป้องกันไว้ ${blocked}`;
+        defender.defenseTurns = 0;
+        defender.defenseValue = 0;
+      }
+      if (defender.reflectTurns && defender.reflectPercent && finalDamage > 0) {
+        const reflected = Math.max(1, Math.round(finalDamage * defender.reflectPercent / 100));
+        current.hp = Math.max(0, current.hp - reflected);
+        result.message += ` • สะท้อนกลับ ${reflected}`;
+        defender.reflectTurns = 0;
+        defender.reflectPercent = 0;
+      }
+      result.damage = finalDamage;
+    }
     if (result.heal > 0) current.hp = Math.min(current.maxHp, current.hp + result.heal);
     if (result.face.effect === "stun" && defender.hp > 0) defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
     nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: result.message + (result.face.effect === "stun" ? " และทำให้เป้าหมายติดสตัน" : ""), roll: result.roll, damage: result.damage, effect: result.face.effect });
