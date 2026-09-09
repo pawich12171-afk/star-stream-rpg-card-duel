@@ -24,6 +24,7 @@ import {
   BattleRoom,
   BattleCombatant,
   BattleRollResult,
+  AdminStatusEffect,
   BattleSkillEffect,
   Skill,
   MAX_GACHA_REWARDS
@@ -1346,13 +1347,70 @@ export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect
   return { effect, power, cooldownTurns };
 }
 
+function getActiveAdminStatusEffects(unit: BattleCombatant): AdminStatusEffect[] {
+  return (unit.adminStatusEffects || []).filter(effect => effect.remaining > 0);
+}
+
+function getAdminOutgoingDamageMultiplier(unit: BattleCombatant): number {
+  return getActiveAdminStatusEffects(unit).reduce((multiplier, effect) => {
+    if (!['curse', 'weakness', 'slow'].includes(effect.kind)) return multiplier;
+    const percent = Math.min(100, Math.max(0, Number(effect.power) || 0)) / 100;
+    return multiplier * (effect.mode === 'buff' ? 1 + percent : 1 - percent);
+  }, 1);
+}
+
+function getAdminIncomingDamageMultiplier(unit: BattleCombatant): number {
+  return getActiveAdminStatusEffects(unit).reduce((multiplier, effect) => {
+    if (effect.kind !== 'shield') return multiplier;
+    const percent = Math.min(100, Math.max(0, Number(effect.power) || 0)) / 100;
+    return multiplier * (effect.mode === 'buff' ? 1 - percent : 1 + percent);
+  }, 1);
+}
+
+function getAdminReflectPercent(unit: BattleCombatant): number {
+  return getActiveAdminStatusEffects(unit)
+    .filter(effect => effect.kind === 'reflect')
+    .reduce((percent, effect) => Math.max(percent, Math.min(100, Math.max(0, Number(effect.power) || 0))), 0);
+}
+
+function tickAdminStatusEffects(unit: BattleCombatant): { message: string; skipTurn: boolean } {
+  const active = getActiveAdminStatusEffects(unit);
+  let damage = 0;
+  let healing = 0;
+  let skipTurn = false;
+  const messages: string[] = [];
+  active.forEach(effect => {
+    const power = Math.max(0, Math.round(Number(effect.power) || 0));
+    if (['bleeding', 'burn', 'poison'].includes(effect.kind) && effect.mode === 'nerf') damage += power;
+    if (effect.kind === 'regen' && effect.mode === 'buff') healing += power;
+    if (effect.kind === 'stun') skipTurn = true;
+  });
+  if (damage > 0) {
+    unit.hp = Math.max(0, unit.hp - damage);
+    messages.push(unit.name + ' ได้รับความเสียหายจากสถานะ ' + damage);
+  }
+  if (healing > 0) {
+    const restored = Math.min(healing, Math.max(0, unit.maxHp - unit.hp));
+    unit.hp = Math.min(unit.maxHp, unit.hp + healing);
+    if (restored > 0) messages.push(unit.name + ' ฟื้นฟูจากสถานะ ' + restored);
+  }
+  return { message: messages.join(' • '), skipTurn };
+}
+
+function advanceAdminStatusEffects(unit: BattleCombatant) {
+  if (!unit.adminStatusEffects) return;
+  unit.adminStatusEffects = unit.adminStatusEffects
+    .map(effect => ({ ...effect, remaining: Math.max(0, effect.remaining - 1) }))
+    .filter(effect => effect.remaining > 0);
+}
+
 export function rollBattleAttack(attacker: BattleCombatant, defender: BattleCombatant, config: BattleDiceConfig): BattleRollResult {
   const sides = Math.max(2, config.sides || 6);
   const roll = Math.floor(Math.random() * sides) + 1;
   const face = config.faces.find(item => item.face === roll) || {
     face: roll, effect: "damage" as const, value: 1, label: "โจมตีปกติ", description: "ดาเมจพื้นฐาน"
   };
-  const baseDamage = Math.max(1, Math.floor((attacker.stats?.strength || 0) / Math.max(1, config.strengthPerDamage || 3)));
+  const baseDamage = Math.max(1, Math.round(Math.floor((attacker.stats?.strength || 0) / Math.max(1, config.strengthPerDamage || 3)) * getAdminOutgoingDamageMultiplier(attacker)));
   let damage = 0;
   let heal = 0;
   if (face.effect === "damage" || face.effect === "critical" || face.effect === "stun") {
@@ -1399,10 +1457,14 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
   const defender = opponentTeam.find(item => item.hp > 0);
   if (!defender) return { room: { ...nextRoom, status: "completed", winnerTeam: actor.team }, result: null };
   const current = all.find(item => item.id === actor.id) as BattleCombatant;
+  const statusTick = tickAdminStatusEffects(current);
+  if (statusTick.skipTurn) current.stunnedTurns = Math.max(current.stunnedTurns || 0, 1);
   let result: BattleRollResult | null = null;
-  if ((current.stunnedTurns || 0) > 0) {
+  if (current.hp <= 0) {
+    nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: current.name + (statusTick.message ? " • " + statusTick.message : "") + " หมดสติจากผลสถานะ", effect: "stun_skip" });
+  } else if ((current.stunnedTurns || 0) > 0) {
     current.stunnedTurns = Math.max(0, (current.stunnedTurns || 0) - 1);
-    nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: current.name + " ถูกสตัน จึงเสียเทิร์น", effect: "stun_skip" });
+    nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: current.name + (statusTick.message ? " • " + statusTick.message : "") + " ถูกสตัน จึงเสียเทิร์น", effect: "stun_skip" });
   } else {
     const diceConfig = current.isBoss && config.bossDice?.enabled ? config.bossDice : {
       enabled: true,
@@ -1422,12 +1484,14 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       return { room, result: null };
     }
     result = rollBattleAttack(current, defender, diceConfig);
+    if (statusTick.message) result.message = statusTick.message + ' • ' + result.message;
     if (skillProfile) {
       result.skillEffect = skillProfile.effect;
       result.skillPower = skillProfile.power;
       if (skillProfile.effect === "damage") {
-        result.damage += skillProfile.power;
-        result.message += ` • ใช้สกิล ${skillName} เพิ่มดาเมจ ${skillProfile.power}`;
+        const skillDamage = Math.max(0, Math.round(skillProfile.power * getAdminOutgoingDamageMultiplier(current)));
+        result.damage += skillDamage;
+        result.message += ` • ใช้สกิล ${skillName} เพิ่มดาเมจ ${skillDamage}`;
       } else if (skillProfile.effect === "heal") {
         result.heal += skillProfile.power;
         result.message += ` • ใช้สกิล ${skillName} ฟื้นฟู ${skillProfile.power}`;
@@ -1457,20 +1521,27 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       current.reflectTurns = 1;
     }
     if (result.damage > 0) {
-      const blocked = Math.min(result.damage, defender.defenseTurns ? (defender.defenseValue || 0) : 0);
-      const finalDamage = Math.max(0, result.damage - blocked);
+      const damageAfterStatus = Math.max(0, Math.round(result.damage * getAdminIncomingDamageMultiplier(defender)));
+      const statusBlocked = Math.max(0, result.damage - damageAfterStatus);
+      const blocked = Math.min(damageAfterStatus, defender.defenseTurns ? (defender.defenseValue || 0) : 0);
+      const finalDamage = Math.max(0, damageAfterStatus - blocked);
+      if (statusBlocked > 0) result.message += ` • สถานะลดดาเมจ ${statusBlocked}`;
       defender.hp = Math.max(0, defender.hp - finalDamage);
       if (blocked > 0) {
         result.message += ` • ป้องกันไว้ ${blocked}`;
         defender.defenseTurns = 0;
         defender.defenseValue = 0;
       }
-      if (defender.reflectTurns && defender.reflectPercent && finalDamage > 0) {
-        const reflected = Math.max(1, Math.round(finalDamage * defender.reflectPercent / 100));
+      const adminReflectPercent = getAdminReflectPercent(defender);
+      const reflectPercent = Math.max(defender.reflectTurns && defender.reflectPercent ? defender.reflectPercent : 0, adminReflectPercent);
+      if (reflectPercent > 0 && finalDamage > 0) {
+        const reflected = Math.max(1, Math.round(finalDamage * reflectPercent / 100));
         current.hp = Math.max(0, current.hp - reflected);
         result.message += ` • สะท้อนกลับ ${reflected}`;
-        defender.reflectTurns = 0;
-        defender.reflectPercent = 0;
+        if (defender.reflectTurns) {
+          defender.reflectTurns = 0;
+          defender.reflectPercent = 0;
+        }
       }
       result.damage = finalDamage;
     }
@@ -1478,6 +1549,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
     if (result.face.effect === "stun" && defender.hp > 0) defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
     nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: result.message + (result.face.effect === "stun" ? " และทำให้เป้าหมายติดสตัน" : ""), roll: result.roll, damage: result.damage, effect: result.face.effect });
   }
+  if (current.team === "b") advanceAdminStatusEffects(current);
   const remainingOpponent = opponentTeam.filter(item => item.hp > 0);
   if (remainingOpponent.length === 0) {
     nextRoom.status = "completed";
