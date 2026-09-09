@@ -66,6 +66,8 @@ let localShopItems: Item[] = (() => {
   return INITIAL_SHOP_ITEMS;
 })();
 
+let gachaDefaultsMigrationStarted = false;
+
 let localGachaRewards: GachaReward[] = (() => {
   try {
     const saved = localStorage.getItem('starstream_gacha_rewards');
@@ -384,11 +386,26 @@ export function subscribeToGachaRewards(callback: (rewards: GachaReward[]) => vo
       snapshot.forEach((doc) => {
         list.push({ ...doc.data(), id: doc.id } as GachaReward);
       });
-      if (list.length > 0) {
-        list.sort((a, b) => a.rate - b.rate);
-        localGachaRewards = list;
+      const missingDefaults = INITIAL_GACHA_REWARDS.filter(
+        defaultReward => !list.some(reward => reward.id === defaultReward.id)
+      );
+      const mergedList = [...list, ...missingDefaults].sort((a, b) => a.rate - b.rate);
+
+      if (missingDefaults.length > 0 && !gachaDefaultsMigrationStarted) {
+        gachaDefaultsMigrationStarted = true;
+        void Promise.all(
+          missingDefaults.map(reward =>
+            setDoc(doc(db, GACHA_REWARDS_COLLECTION, reward.id), reward)
+          )
+        ).catch(err => {
+          console.warn("Error migrating default gacha rewards:", err);
+        });
+      }
+
+      if (mergedList.length > 0) {
+        localGachaRewards = mergedList;
         saveLocalAll();
-        callback(list);
+        callback(mergedList);
       } else {
         callback(localGachaRewards);
       }
