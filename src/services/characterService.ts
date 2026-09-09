@@ -105,6 +105,8 @@ const pendingGachaDeletes = new Set<string>();
 
 // Keep a local write ahead of an older Firestore realtime snapshot.
 const pendingCharacterUpdates = new Map<string, CharacterProfile>();
+const pendingShopItems = new Map<string, Item>();
+const pendingShopDeletes = new Set<string>();
 
 let localGachaConfig: GachaConfig = (() => {
   try {
@@ -263,10 +265,20 @@ export function subscribeToShop(callback: (items: Item[]) => void) {
     const q = collection(db, SHOP_ITEMS_COLLECTION);
     const unsub = onSnapshot(q, (snapshot) => {
       const list: Item[] = [];
-      snapshot.forEach((doc) => {
-        list.push({ ...doc.data(), id: doc.id } as Item);
+      const snapshotIds = new Set<string>();
+      snapshot.forEach((docSnap) => {
+        const itemId = docSnap.id;
+        snapshotIds.add(itemId);
+        if (pendingShopDeletes.has(itemId)) return;
+        const pending = pendingShopItems.get(itemId);
+        list.push((pending || { ...docSnap.data(), id: itemId }) as Item);
       });
-      if (list.length > 0) {
+      pendingShopItems.forEach((item, itemId) => {
+        if (!snapshotIds.has(itemId) && !pendingShopDeletes.has(itemId)) {
+          list.push(item);
+        }
+      });
+      if (list.length > 0 || snapshot.size > 0 || pendingShopItems.size > 0 || pendingShopDeletes.size > 0) {
         localShopItems = list;
         saveLocalAll();
         callback(list);
@@ -332,7 +344,9 @@ export async function updateCharacterData(char: CharacterProfile): Promise<void>
     const cleaned = sanitizeForFirestore(updated);
     await setDoc(doc(db, CHARACTERS_COLLECTION, updated.id), cleaned);
   } catch (err) {
-    console.warn("Error updating character in Firestore:", err);
+    pendingCharacterUpdates.delete(updated.id);
+    console.error("Error updating character in Firestore:", err);
+    throw err;
   }
 }
 
@@ -391,27 +405,49 @@ export async function transferCoins(
 export async function addShopItem(item: Item): Promise<void> {
   const id = item.id || `item-${Date.now()}`;
   const fullItem = { ...item, id };
+  const previousItem = localShopItems.find(existing => existing.id === id);
+  pendingShopItems.set(id, fullItem);
+  pendingShopDeletes.delete(id);
   localShopItems = [fullItem, ...localShopItems.filter(i => i.id !== id)];
   saveLocalAll();
   broadcast?.postMessage({ type: 'SHOP_UPDATE' });
 
   try {
-    await setDoc(doc(db, SHOP_ITEMS_COLLECTION, id), fullItem);
+    // Admin forms intentionally leave unrelated effect fields undefined.
+    // Firestore rejects undefined values, so sanitize before writing.
+    await setDoc(doc(db, SHOP_ITEMS_COLLECTION, id), sanitizeForFirestore(fullItem));
+    pendingShopItems.delete(id);
   } catch (err) {
-    console.warn("Error adding shop item to Firestore:", err);
+    pendingShopItems.delete(id);
+    localShopItems = previousItem
+      ? [previousItem, ...localShopItems.filter(existing => existing.id !== id)]
+      : localShopItems.filter(existing => existing.id !== id);
+    saveLocalAll();
+    broadcast?.postMessage({ type: 'SHOP_UPDATE' });
+    console.error("Error adding shop item to Firestore:", err);
+    throw err;
   }
 }
 
 // Delete Shop item (Admin)
 export async function deleteShopItem(itemId: string): Promise<void> {
+  const previousItem = localShopItems.find(existing => existing.id === itemId);
+  pendingShopDeletes.add(itemId);
+  pendingShopItems.delete(itemId);
   localShopItems = localShopItems.filter(i => i.id !== itemId);
   saveLocalAll();
   broadcast?.postMessage({ type: 'SHOP_UPDATE' });
 
   try {
     await deleteDoc(doc(db, SHOP_ITEMS_COLLECTION, itemId));
+    pendingShopDeletes.delete(itemId);
   } catch (err) {
-    console.warn("Error deleting shop item in Firestore:", err);
+    pendingShopDeletes.delete(itemId);
+    if (previousItem) localShopItems = [previousItem, ...localShopItems.filter(existing => existing.id !== itemId)];
+    saveLocalAll();
+    broadcast?.postMessage({ type: 'SHOP_UPDATE' });
+    console.error("Error deleting shop item in Firestore:", err);
+    throw err;
   }
 }
 
