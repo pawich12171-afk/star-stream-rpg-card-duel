@@ -1900,7 +1900,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <label className="text-xs text-slate-300 block mb-1">อัตราออก (Rate %)</label>
                   <input
                     type="number"
-                    step="0.1"
+                    step="0.001"
                     min={0}
                     value={newRewardRate}
                     onChange={(e) => setNewRewardRate(Number(e.target.value))}
@@ -1977,7 +1977,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <div className="flex items-center gap-1.5">
                               <input
                                 type="number"
-                                step="0.1"
+                                step="0.001"
                                 min={0}
                                 value={currentVal}
                                 onChange={(e) => setEditingRates(prev => ({
