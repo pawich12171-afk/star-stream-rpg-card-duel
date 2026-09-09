@@ -802,116 +802,190 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
       {/* MODAL: Add Skill */}
       {showAddSkillModal && (
-        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-cyan-500/40 rounded-3xl max-w-md w-full shadow-[0_0_40px_rgba(6,182,212,0.25)] flex flex-col my-4 max-h-[90vh] overflow-hidden">
-            <div className="px-5 py-4 border-b border-cyan-900/40 bg-slate-900/80 flex items-center justify-between">
-              <h3 className="text-base font-black text-white flex items-center gap-2">
-                <Plus className="w-5 h-5 text-cyan-400" />
-                จดจำและสร้างสกิลใหม่ (Create Skill)
-              </h3>
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-cyan-500/40 rounded-3xl max-w-xl w-full shadow-[0_0_50px_rgba(6,182,212,0.25)] flex flex-col my-4 max-h-[92vh] overflow-hidden">
+            <div className="px-5 py-4 border-b border-cyan-900/40 bg-slate-900/90 backdrop-blur-md flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-600 via-indigo-600 to-purple-600 p-0.5 shadow-[0_0_18px_rgba(6,182,212,0.35)] flex items-center justify-center shrink-0">
+                  <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-cyan-300" />
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono tracking-[.18em] text-cyan-400 font-bold uppercase">SKILL REGISTRY</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 star-live-dot" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-white truncate">สร้างและบันทึกสกิลใหม่</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">กำหนดข้อมูลให้ครบ เพื่อให้สกิลแสดงผลสวยและใช้ต่อสู้ได้จริง</p>
+                </div>
+              </div>
               <button
+                type="button"
                 onClick={() => setShowAddSkillModal(false)}
-                className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+                aria-label="ปิดหน้าต่างสร้างสกิล"
+                className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer border border-slate-700 shrink-0"
               >
-                <Trash2 className="w-4 h-4 hidden" />
-                ปิด
+                <span className="text-xs font-bold">ปิด</span>
               </button>
             </div>
 
-            <form onSubmit={handleAddCustomSkill} className="p-5 space-y-3.5 text-xs overflow-y-auto">
-              <div>
-                <label className="text-slate-300 font-bold block mb-1">ชื่อสกิล / วิชา *</label>
-                <input
-                  type="text"
-                  required
-                  value={newSkillName}
-                  onChange={(e) => setNewSkillName(e.target.value)}
-                  placeholder="เช่น ม่านหมอกสายลมหยก, ปราณเพลิงสะบั้นดารา..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-semibold focus:border-cyan-500 outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-slate-300 font-bold block mb-1">ระดับขั้น ORV Rank</label>
-                  <select
-                    value={newSkillORVRank}
-                    onChange={(e) => setNewSkillORVRank(e.target.value as ORVSkillRank)}
-                    className="w-full px-2.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-cyan-300 font-bold outline-none cursor-pointer"
-                  >
-                    <option value="common">ธรรมดา (Common)</option>
-                    <option value="rare">หายาก (Rare)</option>
-                    <option value="hero">วีรชน (Hero)</option>
-                    <option value="semi_myth">กึ่งมายา (Semi-Myth)</option>
-                    <option value="legendary">ตำนาน (Legendary)</option>
-                    <option value="myth">มายา (Myth)</option>
-                  </select>
+            <form onSubmit={handleAddCustomSkill} className="p-4 sm:p-6 space-y-4 overflow-y-auto text-xs">
+              <section className="rounded-2xl border border-slate-700/80 bg-slate-950/45 p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-black text-white flex items-center gap-2"><Sparkles className="w-4 h-4 text-cyan-300" />ข้อมูลหลักของสกิล</h4>
+                    <p className="text-[11px] text-slate-400 mt-1">ชื่อ ระดับ และหมวดหมู่ที่จะใช้แสดงบนการ์ดสกิล</p>
+                  </div>
+                  <span className="text-[10px] px-2 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-300 font-mono shrink-0">STEP 01</span>
                 </div>
 
                 <div>
-                  <label className="text-slate-300 font-bold block mb-1">หมวดหมู่วิชา</label>
-                  <select
-                    value={newSkillCategory}
-                    onChange={(e) => setNewSkillCategory(e.target.value as any)}
-                    className="w-full px-2.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none cursor-pointer"
-                  >
-                    <option value="general">วิชาทั่วไป</option>
-                    <option value="innate">วิชาติดตัว (Innate)</option>
-                    <option value="stigma">สติกม่า (Stigma)</option>
-                    <option value="story">เรื่องเล่า (Story)</option>
-                  </select>
+                  <label className="text-slate-200 font-bold block mb-1">ชื่อสกิล / วิชา <span className="text-rose-300">*</span></label>
+                  <p className="text-[10px] text-slate-500 mb-1.5">ชื่อที่ผู้เล่นจะเห็นบนโปรไฟล์และการ์ดสกิล</p>
+                  <input
+                    type="text"
+                    required
+                    value={newSkillName}
+                    onChange={(e) => setNewSkillName(e.target.value)}
+                    placeholder="เช่น ม่านหมอกสายลมหยก, ปราณเพลิงสะบั้นดารา..."
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-semibold focus:border-cyan-500 outline-none"
+                  />
                 </div>
-              </div>
 
-              <div>
-                <label className="text-slate-300 font-bold block mb-1">คำอธิบายและผลลัพธ์</label>
+                <div>
+                  <label className="text-slate-200 font-bold block mb-1">ป้ายกำกับสกิล</label>
+                  <p className="text-[10px] text-slate-500 mb-1.5">ข้อความสั้น ๆ ที่จะแสดงคู่กับชื่อสกิล เช่น วิชาทั่วไป หรือท่าไม้ตาย</p>
+                  <input
+                    type="text"
+                    value={newSkillType}
+                    onChange={(e) => setNewSkillType(e.target.value)}
+                    placeholder="เช่น วิชาทั่วไป, ท่าไม้ตาย, Ultimate..."
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white focus:border-cyan-500 outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-200 font-bold block mb-1">ระดับขั้น ORV Rank</label>
+                    <p className="text-[10px] text-slate-500 mb-1.5">กำหนดความหายากและภาพลักษณ์ของสกิล</p>
+                    <select
+                      value={newSkillORVRank}
+                      onChange={(e) => setNewSkillORVRank(e.target.value as ORVSkillRank)}
+                      className="w-full px-2.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-cyan-300 font-bold outline-none cursor-pointer"
+                    >
+                      <option value="common">ธรรมดา (Common)</option>
+                      <option value="rare">หายาก (Rare)</option>
+                      <option value="hero">วีรชน (Hero)</option>
+                      <option value="semi_myth">กึ่งมายา (Semi-Myth)</option>
+                      <option value="legendary">ตำนาน (Legendary)</option>
+                      <option value="myth">มายา (Myth)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-200 font-bold block mb-1">หมวดหมู่วิชา</label>
+                    <p className="text-[10px] text-slate-500 mb-1.5">ใช้จัดกลุ่มสกิลในโปรไฟล์ตัวละคร</p>
+                    <select
+                      value={newSkillCategory}
+                      onChange={(e) => setNewSkillCategory(e.target.value as any)}
+                      className="w-full px-2.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none cursor-pointer"
+                    >
+                      <option value="general">วิชาทั่วไป</option>
+                      <option value="innate">วิชาติดตัว (Innate)</option>
+                      <option value="stigma">สติกม่า (Stigma)</option>
+                      <option value="story">เรื่องเล่า (Story)</option>
+                    </select>
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-violet-500/20 bg-violet-950/15 p-4 space-y-2.5">
+                <div>
+                  <div className="flex items-center gap-2"><Layers className="w-4 h-4 text-violet-300" /><h4 className="text-sm font-black text-white">คำอธิบายและผลลัพธ์</h4></div>
+                  <p className="text-[11px] text-slate-400 mt-1">บอกให้ชัดว่าสกิลทำอะไร ส่งผลกับใคร และเหมาะกับสถานการณ์แบบไหน</p>
+                </div>
                 <textarea
-                  rows={2}
+                  rows={4}
                   value={newSkillDesc}
                   onChange={(e) => setNewSkillDesc(e.target.value)}
-                  placeholder="เขียนบรรยายผลของสกิล ดาเมจ หรือเกราะป้องกัน..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white focus:border-cyan-500 outline-none resize-none"
+                  placeholder="เช่น สร้างม่านหมอกเพื่อบดบังการมองเห็น ลดความเสียหายที่ได้รับ และเปิดจังหวะให้ทีมสวนกลับ..."
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white leading-relaxed focus:border-violet-400 outline-none resize-none"
                 />
-              </div>
+              </section>
 
-              <div className="rounded-2xl border border-cyan-500/20 bg-cyan-950/20 p-3 space-y-2">
-                <label className="text-cyan-200 font-bold block mb-1">หมวดหมู่ผลต่อสู้จริง</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <select value={newSkillBattleEffect} onChange={(e) => setNewSkillBattleEffect(e.target.value as NonNullable<Skill['battleEffect']>)} className="w-full px-2.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none cursor-pointer">
-                    <option value="damage">โจมตี / ดาเมจ</option>
-                    <option value="heal">ฟื้นฟู HP</option>
-                    <option value="defense">โล่ / ป้องกัน</option>
-                    <option value="reflect">สะท้อนดาเมจ</option>
-                    <option value="stun">ควบคุม / สตัน</option>
-                  </select>
-                  <input type="number" min={1} value={newSkillBattlePower} onChange={(e) => setNewSkillBattlePower(Number(e.target.value))} placeholder="พลังเอฟเฟกต์" className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none" />
-                  <input type="number" min={0} max={99} value={newSkillCooldownTurns} onChange={(e) => setNewSkillCooldownTurns(Number(e.target.value))} placeholder="คูลดาวน์ (เทิร์น)" className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none" />
+              <section className="rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-cyan-950/35 to-indigo-950/25 p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-black text-cyan-100 flex items-center gap-2"><Zap className="w-4 h-4 text-cyan-300" />ผลลัพธ์ในสนามรบ</h4>
+                    <p className="text-[11px] text-cyan-100/60 mt-1">ข้อมูลชุดนี้จะถูกใช้คำนวณผลจริงเมื่อกดใช้สกิลในสนามรบ</p>
+                  </div>
+                  <span className="text-[10px] px-2 py-1 rounded-full bg-cyan-400/10 border border-cyan-300/20 text-cyan-200 font-mono shrink-0">STEP 02</span>
                 </div>
-                <p className="text-[10px] leading-4 text-slate-400">เลือกผลต่อสู้ที่ต้องการให้สกิลทำงานจริงในสนามรบ</p>
-              </div>
 
-              <div>
-                <label className="text-slate-300 font-bold block mb-1">ผลพิเศษเมื่อทะลุ Lv.10 (Perk Level 10)</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-cyan-100 font-bold block mb-1">ผลหลัก</label>
+                    <p className="text-[10px] text-cyan-100/55 mb-1.5">ประเภทของเอฟเฟกต์</p>
+                    <select value={newSkillBattleEffect} onChange={(e) => setNewSkillBattleEffect(e.target.value as NonNullable<Skill['battleEffect']>)} className="w-full px-2.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none cursor-pointer">
+                      <option value="damage">โจมตี / ดาเมจ</option>
+                      <option value="heal">ฟื้นฟู HP</option>
+                      <option value="defense">โล่ / ป้องกัน</option>
+                      <option value="reflect">สะท้อนดาเมจ</option>
+                      <option value="stun">ควบคุม / สตัน</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-cyan-100 font-bold block mb-1">ค่าพลัง</label>
+                    <p className="text-[10px] text-cyan-100/55 mb-1.5">ดาเมจ / ฟื้นฟู / โล่</p>
+                    <input type="number" min={1} value={newSkillBattlePower} onChange={(e) => setNewSkillBattlePower(Number(e.target.value))} className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono outline-none" />
+                  </div>
+                  <div>
+                    <label className="text-cyan-100 font-bold block mb-1">คูลดาวน์</label>
+                    <p className="text-[10px] text-cyan-100/55 mb-1.5">จำนวนเทิร์นที่ต้องรอ</p>
+                    <div className="relative">
+                      <input type="number" min={0} max={99} value={newSkillCooldownTurns} onChange={(e) => setNewSkillCooldownTurns(Number(e.target.value))} className="w-full px-3 py-2.5 pr-14 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono outline-none" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">เทิร์น</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-cyan-400/15 bg-slate-950/35 px-3 py-2 text-[10px] leading-relaxed text-cyan-100/65">
+                  เคล็ดลับ: ตั้งค่า <strong className="text-cyan-200">ค่าพลัง</strong> ให้สอดคล้องกับคำอธิบายด้านบน เพื่อให้ผู้เล่นเข้าใจผลของสกิลได้ทันที
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-amber-500/25 bg-amber-950/15 p-4 space-y-2.5">
+                <div className="flex items-center gap-2"><Crown className="w-4 h-4 text-amber-300" /><h4 className="text-sm font-black text-amber-100">ผลพิเศษเมื่อทะลุ Lv.10</h4></div>
+                <p className="text-[11px] text-amber-100/60">เขียนความสามารถพิเศษที่จะปลดล็อกเมื่ออัปเกรดสกิลถึงเลเวล 10</p>
                 <input
                   type="text"
                   value={newSkillPerk10}
                   onChange={(e) => setNewSkillPerk10(e.target.value)}
-                  placeholder="เช่น ดาเมจรุนแรงขึ้นสองเท่าและฟื้นเลือด..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-amber-300 text-xs focus:border-amber-500 outline-none"
+                  placeholder="เช่น ดาเมจรุนแรงขึ้นสองเท่าและฟื้นฟู HP ให้ทีม..."
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-amber-200 focus:border-amber-400 outline-none"
                 />
+              </section>
+
+              <div className="rounded-2xl border border-slate-700/80 bg-slate-950/45 px-4 py-3">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[.14em] text-slate-500 font-mono"><Sparkles className="w-3.5 h-3.5 text-cyan-300" />ตัวอย่างบนการ์ดสกิล</div>
+                <div className="mt-2 flex items-start justify-between gap-3">
+                  <div className="min-w-0"><div className="text-sm font-black text-white truncate">{newSkillName || 'ชื่อสกิลใหม่'}</div><div className="text-[11px] text-cyan-300 mt-0.5">{newSkillType || 'วิชาทั่วไป'} • Lv.1</div></div>
+                  <span className="text-[10px] px-2 py-1 rounded-full bg-amber-500/10 border border-amber-400/25 text-amber-200 shrink-0">{newSkillORVRank}</span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-2 leading-relaxed line-clamp-2">{newSkillDesc || 'คำอธิบายสกิลจะแสดงตรงนี้ เพื่อให้ผู้เล่นเข้าใจผลลัพธ์ได้ในทันที'}</p>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4 border-t border-slate-800/80">
                 <button
                   type="button"
                   onClick={() => setShowAddSkillModal(false)}
-                  className="px-4 py-2 text-slate-400 hover:text-white cursor-pointer font-semibold"
+                  className="px-4 py-2.5 text-slate-400 hover:text-white cursor-pointer font-semibold rounded-xl hover:bg-slate-800/80"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 font-black text-slate-950 bg-gradient-to-r from-cyan-400 via-teal-300 to-cyan-400 hover:from-cyan-300 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)] cursor-pointer"
+                  className="px-5 py-2.5 font-black text-slate-950 bg-gradient-to-r from-cyan-400 via-teal-300 to-cyan-400 hover:from-cyan-300 rounded-xl shadow-[0_0_18px_rgba(6,182,212,0.4)] cursor-pointer"
                 >
                   บันทึกสกิลเข้าสู่สารบบ
                 </button>
