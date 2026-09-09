@@ -337,13 +337,31 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       effectMessage = `ใช้งาน "${invItem.name}" เรียบร้อยแล้ว`;
     }
 
-    if (invItem.quantity > 1) {
-      updatedChar.inventory = updatedChar.inventory.map(i =>
-        i.instanceId === invItem.instanceId ? { ...i, quantity: i.quantity - 1 } : i
-      );
-    } else {
-      updatedChar.inventory = updatedChar.inventory.filter(i => i.instanceId !== invItem.instanceId);
+    // Consume exactly the clicked inventory entry. Older records may not have instanceId,
+    // so fall back to the item id instead of silently leaving the item unchanged.
+    const currentInventory = [...(character.inventory || [])];
+    const itemIndex = currentInventory.findIndex(item =>
+      invItem.instanceId && item.instanceId
+        ? item.instanceId === invItem.instanceId
+        : item.id === invItem.id
+    );
+
+    if (itemIndex === -1) {
+      alert('ไม่พบไอเทมชิ้นนี้ในกระเป๋า กรุณารีเฟรชแล้วลองใหม่');
+      return;
     }
+
+    const currentItem = currentInventory[itemIndex];
+    const currentQuantity = Math.max(1, Number(currentItem.quantity) || 1);
+    if (currentQuantity > 1) {
+      currentInventory[itemIndex] = {
+        ...currentItem,
+        quantity: currentQuantity - 1,
+      };
+    } else {
+      currentInventory.splice(itemIndex, 1);
+    }
+    updatedChar.inventory = currentInventory;
 
     updatedChar.notifications = [
       {
