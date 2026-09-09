@@ -120,10 +120,6 @@ export const QuestBoard: React.FC<QuestBoardProps> = ({ character, shopItems, on
       quest.rewardCoins > 0 ? quest.rewardCoins.toLocaleString() + ' Coins' : '',
       rewardItem?.name || (quest.rewardItemName ? quest.rewardItemName + ' (ไม่พบในร้านค้า)' : ''),
     ].filter(Boolean).join(' และ ') || 'รางวัลพิเศษ';
-    saveQuest({ ...quest, isClaimed: true }, {
-      title: 'รับรางวัลภารกิจสำเร็จ',
-      message: 'คุณได้รับ ' + rewardMessage + ' จากภารกิจ “' + quest.title + '”',
-    });
     onUpdateCharacter({
       ...character,
       coins: character.coins + Math.max(0, quest.rewardCoins || 0),
