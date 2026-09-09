@@ -1,41 +1,39 @@
 export interface CharacterStats {
-  strength: number;     // พละกำลัง
-  durability: number;   // ความทนทาน (Stamina)
-  agility: number;      // ความว่องไว (Agility)
-  magic: number;        // พลังเวท / มานา
+  strength: number;
+  durability: number;
+  agility: number;
+  magic: number;
 }
 
-export type ORVSkillRank = 
-  | 'general'       // ทั่วไป (F~E)
-  | 'rare'          // หายาก (D~C)
-  | 'hero'          // วีรชน (B)
-  | 'semi_myth'     // กึ่งตำนาน (A)
-  | 'legendary'     // ตำนาน (S)
-  | 'myth'          // เรื่องเล่ายักษ์ / มายาสงคราม (Myth / SSS)
-  | 'transcendent'; // เหนือมนุษย์ / เทพจุติ
+export type ORVSkillRank =
+  | 'general'
+  | 'rare'
+  | 'hero'
+  | 'semi_myth'
+  | 'legendary'
+  | 'myth'
+  | 'transcendent';
 
 export interface Skill {
   id: string;
   name: string;
   level: number;
-  maxLevel?: number;    // default 10
-  multiplier: number;   // เริ่มต้น 1, เมื่ออัปเกิน 10 จะคูณ x2 ทวีคูณ
-  type?: string;        // ทั่วไป, ท่าไม้ตาย, Ultimate
+  maxLevel?: number;
+  multiplier: number;
+  type?: string;
   description: string;
   cooldown?: string;
   conditions?: string;
   cost?: string;
-  category?: 'innate' | 'stigma' | 'story' | 'general'; // หมวดหมู่
-  // ORV Rank & Level Up System Details
-  orvRank?: ORVSkillRank; // ระดับแร็งก์ในโลก ORV
-  orvRankCustom?: string; // ระดับกำหนดเอง
-  perkLevel10?: string;   // ความสามารถพิเศษปลดล็อกเมื่อ Lv.10
-  statBonusPerLevel?: string; // ค่าสเตตัสที่ได้ต่อเลเวล
-  upgradeCount?: number;  // จำนวนครั้งที่อัปเกรดเพื่อคำนวณเงินดอกเบี้ย 20%
-  // Combat skill settings. Existing skills use a safe inferred default when omitted.
-  battleEffect?: BattleSkillEffect; // หมวดผลในการต่อสู้
-  battlePower?: number; // ค่าพลังของผลลัพธ์
-  cooldownTurns?: number; // คูลดาวน์จริงในสนามรบ (เทิร์น)
+  category?: 'innate' | 'stigma' | 'story' | 'general';
+  orvRank?: ORVSkillRank;
+  orvRankCustom?: string;
+  perkLevel10?: string;
+  statBonusPerLevel?: string;
+  upgradeCount?: number;
+  battleEffect?: BattleSkillEffect;
+  battlePower?: number;
+  cooldownTurns?: number;
 }
 
 export interface EquippedBonus {
@@ -43,11 +41,10 @@ export interface EquippedBonus {
   durability?: number;
   agility?: number;
   magic?: number;
-  skillBonus?: string; // บัฟสกิลเฉพาะ
+  skillBonus?: string;
 }
 
 export type GachaRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
-
 export const MAX_GACHA_REWARDS = 20;
 
 export interface Item {
@@ -60,9 +57,9 @@ export interface Item {
   equipped?: boolean;
   effectType: 'heal_hp' | 'buff_stat' | 'enhance_skill' | 'custom' | 'boost_max_hp';
   effectValue?: number;
-  hpBonus?: number; // โบนัสเลือด HP เพิ่มเติม (สำหรับอุปกรณ์สวมใส่ หรือโอสถ)
+  hpBonus?: number;
   targetStat?: keyof CharacterStats;
-  skillEnhanceTarget?: string; // ชื่อสกิลที่เพิ่มพลัง
+  skillEnhanceTarget?: string;
   skillEnhanceDesc?: string;
   usableByPlayers: boolean;
   rarity?: GachaRarity;
@@ -106,19 +103,63 @@ export interface NotificationItem {
   type: 'quest' | 'trade' | 'system' | 'admin' | 'gacha' | 'game';
 }
 
+export type AdminStatusEffectKind =
+  | 'bleeding'
+  | 'burn'
+  | 'poison'
+  | 'reflect'
+  | 'curse'
+  | 'regen'
+  | 'shield'
+  | 'stun'
+  | 'weakness'
+  | 'slow';
+
+export interface AdminStatusEffect {
+  id: string;
+  kind: AdminStatusEffectKind;
+  name: string;
+  mode: 'buff' | 'nerf';
+  power: number;
+  duration: number;
+  remaining: number;
+  appliedAt: number;
+  source: 'admin';
+  description: string;
+}
+
+export interface AdminBalanceModifier {
+  id: string;
+  kind: 'hp' | 'stat' | 'skill' | 'status';
+  mode: 'buff' | 'nerf';
+  amount?: number;
+  stat?: keyof CharacterStats;
+  skillId?: string;
+  effectId?: string;
+  createdAt: number;
+}
+
+export interface AdminBalanceSnapshot {
+  hp: number;
+  maxHp: number;
+  stats: CharacterStats;
+  skills: Skill[];
+  capturedAt: number;
+}
+
 export interface CharacterProfile {
   id: string;
   username: string;
   displayName: string;
-  nickname: string;          // สมญานาม
+  nickname: string;
   avatarUrl: string;
-  quote?: string;            // ประโยคประจำตัว
+  quote?: string;
   age?: string;
-  constellation: string;     // กลุ่มดาวผู้สนับสนุน
-  characteristics: string[]; // คุณลักษณะ
-  storySummary?: string;     // เรื่องเล่าที่ครอบครอง
-  statusBuffs?: string;      // เอฟเฟกต์สถานะปัจจุบัน
-  coins: number;             // เหรียญปัจจุบัน
+  constellation: string;
+  characteristics: string[];
+  storySummary?: string;
+  statusBuffs?: string;
+  coins: number;
   hp: number;
   maxHp: number;
   stats: CharacterStats;
@@ -126,10 +167,10 @@ export interface CharacterProfile {
   inventory: InventoryItem[];
   quests: Quest[];
   notifications: NotificationItem[];
-  powerScore: number;        // สำหรับจัดอันดับ Leaderboard
+  powerScore: number;
   lastUpdated: number;
-  role?: 'admin' | 'player'; // ผู้ดูแลระบบ หรือ ผู้เล่น
-  sponsorModifier?: string;  // พรจากผู้สนับสนุน
+  role?: 'admin' | 'player';
+  sponsorModifier?: string;
   stigma?: {
     name: string;
     sponsor?: string;
@@ -143,19 +184,23 @@ export interface CharacterProfile {
     acquiredAt?: string;
     rank?: string;
   }[];
-  // Stat Transcendence (ทะลุขีดจำกัด 100 อัปเกรดแบบดอกเบี้ยทบต้น 20%)
-  statUpgradeCount?: number; // จำนวนครั้งที่อัปเกรดสเตตัสทะลุ 100
-  consumedMaxHpBonus?: number; // โบนัสเลือดสูงสุด (Max HP) ถาวรจากการดื่มโอสถทองคำ/แก่นโลหิต
+  statUpgradeCount?: number;
+  consumedMaxHpBonus?: number;
+  avatarFrame?: string;
+  bannerTheme?: string;
+  customBannerUrl?: string;
+  badgeTitle?: string;
+  profileTitleBadge?: string;
+  accentColor?: string;
+  personalBio?: string;
+  bio?: string;
 
-  // Profile Decorations & Personalization
-  avatarFrame?: string;      // 'default' | 'gold_stigma' | 'demon_king' | 'celestial_lotus' | 'void_abyss' | 'cyber_neon' | 'crimson_blood'
-  bannerTheme?: string;      // 'cosmos' | 'abyss' | 'golden_throne' | 'cherry_blossom' | 'crimson_blood' | 'cyberpunk'
-  customBannerUrl?: string;  // ภาพแบนเนอร์กำหนดเอง
-  badgeTitle?: string;       // ฉายาเกียรติยศ
-  profileTitleBadge?: string;// ฉายารอง
-  accentColor?: string;      // 'cyan' | 'amber' | 'purple' | 'emerald' | 'rose'
-  personalBio?: string;      // ประวัติส่วนตัว
-  bio?: string;              // ประวัติสังเขป
+  // Temporary administrator balance controls.
+  // The snapshot is restored when all admin modifiers are removed, so
+  // admin nerfs/buffs do not permanently overwrite the character's base data.
+  adminBalanceSnapshot?: AdminBalanceSnapshot;
+  adminBalanceModifiers?: AdminBalanceModifier[];
+  adminStatusEffects?: AdminStatusEffect[];
 }
 
 export interface TransactionHistory {
@@ -169,12 +214,11 @@ export interface TransactionHistory {
   note?: string;
 }
 
-// GACHA TYPES
 export interface GachaReward {
   id: string;
   name: string;
   type: 'coin' | 'item' | 'skill' | 'characteristic';
-  rate: number;              // Drop rate in % (e.g. 15.5 for 15.5%)
+  rate: number;
   rarity: GachaRarity;
   description: string;
   coinAmount?: number;
@@ -184,21 +228,19 @@ export interface GachaReward {
 }
 
 export interface GachaConfig {
-  pullCost: number;          // ค่าสุ่ม 1 ครั้ง (เช่น 500 Coins)
-  tenPullCost: number;       // ค่าสุ่ม 10 ครั้ง (เช่น 4500 Coins)
+  pullCost: number;
+  tenPullCost: number;
   enabled: boolean;
   bannerTitle: string;
   bannerDescription: string;
 }
 
-// CARD 21 DUEL TYPES
 export type CardSuit = '♠' | '♥' | '♦' | '♣';
-
 export interface PlayingCard {
   suit: CardSuit;
   suitName: 'spades' | 'hearts' | 'diamonds' | 'clubs';
-  value: string;             // 'A', '2'-'10', 'J', 'Q', 'K'
-  numValue: number;          // 1-11
+  value: string;
+  numValue: number;
   color: 'red' | 'black';
 }
 
@@ -207,14 +249,14 @@ export interface CardDuelRoom {
   creatorId: string;
   creatorName: string;
   creatorAvatar: string;
-  opponentId?: string;       // ผู้เล่นที่ถูกเชิญ หรือเข้าร่วม
+  opponentId?: string;
   opponentName?: string;
   opponentAvatar?: string;
-  invitedPlayerId?: string;  // ID ผู้เล่นที่ถูกเชิญเฉพาะเจาะจง
+  invitedPlayerId?: string;
   betAmount: number;
   status: 'waiting' | 'ready' | 'in_progress' | 'completed' | 'cancelled';
-  requiredPlayersCount: number; // ปกติ 2 คน
-  readyPlayers: string[];       // ID ผู้เล่นที่พร้อม
+  requiredPlayersCount: number;
+  readyPlayers: string[];
   turn?: 'creator' | 'opponent';
   creatorHand: PlayingCard[];
   opponentHand: PlayingCard[];
@@ -227,8 +269,6 @@ export interface CardDuelRoom {
   updatedAt: number;
 }
 
-
-// TEAM BATTLE TYPES
 export type BattleMode = 'pvp' | 'pve';
 export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect' | 'stun';
 export type BattleDiceEffect = 'damage' | 'critical' | 'heal' | 'miss' | 'stun' | 'defense' | 'reflect';
@@ -273,7 +313,6 @@ export interface BattleBot {
 }
 
 export type BattleCombatantType = 'player' | 'bot';
-
 export interface BattleCombatant {
   id: string;
   sourceId: string;
