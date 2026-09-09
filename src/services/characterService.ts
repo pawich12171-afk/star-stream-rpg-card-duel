@@ -85,6 +85,20 @@ function notifyGachaRewards() {
   gachaRewardsListeners.forEach(listener => listener(snapshot));
 }
 
+function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map(stripUndefined) as T;
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, nestedValue]) => nestedValue !== undefined)
+        .map(([key, nestedValue]) => [key, stripUndefined(nestedValue)])
+    ) as T;
+  }
+  return value;
+}
+
 // Keep optimistic writes from being overwritten by an older Firestore snapshot.
 const pendingGachaRewards = new Map<string, GachaReward>();
 const pendingGachaDeletes = new Set<string>();
@@ -530,7 +544,8 @@ export async function saveGachaReward(reward: GachaReward): Promise<void> {
   notifyGachaRewards();
 
   try {
-    await setDoc(doc(db, GACHA_REWARDS_COLLECTION, id), fullReward);
+    const firestoreReward = stripUndefined(fullReward);
+    await setDoc(doc(db, GACHA_REWARDS_COLLECTION, id), firestoreReward);
     pendingGachaRewards.delete(id);
   } catch (err) {
     pendingGachaRewards.delete(id);
