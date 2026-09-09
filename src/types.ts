@@ -157,13 +157,14 @@ export interface TransactionHistory {
 export interface GachaReward {
   id: string;
   name: string;
-  type: 'coin' | 'item' | 'skill';
+  type: 'coin' | 'item' | 'skill' | 'characteristic';
   rate: number;              // Drop rate in % (e.g. 15.5 for 15.5%)
   rarity: GachaRarity;
   description: string;
   coinAmount?: number;
   itemData?: Item;
   skillData?: Skill;
+  characteristic?: string;
 }
 
 export interface GachaConfig {
