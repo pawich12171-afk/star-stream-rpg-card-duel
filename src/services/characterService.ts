@@ -1549,7 +1549,6 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
     if (result.face.effect === "stun" && defender.hp > 0) defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
     nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: result.message + (result.face.effect === "stun" ? " และทำให้เป้าหมายติดสตัน" : ""), roll: result.roll, damage: result.damage, effect: result.face.effect });
   }
-  if (current.team === "b") advanceAdminStatusEffects(current);
   const remainingOpponent = opponentTeam.filter(item => item.hp > 0);
   if (remainingOpponent.length === 0) {
     nextRoom.status = "completed";
@@ -1558,6 +1557,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
     return { room: nextRoom, result };
   }
   const nextActor = getNextBattleActor(nextRoom, current.id);
+  if (nextActor?.team === "a" && current.team === "b") getBattleCombatants(nextRoom).forEach(advanceAdminStatusEffects);
   nextRoom.turnActorId = nextActor?.id || current.id;
   nextRoom.round = (nextRoom.round || 1) + (nextActor?.team === "a" && current.team === "b" ? 1 : 0);
   return { room: nextRoom, result };
