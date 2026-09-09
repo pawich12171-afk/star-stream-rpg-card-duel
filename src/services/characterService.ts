@@ -85,6 +85,10 @@ function notifyGachaRewards() {
   gachaRewardsListeners.forEach(listener => listener(snapshot));
 }
 
+// Keep optimistic writes from being overwritten by an older Firestore snapshot.
+const pendingGachaRewards = new Map<string, GachaReward>();
+const pendingGachaDeletes = new Set<string>();
+
 let localGachaConfig: GachaConfig = (() => {
   try {
     const saved = localStorage.getItem('starstream_gacha_config');
@@ -426,11 +430,16 @@ async function migrateDefaultGachaRewards(currentRewards: GachaReward[]) {
 
       void migrateDefaultGachaRewards(list);
 
-      if (list.length > 0) {
-        list.sort((a, b) => a.rate - b.rate);
-        localGachaRewards = list;
+      const pendingRewards = Array.from(pendingGachaRewards.values());
+      const mergedList = [
+        ...list.filter(reward => !pendingGachaRewards.has(reward.id) && !pendingGachaDeletes.has(reward.id)),
+        ...pendingRewards
+      ].sort((a, b) => (Number(a.rate) || 0) - (Number(b.rate) || 0));
+
+      if (mergedList.length > 0) {
+        localGachaRewards = mergedList;
         saveLocalAll();
-        callback(list);
+        callback(mergedList);
       } else {
         callback(localGachaRewards);
       }
@@ -509,10 +518,12 @@ export async function saveGachaReward(reward: GachaReward): Promise<void> {
   const id = reward.id || `gacha-r-${Date.now()}`;
   const isNewReward = !localGachaRewards.some(existing => existing.id === id);
   if (isNewReward && localGachaRewards.length >= MAX_GACHA_REWARDS) {
-    console.warn(`Gacha reward limit reached: ${MAX_GACHA_REWARDS}`);
-    return;
+    throw new Error(`Gacha reward limit reached: ${MAX_GACHA_REWARDS}`);
   }
+
   const fullReward = { ...reward, id };
+  const previousReward = localGachaRewards.find(existing => existing.id === id);
+  pendingGachaRewards.set(id, fullReward);
   localGachaRewards = [fullReward, ...localGachaRewards.filter(r => r.id !== id)];
   saveLocalAll();
   broadcast?.postMessage({ type: 'GACHA_REWARDS_UPDATE' });
@@ -520,13 +531,23 @@ export async function saveGachaReward(reward: GachaReward): Promise<void> {
 
   try {
     await setDoc(doc(db, GACHA_REWARDS_COLLECTION, id), fullReward);
+    pendingGachaRewards.delete(id);
   } catch (err) {
+    pendingGachaRewards.delete(id);
+    localGachaRewards = previousReward
+      ? [previousReward, ...localGachaRewards.filter(r => r.id !== id)]
+      : localGachaRewards.filter(r => r.id !== id);
+    saveLocalAll();
+    notifyGachaRewards();
     console.warn("Error saving gacha reward in Firestore:", err);
+    throw err;
   }
 }
 
 // Delete Gacha Reward (Admin)
 export async function deleteGachaReward(rewardId: string): Promise<void> {
+  const deletedReward = localGachaRewards.find(existing => existing.id === rewardId);
+  pendingGachaDeletes.add(rewardId);
   localGachaRewards = localGachaRewards.filter(r => r.id !== rewardId);
   saveLocalAll();
   broadcast?.postMessage({ type: 'GACHA_REWARDS_UPDATE' });
@@ -534,8 +555,14 @@ export async function deleteGachaReward(rewardId: string): Promise<void> {
 
   try {
     await deleteDoc(doc(db, GACHA_REWARDS_COLLECTION, rewardId));
+    pendingGachaDeletes.delete(rewardId);
   } catch (err) {
+    pendingGachaDeletes.delete(rewardId);
+    if (deletedReward) localGachaRewards = [deletedReward, ...localGachaRewards];
+    saveLocalAll();
+    notifyGachaRewards();
     console.warn("Error deleting gacha reward in Firestore:", err);
+    throw err;
   }
 }
 
