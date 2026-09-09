@@ -38,7 +38,7 @@ interface AdminPanelProps {
   gachaConfig: GachaConfig;
   onUpdateCharacterCoins: (characterId: string, deltaCoins: number) => void;
   onSetCharacterCoins: (characterId: string, newCoins: number) => void;
-  onAddShopItem: (item: Item) => void;
+  onAddShopItem: (item: Item) => void | Promise<void>;
   onDeleteShopItem: (itemId: string) => void;
   onUpdateGachaConfig: (config: GachaConfig) => void;
   onAddGachaReward: (reward: GachaReward) => void;
@@ -310,7 +310,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // Add Item to Shop Handler
-  const handleCreateShopItem = (e: React.FormEvent) => {
+  const handleCreateShopItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shopItemName.trim()) {
       alert('กรุณากรอกชื่อไอเทม');
@@ -334,7 +334,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       equipped: false,
     };
 
-    onAddShopItem(newItem);
+    try {
+      await onAddShopItem(newItem);
+    } catch (error) {
+      console.error('Failed to save admin shop item:', error);
+      alert('บันทึกไอเทมลงฐานข้อมูลไม่สำเร็จ กรุณาลองใหม่');
+      return;
+    }
     setShopItemName('');
     setShopItemDesc('');
     alert(`เพิ่มไอเทม "${newItem.name}" ลงร้านค้าสำเร็จแล้ว!`);
