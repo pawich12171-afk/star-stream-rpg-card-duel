@@ -52,14 +52,38 @@ export const AdminCharacterBalancePanel: React.FC<Props> = ({ characters, onUpda
 
   const applyHp = (delta: number) => {
     if (!target) return;
+
+    // HP ปัจจุบันต้องเปลี่ยนจากค่าที่ผู้เล่นเห็นอยู่จริง
+    // ไม่คำนวณซ้ำจาก snapshot เพื่อป้องกันค่าถูกทับ/ลดไม่ลง
+    // ส่วน MAX HP จะไม่ถูกแตะในคำสั่งนี้
     const snapshot = snapshotFor(target);
-    const modifier: AdminBalanceModifier = { id: `admin-hp-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, kind: 'hp', mode: delta >= 0 ? 'buff' : 'nerf', amount: Math.abs(delta), createdAt: Date.now() };
+    const modifier: AdminBalanceModifier = {
+      id: `admin-hp-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+      kind: 'hp',
+      mode: delta >= 0 ? 'buff' : 'nerf',
+      amount: Math.abs(delta),
+      createdAt: Date.now()
+    };
     const all = [...modifiers, modifier];
-    const hpDelta = all.filter(m => m.kind === 'hp' && !isMaxHp(m)).reduce((sum, m) => sum + signed(m), 0);
+
     const maxDelta = all.filter(isMaxHp).reduce((sum, m) => sum + signed(m), 0);
     const nextMaxHp = Math.max(1, snapshot.maxHp + maxDelta);
-    const nextHp = Math.max(0, Math.min(nextMaxHp, snapshot.hp + hpDelta));
-    void save({ ...target, hp: nextHp, maxHp: nextMaxHp, adminBalanceSnapshot: snapshot, adminBalanceModifiers: all }, delta >= 0 ? `เพิ่ม HP ปัจจุบัน ${Math.abs(delta)} แล้ว` : `ลด HP ปัจจุบัน ${Math.abs(delta)} แล้ว`);
+
+    // ใช้ target.hp ปัจจุบันโดยตรง แล้ว clamp ตาม MAX HP
+    const nextHp = Math.max(0, Math.min(nextMaxHp, target.hp + delta));
+
+    void save(
+      {
+        ...target,
+        hp: nextHp,
+        maxHp: nextMaxHp,
+        adminBalanceSnapshot: snapshot,
+        adminBalanceModifiers: all
+      },
+      delta >= 0
+        ? `เพิ่ม HP ปัจจุบัน ${Math.abs(delta)} แล้ว`
+        : `ลด HP ปัจจุบัน ${Math.abs(delta)} แล้ว`
+    );
   };
 
   const applyMaxHp = (delta: number) => {
@@ -120,7 +144,7 @@ export const AdminCharacterBalancePanel: React.FC<Props> = ({ characters, onUpda
     const nextSkills = snapshot.skills.map(base => { const d = remaining.filter(m => m.kind === 'skill' && m.skillId === base.id).reduce((sum,m) => sum + signed(m),0); const max = Math.max(base.maxLevel || 10,1); return { ...base, level: Math.max(1, Math.min(max, base.level + d)) }; });
     const nextEffects = removed?.effectId ? statusEffects.filter(e => e.id !== removed.effectId) : statusEffects;
     const summary = nextEffects.map(e => `${e.mode === 'buff' ? '✨' : '⚠️'} ${e.name} (${e.remaining}/${e.duration})`).join(' · ');
-    void save({ ...target, hp, maxHp, stats, skills: nextSkills, statusBuffs: summary, adminStatusEffects: nextEffects, adminBalanceSnapshot: snapshot, adminBalanceModifiers: remaining }, 'ปลดคำสั่งเรียบร้อยแล้ว');
+    void save({ ...target, hp, maxHp, stats, skills, statusBuffs: summary, adminStatusEffects: nextEffects, adminBalanceSnapshot: snapshot, adminBalanceModifiers: remaining }, 'ปลดคำสั่งเรียบร้อยแล้ว');
   };
 
   const clearAll = () => {
