@@ -120,6 +120,14 @@ export default function App() {
 
   // Handlers
   const handleUpdateCharacter = async (updated: CharacterProfile) => {
+    // Update the visible state immediately; Firestore realtime listeners can lag
+    // or be unavailable when the app is running in local fallback mode.
+    setCharacters(prev => {
+      const exists = prev.some(character => character.id === updated.id);
+      return exists
+        ? prev.map(character => character.id === updated.id ? updated : character)
+        : [...prev, updated];
+    });
     await updateCharacterInDB(updated);
   };
 
