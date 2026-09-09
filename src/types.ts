@@ -32,6 +32,9 @@ export interface Skill {
   perkLevel10?: string;   // ความสามารถพิเศษปลดล็อกเมื่อ Lv.10
   statBonusPerLevel?: string; // ค่าสเตตัสที่ได้ต่อเลเวล
   upgradeCount?: number;  // จำนวนครั้งที่อัปเกรดเพื่อคำนวณเงินดอกเบี้ย 20%
+  // Combat skill settings. Existing skills use a safe inferred default when omitted.
+  battleEffect?: BattleSkillEffect;
+  battlePower?: number;
 }
 
 export interface EquippedBonus {
@@ -226,7 +229,8 @@ export interface CardDuelRoom {
 
 // TEAM BATTLE TYPES
 export type BattleMode = 'pvp' | 'pve';
-export type BattleDiceEffect = 'damage' | 'critical' | 'heal' | 'miss' | 'stun';
+export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect';
+export type BattleDiceEffect = 'damage' | 'critical' | 'heal' | 'miss' | 'stun' | 'defense' | 'reflect';
 
 export interface BattleDiceFace {
   face: number;
@@ -236,12 +240,20 @@ export interface BattleDiceFace {
   description: string;
 }
 
+export interface BattleDiceConfig {
+  enabled: boolean;
+  sides: number;
+  strengthPerDamage: number;
+  faces: BattleDiceFace[];
+}
+
 export interface BattleConfig {
   id: string;
   enabled: boolean;
   sides: number;
   strengthPerDamage: number;
   faces: BattleDiceFace[];
+  bossDice: BattleDiceConfig;
   updatedAt: number;
 }
 
@@ -273,6 +285,10 @@ export interface BattleCombatant {
   maxHp: number;
   isBoss?: boolean;
   stunnedTurns?: number;
+  defenseValue?: number;
+  defenseTurns?: number;
+  reflectPercent?: number;
+  reflectTurns?: number;
 }
 
 export interface BattleLogEntry {
@@ -307,4 +323,6 @@ export interface BattleRollResult {
   damage: number;
   heal: number;
   message: string;
+  skillEffect?: BattleSkillEffect;
+  skillPower?: number;
 }
