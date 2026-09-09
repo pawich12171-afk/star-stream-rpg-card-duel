@@ -86,14 +86,16 @@ export const CardGame: React.FC<CardGameProps> = ({ currentUser, onUpdateCharact
     setGameActive(false);
     setPlayerStanding(true);
 
+    // The bet is settled once, at the end of the game. This avoids stale
+    // character state when the real-time Firestore listener updates coins.
     if (winner === 'player') {
-      updateCoins(betAmount * 2);
-      setMessage(`ชนะ! รับรางวัล ${betAmount * 2} Coins`);
+      updateCoins(betAmount);
+      setMessage(`ชนะ! รับกำไร ${betAmount} Coins`);
       confetti({ particleCount: 100, spread: 70 });
     } else if (winner === 'tie') {
-      updateCoins(betAmount);
       setMessage(`เสมอ คืนเดิมพัน ${betAmount} Coins`);
     } else {
+      updateCoins(-betAmount);
       setMessage(`แพ้! เสียเดิมพัน ${betAmount} Coins`);
     }
   };
@@ -117,7 +119,6 @@ export const CardGame: React.FC<CardGameProps> = ({ currentUser, onUpdateCharact
     setResult(null);
     setGameActive(true);
     setMessage('ตาคุณแล้ว — จั่วไพ่หรือหยุด');
-    updateCoins(-safeBet);
 
     const p = scoreHand(player);
     const d = scoreHand(dealer);
