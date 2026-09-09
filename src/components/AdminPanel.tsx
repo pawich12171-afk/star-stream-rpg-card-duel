@@ -482,7 +482,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       id: `reward-${Date.now()}`,
       name: newRewardName.trim(),
       type: newRewardType,
-      rate: Number(newRewardRate) || 1,
+      rate: Math.max(0, Number(newRewardRate) || 0),
       rarity: newRewardRarity,
       description: newRewardDesc.trim() || 'ของรางวัลกาชาใน Star Stream',
       coinAmount: newRewardType === 'coin' ? newRewardCoinAmount : undefined,
@@ -521,11 +521,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Save Inline Rate Change
   const handleSaveRateChange = async (reward: GachaReward) => {
     const newRate = editingRates[reward.id];
-    if (newRate === undefined || isNaN(newRate)) return;
+    const normalizedRate = Number(newRate);
+    if (newRate === undefined || !Number.isFinite(normalizedRate) || normalizedRate < 0) {
+      alert('เรทต้องเป็นตัวเลขตั้งแต่ 0% ขึ้นไป');
+      return;
+    }
     try {
       await onAddGachaReward({
         ...reward,
-        rate: Number(newRate),
+        rate: normalizedRate,
       });
       setEditingRates(prev => {
         const next = { ...prev };
@@ -1742,7 +1746,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   ) : (
                     <AlertTriangle className="w-4 h-4 text-amber-400" />
                   )}
-                  เรทรวม: {totalGachaRate.toFixed(1)}%
+                  เรทรวม: {totalGachaRate.toFixed(3)}%
                 </div>
               </div>
 
@@ -1770,7 +1774,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   return (
                     <div key={rarity} className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700 text-center">
                       <div className="text-[10px] uppercase font-bold text-slate-400">{rarity}</div>
-                      <div className="text-xs font-mono font-bold text-white mt-0.5">{rateSum.toFixed(1)}%</div>
+                      <div className="text-xs font-mono font-bold text-white mt-0.5">{rateSum.toFixed(3)}%</div>
                       <div className="text-[10px] text-slate-500">({count} รางวัล)</div>
                     </div>
                   );
@@ -1897,7 +1901,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <input
                     type="number"
                     step="0.1"
-                    min={0.1}
+                    min={0}
                     value={newRewardRate}
                     onChange={(e) => setNewRewardRate(Number(e.target.value))}
                     className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none font-mono"
@@ -1974,7 +1978,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               <input
                                 type="number"
                                 step="0.1"
-                                min={0.1}
+                                min={0}
                                 value={currentVal}
                                 onChange={(e) => setEditingRates(prev => ({
                                   ...prev,
