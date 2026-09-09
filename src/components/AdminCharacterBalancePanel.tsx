@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Ban, Flame, Heart, Minus, Plus, RotateCcw, Shield, Skull, Sparkles, Swords, Trash2, Zap } from 'lucide-react';
 import { CharacterProfile, AdminBalanceModifier, AdminBalanceSnapshot, AdminStatusEffectKind } from '../types';
 
@@ -36,6 +36,12 @@ export const AdminCharacterBalancePanel: React.FC<Props> = ({ characters, onUpda
   const [message, setMessage] = useState('');
 
   const target = characters.find(c => c.id === targetId) || characters[0];
+
+  useEffect(() => {
+    if (!characters.some(character => character.id === targetId)) {
+      setTargetId(characters[0]?.id || '');
+    }
+  }, [characters, targetId]);
   const modifiers = target?.adminBalanceModifiers || [];
   const statusEffects = target?.adminStatusEffects || [];
   const skills = useMemo(() => target?.skills || [], [target]);
@@ -144,16 +150,16 @@ export const AdminCharacterBalancePanel: React.FC<Props> = ({ characters, onUpda
   const buttonClass = mode === 'buff' ? 'border-emerald-400/40 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200' : 'border-rose-400/40 bg-rose-500/15 hover:bg-rose-500/25 text-rose-200';
   const sign = mode === 'buff' ? '+' : '-';
 
-  return <section className="mt-6 overflow-hidden rounded-[30px] border border-amber-500/30 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,.14),transparent_34%),linear-gradient(145deg,rgba(10,18,35,.98),rgba(30,27,75,.96))] shadow-[0_0_55px_rgba(245,158,11,.08)]">
+  return <section className="mx-auto mt-6 max-w-6xl overflow-hidden rounded-[30px] border border-amber-500/30 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,.14),transparent_34%),linear-gradient(145deg,rgba(10,18,35,.98),rgba(30,27,75,.96))] shadow-[0_0_55px_rgba(245,158,11,.08)]">
     <div className="border-b border-amber-500/20 p-5 md:p-7">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div><div className="mb-2 flex items-center gap-2 text-[10px] font-mono tracking-[.25em] text-amber-300"><Sparkles className="h-4 w-4"/> STAR STREAM BALANCE</div><h2 className="text-2xl font-black text-white md:text-3xl">ศูนย์ควบคุม BUFF / NERF</h2><p className="mt-1 text-sm text-slate-400">ปรับสมดุลตัวละครแบบ Real-time • ทุกคำสั่งบันทึกลง Firestore</p></div>
         <button onClick={() => void clearAll()} disabled={saving} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"><RotateCcw className="h-4 w-4"/>ปลด BUFF / NERF ทั้งหมด</button>
       </div>
     </div>
-    <div className="grid gap-6 p-5 md:p-7 lg:grid-cols-[1.05fr_.95fr]">
+    <div className="grid gap-5 p-4 sm:p-6 md:gap-6 md:p-7 lg:grid-cols-[1.05fr_.95fr]">
       <div className="space-y-5">
-        <div><label className="mb-2 block text-xs font-bold text-slate-300">ตัวละครเป้าหมาย</label><select value={targetId} onChange={e=>setTargetId(e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none">{characters.map(c=><option key={c.id} value={c.id}>{c.name} • HP {c.hp}/{c.maxHp}</option>)}</select></div>
+        <div><label className="mb-2 flex items-center justify-between text-xs font-bold text-slate-300"><span>ตัวละครเป้าหมาย</span><span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 text-[10px] font-black text-cyan-300">{characters.length} ตัวละคร</span></label><div className="relative"><select value={targetId} onChange={e=>setTargetId(e.target.value)} className="w-full appearance-none rounded-2xl border border-cyan-400/40 bg-slate-950/80 px-4 py-3.5 pr-10 text-sm font-bold text-white shadow-[0_0_24px_rgba(34,211,238,.08)] outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/20">{characters.map(c=><option key={c.id} value={c.id}>{c.displayName || c.nickname || c.username || c.id} • HP {c.hp}/{c.maxHp}</option>)}</select><div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-cyan-300">⌄</div></div>{target && <div className="mt-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.04] p-3"><img src={target.avatarUrl} alt="" className="h-11 w-11 rounded-xl border border-cyan-400/30 object-cover"/><div className="min-w-0 flex-1"><div className="truncate text-sm font-black text-white">{target.displayName || target.nickname || target.username}</div><div className="mt-0.5 truncate text-[11px] text-slate-400">@{target.username} • HP {target.hp}/{target.maxHp}</div></div><div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-black text-emerald-200">พร้อมแก้ไข</div></div>}</div></div>
         <div className="grid grid-cols-2 gap-2"><button onClick={()=>setMode('buff')} className={`rounded-xl border px-4 py-3 font-black transition ${mode==='buff'?'border-emerald-300/60 bg-emerald-400/20 text-emerald-100':'border-white/10 bg-white/5 text-slate-400'}`}><Plus className="mx-auto mb-1 h-5 w-5"/>BUFF</button><button onClick={()=>setMode('nerf')} className={`rounded-xl border px-4 py-3 font-black transition ${mode==='nerf'?'border-rose-300/60 bg-rose-400/20 text-rose-100':'border-white/10 bg-white/5 text-slate-400'}`}><Minus className="mx-auto mb-1 h-5 w-5"/>NERF</button></div>
         <div className="grid grid-cols-2 gap-3"><div><label className="mb-2 block text-xs font-bold text-slate-300">จำนวน</label><input type="number" min="1" value={amount} onChange={e=>setAmount(Math.max(1,Number(e.target.value)||1))} className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white"/></div><div><label className="mb-2 block text-xs font-bold text-slate-300">Stat</label><select value={stat} onChange={e=>setStat(e.target.value as StatKey)} className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white">{Object.entries(statLabels).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div></div>
         <div className="grid gap-3 sm:grid-cols-2"><button disabled={saving} onClick={()=>applyHp(mode==='buff'?amount:-amount)} className={`rounded-2xl border px-4 py-4 text-left transition ${buttonClass}`}><div className="flex items-center gap-2 font-black"><Heart className="h-5 w-5"/> {sign} HP ปัจจุบัน</div><div className="mt-1 text-xs opacity-70">เปลี่ยนเลือดปัจจุบันเท่านั้น • MAX HP ไม่เปลี่ยน</div></button><button disabled={saving} onClick={()=>applyMaxHp(mode==='buff'?amount:-amount)} className={`rounded-2xl border px-4 py-4 text-left transition ${buttonClass}`}><div className="flex items-center gap-2 font-black"><Shield className="h-5 w-5"/> {sign} MAX HP</div><div className="mt-1 text-xs opacity-70">เปลี่ยนเพดาน HP เท่านั้น • ไม่ทำ Damage/Heal</div></button><button disabled={saving} onClick={()=>applyStat(mode==='buff'?amount:-amount)} className={`rounded-2xl border px-4 py-4 text-left transition ${buttonClass}`}><div className="flex items-center gap-2 font-black"><Swords className="h-5 w-5"/> {sign} {statLabels[stat]}</div><div className="mt-1 text-xs opacity-70">ปรับค่าสเตตัสสะสม กดซ้ำได้</div></button></div>
