@@ -17,7 +17,8 @@ import {
   InventoryItem, 
   GachaReward, 
   GachaConfig, 
-  CardDuelRoom 
+  CardDuelRoom,
+  MAX_GACHA_REWARDS
 } from "../types";
 import { 
   INITIAL_CHARACTERS, 
@@ -506,6 +507,11 @@ export async function updateGachaConfig(config: GachaConfig): Promise<void> {
 // Save or Update Gacha Reward (Admin)
 export async function saveGachaReward(reward: GachaReward): Promise<void> {
   const id = reward.id || `gacha-r-${Date.now()}`;
+  const isNewReward = !localGachaRewards.some(existing => existing.id === id);
+  if (isNewReward && localGachaRewards.length >= MAX_GACHA_REWARDS) {
+    console.warn(`Gacha reward limit reached: ${MAX_GACHA_REWARDS}`);
+    return;
+  }
   const fullReward = { ...reward, id };
   localGachaRewards = [fullReward, ...localGachaRewards.filter(r => r.id !== id)];
   saveLocalAll();
