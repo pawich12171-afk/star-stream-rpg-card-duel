@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { CharacterProfile, Item, InventoryItem, GachaRarity } from '../types';
 import { 
   ShoppingBag, 
@@ -122,6 +122,11 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const [activeTab, setActiveTab] = useState<'shop' | 'inventory'>('shop');
   const [showAddItemModal, setShowAddItemModal] = useState(false);
 
+  // Serialize purchases so rapid clicks cannot calculate from the same stale character.
+  const characterRef = useRef(character);
+  characterRef.current = character;
+  const purchaseQueueRef = useRef<Promise<void>>(Promise.resolve());
+
   // New item form for admin
   const [newItemName, setNewItemName] = useState('');
   const [newItemPrice, setNewItemPrice] = useState(500);
@@ -243,50 +248,71 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
 
   // Buy Item handler
   const handleBuyItem = (item: Item) => {
-    if (character.coins < item.price) {
-      alert('เหรียญไม่เพียงพอ! กรุณาสะสมเหรียญหรือให้ Admin เพิ่มเหรียญให้');
-      return;
-    }
+    purchaseQueueRef.current = purchaseQueueRef.current.then(async () => {
+      const currentCharacter = characterRef.current;
+      if (currentCharacter.coins < item.price) {
+        alert('เหรียญไม่เพียงพอ! กรุณาสะสมเหรียญหรือให้ Admin เพิ่มเหรียญให้');
+        return;
+      }
 
-    const newCoins = character.coins - item.price;
-    const existingIndex = (character.inventory || []).findIndex(i => i.id === item.id && !i.isEquipped);
-    let updatedInventory: InventoryItem[] = [...(character.inventory || [])];
+      const newCoins = currentCharacter.coins - item.price;
+      const existingIndex = (currentCharacter.inventory || []).findIndex(i => i.id === item.id && !i.isEquipped);
+      const updatedInventory: InventoryItem[] = [...(currentCharacter.inventory || [])];
 
-    if (existingIndex > -1 && item.category === 'consumable') {
-      updatedInventory[existingIndex] = {
-        ...updatedInventory[existingIndex],
-        quantity: updatedInventory[existingIndex].quantity + 1,
+      if (existingIndex > -1 && item.category === 'consumable') {
+        updatedInventory[existingIndex] = {
+          ...updatedInventory[existingIndex],
+          quantity: (Number(updatedInventory[existingIndex].quantity) || 0) + 1,
+        };
+      } else {
+        updatedInventory.push({
+          ...item,
+          instanceId: `inst-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          quantity: 1,
+          isEquipped: false,
+        });
+      }
+
+      const updatedCharacter: CharacterProfile = {
+        ...currentCharacter,
+        coins: newCoins,
+        inventory: updatedInventory,
+        notifications: [
+          {
+            id: `notif-buy-${Date.now()}`,
+            title: "ซื้อไอเทมสำเร็จ",
+            message: `คุณได้ซื้อ "${item.name}" ในราคา ${item.price.toLocaleString()} Coins เรียบร้อยแล้ว`,
+            timestamp: Date.now(),
+            read: false,
+            type: "system",
+          },
+          ...(currentCharacter.notifications || []),
+        ],
       };
-    } else {
-      updatedInventory.push({
-        ...item,
-        instanceId: `inst-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        quantity: 1,
-        isEquipped: false,
+
+      // Reserve the latest result for the next queued purchase.
+      characterRef.current = updatedCharacter;
+      try {
+        const saved = await onUpdateCharacter(updatedCharacter);
+        if (saved === false) {
+          characterRef.current = currentCharacter;
+          return;
+        }
+      } catch (error) {
+        characterRef.current = currentCharacter;
+        console.error('Failed to save purchase:', error);
+        alert('ซื้อไอเทมแล้ว แต่บันทึกไม่สำเร็จ กรุณาลองใหม่');
+        return;
+      }
+
+      confetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.8 }
       });
-    }
-
-    onUpdateCharacter({
-      ...character,
-      coins: newCoins,
-      inventory: updatedInventory,
-      notifications: [
-        {
-          id: `notif-buy-${Date.now()}`,
-          title: "ซื้อไอเทมสำเร็จ",
-          message: `คุณได้ซื้อ "${item.name}" ในราคา ${item.price.toLocaleString()} Coins เรียบร้อยแล้ว`,
-          timestamp: Date.now(),
-          read: false,
-          type: "system",
-        },
-        ...(character.notifications || []),
-      ],
-    });
-
-    confetti({
-      particleCount: 50,
-      spread: 60,
-      origin: { y: 0.8 }
+    }).catch(error => {
+      console.error('Purchase queue failed:', error);
+      alert('การซื้อไอเทมล้มเหลว กรุณาลองใหม่');
     });
   };
 
