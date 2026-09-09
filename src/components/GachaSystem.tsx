@@ -109,7 +109,8 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             orvRank: fallbackRank,
             battleEffect: /สะท้อน|reflect/i.test(`${reward.name} ${reward.description}`) ? 'reflect' : /ฟื้น|รักษา|heal/i.test(`${reward.name} ${reward.description}`) ? 'heal' : /ป้องกัน|เกราะ|โล่|shield/i.test(`${reward.name} ${reward.description}`) ? 'defense' : 'damage',
             battlePower: 5,
-            cooldownTurns: 0,
+            cooldownTurns: 3,
+            cooldown: '3 เทิร์น',
           };
           newSkillsToAdd.push({
             ...skillReward,
