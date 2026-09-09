@@ -75,6 +75,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       let totalCoinReward = 0;
       const newItemsToAdd: InventoryItem[] = [];
       const newSkillsToAdd: Skill[] = [];
+      const newCharacteristicsToAdd: string[] = [];
 
       for (let i = 0; i < count; i++) {
         const reward = pickRandomReward(gachaRewards);
@@ -95,6 +96,8 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             id: `skill-gacha-${Date.now()}-${i}`,
             upgradeCount: 0,
           });
+        } else if (reward.type === 'characteristic' && reward.characteristic?.trim()) {
+          newCharacteristicsToAdd.push(reward.characteristic.trim());
         }
       }
 
@@ -123,6 +126,15 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         }
       });
 
+      const existingCharacteristics = [...(character.characteristics || [])];
+      newCharacteristicsToAdd.forEach(newCharacteristic => {
+        const alreadyHasCharacteristic = existingCharacteristics.some(
+          characteristic => characteristic.trim().toLowerCase() === newCharacteristic.toLowerCase()
+        );
+        if (!alreadyHasCharacteristic) {
+          existingCharacteristics.push(newCharacteristic);
+        }
+      });
       const updatedNotifications = [
         {
           id: `notif-gacha-${Date.now()}`,
@@ -140,6 +152,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         coins: updatedCoins,
         inventory: existingInventory,
         skills: existingSkills,
+        characteristics: existingCharacteristics,
         notifications: updatedNotifications,
       });
 
@@ -291,7 +304,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
                       {reward.rarity}
                     </span>
                     <span className="text-[10px] font-mono text-slate-400">
-                      {reward.type === 'coin' ? 'เหรียญ' : reward.type === 'skill' ? 'สกิล' : 'ไอเทม'}
+                      {reward.type === 'coin' ? 'เหรียญ' : reward.type === 'skill' ? 'สกิล' : reward.type === 'characteristic' ? 'คุณลักษณะ' : 'ไอเทม'}
                     </span>
                   </div>
                   <h4 className="text-xs font-bold text-white leading-tight">
@@ -300,6 +313,11 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
                   <p className="text-[11px] text-slate-300 mt-1 leading-relaxed line-clamp-2">
                     {reward.description}
                   </p>
+                  {reward.type === 'characteristic' && reward.characteristic && (
+                    <p className="text-[11px] text-cyan-300 mt-1 font-semibold">
+                      + {reward.characteristic}
+                    </p>
+                  )}
                 </div>
                 <div className="pt-2 border-t border-slate-800 text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" />
