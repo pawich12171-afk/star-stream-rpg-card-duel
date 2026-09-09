@@ -902,16 +902,23 @@ export async function updateDuelRoom(room: CardDuelRoom): Promise<void> {
   notifyDuelRooms();
   broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE', room: updated });
 
+  const cleaned = sanitizeForFirestore(updated);
   try {
-    await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), sanitizeForFirestore(updated));
+    await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), cleaned);
   } catch (err: any) {
-    pendingDuelRooms.delete(updated.id);
-    if (previous) localDuelRooms = localDuelRooms.map(r => r.id === updated.id ? previous : r);
-    else localDuelRooms = localDuelRooms.filter(r => r.id !== updated.id);
-    saveLocalAll();
-    notifyDuelRooms();
-    console.error("Error updating duel room in Firestore:", err);
-    throw new Error("ซิงก์การเล่นไปยังเครื่องอื่นไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่");
+    console.warn("First setDoc update failed, retrying once...", err);
+    try {
+      await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), cleaned);
+    } catch (retryErr: any) {
+      pendingDuelRooms.delete(updated.id);
+      if (previous) localDuelRooms = localDuelRooms.map(r => r.id === updated.id ? previous : r);
+      else localDuelRooms = localDuelRooms.filter(r => r.id !== updated.id);
+      saveLocalAll();
+      notifyDuelRooms();
+      console.error("Error updating duel room in Firestore:", retryErr);
+      const detail = retryErr?.message ? ` (${retryErr.message})` : '';
+      throw new Error(`ซิงก์การเล่นไปยังเครื่องอื่นไม่สำเร็จ${detail} กรุณารีเฟรชหน้าจอแล้วลองใหม่`);
+    }
   }
 }
 
