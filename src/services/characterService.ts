@@ -1170,15 +1170,18 @@ export async function deleteBattleRoom(roomId: string): Promise<void> {
   await deleteDoc(doc(db, BATTLE_ROOMS_COLLECTION, roomId));
 }
 
-export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect; power: number } {
+export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect; power: number; cooldownTurns: number } {
   const text = `${skill.name || ""} ${skill.description || ""} ${skill.type || ""}`.toLowerCase();
   const effect = skill.battleEffect
     || (text.includes("สะท้อน") || text.includes("reflect") ? "reflect"
-      : text.includes("ป้องกัน") || text.includes("เกราะ") || text.includes("ม่าน") || text.includes("shield") ? "defense"
-        : text.includes("ฟื้น") || text.includes("รักษา") || text.includes("heal") ? "heal" : "damage");
+      : text.includes("ป้องกัน") || text.includes("เกราะ") || text.includes("ม่าน") || text.includes("shield") || text.includes("หลบ") ? "defense"
+        : text.includes("สตัน") || text.includes("มึนงง") || text.includes("stun") ? "stun"
+          : text.includes("ฟื้น") || text.includes("รักษา") || text.includes("heal") ? "heal" : "damage");
   const percent = Number(text.match(/(\d+)\s*%/)?.[1] || 0);
-  const power = Math.max(1, skill.battlePower ?? (effect === "reflect" ? percent || 35 : 5));
-  return { effect, power };
+  const parsedCooldown = Number(String(skill.cooldown || "").match(/\d+/)?.[0] || 0);
+  const cooldownTurns = Math.max(0, Math.min(99, Math.round(skill.cooldownTurns ?? parsedCooldown)));
+  const power = Math.max(1, skill.battlePower ?? (effect === "reflect" ? percent || 35 : effect === "defense" ? 5 : 5));
+  return { effect, power, cooldownTurns };
 }
 
 export function rollBattleAttack(attacker: BattleCombatant, defender: BattleCombatant, config: BattleDiceConfig): BattleRollResult {
@@ -1245,8 +1248,17 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       strengthPerDamage: config.strengthPerDamage,
       faces: config.faces,
     };
+    const cooldowns = { ...(current.skillCooldowns || {}) };
+    Object.keys(cooldowns).forEach(skillId => {
+      cooldowns[skillId] = Math.max(0, (cooldowns[skillId] || 0) - 1);
+      if (cooldowns[skillId] === 0) delete cooldowns[skillId];
+    });
+    current.skillCooldowns = cooldowns;
     const skillProfile = skill ? getBattleSkillProfile(skill) : null;
     const skillName = skill?.name || "สกิล";
+    if (skill && skillProfile && (current.skillCooldowns[skill.id] || 0) > 0) {
+      return { room, result: null };
+    }
     result = rollBattleAttack(current, defender, diceConfig);
     if (skillProfile) {
       result.skillEffect = skillProfile.effect;
@@ -1265,6 +1277,13 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         current.reflectPercent = Math.min(100, skillProfile.power);
         current.reflectTurns = 1;
         result.message += ` • ใช้สกิล ${skillName} สะท้อนดาเมจ ${current.reflectPercent}% ในเทิร์นถัดไป`;
+      } else if (skillProfile.effect === "stun") {
+        defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
+        result.message += ` • ใช้สกิล ${skillName} ทำให้ ${defender.name} ติดสตัน 1 เทิร์น`;
+      }
+      if (skill && skillProfile.cooldownTurns > 0) {
+        current.skillCooldowns = { ...(current.skillCooldowns || {}), [skill.id]: skillProfile.cooldownTurns };
+        result.cooldownRemaining = skillProfile.cooldownTurns;
       }
     }
     if (result.face.effect === "defense") {
