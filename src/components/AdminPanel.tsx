@@ -273,12 +273,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // New Gacha Reward Form
   const [newRewardName, setNewRewardName] = useState('');
-  const [newRewardType, setNewRewardType] = useState<'coin' | 'item' | 'skill'>('coin');
+  const [newRewardType, setNewRewardType] = useState<'coin' | 'item' | 'skill' | 'characteristic'>('coin');
   const [newRewardRate, setNewRewardRate] = useState<number>(10);
   const [newRewardRarity, setNewRewardRarity] = useState<GachaRarity>('rare');
   const [newRewardDesc, setNewRewardDesc] = useState('');
   const [newRewardCoinAmount, setNewRewardCoinAmount] = useState(2500);
   const [newRewardSelectedShopItemId, setNewRewardSelectedShopItemId] = useState(shopItems[0]?.id || '');
+  const [newRewardCharacteristic, setNewRewardCharacteristic] = useState('');
 
   // Inline edit rate map
   const [editingRates, setEditingRates] = useState<Record<string, number>>({});
@@ -458,11 +459,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       description: newRewardDesc.trim() || 'ของรางวัลกาชาใน Star Stream',
       coinAmount: newRewardType === 'coin' ? newRewardCoinAmount : undefined,
       itemData,
+      characteristic: newRewardType === 'characteristic' ? newRewardCharacteristic.trim() : undefined,
     };
 
     onAddGachaReward(reward);
     setNewRewardName('');
     setNewRewardDesc('');
+    setNewRewardCharacteristic('');
     alert(`เพิ่มของรางวัล "${reward.name}" เข้าตู้กาชาสำเร็จ!`);
   };
 
@@ -1673,6 +1676,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <option value="coin">เหรียญ (Coins)</option>
                       <option value="item">ไอเทม (Item)</option>
                       <option value="skill">สกิล (Skill)</option>
+                       <option value="characteristic">คุณลักษณะ (Trait)</option>
                     </select>
                   </div>
                   <div>
@@ -1722,6 +1726,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 )}
 
                 <div>
+                {newRewardType === 'characteristic' && (
+                  <div>
+                    <label className="text-xs text-slate-300 block mb-1">คุณลักษณะที่ผู้เล่นจะได้รับ</label>
+                    <input
+                      type="text"
+                      required
+                      value={newRewardCharacteristic}
+                      onChange={(e) => setNewRewardCharacteristic(e.target.value)}
+                      placeholder="เช่น ผู้ดูดาราเริ่มต้น"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-cyan-200 text-xs outline-none focus:border-cyan-400"
+                    />
+                  </div>
+                )}
                   <label className="text-xs text-slate-300 block mb-1">อัตราออก (Rate %)</label>
                   <input
                     type="number"
@@ -1783,9 +1800,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 +{rw.coinAmount.toLocaleString()} Coins
                               </span>
                             )}
+                            {rw.characteristic && (
+                              <span className="text-[10px] text-cyan-300 font-mono block">
+                                +{rw.characteristic}
+                              </span>
+                            )}
                           </td>
                           <td className="py-2.5 text-slate-300 capitalize">
-                            {rw.type}
+                            {rw.type === 'characteristic' ? 'คุณลักษณะ' : rw.type}
                           </td>
                           <td className="py-2.5">
                             <span className="text-[10px] px-2 py-0.5 rounded-full border bg-slate-800 text-slate-300 uppercase">
