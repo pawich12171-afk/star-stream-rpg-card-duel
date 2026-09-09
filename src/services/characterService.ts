@@ -875,15 +875,30 @@ export async function createDuelRoom(room: CardDuelRoom): Promise<string> {
     }
   }
 
+  const cleaned = sanitizeForFirestore(fullRoom);
   try {
-    await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, id), sanitizeForFirestore(fullRoom));
+    await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, id), cleaned);
+    pendingDuelRooms.delete(id);
   } catch (err: any) {
+    console.warn("Firestore create duel room error:", err?.code, err?.message);
+    if (err?.code === 'unavailable' || err?.message?.includes('offline') || err?.message?.includes('unavailable')) {
+      // Offline / transient disconnect: keep room in local state and retry in background
+      setTimeout(async () => {
+        try {
+          await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, id), cleaned);
+          pendingDuelRooms.delete(id);
+        } catch (retryErr) {
+          console.warn("Background create retry failed:", retryErr);
+        }
+      }, 1500);
+      return id;
+    }
     pendingDuelRooms.delete(id);
     localDuelRooms = localDuelRooms.filter(r => r.id !== id);
     saveLocalAll();
     notifyDuelRooms();
     console.error("Error creating duel room in Firestore:", err);
-    throw new Error("ไม่สามารถสร้างห้องดวลบนเซิร์ฟเวอร์ได้");
+    throw new Error("ไม่สามารถสร้างห้องดวลบนเซิร์ฟเวอร์ได้: " + (err?.message || ''));
   }
   return id;
 }
@@ -905,20 +920,30 @@ export async function updateDuelRoom(room: CardDuelRoom): Promise<void> {
   const cleaned = sanitizeForFirestore(updated);
   try {
     await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), cleaned);
+    pendingDuelRooms.delete(updated.id);
   } catch (err: any) {
-    console.warn("First setDoc update failed, retrying once...", err);
-    try {
-      await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), cleaned);
-    } catch (retryErr: any) {
-      pendingDuelRooms.delete(updated.id);
-      if (previous) localDuelRooms = localDuelRooms.map(r => r.id === updated.id ? previous : r);
-      else localDuelRooms = localDuelRooms.filter(r => r.id !== updated.id);
-      saveLocalAll();
-      notifyDuelRooms();
-      console.error("Error updating duel room in Firestore:", retryErr);
-      const detail = retryErr?.message ? ` (${retryErr.message})` : '';
-      throw new Error(`ซิงก์การเล่นไปยังเครื่องอื่นไม่สำเร็จ${detail} กรุณารีเฟรชหน้าจอแล้วลองใหม่`);
+    console.warn("Firestore update duel room error:", err?.code, err?.message);
+    if (err?.code === 'unavailable' || err?.message?.includes('offline') || err?.message?.includes('unavailable')) {
+      // Offline / reconnecting: keep move registered locally and sync in background
+      setTimeout(async () => {
+        try {
+          await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), cleaned);
+          pendingDuelRooms.delete(updated.id);
+        } catch (retryErr) {
+          console.warn("Background update retry failed:", retryErr);
+        }
+      }, 1500);
+      return;
     }
+
+    pendingDuelRooms.delete(updated.id);
+    if (previous) localDuelRooms = localDuelRooms.map(r => r.id === updated.id ? previous : r);
+    else localDuelRooms = localDuelRooms.filter(r => r.id !== updated.id);
+    saveLocalAll();
+    notifyDuelRooms();
+    console.error("Error updating duel room in Firestore:", err);
+    const detail = err?.message ? ` (${err.message})` : '';
+    throw new Error(`ซิงก์การเล่นไปยังเครื่องอื่นไม่สำเร็จ${detail} กรุณารีเฟรชหน้าจอแล้วลองใหม่`);
   }
 }
 
