@@ -44,13 +44,15 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         coinAmount: 100,
       };
     }
-    const totalWeight = rewardsList.reduce((sum, r) => sum + (r.rate || 1), 0);
+    const totalWeight = rewardsList.reduce((sum, reward) => sum + Math.max(0, Number(reward.rate) || 0), 0);
+    if (totalWeight <= 0) return rewardsList[rewardsList.length - 1];
     let randomNum = Math.random() * totalWeight;
     for (const reward of rewardsList) {
-      if (randomNum < (reward.rate || 1)) {
+      const weight = Math.max(0, Number(reward.rate) || 0);
+      if (randomNum < weight) {
         return reward;
       }
-      randomNum -= (reward.rate || 1);
+      randomNum -= weight;
     }
     return rewardsList[rewardsList.length - 1];
   };
