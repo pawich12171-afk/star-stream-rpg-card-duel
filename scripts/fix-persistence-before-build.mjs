@@ -1,52 +1,45 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const servicePath = 'src/services/characterService.ts';
-let s = readFileSync(servicePath, 'utf8');
+const healthPath = 'src/utils/healthSystem.ts';
 
-// FIRESTORE IS THE ONLY SOURCE OF TRUTH FOR ADMIN BUFF/NERF.
-// The admin editor already produces the exact desired character object.
-// Re-running health synchronization during persistence can reconstruct old
-// modifiers from snapshots and is the reason deleted BUFF/NERF comes back.
+let service = readFileSync(servicePath, 'utf8');
+let health = readFileSync(healthPath, 'utf8');
 
-// Never derive a new character from the Firestore snapshot before displaying it.
-s = s.replaceAll('const synced = syncCharacterHealth(source);', 'const synced = source;');
+// FIRESTORE IS THE ONLY SOURCE OF TRUTH.
+// Admin edits must be persisted exactly as supplied by the UI. Re-running the
+// derived health synchronizer before setDoc can resurrect deleted modifiers.
+service = service.replaceAll('const synced = syncCharacterHealth(source);', 'const synced = source;');
+service = service.replaceAll('const synced = syncCharacterHealth(requested);', 'const synced = requested;');
+service = service.replaceAll('syncCharacterHealth(requested)', 'requested');
+service = service.replaceAll('syncCharacterHealth(source)', 'source');
 
-// Never derive a new character from the requested admin edit before saving it.
-s = s.replaceAll('const synced = syncCharacterHealth(requested);', 'const synced = requested;');
-
-// Also cover equivalent calls left by earlier patches.
-s = s.replaceAll('syncCharacterHealth(requested)', 'requested');
-s = s.replaceAll('syncCharacterHealth(source)', 'source');
-
-// Remove every legacy realtime HP/MAX-HP auto-fix. A realtime listener must
-// never write derived values back to Firestore because that races deletions.
-s = s.replace(/\n\s*\/\/ Auto-fix legacy inflated HP or corrupted values in Firestore[\s\S]*?\n\s*\}\n\s*\}\);/g, '\n      });');
-s = s.replace(/\n\s*if \([\s\S]*?raw\.maxHp[\s\S]*?\) \{\s*updateDoc\(docSnap\.ref, \{\s*hp:\s*synced\.hp,\s*maxHp:\s*synced\.maxHp,\s*powerScore:\s*calculatePowerScore\(synced\),\s*\}\)\.catch\(\(\) => \{\}\);\s*\}/g, '');
-
-// Disable the old browser overlay completely. It is not a persistence layer.
-const overlayReadRe = /function readPersistentAdminOverlay\(character: CharacterProfile\): CharacterProfile \{[\s\S]*?\n\}\n\nfunction persistAdminOverlay/;
-if (overlayReadRe.test(s)) {
-  s = s.replace(overlayReadRe, `function readPersistentAdminOverlay(character: CharacterProfile): CharacterProfile {
-  return character;
+// Remove the realtime HP auto-fix. A listener must never write derived HP back
+// to Firestore while an admin deletion is being persisted.
+const autoStart = service.indexOf('        // Auto-fix legacy inflated HP or corrupted values in Firestore');
+if (autoStart >= 0) {
+  const autoEnd = service.indexOf('      });', autoStart);
+  if (autoEnd > autoStart) service = service.slice(0, autoStart) + service.slice(autoEnd);
 }
 
-function persistAdminOverlay`);
+// Disable the legacy browser overlay completely. Deleted BUFF/NERF data must
+// never be recovered from localStorage on a later refresh.
+const readStart = health.indexOf('function readPersistentAdminOverlay(');
+const persistStart = health.indexOf('\nfunction persistAdminOverlay', readStart);
+if (readStart >= 0 && persistStart > readStart) {
+  health = health.slice(0, readStart)
+    + 'function readPersistentAdminOverlay(character: CharacterProfile): CharacterProfile {\n  return character;\n}\n'
+    + health.slice(persistStart + 1);
 }
 
-const overlayPersistRe = /function persistAdminOverlay\(character: CharacterProfile\) \{[\s\S]*?\n\}\n\nfunction ensureSnapshot/;
-if (overlayPersistRe.test(s)) {
-  s = s.replace(overlayPersistRe, `function persistAdminOverlay(_character: CharacterProfile) {
-  // Disabled: Firestore is authoritative.
+const writeStart = health.indexOf('function persistAdminOverlay(');
+const ensureStart = health.indexOf('\nfunction ensureSnapshot', writeStart);
+if (writeStart >= 0 && ensureStart > writeStart) {
+  health = health.slice(0, writeStart)
+    + 'function persistAdminOverlay(_character: CharacterProfile) {\n  // Disabled. Firestore is authoritative.\n}\n'
+    + health.slice(ensureStart + 1);
 }
 
-function ensureSnapshot`);
-}
-
-// Final guard: no persistence path may call health synchronization.
-s = s.replaceAll('const synced = syncCharacterHealth(source);', 'const synced = source;');
-s = s.replaceAll('const synced = syncCharacterHealth(requested);', 'const synced = requested;');
-s = s.replaceAll('syncCharacterHealth(requested)', 'requested');
-s = s.replaceAll('syncCharacterHealth(source)', 'source');
-
-writeFileSync(servicePath, s);
-console.log('Applied definitive Firestore-authoritative BUFF/NERF deletion fix.');
+writeFileSync(servicePath, service);
+writeFileSync(healthPath, health);
+console.log('Firebase-authoritative character persistence patch applied.');
