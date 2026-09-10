@@ -221,12 +221,27 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   };
 
   const handleDeleteSkill = (skillId: string) => {
-    if (confirm('คุณต้องการลบสกิลนี้ใช่หรือไม่?')) {
-      onUpdateCharacter({
-        ...character,
-        skills: character.skills.filter(s => s.id !== skillId),
-      });
-    }
+    if (!confirm('คุณต้องการลบสกิลนี้ใช่หรือไม่?')) return;
+
+    const remainingSkills = (character.skills || []).filter(s => s.id !== skillId);
+    const remainingModifiers = (character.adminBalanceModifiers || [])
+      .filter(m => !(m.kind === 'skill' && m.skillId === skillId));
+
+    const nextSnapshot = character.adminBalanceSnapshot
+      ? {
+          ...character.adminBalanceSnapshot,
+          skills: (character.adminBalanceSnapshot.skills || []).filter(s => s.id !== skillId),
+          capturedAt: Date.now(),
+        }
+      : undefined;
+
+    onUpdateCharacter({
+      ...character,
+      skills: remainingSkills,
+      adminBalanceSnapshot: remainingModifiers.length ? nextSnapshot : undefined,
+      adminBalanceModifiers: remainingModifiers,
+      lastUpdated: Date.now() + 1,
+    });
   };
 
   const handleAddCustomSkill = (e: React.FormEvent) => {
