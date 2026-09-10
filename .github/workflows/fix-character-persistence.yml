@@ -1,0 +1,82 @@
+name: Fix character persistence
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch character persistence
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('src/services/characterService.ts')
+          text = path.read_text(encoding='utf-8')
+
+          old = '''export async function updateCharacterData(char: CharacterProfile): Promise<void> {
+            const synced = syncCharacterHealth(char);
+            const score = calculatePowerScore(synced);'''
+
+          new = '''export async function updateCharacterData(char: CharacterProfile): Promise<void> {
+            // IMPORTANT: the object passed by the UI is the user's newest edit.
+            // Reconcile the admin snapshot BEFORE health sync so a deleted skill
+            // cannot be resurrected from an older snapshot/local overlay.
+            const requested: CharacterProfile = {
+              ...char,
+              skills: [...(char.skills || [])],
+              adminBalanceSnapshot: char.adminBalanceSnapshot
+                ? { ...char.adminBalanceSnapshot, skills: [...(char.adminBalanceSnapshot.skills || [])] }
+                : char.adminBalanceSnapshot,
+              adminBalanceModifiers: [...(char.adminBalanceModifiers || [])],
+            };
+
+            if (requested.adminBalanceSnapshot) {
+              const currentSkillIds = new Set((requested.skills || []).map(s => s.id));
+              const snapshotSkills = requested.adminBalanceSnapshot.skills || [];
+              const keptSnapshotSkills = snapshotSkills.filter(s => currentSkillIds.has(s.id));
+              const snapshotSkillIds = new Set(keptSnapshotSkills.map(s => s.id));
+              const newlyAddedSkills = (requested.skills || []).filter(s => !snapshotSkillIds.has(s.id));
+
+              requested.adminBalanceSnapshot = {
+                ...requested.adminBalanceSnapshot,
+                skills: [...keptSnapshotSkills, ...newlyAddedSkills.map(s => ({ ...s }))],
+                capturedAt: Date.now(),
+              };
+            }
+
+            // A modifier referencing a skill that no longer exists is stale data.
+            requested.adminBalanceModifiers = (requested.adminBalanceModifiers || []).filter(m =>
+              m.kind !== 'skill' || (requested.skills || []).some(s => s.id === m.skillId)
+            );
+
+            const synced = syncCharacterHealth(requested);
+            const score = calculatePowerScore(synced);'''
+
+          if old not in text:
+              raise SystemExit('Target updateCharacterData block not found')
+          text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/services/characterService.ts
+          if git diff --cached --quiet; then
+            echo 'No source changes needed'
+            exit 0
+          fi
+          git commit -m 'fix: prevent deleted skills from being restored'
+          git push
