@@ -1,0 +1,116 @@
+name: Fix character persistence source of truth
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Make Firestore save the exact edited character and make skill deletion permanent
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # 1) The save function must persist the exact object supplied by the UI.
+          #    Calling syncCharacterHealth() here can resurrect old admin snapshots/overlays
+          #    before the deletion/update ever reaches Firestore.
+          p = Path('src/services/characterService.ts')
+          s = p.read_text()
+          old = '''export async function updateCharacterData(char: CharacterProfile): Promise<void> {
+  const synced = syncCharacterHealth(char);
+  const score = calculatePowerScore(synced);
+  // Make the optimistic version strictly newer than the last local version.
+  // This prevents an equal-millisecond or stale Firestore snapshot from winning.
+  const previousVersion = Number(localCharacters.find(c => c.id === char.id)?.lastUpdated) || 0;
+  const requestedVersion = Number(char.lastUpdated) || 0;
+  const lastUpdated = Math.max(Date.now(), previousVersion + 1, requestedVersion);
+  const updated: CharacterProfile = {
+    ...synced,
+    powerScore: score,
+    lastUpdated,
+  };'''
+          new = '''export async function updateCharacterData(char: CharacterProfile): Promise<void> {
+  // IMPORTANT: Firestore is the source of truth for edits. Do NOT run
+  // syncCharacterHealth() before saving because that function intentionally
+  // derives effective values from admin snapshots/overlays. During a delete,
+  // that derivation can resurrect the very skill/BUFF/NERF the user just removed.
+  // The caller has already constructed the exact desired character state.
+  const score = calculatePowerScore(char);
+  // Make the optimistic version strictly newer than the last local version.
+  const previousVersion = Number(localCharacters.find(c => c.id === char.id)?.lastUpdated) || 0;
+  const requestedVersion = Number(char.lastUpdated) || 0;
+  const lastUpdated = Math.max(Date.now(), previousVersion + 1, requestedVersion);
+  const updated: CharacterProfile = {
+    ...char,
+    powerScore: score,
+    lastUpdated,
+  };'''
+          if old not in s:
+              raise SystemExit('characterService updateCharacterData pattern not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          # 2) Deleting a skill must also remove it from the admin snapshot and
+          #    any skill BUFF/NERF modifier. Otherwise realtime sync can rebuild it.
+          p = Path('src/components/StatusWindow.tsx')
+          s = p.read_text()
+          old = '''  const handleDeleteSkill = (skillId: string) => {
+    if (confirm('คุณต้องการลบสกิลนี้ใช่หรือไม่?')) {
+      onUpdateCharacter({
+        ...character,
+        skills: character.skills.filter(s => s.id !== skillId),
+      });
+    }
+  };'''
+          new = '''  const handleDeleteSkill = (skillId: string) => {
+    if (!confirm('คุณต้องการลบสกิลนี้ใช่หรือไม่?')) return;
+
+    const now = Date.now();
+    const nextSkills = (character.skills || []).filter(s => s.id !== skillId);
+
+    // Remove every admin modifier tied to this skill and remove the skill from
+    // the recovery snapshot too. This prevents the realtime/admin sync layer
+    // from reconstructing a deleted skill from an old snapshot.
+    const nextModifiers = (character.adminBalanceModifiers || [])
+      .filter(m => !(m.kind === 'skill' && m.skillId === skillId));
+    const nextSnapshot = character.adminBalanceSnapshot
+      ? {
+          ...character.adminBalanceSnapshot,
+          skills: (character.adminBalanceSnapshot.skills || []).filter(s => s.id !== skillId),
+          capturedAt: now,
+        }
+      : undefined;
+
+    onUpdateCharacter({
+      ...character,
+      skills: nextSkills,
+      adminBalanceModifiers: nextModifiers,
+      adminBalanceSnapshot: nextSnapshot,
+      lastUpdated: now,
+    });
+  };'''
+          if old not in s:
+              raise SystemExit('StatusWindow delete skill pattern not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          print('Persistence patch applied')
+          PY
+          git diff --check
+          if git diff --quiet; then
+            echo "No patch needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/services/characterService.ts src/components/StatusWindow.tsx
+          git commit -m "fix: persist exact character edits and skill deletions"
+          git push
