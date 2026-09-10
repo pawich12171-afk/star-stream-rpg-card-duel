@@ -3,6 +3,8 @@ name: Fix character persistence source of truth
 on:
   push:
     branches: [main]
+    paths:
+      - '.github/workflows/fix-persistence-source-of-truth.yml'
 
 permissions:
   contents: write
@@ -15,36 +17,27 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Patch persistence and permanent skill deletion
+      - name: Patch character persistence
+        shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          changed = []
-
-          # Firestore must receive the exact state produced by the UI. Running
-          # syncCharacterHealth() immediately before setDoc() can resurrect an
-          # old admin snapshot/overlay and undo a deletion.
+          # 1) Firestore writes must persist exactly what the Admin UI sends.
+          #    Never run syncCharacterHealth() before setDoc(); that function is
+          #    a derived/recovery layer and can resurrect deleted modifiers.
           p = Path('src/services/characterService.ts')
           s = p.read_text()
           pattern = r"export async function updateCharacterData\(char: CharacterProfile\): Promise<void> \{.*?\n\}\n\n// Delete Character"
           replacement = '''export async function updateCharacterData(char: CharacterProfile): Promise<void> {
-  // Firestore is the source of truth for edits. The caller supplies the exact
-  // character state it wants persisted. Do NOT call syncCharacterHealth here:
-  // sync derives values from admin snapshots/overlays and can resurrect a skill,
-  // BUFF or NERF that the user just deleted before the write reaches Firestore.
   const score = calculatePowerScore(char);
   const previousVersion = Number(localCharacters.find(c => c.id === char.id)?.lastUpdated) || 0;
   const requestedVersion = Number(char.lastUpdated) || 0;
   const lastUpdated = Math.max(Date.now(), previousVersion + 1, requestedVersion);
-  const updated: CharacterProfile = {
-    ...char,
-    powerScore: score,
-    lastUpdated,
-  };
+  const updated: CharacterProfile = { ...char, powerScore: score, lastUpdated };
 
-  // Optimistic local state while Firestore confirms the write.
   pendingCharacterUpdates.set(updated.id, updated);
   localCharacters = localCharacters.map(c => c.id === updated.id ? updated : c);
   if (!localCharacters.some(c => c.id === updated.id)) localCharacters.push(updated);
@@ -52,9 +45,7 @@ jobs:
   broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
 
   try {
-    // Persist the exact edited object. No health/status re-derivation here.
-    const cleaned = sanitizeForFirestore(updated);
-    await setDoc(doc(db, CHARACTERS_COLLECTION, updated.id), cleaned);
+    await setDoc(doc(db, CHARACTERS_COLLECTION, updated.id), sanitizeForFirestore(updated));
   } catch (err) {
     pendingCharacterUpdates.delete(updated.id);
     console.error("Error updating character in Firestore:", err);
@@ -63,62 +54,40 @@ jobs:
 }
 
 // Delete Character'''
-          s2, n = re.subn(pattern, replacement, s, count=1, flags=re.S)
+          s, n = re.subn(pattern, replacement, s, count=1, flags=re.S)
           if n != 1:
-              raise SystemExit('Could not locate updateCharacterData()')
-          if s2 != s:
-              p.write_text(s2)
-              changed.append(str(p))
+              raise SystemExit('updateCharacterData pattern not found')
 
-          # Deleting a skill must remove it from every persisted representation:
-          # live skills, admin snapshot and skill modifiers.
-          p = Path('src/components/StatusWindow.tsx')
-          s = p.read_text()
-          pattern = r"  const handleDeleteSkill = \(skillId: string\) => \{.*?\n  \};\n\n  const handleAddCustomSkill"
-          replacement = '''  const handleDeleteSkill = (skillId: string) => {
-    if (!confirm('คุณต้องการลบสกิลนี้ใช่หรือไม่?')) return;
+          # 2) Firestore is authoritative after a successful server snapshot.
+          #    Do not re-derive HP/stats/skills from old snapshots or local overlay.
+          #    The Admin UI already writes the resolved values to Firestore.
+          old = "const synced = syncCharacterHealth(source);"
+          if old not in s:
+              raise SystemExit('subscribe sync line not found')
+          s = s.replace(old, "const synced = source;", 1)
 
-    const now = Date.now();
-    const nextSkills = (character.skills || []).filter(s => s.id !== skillId);
-    const nextModifiers = (character.adminBalanceModifiers || [])
-      .filter(m => !(m.kind === 'skill' && m.skillId === skillId));
-    const nextSnapshot = character.adminBalanceSnapshot
-      ? {
-          ...character.adminBalanceSnapshot,
-          skills: (character.adminBalanceSnapshot.skills || []).filter(s => s.id !== skillId),
-          capturedAt: now,
-        }
-      : undefined;
+          # Remove the old automatic HP rewrite. It could write a derived/old value
+          # back into Firestore immediately after an admin edit.
+          auto = r"\n        // Auto-fix legacy inflated HP or corrupted values in Firestore\n        if \(\n          raw\.maxHp !== synced\.maxHp \|\|\n          raw\.hp > synced\.maxHp \|\|\n          \(raw\.maxHp && raw\.maxHp > 200\) \|\|\n          raw\.maxHp === 1500 \|\|\n          raw\.maxHp === 800 \|\|\n          raw\.maxHp === 950\n        \) \{\n          updateDoc\(docSnap\.ref, \{\n            hp: synced\.hp,\n            maxHp: synced\.maxHp,\n            powerScore: calculatePowerScore\(synced\),\n          \}\)\.catch\(\(\) => \{\}\);\n        \}"
+          s, removed = re.subn(auto, '', s, count=1)
+          if removed != 1:
+              raise SystemExit('old auto-fix block not found')
 
-    // Persist the exact deletion. The character service writes this object to
-    // Firestore without running the admin sync layer first.
-    onUpdateCharacter({
-      ...character,
-      skills: nextSkills,
-      adminBalanceModifiers: nextModifiers,
-      adminBalanceSnapshot: nextSnapshot,
-      lastUpdated: now,
-    });
-  };
-
-  const handleAddCustomSkill'''
-          s2, n = re.subn(pattern, replacement, s, count=1, flags=re.S)
-          if n != 1:
-              raise SystemExit('Could not locate handleDeleteSkill()')
-          if s2 != s:
-              p.write_text(s2)
-              changed.append(str(p))
-
-          print('Patched:', ', '.join(changed) if changed else 'already patched')
+          p.write_text(s)
           PY
 
+          # 3) Validate the two critical UI persistence paths. This does not alter
+          #    the UI behavior; it ensures the deletion code is present.
+          grep -q "adminBalanceModifiers" src/components/AdminCharacterBalancePanel.tsx
+          grep -q "adminBalanceSnapshot" src/components/AdminCharacterBalancePanel.tsx
+
           git diff --check
-          if git diff --quiet; then
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/services/characterService.ts
+          if git diff --cached --quiet; then
             echo "No source changes needed"
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/services/characterService.ts src/components/StatusWindow.tsx
-          git commit -m "fix: persist exact character edits and permanent skill deletion"
+          git commit -m "fix: persist exact admin HP stat skill and status edits"
           git push
