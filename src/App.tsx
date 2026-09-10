@@ -21,8 +21,8 @@ import {
   updateGachaConfigInDB,
   addGachaRewardToDB,
   deleteGachaRewardFromDB,
-  grantItemToPlayer,
-  removeItemFromPlayer,
+  grantItemToPlayer as grantItemToPlayerInDB,
+  removeItemFromPlayer as removeItemFromPlayerInDB,
   resetDatabaseToDefaults,
   seedInitialDataIfNeeded
 } from './services/characterService';
@@ -160,6 +160,31 @@ export default function App() {
       alert('บันทึกข้อมูลตัวละครไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
       return false;
     }
+  };
+
+  // Keep the React view in sync immediately with admin inventory mutations.
+  // The service also broadcasts and persists the change; this closes the gap
+  // before Firestore's next realtime snapshot reaches this tab.
+  const handleGrantItemToPlayer = async (targetCharId: string, item: Item, quantity: number) => {
+    const result = await grantItemToPlayerInDB(targetCharId, item, quantity);
+    const updated = result.updatedChar;
+    if (result.success && updated) {
+      setCharacters(prev => prev.some(character => character.id === updated.id)
+        ? prev.map(character => character.id === updated.id ? updated : character)
+        : [...prev, updated]);
+    }
+    return result;
+  };
+
+  const handleRemoveItemFromPlayer = async (targetCharId: string, instanceId: string, quantity?: number) => {
+    const result = await removeItemFromPlayerInDB(targetCharId, instanceId, quantity);
+    const updated = result.updatedChar;
+    if (result.success && updated) {
+      setCharacters(prev => prev.some(character => character.id === updated.id)
+        ? prev.map(character => character.id === updated.id ? updated : character)
+        : [...prev, updated]);
+    }
+    return result;
   };
 
   const handleAddShopItem = async (item: Item): Promise<void> => {
@@ -583,8 +608,8 @@ export default function App() {
             onSetCharacterCoins={handleSetCharacterCoins}
             onAddShopItem={handleAddShopItem}
             onDeleteShopItem={handleDeleteShopItem}
-            onGrantItem={grantItemToPlayer}
-            onRemoveItem={removeItemFromPlayer}
+            onGrantItem={handleGrantItemToPlayer}
+            onRemoveItem={handleRemoveItemFromPlayer}
             onAssignQuest={handleAssignQuest}
             onReviewQuestProof={handleReviewQuestProof}
             onAddGachaReward={addGachaRewardToDB}
