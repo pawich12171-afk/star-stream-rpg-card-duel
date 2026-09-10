@@ -185,13 +185,23 @@ export function syncCharacterHealth(character: CharacterProfile): CharacterProfi
   if (!character) return character;
   const healthData = calculateCharacterHealth(character);
 
-  // Keep administrator MAX HP modifiers applied during every realtime sync.
-  // Without this overlay, Firestore updates recalculate the normal HP formula
-  // and overwrite a persistent admin NERF/BUFF such as MAX HP -10.
-  const adminMaxHpDelta = (character.adminBalanceModifiers || [])
-    .filter(m => m.kind === 'hp' && m.id.startsWith('admin-maxhp-'))
-    .reduce((sum, m) => sum + (m.mode === 'buff' ? (m.amount || 0) : -(m.amount || 0)), 0);
-  const targetMaxHp = Math.max(1, healthData.totalMaxHp + adminMaxHpDelta);
+  const modifiers = character.adminBalanceModifiers || [];
+  const maxHpModifiers = modifiers.filter(m => m.kind === 'hp' && m.id.startsWith('admin-maxhp-'));
+  const adminMaxHpDelta = maxHpModifiers.reduce(
+    (sum, m) => sum + (m.mode === 'buff' ? (m.amount || 0) : -(m.amount || 0)),
+    0
+  );
+
+  // Admin balance is a temporary overlay on a captured base snapshot.
+  // Do NOT recalculate the base HP every realtime tick while an admin
+  // modifier is active: doing so made the value jump after leaving/re-entering
+  // the page when skills, titles or other derived HP inputs were recalculated.
+  // The snapshot is the frozen base for the lifetime of the active modifiers.
+  const hasAdminSnapshot = !!character.adminBalanceSnapshot && modifiers.length > 0;
+  const baseMaxHp = hasAdminSnapshot
+    ? character.adminBalanceSnapshot!.maxHp
+    : healthData.totalMaxHp;
+  const targetMaxHp = Math.max(1, baseMaxHp + adminMaxHpDelta);
 
   let newHp = character.hp;
   if (
