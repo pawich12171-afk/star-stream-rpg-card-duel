@@ -1,0 +1,89 @@
+name: Fix skill deletion persistence
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Patch skill deletion and stale admin overlay
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/utils/healthSystem.ts')
+          s = p.read_text(encoding='utf-8')
+          old = """      adminBalanceSnapshot: local.snapshot,
+      adminBalanceModifiers: local.modifiers,"""
+          new = """      adminBalanceSnapshot: local.snapshot ? {
+        ...local.snapshot,
+        // Never resurrect a skill that the current Firestore character no longer has.
+        skills: (local.snapshot.skills || []).filter((savedSkill: any) =>
+          (character.skills || []).some((currentSkill) => currentSkill.id === savedSkill.id)
+        ),
+      } : local.snapshot,
+      // Ignore stale skill modifiers for skills that were deleted from the character.
+      adminBalanceModifiers: local.modifiers.filter((m: AdminModifier) =>
+        m.kind !== 'skill' || (character.skills || []).some((skill) => skill.id === m.skillId)
+      ),"""
+          if old in s:
+              s = s.replace(old, new, 1)
+
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('src/components/StatusWindow.tsx')
+          s = p.read_text(encoding='utf-8')
+          old = """  const handleDeleteSkill = (skillId: string) => {
+    if (confirm('คุณต้องการลบสกิลนี้ใช่หรือไม่?')) {
+      onUpdateCharacter({
+        ...character,
+        skills: character.skills.filter(s => s.id !== skillId),
+      });
+    }
+  };"""
+          new = """  const handleDeleteSkill = (skillId: string) => {
+    if (!confirm('คุณต้องการลบสกิลนี้ใช่หรือไม่?')) return;
+
+    const updatedSkills = (character.skills || []).filter(s => s.id !== skillId);
+    const updatedModifiers = (character.adminBalanceModifiers || []).filter(
+      modifier => !(modifier.kind === 'skill' && modifier.skillId === skillId)
+    );
+    const updatedSnapshot = character.adminBalanceSnapshot
+      ? {
+          ...character.adminBalanceSnapshot,
+          capturedAt: Date.now(),
+          skills: (character.adminBalanceSnapshot.skills || []).filter(s => s.id !== skillId),
+        }
+      : undefined;
+
+    // Remove the skill from the live character, its admin snapshot, and any
+    // admin BUFF/NERF targeting that skill so realtime sync cannot resurrect it.
+    onUpdateCharacter(syncCharacterHealth({
+      ...character,
+      skills: updatedSkills,
+      adminBalanceModifiers: updatedModifiers,
+      adminBalanceSnapshot: updatedSnapshot,
+    }));
+  };"""
+          if old in s:
+              s = s.replace(old, new, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/utils/healthSystem.ts src/components/StatusWindow.tsx
+          if git diff --cached --quiet; then
+            echo 'Patch already applied; nothing to do.'
+            exit 0
+          fi
+          git commit -m 'fix: prevent deleted skills from returning after realtime sync'
+          git push
