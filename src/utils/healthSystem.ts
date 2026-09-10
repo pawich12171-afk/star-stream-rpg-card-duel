@@ -102,8 +102,18 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   const consumedMaxHp = character.consumedMaxHpBonus || 0;
   if (consumedMaxHp > 0) itemsList.push({ name: 'โอสถทองคำ/แก่นพลังชีวิตถาวรที่ดื่ม', bonus: consumedMaxHp, source: 'item' });
 
-  const totalMaxHp = BASE_HP + statBonusHp + titleBonusHp + storyBonusHp + skillBonusHp + equipHpBonus + consumedMaxHp;
-  return { baseHp: BASE_HP, statBonusHp, effectiveStrength, effectiveDurability, titleBonusHp, storyBonusHp, skillBonusHp, itemBonusHp: equipHpBonus, totalMaxHp, formulaDescription: `HP = พื้นฐาน (${BASE_HP}) + สเตตัส (+${statBonusHp}) + ฉายา (+${titleBonusHp}) + เรื่องเล่า (+${storyBonusHp}) + สกิล (+${skillBonusHp}) + อุปกรณ์ (+${equipHpBonus})${consumedMaxHp > 0 ? ` + โอสถถาวร (+${consumedMaxHp})` : ''} = ${totalMaxHp} HP`, itemsList };
+  const baseCalculatedMaxHp = BASE_HP + statBonusHp + titleBonusHp + storyBonusHp + skillBonusHp + equipHpBonus + consumedMaxHp;
+  // Admin MAX HP BUFF/NERF is part of the effective health value everywhere,
+  // including the normal StatusWindow calculation. This prevents one page from
+  // showing the modified value while another page shows the pre-admin value.
+  const adminMaxHpDelta = (character.adminBalanceModifiers || [])
+    .filter(m => m.kind === 'hp' && m.id.startsWith('admin-maxhp-'))
+    .reduce((sum, m) => sum + (m.mode === 'buff' ? Number(m.amount || 0) : -Number(m.amount || 0)), 0);
+  const totalMaxHp = Math.max(1, baseCalculatedMaxHp + adminMaxHpDelta);
+  if (adminMaxHpDelta !== 0) {
+    itemsList.push({ name: `แอดมิน BUFF/NERF MAX HP (${adminMaxHpDelta > 0 ? '+' : ''}${adminMaxHpDelta})`, bonus: adminMaxHpDelta, source: 'base' });
+  }
+  return { baseHp: BASE_HP, statBonusHp, effectiveStrength, effectiveDurability, titleBonusHp, storyBonusHp, skillBonusHp, itemBonusHp: equipHpBonus, totalMaxHp, formulaDescription: `HP = พื้นฐาน (${BASE_HP}) + สเตตัส (+${statBonusHp}) + ฉายา (+${titleBonusHp}) + เรื่องเล่า (+${storyBonusHp}) + สกิล (+${skillBonusHp}) + อุปกรณ์ (+${equipHpBonus})${consumedMaxHp > 0 ? ` + โอสถถาวร (+${consumedMaxHp})` : ''}${adminMaxHpDelta !== 0 ? ` + แอดมิน (${adminMaxHpDelta >= 0 ? '+' : ''}${adminMaxHpDelta})` : ''} = ${totalMaxHp} HP`, itemsList };
 }
 
 type AdminModifier = AdminBalanceModifier;
@@ -148,9 +158,6 @@ function readPersistentAdminOverlay(character: CharacterProfile): CharacterProfi
   const localRevision = Number(local.revision) || getAdminRevision(local.modifiers, local.snapshot);
   const firestoreRevision = getAdminRevision(character.adminBalanceModifiers || [], character.adminBalanceSnapshot);
 
-  // Always recover a newer/equal admin state from the same browser. This is the
-  // important part that prevents an older Firestore snapshot from flipping the UI
-  // back to the pre-NERF value while another write is still propagating.
   if (localRevision >= firestoreRevision) {
     return {
       ...character,
@@ -229,8 +236,6 @@ export function syncCharacterHealth(character: CharacterProfile): CharacterProfi
   const snapshot = working.adminBalanceSnapshot;
   let baseMaxHp = Number(snapshot.maxHp) || 1;
 
-  // Repair the known legacy Hayeon snapshot. The intended base is 168 and the
-  // active MAX HP -10 modifier must therefore resolve to 158.
   if ((working.id === 'hayeon' || working.id === 'baek-hayeon') && baseMaxHp === 169 && maxHpDelta === -10) {
     baseMaxHp = 168;
   }
