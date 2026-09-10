@@ -149,69 +149,12 @@ function readOverlay(id: string): any | null {
 }
 
 function readPersistentAdminOverlay(character: CharacterProfile): CharacterProfile {
-  const local = readOverlay(character.id);
-
-  // Firestore character documents with lastUpdated are authoritative.
-  // The browser overlay is only a legacy recovery cache for old records that
-  // predate the realtime persistence fix. Never let it overwrite an explicit
-  // character update, including BUFF/NERF deletions.
-  const characterRevision = Number(character.lastUpdated) || 0;
-  if (characterRevision > 0) return character;
-
-  const localRevision = Number(local?.revision) || getAdminRevision(local?.modifiers || [], local?.snapshot);
-  if (characterRevision > localRevision) return character;
-
-  if (!character.adminBalanceModifiers?.length) {
-    if (local) {
-      try { localStorage.removeItem(overlayKey(character.id)); } catch { /* ignore */ }
-    }
-    return character;
-  }
-  if (!local || !Array.isArray(local.modifiers) || local.modifiers.length === 0) return character;
-
-  const firestoreRevision = getAdminRevision(character.adminBalanceModifiers || [], character.adminBalanceSnapshot);
-  if (localRevision >= firestoreRevision) {
-    const currentSkillIds = new Set((character.skills || []).map(s => s.id));
-    const localSkills = Array.isArray(local.snapshot?.skills) ? local.snapshot.skills.filter((s: any) => currentSkillIds.has(s.id)) : [];
-    const localModifierSkills = (local.modifiers || []).filter((m: any) =>
-      m.kind !== 'skill' || currentSkillIds.has(m.skillId)
-    );
-    const safeSnapshot = local.snapshot
-      ? { ...local.snapshot, skills: localSkills }
-      : local.snapshot;
-    return {
-      ...character,
-      skills: localSkills.length > 0 ? localSkills.map((s: any) => ({ ...s })) : (character.skills || []),
-      adminBalanceSnapshot: safeSnapshot,
-      adminBalanceModifiers: localModifierSkills,
-      adminStatusEffects: local.statusEffects || character.adminStatusEffects || [],
-      statusBuffs: local.statusBuffs ?? character.statusBuffs,
-    };
-  }
+  // Firestore is authoritative. Never restore deleted admin data from browser storage.
   return character;
 }
 
-function persistAdminOverlay(character: CharacterProfile) {
-  if (typeof window === 'undefined') return;
-  try {
-    const modifiers = character.adminBalanceModifiers || [];
-    const snapshot = character.adminBalanceSnapshot;
-    if (!modifiers.length || !snapshot) {
-      localStorage.removeItem(overlayKey(character.id));
-      return;
-    }
-    const nextRevision = getAdminRevision(modifiers, snapshot);
-    const current = readOverlay(character.id);
-    const currentRevision = Number(current?.revision) || getAdminRevision(current?.modifiers || [], current?.snapshot);
-    if (nextRevision < currentRevision) return;
-    localStorage.setItem(overlayKey(character.id), JSON.stringify({
-      revision: nextRevision,
-      modifiers,
-      snapshot,
-      statusEffects: character.adminStatusEffects || [],
-      statusBuffs: character.statusBuffs || '',
-    }));
-  } catch { /* localStorage is only a recovery cache */ }
+function persistAdminOverlay(_character: CharacterProfile) {
+  // Disabled intentionally: localStorage must not act as a second source of truth.
 }
 
 function ensureSnapshot(character: CharacterProfile): CharacterProfile {
