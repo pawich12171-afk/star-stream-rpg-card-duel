@@ -23,7 +23,8 @@ import {
   deleteGachaRewardFromDB,
   grantItemToPlayer,
   removeItemFromPlayer,
-  resetDatabaseToDefaults
+  resetDatabaseToDefaults,
+  seedInitialDataIfNeeded
 } from './services/characterService';
 import { StatusWindow } from './components/StatusWindow';
 import { ShopInventory } from './components/ShopInventory';
@@ -84,8 +85,10 @@ export default function App() {
   const [isCreateCharOpen, setIsCreateCharOpen] = useState<boolean>(false);
   const [isProfileCustomizerOpen, setIsProfileCustomizerOpen] = useState<boolean>(false);
 
-  // Subscribe to real-time data
+  // Ensure the shared Firestore collections exist before subscribing.
+  // This keeps a fresh browser/device from falling back to localStorage-only data.
   useEffect(() => {
+    void seedInitialDataIfNeeded();
     const unsubChars = subscribeToCharacters((chars) => {
       setCharacters(chars);
       setIsRealtimeLinked(true);
