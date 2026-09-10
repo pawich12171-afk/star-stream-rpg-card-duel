@@ -245,7 +245,11 @@ export async function seedInitialDataIfNeeded() {
 export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => void) {
   try {
     const q = collection(db, CHARACTERS_COLLECTION);
-    const unsub = onSnapshot(q, (snapshot) => {
+    const unsub = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+      // Ignore cache-only snapshots so stale local data cannot repaint the UI
+      // before the authoritative Firestore server snapshot arrives.
+      if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) return;
+
       const list: CharacterProfile[] = [];
       snapshot.forEach((docSnap) => {
         const raw = { ...docSnap.data(), id: docSnap.id } as CharacterProfile;
@@ -275,15 +279,11 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
           }).catch(() => {});
         }
       });
-      if (list.length > 0) {
-        list.sort((a, b) => (b.powerScore || 0) - (a.powerScore || 0));
-        localCharacters = list;
-        saveLocalAll();
-        callback(list);
-      } else {
-        localCharacters = localCharacters.map(syncCharacterHealth);
-        callback(localCharacters);
-      }
+      list.sort((a, b) => (b.powerScore || 0) - (a.powerScore || 0));
+      // Firestore is authoritative, including an empty collection.
+      localCharacters = list;
+      saveLocalAll();
+      callback(list);
     }, (err) => {
       console.warn("Characters listener error, using local:", err);
       localCharacters = localCharacters.map(syncCharacterHealth);
@@ -309,7 +309,10 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
 export function subscribeToShop(callback: (items: Item[]) => void) {
   try {
     const q = collection(db, SHOP_ITEMS_COLLECTION);
-    const unsub = onSnapshot(q, (snapshot) => {
+    const unsub = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+      // Ignore cache-only snapshots until the server confirms the current data.
+      if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) return;
+
       const list: Item[] = [];
       const snapshotIds = new Set<string>();
       snapshot.forEach((docSnap) => {
