@@ -85,47 +85,54 @@ export default function App() {
   const [isCreateCharOpen, setIsCreateCharOpen] = useState<boolean>(false);
   const [isProfileCustomizerOpen, setIsProfileCustomizerOpen] = useState<boolean>(false);
 
-  // Ensure the shared Firestore collections exist before subscribing.
-  // This keeps a fresh browser/device from falling back to localStorage-only data.
+  // Wait for Firebase's initial read/seed before starting realtime listeners.
+  // This prevents a stale local fallback or cache snapshot from repainting the UI
+  // while the current server data is still being loaded.
   useEffect(() => {
-    void seedInitialDataIfNeeded();
-    const unsubChars = subscribeToCharacters((chars) => {
-      setCharacters(chars);
-      setIsRealtimeLinked(true);
-      if (chars.length > 0) {
-        setCurrentUserId(prev => {
-          if (prev && chars.some(c => c.id === prev)) return prev;
-          try {
-            const saved = localStorage.getItem('starstream_current_user_id');
-            if (saved && chars.some(c => c.id === saved)) return saved;
-          } catch (e) {}
-          return chars[0].id;
-        });
-      }
-    });
+    let disposed = false;
+    const cleanups: Array<() => void> = [];
 
-    const unsubShop = subscribeToShop((items) => {
-      setShopItems(items);
-    });
+    const initializeRealtimeData = async () => {
+      await seedInitialDataIfNeeded();
+      if (disposed) return;
 
-    const unsubGachaRewards = subscribeToGachaRewards((rewards) => {
-      setGachaRewards(rewards);
-    });
+      cleanups.push(subscribeToCharacters((chars) => {
+        setCharacters(chars);
+        setIsRealtimeLinked(true);
+        if (chars.length > 0) {
+          setCurrentUserId(prev => {
+            if (prev && chars.some(c => c.id === prev)) return prev;
+            try {
+              const saved = localStorage.getItem('starstream_current_user_id');
+              if (saved && chars.some(c => c.id === saved)) return saved;
+            } catch (e) {}
+            return chars[0].id;
+          });
+        }
+      }));
 
-    const unsubGachaConfig = subscribeToGachaConfig((config) => {
-      if (config) setGachaConfig(config);
-    });
+      cleanups.push(subscribeToShop((items) => {
+        setShopItems(items);
+      }));
 
-    const unsubDuel = subscribeToDuelRooms((rooms) => {
-      setDuelRooms(rooms);
-    });
+      cleanups.push(subscribeToGachaRewards((rewards) => {
+        setGachaRewards(rewards);
+      }));
+
+      cleanups.push(subscribeToGachaConfig((config) => {
+        if (config) setGachaConfig(config);
+      }));
+
+      cleanups.push(subscribeToDuelRooms((rooms) => {
+        setDuelRooms(rooms);
+      }));
+    };
+
+    void initializeRealtimeData();
 
     return () => {
-      unsubChars();
-      unsubShop();
-      unsubGachaRewards();
-      unsubGachaConfig();
-      unsubDuel();
+      disposed = true;
+      cleanups.forEach(cleanup => cleanup());
     };
   }, []);
 
