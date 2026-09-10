@@ -1,8 +1,9 @@
-name: Fix skill deletion persistence
+name: Fix skill delete persistence
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -11,79 +12,93 @@ jobs:
   fix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 1
-      - name: Patch skill deletion and stale admin overlay
-        shell: bash
+          fetch-depth: 0
+
+      - name: Patch skill deletion and Firebase persistence
+        shell: python
         run: |
-          python3 - <<'PY'
           from pathlib import Path
-          p = Path('src/utils/healthSystem.ts')
-          s = p.read_text(encoding='utf-8')
-          old = """      adminBalanceSnapshot: local.snapshot,
-      adminBalanceModifiers: local.modifiers,"""
-          new = """      adminBalanceSnapshot: local.snapshot ? {
-        ...local.snapshot,
-        // Never resurrect a skill that the current Firestore character no longer has.
-        skills: (local.snapshot.skills || []).filter((savedSkill: any) =>
-          (character.skills || []).some((currentSkill) => currentSkill.id === savedSkill.id)
-        ),
-      } : local.snapshot,
-      // Ignore stale skill modifiers for skills that were deleted from the character.
-      adminBalanceModifiers: local.modifiers.filter((m: AdminModifier) =>
-        m.kind !== 'skill' || (character.skills || []).some((skill) => skill.id === m.skillId)
-      ),"""
-          if old in s:
-              s = s.replace(old, new, 1)
+          import re
 
-          p.write_text(s, encoding='utf-8')
+          status_path = Path('src/components/StatusWindow.tsx')
+          text = status_path.read_text(encoding='utf-8')
 
-          p = Path('src/components/StatusWindow.tsx')
-          s = p.read_text(encoding='utf-8')
-          old = """  const handleDeleteSkill = (skillId: string) => {
+          old = '''  const handleDeleteSkill = (skillId: string) => {
     if (confirm('คุณต้องการลบสกิลนี้ใช่หรือไม่?')) {
       onUpdateCharacter({
         ...character,
         skills: character.skills.filter(s => s.id !== skillId),
       });
     }
-  };"""
-          new = """  const handleDeleteSkill = (skillId: string) => {
+  };'''
+
+          new = '''  const handleDeleteSkill = (skillId: string) => {
     if (!confirm('คุณต้องการลบสกิลนี้ใช่หรือไม่?')) return;
 
-    const updatedSkills = (character.skills || []).filter(s => s.id !== skillId);
-    const updatedModifiers = (character.adminBalanceModifiers || []).filter(
-      modifier => !(modifier.kind === 'skill' && modifier.skillId === skillId)
-    );
-    const updatedSnapshot = character.adminBalanceSnapshot
+    const remainingSkills = (character.skills || []).filter(s => s.id !== skillId);
+    const remainingModifiers = (character.adminBalanceModifiers || [])
+      .filter(m => !(m.kind === 'skill' && m.skillId === skillId));
+
+    // The deleted skill must also disappear from the admin snapshot.
+    // Otherwise the realtime health synchronizer can reconstruct it from the old snapshot.
+    const nextSnapshot = character.adminBalanceSnapshot
       ? {
           ...character.adminBalanceSnapshot,
-          capturedAt: Date.now(),
           skills: (character.adminBalanceSnapshot.skills || []).filter(s => s.id !== skillId),
+          capturedAt: Date.now(),
         }
       : undefined;
 
-    // Remove the skill from the live character, its admin snapshot, and any
-    // admin BUFF/NERF targeting that skill so realtime sync cannot resurrect it.
-    onUpdateCharacter(syncCharacterHealth({
+    onUpdateCharacter({
       ...character,
-      skills: updatedSkills,
-      adminBalanceModifiers: updatedModifiers,
-      adminBalanceSnapshot: updatedSnapshot,
-    }));
-  };"""
-          if old in s:
-              s = s.replace(old, new, 1)
+      skills: remainingSkills,
+      adminBalanceSnapshot: remainingModifiers.length ? nextSnapshot : undefined,
+      adminBalanceModifiers: remainingModifiers,
+      adminStatusEffects: character.adminStatusEffects || [],
+      lastUpdated: Date.now() + 1000,
+    });
+  };'''
 
-          p.write_text(s, encoding='utf-8')
-          PY
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/utils/healthSystem.ts src/components/StatusWindow.tsx
+          if old in text:
+              text = text.replace(old, new, 1)
+              status_path.write_text(text, encoding='utf-8')
+          elif 'const handleDeleteSkill' not in text:
+              raise SystemExit('handleDeleteSkill was not found')
+
+          service_path = Path('src/services/characterService.ts')
+          service = service_path.read_text(encoding='utf-8')
+
+          old_start = '''export async function updateCharacterData(char: CharacterProfile): Promise<void> {
+  const synced = syncCharacterHealth(char);
+  const score = calculatePowerScore(synced);'''
+          new_start = '''export async function updateCharacterData(char: CharacterProfile): Promise<void> {
+  // IMPORTANT: persist exactly what the caller edited. Do not run the admin
+  // synchronizer before writing to Firestore, because its browser recovery
+  // overlay can contain an older BUFF/NERF/snapshot and resurrect deleted data.
+  const synced = char;
+  const score = calculatePowerScore(synced);'''
+
+          if old_start in service:
+              service = service.replace(old_start, new_start, 1)
+          else:
+              # Already patched is fine; anything else is a real failure.
+              if new_start not in service:
+                  raise SystemExit('updateCharacterData source pattern was not found')
+
+          service_path.write_text(service, encoding='utf-8')
+
+      - name: Commit source fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/StatusWindow.tsx src/services/characterService.ts
           if git diff --cached --quiet; then
-            echo 'Patch already applied; nothing to do.'
+            echo "No source changes needed."
             exit 0
           fi
-          git commit -m 'fix: prevent deleted skills from returning after realtime sync'
-          git push
+          git commit -m "fix: persist skill deletion directly to Firestore"
+          git push origin HEAD:main
