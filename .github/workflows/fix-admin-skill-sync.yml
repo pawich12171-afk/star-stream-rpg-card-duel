@@ -1,0 +1,98 @@
+name: Fix admin skill modifier sync
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-admin-skill-sync.yml'
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Patch healthSystem
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/utils/healthSystem.ts')
+          s = p.read_text()
+
+          old = '''    const modifiers = character.adminBalanceModifiers || [];
+    const snapshot = character.adminBalanceSnapshot;
+    if (!modifiers.length || !snapshot) return;'''
+          new = '''    const modifiers = character.adminBalanceModifiers || [];
+    const snapshot = character.adminBalanceSnapshot;
+    // When the last BUFF/NERF is removed, delete the recovery overlay too.
+    // Otherwise an old localStorage overlay can resurrect the deleted modifier.
+    if (!modifiers.length || !snapshot) {
+      localStorage.removeItem(overlayKey(character.id));
+      return;
+    }'''
+          if old not in s:
+              raise SystemExit('persistAdminOverlay target not found')
+          s = s.replace(old, new, 1)
+
+          old = '''  persistAdminOverlay({ ...working, adminBalanceSnapshot: { ...snapshot, maxHp: baseMaxHp } });
+
+  return {
+    ...working,
+    hp: targetHp,
+    maxHp: targetMaxHp,
+    stats: { ...snapshot.stats },
+    skills: (snapshot.skills || []).map(s => ({ ...s })),
+  };'''
+          new = '''  // Rebuild ALL admin-modified values from the original snapshot.
+  // Previously stats/skills were always restored from snapshot unchanged, so
+  // skill BUFF/NERF appeared to work until syncCharacterHealth ran and then
+  // jumped back to the original level.
+  const effectiveStats = { ...snapshot.stats };
+  (['strength', 'durability', 'agility', 'magic'] as const).forEach((key) => {
+    const delta = modifiers
+      .filter(m => m.kind === 'stat' && m.stat === key)
+      .reduce((sum, m) => sum + signedAdminModifier(m), 0);
+    effectiveStats[key] = Math.max(0, Number(snapshot.stats[key] || 0) + delta);
+  });
+
+  const effectiveSkills = (snapshot.skills || []).map((baseSkill) => {
+    const delta = modifiers
+      .filter(m => m.kind === 'skill' && m.skillId === baseSkill.id)
+      .reduce((sum, m) => sum + signedAdminModifier(m), 0);
+    const maxLevel = Math.max(Number(baseSkill.maxLevel || 10), 1);
+    return {
+      ...baseSkill,
+      level: Math.max(1, Math.min(maxLevel, Number(baseSkill.level || 1) + delta)),
+    };
+  });
+
+  persistAdminOverlay({
+    ...working,
+    stats: effectiveStats,
+    skills: effectiveSkills,
+    adminBalanceSnapshot: { ...snapshot, maxHp: baseMaxHp },
+  });
+
+  return {
+    ...working,
+    hp: targetHp,
+    maxHp: targetMaxHp,
+    stats: effectiveStats,
+    skills: effectiveSkills,
+  };'''
+          if old not in s:
+              raise SystemExit('syncCharacterHealth target not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/utils/healthSystem.ts
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: persist admin skill buff and nerf changes'
+          git push
