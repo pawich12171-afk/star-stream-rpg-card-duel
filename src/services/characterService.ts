@@ -35,7 +35,6 @@ import {
   INITIAL_GACHA_CONFIG, 
   INITIAL_GACHA_REWARDS 
 } from "../initialData";
-import { syncCharacterHealth } from "../utils/healthSystem";
 
 const CHARACTERS_COLLECTION = "characters";
 const SHOP_ITEMS_COLLECTION = "shop_items";
@@ -55,11 +54,11 @@ let localCharacters: CharacterProfile[] = (() => {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map(syncCharacterHealth);
+        return parsed;
       }
     }
   } catch (e) {}
-  return INITIAL_CHARACTERS.map(syncCharacterHealth);
+  return INITIAL_CHARACTERS;
 })();
 
 let localShopItems: Item[] = (() => {
@@ -275,27 +274,12 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
         const pending = pendingCharacterUpdates.get(raw.id);
         const confirmed = pending ? valuesMatch(raw, pending) : false;
         const source = pending && !confirmed ? pending : raw;
-        const synced = syncCharacterHealth(source);
+        const synced = source;
         if (confirmed) {
           pendingCharacterUpdates.delete(raw.id);
         }
         list.push(synced);
 
-        // Auto-fix legacy inflated HP or corrupted values in Firestore
-        if (
-          raw.maxHp !== synced.maxHp ||
-          raw.hp > synced.maxHp ||
-          (raw.maxHp && raw.maxHp > 200) ||
-          raw.maxHp === 1500 ||
-          raw.maxHp === 800 ||
-          raw.maxHp === 950
-        ) {
-          updateDoc(docSnap.ref, {
-            hp: synced.hp,
-            maxHp: synced.maxHp,
-            powerScore: calculatePowerScore(synced),
-          }).catch(() => {});
-        }
       });
       list.sort((a, b) => (b.powerScore || 0) - (a.powerScore || 0));
       // Firestore is authoritative, including an empty collection.
@@ -304,7 +288,7 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
       callback(list);
     }, (err) => {
       console.warn("Characters listener error, using local:", err);
-      localCharacters = localCharacters.map(syncCharacterHealth);
+      localCharacters = [...localCharacters];
       callback(localCharacters);
     });
 
@@ -425,7 +409,7 @@ export async function updateCharacterData(char: CharacterProfile): Promise<void>
     m.kind !== 'skill' || (requested.skills || []).some(s => s.id === m.skillId)
   );
 
-  const synced = syncCharacterHealth(requested);
+  const synced = requested;
   const score = calculatePowerScore(synced);
   // Make the optimistic version strictly newer than the last local version.
   // This prevents an equal-millisecond or stale Firestore snapshot from winning.
