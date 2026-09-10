@@ -68,9 +68,9 @@ let localShopItems: Item[] = (() => {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const existingIds = new Set(parsed.map((i: any) => i.id));
-        const missing = INITIAL_SHOP_ITEMS.filter(i => !existingIds.has(i.id));
-        return [...parsed, ...missing];
+        // localStorage is only a temporary fallback; Firestore remains authoritative.
+        // Do not resurrect shop items that an admin deleted from the server.
+        return parsed;
       }
     }
   } catch (e) {}
@@ -206,38 +206,36 @@ export function calculatePowerScore(char: CharacterProfile): number {
 // Seed initial data if Firestore is empty
 export async function seedInitialDataIfNeeded() {
   try {
-    const charsSnap = await getDocs(collection(db, CHARACTERS_COLLECTION));
-    const existingCharacterIds = new Set(charsSnap.docs.map((item) => item.id));
+    const [charsSnap, shopSnap, gachaRewardsSnap, gachaConfigSnap] = await Promise.all([
+      getDocs(collection(db, CHARACTERS_COLLECTION)),
+      getDocs(collection(db, SHOP_ITEMS_COLLECTION)),
+      getDocs(collection(db, GACHA_REWARDS_COLLECTION)),
+      getDocs(collection(db, GACHA_CONFIG_COLLECTION)),
+    ]);
+
+    // Seed only a genuinely new database. Once any shared data exists, an empty
+    // collection may be an intentional deletion and must not be repopulated.
+    const isFreshDatabase =
+      charsSnap.empty &&
+      shopSnap.empty &&
+      gachaRewardsSnap.empty &&
+      gachaConfigSnap.empty;
+    if (!isFreshDatabase) return;
+
     for (const char of INITIAL_CHARACTERS) {
-      if (!existingCharacterIds.has(char.id)) {
-        const score = calculatePowerScore(char);
-        await setDoc(doc(db, CHARACTERS_COLLECTION, char.id), {
-          ...char,
-          powerScore: score,
-        });
-      }
+      const score = calculatePowerScore(char);
+      await setDoc(doc(db, CHARACTERS_COLLECTION, char.id), {
+        ...char,
+        powerScore: score,
+      });
     }
-
-    const shopSnap = await getDocs(collection(db, SHOP_ITEMS_COLLECTION));
-    const existingShopItemIds = new Set(shopSnap.docs.map((item) => item.id));
     for (const item of INITIAL_SHOP_ITEMS) {
-      if (!existingShopItemIds.has(item.id)) {
-        await setDoc(doc(db, SHOP_ITEMS_COLLECTION, item.id), item);
-      }
+      await setDoc(doc(db, SHOP_ITEMS_COLLECTION, item.id), item);
     }
-
-    const gachaRewardsSnap = await getDocs(collection(db, GACHA_REWARDS_COLLECTION));
-    const existingGachaRewardIds = new Set(gachaRewardsSnap.docs.map((item) => item.id));
     for (const reward of INITIAL_GACHA_REWARDS) {
-      if (!existingGachaRewardIds.has(reward.id)) {
-        await setDoc(doc(db, GACHA_REWARDS_COLLECTION, reward.id), reward);
-      }
+      await setDoc(doc(db, GACHA_REWARDS_COLLECTION, reward.id), reward);
     }
-
-    const gachaConfigSnap = await getDocs(collection(db, GACHA_CONFIG_COLLECTION));
-    if (!gachaConfigSnap.docs.some((item) => item.id === "main")) {
-      await setDoc(doc(db, GACHA_CONFIG_COLLECTION, "main"), INITIAL_GACHA_CONFIG);
-    }
+    await setDoc(doc(db, GACHA_CONFIG_COLLECTION, "main"), INITIAL_GACHA_CONFIG);
   } catch (err) {
     console.warn("Firestore seed check fallback to local:", err);
   }
@@ -326,13 +324,11 @@ export function subscribeToShop(callback: (items: Item[]) => void) {
           list.push(item);
         }
       });
-      if (list.length > 0 || snapshot.size > 0 || pendingShopItems.size > 0 || pendingShopDeletes.size > 0) {
-        localShopItems = list;
-        saveLocalAll();
-        callback(list);
-      } else {
-        callback(localShopItems);
-      }
+      // A successful Firestore snapshot is authoritative, including an empty collection.
+      // Never resurrect deleted items from localStorage after realtime sync.
+      localShopItems = list;
+      saveLocalAll();
+      callback(list);
     }, (err) => {
       console.warn("Shop listener error, using local:", err);
       callback(localShopItems);
