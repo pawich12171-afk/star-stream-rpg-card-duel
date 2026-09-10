@@ -150,36 +150,34 @@ function readOverlay(id: string): any | null {
 
 function readPersistentAdminOverlay(character: CharacterProfile): CharacterProfile {
   const local = readOverlay(character.id);
-
-  // An explicit character write is newer than the browser recovery cache.
-  // This is critical for deleting BUFF/NERF: updateCharacterData() calls
-  // syncCharacterHealth() before writing to Firestore. Without this guard,
-  // the old local overlay could overwrite the user's deletion before the
-  // new character document was ever sent to Firestore.
   const characterRevision = Number(character.lastUpdated) || 0;
   const localRevision = Number(local?.revision) || getAdminRevision(local?.modifiers || [], local?.snapshot);
-  if (characterRevision > localRevision) {
-    return character;
-  }
+  if (characterRevision > localRevision) return character;
 
-  // Firestore explicitly has no admin modifiers: this is authoritative.
-  // Remove any stale browser recovery overlay so deleted BUFF/NERF cannot return.
+  // Firestore is authoritative when there are no active modifiers. Remove the recovery cache.
   if (!character.adminBalanceModifiers?.length) {
     if (local) {
       try { localStorage.removeItem(overlayKey(character.id)); } catch { /* ignore */ }
     }
     return character;
   }
-
   if (!local || !Array.isArray(local.modifiers) || local.modifiers.length === 0) return character;
 
   const firestoreRevision = getAdminRevision(character.adminBalanceModifiers || [], character.adminBalanceSnapshot);
-
   if (localRevision >= firestoreRevision) {
+    const currentSkillIds = new Set((character.skills || []).map(s => s.id));
+    const localSkills = Array.isArray(local.snapshot?.skills) ? local.snapshot.skills.filter((s: any) => currentSkillIds.has(s.id)) : [];
+    const localModifierSkills = (local.modifiers || []).filter((m: any) =>
+      m.kind !== 'skill' || currentSkillIds.has(m.skillId)
+    );
+    const safeSnapshot = local.snapshot
+      ? { ...local.snapshot, skills: localSkills }
+      : local.snapshot;
     return {
       ...character,
-      adminBalanceSnapshot: local.snapshot,
-      adminBalanceModifiers: local.modifiers,
+      skills: localSkills.length > 0 ? localSkills.map((s: any) => ({ ...s })) : (character.skills || []),
+      adminBalanceSnapshot: safeSnapshot,
+      adminBalanceModifiers: localModifierSkills,
       adminStatusEffects: local.statusEffects || character.adminStatusEffects || [],
       statusBuffs: local.statusBuffs ?? character.statusBuffs,
     };
@@ -192,7 +190,6 @@ function persistAdminOverlay(character: CharacterProfile) {
   try {
     const modifiers = character.adminBalanceModifiers || [];
     const snapshot = character.adminBalanceSnapshot;
-    // Never leave an old overlay behind after all modifiers are removed.
     if (!modifiers.length || !snapshot) {
       localStorage.removeItem(overlayKey(character.id));
       return;
@@ -209,19 +206,6 @@ function persistAdminOverlay(character: CharacterProfile) {
       statusBuffs: character.statusBuffs || '',
     }));
   } catch { /* localStorage is only a recovery cache */ }
-}
-
-function buildBaseFromSnapshot(character: CharacterProfile, snapshot: AdminBalanceSnapshot): CharacterProfile {
-  return {
-    ...character,
-    hp: snapshot.hp,
-    maxHp: snapshot.maxHp,
-    stats: { ...snapshot.stats },
-    skills: (snapshot.skills || []).map(s => ({ ...s })),
-    adminBalanceSnapshot: undefined,
-    adminBalanceModifiers: [],
-    adminStatusEffects: [],
-  };
 }
 
 function ensureSnapshot(character: CharacterProfile): CharacterProfile {
@@ -264,7 +248,6 @@ export function syncCharacterHealth(character: CharacterProfile): CharacterProfi
   const targetMaxHp = Math.max(1, baseMaxHp + maxHpDelta);
   const targetHp = Math.max(0, Math.min(targetMaxHp, Number(snapshot.hp || 0) + hpDelta));
 
-  // Apply every active admin modifier to the snapshot, including skill levels.
   const effectiveStats = { ...snapshot.stats };
   (['strength', 'durability', 'agility', 'magic'] as const).forEach((key) => {
     const delta = modifiers
