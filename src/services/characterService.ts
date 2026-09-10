@@ -394,7 +394,38 @@ function sanitizeForFirestore(obj: any): any {
 
 // Update Character
 export async function updateCharacterData(char: CharacterProfile): Promise<void> {
-  const synced = syncCharacterHealth(char);
+  // IMPORTANT: the object passed by the UI is the user's newest edit.
+  // Reconcile the admin snapshot BEFORE health sync so a deleted skill
+  // cannot be resurrected from an older snapshot/local overlay.
+  const requested: CharacterProfile = {
+    ...char,
+    skills: [...(char.skills || [])],
+    adminBalanceSnapshot: char.adminBalanceSnapshot
+      ? { ...char.adminBalanceSnapshot, skills: [...(char.adminBalanceSnapshot.skills || [])] }
+      : char.adminBalanceSnapshot,
+    adminBalanceModifiers: [...(char.adminBalanceModifiers || [])],
+  };
+
+  if (requested.adminBalanceSnapshot) {
+    const currentSkillIds = new Set((requested.skills || []).map(s => s.id));
+    const snapshotSkills = requested.adminBalanceSnapshot.skills || [];
+    const keptSnapshotSkills = snapshotSkills.filter(s => currentSkillIds.has(s.id));
+    const snapshotSkillIds = new Set(keptSnapshotSkills.map(s => s.id));
+    const newlyAddedSkills = (requested.skills || []).filter(s => !snapshotSkillIds.has(s.id));
+
+    requested.adminBalanceSnapshot = {
+      ...requested.adminBalanceSnapshot,
+      skills: [...keptSnapshotSkills, ...newlyAddedSkills.map(s => ({ ...s }))],
+      capturedAt: Date.now(),
+    };
+  }
+
+  // A modifier referencing a skill that no longer exists is stale data.
+  requested.adminBalanceModifiers = (requested.adminBalanceModifiers || []).filter(m =>
+    m.kind !== 'skill' || (requested.skills || []).some(s => s.id === m.skillId)
+  );
+
+  const synced = syncCharacterHealth(requested);
   const score = calculatePowerScore(synced);
   // Make the optimistic version strictly newer than the last local version.
   // This prevents an equal-millisecond or stale Firestore snapshot from winning.
