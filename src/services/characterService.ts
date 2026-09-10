@@ -108,6 +108,23 @@ function stripUndefined<T>(value: T): T {
   return value;
 }
 
+// Compare server snapshots without depending on object key order.
+// Realtime listeners can briefly deliver the previous server version after a write.
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return '[' + value.map(stableSerialize).join(',') + ']';
+  }
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return '{' + Object.keys(record).sort().map(key => JSON.stringify(key) + ':' + stableSerialize(record[key])).join(',') + '}';
+  }
+  return JSON.stringify(value) ?? String(value);
+}
+
+function valuesMatch(left: unknown, right: unknown): boolean {
+  return stableSerialize(stripUndefined(left)) === stableSerialize(stripUndefined(right));
+}
+
 // Keep optimistic writes from being overwritten by an older Firestore snapshot.
 const pendingGachaRewards = new Map<string, GachaReward>();
 const pendingGachaDeletes = new Set<string>();
@@ -124,6 +141,8 @@ let localGachaConfig: GachaConfig = (() => {
   } catch (e) {}
   return INITIAL_GACHA_CONFIG;
 })();
+
+let pendingGachaConfig: GachaConfig | null = null;
 
 let localDuelRooms: CardDuelRoom[] = (() => {
   try {
@@ -254,11 +273,10 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
       snapshot.forEach((docSnap) => {
         const raw = { ...docSnap.data(), id: docSnap.id } as CharacterProfile;
         const pending = pendingCharacterUpdates.get(raw.id);
-        const source = pending && (Number(pending.lastUpdated) || 0) > (Number(raw.lastUpdated) || 0)
-          ? pending
-          : raw;
+        const confirmed = pending ? valuesMatch(raw, pending) : false;
+        const source = pending && !confirmed ? pending : raw;
         const synced = syncCharacterHealth(source);
-        if (pending && (Number(raw.lastUpdated) || 0) >= (Number(pending.lastUpdated) || 0)) {
+        if (confirmed) {
           pendingCharacterUpdates.delete(raw.id);
         }
         list.push(synced);
@@ -319,8 +337,15 @@ export function subscribeToShop(callback: (items: Item[]) => void) {
         const itemId = docSnap.id;
         snapshotIds.add(itemId);
         if (pendingShopDeletes.has(itemId)) return;
+        const serverItem = { ...docSnap.data(), id: itemId } as Item;
         const pending = pendingShopItems.get(itemId);
-        list.push((pending || { ...docSnap.data(), id: itemId }) as Item);
+        if (pending && valuesMatch(serverItem, pending)) {
+          pendingShopItems.delete(itemId);
+        }
+        list.push((pendingShopItems.get(itemId) || serverItem) as Item);
+      });
+      pendingShopDeletes.forEach((itemId) => {
+        if (!snapshotIds.has(itemId)) pendingShopDeletes.delete(itemId);
       });
       pendingShopItems.forEach((item, itemId) => {
         if (!snapshotIds.has(itemId) && !pendingShopDeletes.has(itemId)) {
@@ -468,7 +493,6 @@ export async function addShopItem(item: Item): Promise<void> {
     // Admin forms intentionally leave unrelated effect fields undefined.
     // Firestore rejects undefined values, so sanitize before writing.
     await setDoc(doc(db, SHOP_ITEMS_COLLECTION, id), sanitizeForFirestore(fullItem));
-    pendingShopItems.delete(id);
   } catch (err) {
     pendingShopItems.delete(id);
     localShopItems = previousItem
@@ -492,7 +516,6 @@ export async function deleteShopItem(itemId: string): Promise<void> {
 
   try {
     await deleteDoc(doc(db, SHOP_ITEMS_COLLECTION, itemId));
-    pendingShopDeletes.delete(itemId);
   } catch (err) {
     pendingShopDeletes.delete(itemId);
     if (previousItem) localShopItems = [previousItem, ...localShopItems.filter(existing => existing.id !== itemId)];
@@ -507,39 +530,50 @@ export async function deleteShopItem(itemId: string): Promise<void> {
 export function subscribeToGachaRewards(callback: (rewards: GachaReward[]) => void) {
   gachaRewardsListeners.add(callback);
 
+  async function migrateDefaultGachaRewards(currentRewards: GachaReward[]) {
+    if (gachaDefaultsMigrationStarted) return;
+    gachaDefaultsMigrationStarted = true;
+
+    try {
+      const markerRef = doc(db, GACHA_CONFIG_COLLECTION, "gacha-defaults-v1");
+      const markerSnap = await getDoc(markerRef);
+      if (markerSnap.exists()) return;
+
+      const missingDefaults = INITIAL_GACHA_REWARDS.filter(
+        defaultReward => !currentRewards.some(reward => reward.id === defaultReward.id)
+      );
+      await Promise.all(
+        missingDefaults.map(reward =>
+          setDoc(doc(db, GACHA_REWARDS_COLLECTION, reward.id), reward)
+        )
+      );
+      await setDoc(markerRef, { version: 1, migratedAt: Date.now() });
+    } catch (err) {
+      gachaDefaultsMigrationStarted = false;
+      console.warn("Error migrating default gacha rewards:", err);
+    }
+  }
+
   try {
     const q = collection(db, GACHA_REWARDS_COLLECTION);
-    const unsub = onSnapshot(q, (snapshot) => {
+    const unsub = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+      if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) return;
+
       const list: GachaReward[] = [];
-      snapshot.forEach((doc) => {
-        list.push({ ...doc.data(), id: doc.id } as GachaReward);
+      const snapshotIds = new Set<string>();
+      snapshot.forEach((docSnap) => {
+        const reward = { ...docSnap.data(), id: docSnap.id } as GachaReward;
+        snapshotIds.add(docSnap.id);
+        if (pendingGachaDeletes.has(docSnap.id)) return;
+        const pending = pendingGachaRewards.get(docSnap.id);
+        if (pending && valuesMatch(reward, pending)) {
+          pendingGachaRewards.delete(docSnap.id);
+        }
+        list.push((pendingGachaRewards.get(docSnap.id) || reward) as GachaReward);
       });
-async function migrateDefaultGachaRewards(currentRewards: GachaReward[]) {
-  if (gachaDefaultsMigrationStarted) return;
-  gachaDefaultsMigrationStarted = true;
-
-  try {
-    const markerRef = doc(db, GACHA_CONFIG_COLLECTION, "gacha-defaults-v1");
-    const markerSnap = await getDoc(markerRef);
-    if (markerSnap.exists()) return;
-
-    const missingDefaults = INITIAL_GACHA_REWARDS.filter(
-      defaultReward => !currentRewards.some(reward => reward.id === defaultReward.id)
-    );
-    await Promise.all(
-      missingDefaults.map(reward =>
-        setDoc(doc(db, GACHA_REWARDS_COLLECTION, reward.id), reward)
-      )
-    );
-    await setDoc(markerRef, {
-      version: 1,
-      migratedAt: Date.now(),
-    });
-  } catch (err) {
-    gachaDefaultsMigrationStarted = false;
-    console.warn("Error migrating default gacha rewards:", err);
-  }
-}
+      pendingGachaDeletes.forEach((rewardId) => {
+        if (!snapshotIds.has(rewardId)) pendingGachaDeletes.delete(rewardId);
+      });
 
       void migrateDefaultGachaRewards(list);
 
@@ -549,13 +583,10 @@ async function migrateDefaultGachaRewards(currentRewards: GachaReward[]) {
         ...pendingRewards
       ].sort((a, b) => (Number(a.rate) || 0) - (Number(b.rate) || 0));
 
-      if (mergedList.length > 0) {
-        localGachaRewards = mergedList;
-        saveLocalAll();
-        callback(mergedList);
-      } else {
-        callback(localGachaRewards);
-      }
+      // Firebase is authoritative, including an empty collection.
+      localGachaRewards = mergedList;
+      saveLocalAll();
+      callback(mergedList);
     }, (err) => {
       console.warn("Gacha rewards listener error:", err);
       callback(localGachaRewards);
@@ -563,9 +594,7 @@ async function migrateDefaultGachaRewards(currentRewards: GachaReward[]) {
 
     if (broadcast) {
       const handleBroadcast = (ev: MessageEvent) => {
-        if (ev.data?.type === 'GACHA_REWARDS_UPDATE') {
-          callback(localGachaRewards);
-        }
+        if (ev.data?.type === 'GACHA_REWARDS_UPDATE') callback(localGachaRewards);
       };
       broadcast.addEventListener('message', handleBroadcast);
     }
@@ -584,13 +613,26 @@ async function migrateDefaultGachaRewards(currentRewards: GachaReward[]) {
 export function subscribeToGachaConfig(callback: (config: GachaConfig) => void) {
   try {
     const docRef = doc(db, GACHA_CONFIG_COLLECTION, "main");
-    const unsub = onSnapshot(docRef, (snap) => {
+    const unsub = onSnapshot(docRef, { includeMetadataChanges: true }, (snap) => {
+      if (snap.metadata.fromCache && !snap.metadata.hasPendingWrites) return;
+
       if (snap.exists()) {
-        const cfg = snap.data() as GachaConfig;
-        localGachaConfig = cfg;
+        const serverConfig = snap.data() as GachaConfig;
+        if (pendingGachaConfig && valuesMatch(serverConfig, pendingGachaConfig)) {
+          pendingGachaConfig = null;
+        }
+        const config = pendingGachaConfig || serverConfig;
+        localGachaConfig = config;
         saveLocalAll();
-        callback(cfg);
+        callback(config);
+      } else if (pendingGachaConfig) {
+        localGachaConfig = pendingGachaConfig;
+        saveLocalAll();
+        callback(pendingGachaConfig);
       } else {
+        // Never resurrect a stale local config when Firebase has no document.
+        localGachaConfig = INITIAL_GACHA_CONFIG;
+        saveLocalAll();
         callback(localGachaConfig);
       }
     }, (err) => {
@@ -615,6 +657,8 @@ export function subscribeToGachaConfig(callback: (config: GachaConfig) => void) 
 
 // Update Gacha Config (Admin)
 export async function updateGachaConfig(config: GachaConfig): Promise<void> {
+  const previousConfig = localGachaConfig;
+  pendingGachaConfig = config;
   localGachaConfig = config;
   saveLocalAll();
   broadcast?.postMessage({ type: 'GACHA_CONFIG_UPDATE' });
@@ -622,7 +666,12 @@ export async function updateGachaConfig(config: GachaConfig): Promise<void> {
   try {
     await setDoc(doc(db, GACHA_CONFIG_COLLECTION, "main"), config);
   } catch (err) {
+    pendingGachaConfig = null;
+    localGachaConfig = previousConfig;
+    saveLocalAll();
+    broadcast?.postMessage({ type: 'GACHA_CONFIG_UPDATE' });
     console.warn("Error updating gacha config in Firestore:", err);
+    throw err;
   }
 }
 
@@ -645,7 +694,6 @@ export async function saveGachaReward(reward: GachaReward): Promise<void> {
   try {
     const firestoreReward = stripUndefined(fullReward);
     await setDoc(doc(db, GACHA_REWARDS_COLLECTION, id), firestoreReward);
-    pendingGachaRewards.delete(id);
   } catch (err) {
     pendingGachaRewards.delete(id);
     localGachaRewards = previousReward
@@ -669,7 +717,6 @@ export async function deleteGachaReward(rewardId: string): Promise<void> {
 
   try {
     await deleteDoc(doc(db, GACHA_REWARDS_COLLECTION, rewardId));
-    pendingGachaDeletes.delete(rewardId);
   } catch (err) {
     pendingGachaDeletes.delete(rewardId);
     if (deletedReward) localGachaRewards = [deletedReward, ...localGachaRewards];
