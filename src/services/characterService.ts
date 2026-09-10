@@ -371,10 +371,15 @@ function sanitizeForFirestore(obj: any): any {
 export async function updateCharacterData(char: CharacterProfile): Promise<void> {
   const synced = syncCharacterHealth(char);
   const score = calculatePowerScore(synced);
+  // Make the optimistic version strictly newer than the last local version.
+  // This prevents an equal-millisecond or stale Firestore snapshot from winning.
+  const previousVersion = Number(localCharacters.find(c => c.id === char.id)?.lastUpdated) || 0;
+  const requestedVersion = Number(char.lastUpdated) || 0;
+  const lastUpdated = Math.max(Date.now(), previousVersion + 1, requestedVersion);
   const updated: CharacterProfile = {
     ...synced,
     powerScore: score,
-    lastUpdated: Date.now(),
+    lastUpdated,
   };
 
   // Update local and protect it from an older realtime snapshot.
