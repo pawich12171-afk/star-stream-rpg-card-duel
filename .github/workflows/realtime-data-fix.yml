@@ -1,0 +1,64 @@
+name: Fix realtime data persistence
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Patch stale local fallback and seed behavior
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/services/characterService.ts')
+          s = p.read_text()
+          old = """        const existingIds = new Set(parsed.map((i: any) => i.id));
+        const missing = INITIAL_SHOP_ITEMS.filter(i => !existingIds.has(i.id));
+        return [...parsed, ...missing];"""
+          new = """        // Local storage is only a temporary fallback. Never merge initial/default
+        // items into persisted user/admin data: deleted Firestore items must stay deleted.
+        return parsed;"""
+          s = s.replace(old, new)
+          old = """      if (list.length > 0 || snapshot.size > 0 || pendingShopItems.size > 0 || pendingShopDeletes.size > 0) {
+        localShopItems = list;
+        saveLocalAll();
+        callback(list);
+      } else {
+        callback(localShopItems);
+      }"""
+          new = """      // A successful Firestore snapshot is authoritative, including an empty collection.
+      // Do not resurrect deleted items from localStorage when the server has no items.
+      localShopItems = list;
+      saveLocalAll();
+      callback(list);"""
+          s = s.replace(old, new)
+          old = """    const shopSnap = await getDocs(collection(db, SHOP_ITEMS_COLLECTION));
+    if (shopSnap.empty) {
+      for (const item of INITIAL_SHOP_ITEMS) {
+        await setDoc(doc(db, SHOP_ITEMS_COLLECTION, item.id), item);
+      }
+    }"""
+          new = """    // Do not reseed shop items merely because the collection is empty.
+    // An empty collection can be an intentional admin deletion and must remain empty.
+    // Initial data should only be created by an explicit database reset/setup action."""
+          s = s.replace(old, new)
+          p.write_text(s)
+          PY
+          git diff --check
+          if git diff --quiet; then
+            echo "No patch needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/services/characterService.ts
+          git commit -m "fix: keep deleted shop data deleted across reloads"
+          git push
