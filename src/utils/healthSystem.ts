@@ -151,6 +151,17 @@ function readOverlay(id: string): any | null {
 function readPersistentAdminOverlay(character: CharacterProfile): CharacterProfile {
   const local = readOverlay(character.id);
 
+  // An explicit character write is newer than the browser recovery cache.
+  // This is critical for deleting BUFF/NERF: updateCharacterData() calls
+  // syncCharacterHealth() before writing to Firestore. Without this guard,
+  // the old local overlay could overwrite the user's deletion before the
+  // new character document was ever sent to Firestore.
+  const characterRevision = Number(character.lastUpdated) || 0;
+  const localRevision = Number(local?.revision) || getAdminRevision(local?.modifiers || [], local?.snapshot);
+  if (characterRevision > localRevision) {
+    return character;
+  }
+
   // Firestore explicitly has no admin modifiers: this is authoritative.
   // Remove any stale browser recovery overlay so deleted BUFF/NERF cannot return.
   if (!character.adminBalanceModifiers?.length) {
@@ -162,7 +173,6 @@ function readPersistentAdminOverlay(character: CharacterProfile): CharacterProfi
 
   if (!local || !Array.isArray(local.modifiers) || local.modifiers.length === 0) return character;
 
-  const localRevision = Number(local.revision) || getAdminRevision(local.modifiers, local.snapshot);
   const firestoreRevision = getAdminRevision(character.adminBalanceModifiers || [], character.adminBalanceSnapshot);
 
   if (localRevision >= firestoreRevision) {
