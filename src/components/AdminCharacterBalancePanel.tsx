@@ -111,7 +111,12 @@ export const AdminCharacterBalancePanel: React.FC<Props> = ({ characters, onUpda
     if(!target)return;
     const removed=modifiers.find(m=>m.id===id); const remaining=modifiers.filter(m=>m.id!==id);
     if(!remaining.length)return clearAll();
-    const snapshot=target.adminBalanceSnapshot||cloneSnapshot(target);
+    // IMPORTANT: bump the snapshot revision when deleting a modifier.
+    // Previously the snapshot kept the old capturedAt timestamp, so the local
+    // recovery overlay considered the deleted modifier newer and resurrected it
+    // on the next realtime sync.
+    const baseSnapshot=target.adminBalanceSnapshot||cloneSnapshot(target);
+    const snapshot: AdminBalanceSnapshot={...baseSnapshot,capturedAt:Date.now()};
     const maxDelta=remaining.filter(isMaxHp).reduce((s,m)=>s+signed(m),0);
     const hpDelta=remaining.filter(m=>m.kind==='hp'&&!isMaxHp(m)).reduce((s,m)=>s+signed(m),0);
     const maxHp=Math.max(1,snapshot.maxHp+maxDelta); const hp=Math.max(0,Math.min(maxHp,snapshot.hp+hpDelta));
