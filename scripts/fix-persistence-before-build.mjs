@@ -7,23 +7,29 @@ let service = readFileSync(servicePath, 'utf8');
 let health = readFileSync(healthPath, 'utf8');
 
 // FIRESTORE IS THE ONLY SOURCE OF TRUTH.
-// Admin edits must be persisted exactly as supplied by the UI. Re-running the
-// derived health synchronizer before setDoc can resurrect deleted modifiers.
+// Do not derive/rebuild admin state while saving or reading realtime data.
+// The previous implementation still called syncCharacterHealth(char) and
+// syncCharacterHealth(raw), which could reconstruct deleted BUFF/NERF/skills.
+service = service.replaceAll('const synced = syncCharacterHealth(char);', 'const synced = char;');
 service = service.replaceAll('const synced = syncCharacterHealth(source);', 'const synced = source;');
 service = service.replaceAll('const synced = syncCharacterHealth(requested);', 'const synced = requested;');
 service = service.replaceAll('syncCharacterHealth(requested)', 'requested');
 service = service.replaceAll('syncCharacterHealth(source)', 'source');
+service = service.replaceAll('list.push(syncCharacterHealth(raw));', 'list.push(raw);');
+service = service.replaceAll('return parsed.map(syncCharacterHealth);', 'return parsed;');
+service = service.replaceAll('return INITIAL_CHARACTERS.map(syncCharacterHealth);', 'return INITIAL_CHARACTERS;');
+service = service.replaceAll('localCharacters = localCharacters.map(syncCharacterHealth);', 'localCharacters = [...localCharacters];');
 
-// Remove the realtime HP auto-fix. A listener must never write derived HP back
-// to Firestore while an admin deletion is being persisted.
+// Remove every realtime HP auto-fix. A listener must never write derived
+// values back to Firestore while an admin deletion/edit is being persisted.
 const autoStart = service.indexOf('        // Auto-fix legacy inflated HP or corrupted values in Firestore');
 if (autoStart >= 0) {
   const autoEnd = service.indexOf('      });', autoStart);
   if (autoEnd > autoStart) service = service.slice(0, autoStart) + service.slice(autoEnd);
 }
 
-// Disable the legacy browser overlay completely. Deleted BUFF/NERF data must
-// never be recovered from localStorage on a later refresh.
+// Disable legacy browser admin overlays completely. They are only a cache and
+// must never resurrect data that was deleted from Firestore.
 const readStart = health.indexOf('function readPersistentAdminOverlay(');
 const persistStart = health.indexOf('\nfunction persistAdminOverlay', readStart);
 if (readStart >= 0 && persistStart > readStart) {
