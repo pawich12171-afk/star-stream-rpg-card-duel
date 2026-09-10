@@ -207,8 +207,9 @@ export function calculatePowerScore(char: CharacterProfile): number {
 export async function seedInitialDataIfNeeded() {
   try {
     const charsSnap = await getDocs(collection(db, CHARACTERS_COLLECTION));
-    if (charsSnap.empty) {
-      for (const char of INITIAL_CHARACTERS) {
+    const existingCharacterIds = new Set(charsSnap.docs.map((item) => item.id));
+    for (const char of INITIAL_CHARACTERS) {
+      if (!existingCharacterIds.has(char.id)) {
         const score = calculatePowerScore(char);
         await setDoc(doc(db, CHARACTERS_COLLECTION, char.id), {
           ...char,
@@ -216,20 +217,25 @@ export async function seedInitialDataIfNeeded() {
         });
       }
     }
+
     const shopSnap = await getDocs(collection(db, SHOP_ITEMS_COLLECTION));
-    if (shopSnap.empty) {
-      for (const item of INITIAL_SHOP_ITEMS) {
+    const existingShopItemIds = new Set(shopSnap.docs.map((item) => item.id));
+    for (const item of INITIAL_SHOP_ITEMS) {
+      if (!existingShopItemIds.has(item.id)) {
         await setDoc(doc(db, SHOP_ITEMS_COLLECTION, item.id), item);
       }
     }
+
     const gachaRewardsSnap = await getDocs(collection(db, GACHA_REWARDS_COLLECTION));
-    if (gachaRewardsSnap.empty) {
-      for (const reward of INITIAL_GACHA_REWARDS) {
+    const existingGachaRewardIds = new Set(gachaRewardsSnap.docs.map((item) => item.id));
+    for (const reward of INITIAL_GACHA_REWARDS) {
+      if (!existingGachaRewardIds.has(reward.id)) {
         await setDoc(doc(db, GACHA_REWARDS_COLLECTION, reward.id), reward);
       }
     }
+
     const gachaConfigSnap = await getDocs(collection(db, GACHA_CONFIG_COLLECTION));
-    if (gachaConfigSnap.empty) {
+    if (!gachaConfigSnap.docs.some((item) => item.id === "main")) {
       await setDoc(doc(db, GACHA_CONFIG_COLLECTION, "main"), INITIAL_GACHA_CONFIG);
     }
   } catch (err) {
