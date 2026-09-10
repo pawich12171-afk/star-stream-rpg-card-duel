@@ -46,14 +46,7 @@ export function getSkillPotencyPercent(level: number, multiplier: number = 1): n
   return basePercent * (multiplier || 1);
 }
 
-export function getSkillHpBonus(skill: {
-  name?: string;
-  level: number;
-  multiplier?: number;
-  description?: string;
-  type?: string;
-  category?: string;
-}): number {
+export function getSkillHpBonus(skill: { name?: string; level: number; multiplier?: number; description?: string; type?: string; category?: string; }): number {
   const lvl = Math.max(1, skill.level || 1);
   const mult = Math.max(1, skill.multiplier || 1);
   const name = skill.name || '';
@@ -67,8 +60,7 @@ export function getSkillHpBonus(skill: {
     name.includes('ก้าว') || name.includes('Awakening') || desc.includes('HP') ||
     desc.includes('เลือด') || desc.includes('เกราะ') || desc.includes('ป้องกัน') ||
     desc.includes('ฟื้นฟู') || desc.includes('สะท้อน') || skill.type?.includes('ติดตัว') ||
-    skill.type?.includes('บัฟ') || skill.category === 'stigma' ||
-    skill.category === 'innate' || skill.category === 'story';
+    skill.type?.includes('บัฟ') || skill.category === 'stigma' || skill.category === 'innate' || skill.category === 'story';
 
   if (!isVitality) return Math.max(0, Math.floor((lvl - 1) * 0.25) * mult);
   const baseBonus = 1;
@@ -90,7 +82,6 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
       if (item.targetStat === 'strength' && item.effectValue) equipStrengthBonus += item.effectValue;
       if (item.targetStat === 'durability' && item.effectValue) equipDurabilityBonus += item.effectValue;
     }
-
     const explicitHp = item.hpBonus || 0;
     if (explicitHp > 0) {
       equipHpBonus += explicitHp;
@@ -120,7 +111,6 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   if (character.badgeTitle) titlesToCheck.push(character.badgeTitle);
   if (character.profileTitleBadge && !titlesToCheck.includes(character.profileTitleBadge)) titlesToCheck.push(character.profileTitleBadge);
   if (character.nickname) character.nickname.split('/').map(s => s.trim()).forEach(p => { if (p && !titlesToCheck.includes(p)) titlesToCheck.push(p); });
-
   titlesToCheck.forEach(title => {
     let bonus = 0;
     if (BADGE_HP_BONUSES[title]) bonus = BADGE_HP_BONUSES[title];
@@ -144,7 +134,6 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
     storyBonusHp += sBonus;
     itemsList.push({ name: `เรื่องเล่าครอบครอง: ${sum}`, bonus: sBonus, source: 'story' });
   }
-
   if (character.characteristics && Array.isArray(character.characteristics)) {
     let charBonus = 0;
     character.characteristics.forEach(c => {
@@ -173,11 +162,10 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   }
 
   const consumedMaxHp = character.consumedMaxHpBonus || 0;
-  if (consumedMaxHp > 0) itemsList.push({ name: `โอสถทองคำ/แก่นพลังชีวิตถาวรที่ดื่ม`, bonus: consumedMaxHp, source: 'item' });
+  if (consumedMaxHp > 0) itemsList.push({ name: 'โอสถทองคำ/แก่นพลังชีวิตถาวรที่ดื่ม', bonus: consumedMaxHp, source: 'item' });
 
   const totalMaxHp = BASE_HP + statBonusHp + titleBonusHp + storyBonusHp + skillBonusHp + equipHpBonus + consumedMaxHp;
   const formulaDescription = `HP = พื้นฐาน (${BASE_HP}) + สเตตัส (+${statBonusHp}) + ฉายา (+${titleBonusHp}) + เรื่องเล่า (+${storyBonusHp}) + สกิล (+${skillBonusHp}) + อุปกรณ์ (+${equipHpBonus})${consumedMaxHp > 0 ? ` + โอสถถาวร (+${consumedMaxHp})` : ''} = ${totalMaxHp} HP`;
-
   return { baseHp: BASE_HP, statBonusHp, effectiveStrength, effectiveDurability, titleBonusHp, storyBonusHp, skillBonusHp, itemBonusHp: equipHpBonus, totalMaxHp, formulaDescription, itemsList };
 }
 
@@ -189,20 +177,11 @@ function getAdminDeltas(character: CharacterProfile) {
   const modifiers = character.adminBalanceModifiers || [];
   return {
     modifiers,
-    maxHpDelta: modifiers
-      .filter(m => m.kind === 'hp' && m.id.startsWith('admin-maxhp-'))
-      .reduce((sum, m) => sum + signedAdminModifier(m), 0),
-    hpDelta: modifiers
-      .filter(m => m.kind === 'hp' && !m.id.startsWith('admin-maxhp-'))
-      .reduce((sum, m) => sum + signedAdminModifier(m), 0),
+    maxHpDelta: modifiers.filter(m => m.kind === 'hp' && m.id.startsWith('admin-maxhp-')).reduce((sum, m) => sum + signedAdminModifier(m), 0),
+    hpDelta: modifiers.filter(m => m.kind === 'hp' && !m.id.startsWith('admin-maxhp-')).reduce((sum, m) => sum + signedAdminModifier(m), 0),
   };
 }
 
-/**
- * If an older document has active admin modifiers but no snapshot, reconstruct
- * the base snapshot from the persisted effective values exactly once. This is
- * the migration that prevents the old 158 <-> 169 flip after a page reload.
- */
 function migrateMissingAdminSnapshot(character: CharacterProfile): CharacterProfile {
   const { modifiers, maxHpDelta, hpDelta } = getAdminDeltas(character);
   if (!modifiers.length || character.adminBalanceSnapshot) return character;
@@ -214,33 +193,26 @@ function migrateMissingAdminSnapshot(character: CharacterProfile): CharacterProf
     adminBalanceSnapshot: undefined,
   };
 
-  // Reverse active stat modifiers.
   if (baseCharacter.stats) {
     const stats = { ...baseCharacter.stats };
     (['strength', 'durability', 'agility', 'magic'] as const).forEach(key => {
-      const delta = modifiers
-        .filter(m => m.kind === 'stat' && m.stat === key)
-        .reduce((sum, m) => sum + signedAdminModifier(m), 0);
+      const delta = modifiers.filter(m => m.kind === 'stat' && m.stat === key).reduce((sum, m) => sum + signedAdminModifier(m), 0);
       stats[key] = Math.max(0, stats[key] - delta);
     });
     baseCharacter.stats = stats;
   }
 
-  // Reverse active skill-level modifiers.
   if (Array.isArray(baseCharacter.skills)) {
     baseCharacter.skills = baseCharacter.skills.map(skill => {
-      const delta = modifiers
-        .filter(m => m.kind === 'skill' && m.skillId === skill.id)
-        .reduce((sum, m) => sum + signedAdminModifier(m), 0);
+      const delta = modifiers.filter(m => m.kind === 'skill' && m.skillId === skill.id).reduce((sum, m) => sum + signedAdminModifier(m), 0);
       return { ...skill, level: Math.max(1, skill.level - delta) };
     });
   }
 
+  // IMPORTANT: the old effective maxHp may already contain a stale value.
+  // Recalculate the true base from the character with admin stat/skill deltas reversed.
   const calculatedBase = calculateCharacterHealth(baseCharacter).totalMaxHp;
-  // Prefer the persisted effective maxHp reversed by the explicit admin delta.
-  // It preserves the value that was actually visible before this migration.
-  baseCharacter.maxHp = Math.max(1, (Number(character.maxHp) || calculatedBase) - maxHpDelta);
-  baseCharacter.hp = Math.max(0, (Number(character.hp) || 0) - hpDelta);
+  baseCharacter.maxHp = Math.max(1, calculatedBase);
 
   return {
     ...character,
@@ -256,28 +228,18 @@ function migrateMissingAdminSnapshot(character: CharacterProfile): CharacterProf
 
 export function syncCharacterHealth(character: CharacterProfile): CharacterProfile {
   if (!character) return character;
-
   const migrated = migrateMissingAdminSnapshot(character);
   const { modifiers, maxHpDelta, hpDelta } = getAdminDeltas(migrated);
   const healthData = calculateCharacterHealth(migrated);
 
-  // With an active admin overlay, the snapshot is the ONLY source of the
-  // underlying base values. Derived HP must never overwrite it during a
-  // Firestore realtime tick.
   const baseMaxHp = modifiers.length && migrated.adminBalanceSnapshot
     ? migrated.adminBalanceSnapshot.maxHp
     : healthData.totalMaxHp;
   const targetMaxHp = Math.max(1, baseMaxHp + maxHpDelta);
-
   const baseHp = modifiers.length && migrated.adminBalanceSnapshot
     ? migrated.adminBalanceSnapshot.hp
     : (typeof migrated.hp === 'number' ? migrated.hp : targetMaxHp);
-
   const targetHp = Math.max(0, Math.min(targetMaxHp, baseHp + hpDelta));
 
-  return {
-    ...migrated,
-    maxHp: targetMaxHp,
-    hp: targetHp,
-  };
+  return { ...migrated, maxHp: targetMaxHp, hp: targetHp };
 }
