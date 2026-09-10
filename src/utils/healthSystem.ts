@@ -1,4 +1,4 @@
-import { CharacterProfile, Skill } from '../types';
+import { CharacterProfile } from '../types';
 
 export const BASE_HP = 20;
 
@@ -41,37 +41,30 @@ export const BADGE_HP_BONUSES: Record<string, number> = {
 };
 
 export function getSkillPotencyPercent(level: number, multiplier: number = 1): number {
-  const lvl = Math.max(1, level || 1);
-  const basePercent = (lvl - 1) * 10;
-  return basePercent * (multiplier || 1);
+  return Math.max(0, (Math.max(1, level || 1) - 1) * 10) * (multiplier || 1);
 }
 
-export function getSkillHpBonus(skill: { name?: string; level: number; multiplier?: number; description?: string; type?: string; category?: string; }): number {
+export function getSkillHpBonus(skill: { name?: string; level: number; multiplier?: number; description?: string; type?: string; category?: string }): number {
   const lvl = Math.max(1, skill.level || 1);
   const mult = Math.max(1, skill.multiplier || 1);
   const name = skill.name || '';
   const desc = skill.description || '';
-  const isVitality =
-    name.includes('บัว') || name.includes('ม่าน') || name.includes('เกราะ') ||
-    name.includes('เลือด') || name.includes('พลังชีวิต') || name.includes('HP') ||
-    name.includes('กายา') || name.includes('ทนทาน') || name.includes('ตื่นรู้') ||
-    name.includes('ฟื้นฟู') || name.includes('พิทักษ์') || name.includes('บาเรีย') ||
-    name.includes('ลมปราณ') || name.includes('ระบำ') || name.includes('คำสั่ง') ||
-    name.includes('ก้าว') || name.includes('Awakening') || desc.includes('HP') ||
-    desc.includes('เลือด') || desc.includes('เกราะ') || desc.includes('ป้องกัน') ||
-    desc.includes('ฟื้นฟู') || desc.includes('สะท้อน') || skill.type?.includes('ติดตัว') ||
+  const vitality =
+    name.includes('บัว') || name.includes('ม่าน') || name.includes('เกราะ') || name.includes('เลือด') ||
+    name.includes('พลังชีวิต') || name.includes('HP') || name.includes('กายา') || name.includes('ทนทาน') ||
+    name.includes('ตื่นรู้') || name.includes('ฟื้นฟู') || name.includes('พิทักษ์') || name.includes('บาเรีย') ||
+    name.includes('ลมปราณ') || name.includes('ระบำ') || name.includes('คำสั่ง') || name.includes('ก้าว') ||
+    name.includes('Awakening') || desc.includes('HP') || desc.includes('เลือด') || desc.includes('เกราะ') ||
+    desc.includes('ป้องกัน') || desc.includes('ฟื้นฟู') || desc.includes('สะท้อน') || skill.type?.includes('ติดตัว') ||
     skill.type?.includes('บัฟ') || skill.category === 'stigma' || skill.category === 'innate' || skill.category === 'story';
-
-  if (!isVitality) return Math.max(0, Math.floor((lvl - 1) * 0.25) * mult);
-  const baseBonus = 1;
-  const levelGrowth = (lvl - 1) * 0.55;
-  return Math.max(1, Math.round((baseBonus + levelGrowth) * mult));
+  if (!vitality) return Math.max(0, Math.floor((lvl - 1) * 0.25) * mult);
+  return Math.max(1, Math.round((1 + (lvl - 1) * 0.55) * mult));
 }
 
 export function calculateCharacterHealth(character: CharacterProfile): HealthBreakdown {
-  const itemsList: { name: string; bonus: number; source: 'base' | 'stat' | 'title' | 'story' | 'skill' | 'item' }[] = [];
-  itemsList.push({ name: 'พลังชีวิตพื้นฐาน (Base HP)', bonus: BASE_HP, source: 'base' });
-
+  const itemsList: HealthBreakdown['itemsList'] = [
+    { name: 'พลังชีวิตพื้นฐาน (Base HP)', bonus: BASE_HP, source: 'base' },
+  ];
   const equipped = character.inventory?.filter(i => i.isEquipped) || [];
   let equipStrengthBonus = 0;
   let equipDurabilityBonus = 0;
@@ -102,22 +95,22 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   const rawDurability = character.stats?.durability || 0;
   const effectiveStrength = rawStrength + equipStrengthBonus;
   const effectiveDurability = rawDurability + equipDurabilityBonus;
-  const statPairs = Math.min(Math.floor(effectiveStrength / 2), Math.floor(effectiveDurability / 2));
-  const statBonusHp = Math.max(0, statPairs);
+  const statBonusHp = Math.max(0, Math.min(Math.floor(effectiveStrength / 2), Math.floor(effectiveDurability / 2)));
   if (statBonusHp > 0) itemsList.push({ name: `โบนัสสเตตัส (พละกำลัง ${effectiveStrength} & ทนทาน ${effectiveDurability}) [คู่ละ = +1 HP]`, bonus: statBonusHp, source: 'stat' });
 
   let titleBonusHp = 0;
-  const titlesToCheck: string[] = [];
-  if (character.badgeTitle) titlesToCheck.push(character.badgeTitle);
-  if (character.profileTitleBadge && !titlesToCheck.includes(character.profileTitleBadge)) titlesToCheck.push(character.profileTitleBadge);
-  if (character.nickname) character.nickname.split('/').map(s => s.trim()).forEach(p => { if (p && !titlesToCheck.includes(p)) titlesToCheck.push(p); });
-  titlesToCheck.forEach(title => {
-    let bonus = 0;
-    if (BADGE_HP_BONUSES[title]) bonus = BADGE_HP_BONUSES[title];
-    else if (title.includes('ราชัน') || title.includes('ราชา') || title.includes('คุมกฎ') || title.includes('สวรรค์')) bonus = 6;
-    else if (title.includes('ผู้ย้อนกลับ') || title.includes('ว่างเปล่า') || title.includes('ภัยพิบัติ') || title.includes('วีรชน')) bonus = 5;
-    else if (title.includes('ผู้พิชิต') || title.includes('พิทักษ์') || title.includes('นักรบ')) bonus = 4;
-    else bonus = 3;
+  const titles: string[] = [];
+  if (character.badgeTitle) titles.push(character.badgeTitle);
+  if (character.profileTitleBadge && !titles.includes(character.profileTitleBadge)) titles.push(character.profileTitleBadge);
+  if (character.nickname) character.nickname.split('/').map(s => s.trim()).forEach(p => { if (p && !titles.includes(p)) titles.push(p); });
+  titles.forEach(title => {
+    let bonus = BADGE_HP_BONUSES[title];
+    if (!bonus) {
+      if (title.includes('ราชัน') || title.includes('ราชา') || title.includes('คุมกฎ') || title.includes('สวรรค์')) bonus = 6;
+      else if (title.includes('ผู้ย้อนกลับ') || title.includes('ว่างเปล่า') || title.includes('ภัยพิบัติ') || title.includes('วีรชน')) bonus = 5;
+      else if (title.includes('ผู้พิชิต') || title.includes('พิทักษ์') || title.includes('นักรบ')) bonus = 4;
+      else bonus = 3;
+    }
     if (titleBonusHp + bonus <= 14) {
       titleBonusHp += bonus;
       itemsList.push({ name: `ฉายา/สมญานาม: ${title}`, bonus, source: 'title' });
@@ -125,52 +118,48 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   });
 
   let storyBonusHp = 0;
-  if (character.storySummary && character.storySummary.trim()) {
+  if (character.storySummary?.trim()) {
     const sum = character.storySummary;
-    let sBonus = 2;
-    if (sum.includes('มายา') || sum.includes('Myth')) sBonus = 5;
-    else if (sum.includes('ตำนาน') || sum.includes('Legendary')) sBonus = 4;
-    else if (sum.includes('วีรชน') || sum.includes('Hero')) sBonus = 3;
-    storyBonusHp += sBonus;
-    itemsList.push({ name: `เรื่องเล่าครอบครอง: ${sum}`, bonus: sBonus, source: 'story' });
+    const bonus = sum.includes('มายา') || sum.includes('Myth') ? 5 : sum.includes('ตำนาน') || sum.includes('Legendary') ? 4 : sum.includes('วีรชน') || sum.includes('Hero') ? 3 : 2;
+    storyBonusHp += bonus;
+    itemsList.push({ name: `เรื่องเล่าครอบครอง: ${sum}`, bonus, source: 'story' });
   }
-  if (character.characteristics && Array.isArray(character.characteristics)) {
-    let charBonus = 0;
-    character.characteristics.forEach(c => {
-      if (c.includes('มายา')) charBonus += 2;
-      else if (c.includes('ตำนาน')) charBonus += 2;
-      else if (c.includes('หายาก') || c.includes('พิเศษ')) charBonus += 1;
-      else charBonus += 1;
-    });
-    charBonus = Math.min(6, charBonus);
-    if (charBonus > 0) {
-      storyBonusHp += charBonus;
-      itemsList.push({ name: `คุณลักษณะเรื่องเล่า (${character.characteristics.length} ประการ)`, bonus: charBonus, source: 'story' });
-    }
+  if (Array.isArray(character.characteristics)) {
+    let bonus = 0;
+    character.characteristics.forEach(c => { bonus += c.includes('มายา') || c.includes('ตำนาน') ? 2 : 1; });
+    bonus = Math.min(6, bonus);
+    if (bonus > 0) { storyBonusHp += bonus; itemsList.push({ name: `คุณลักษณะเรื่องเล่า (${character.characteristics.length} ประการ)`, bonus, source: 'story' }); }
   }
 
   let skillBonusHp = 0;
-  if (character.skills && Array.isArray(character.skills)) {
-    character.skills.forEach(s => {
-      const bonus = getSkillHpBonus(s);
-      if (bonus > 0) {
-        skillBonusHp += bonus;
-        const potency = getSkillPotencyPercent(s.level, s.multiplier);
-        itemsList.push({ name: `สกิล: ${s.name} (Lv.${s.level}) [ความสามารถ +${potency}%]`, bonus, source: 'skill' });
-      }
-    });
-  }
+  (character.skills || []).forEach(s => {
+    const bonus = getSkillHpBonus(s);
+    if (bonus > 0) {
+      skillBonusHp += bonus;
+      itemsList.push({ name: `สกิล: ${s.name} (Lv.${s.level}) [ความสามารถ +${getSkillPotencyPercent(s.level, s.multiplier)}%]`, bonus, source: 'skill' });
+    }
+  });
 
   const consumedMaxHp = character.consumedMaxHpBonus || 0;
   if (consumedMaxHp > 0) itemsList.push({ name: 'โอสถทองคำ/แก่นพลังชีวิตถาวรที่ดื่ม', bonus: consumedMaxHp, source: 'item' });
-
   const totalMaxHp = BASE_HP + statBonusHp + titleBonusHp + storyBonusHp + skillBonusHp + equipHpBonus + consumedMaxHp;
-  const formulaDescription = `HP = พื้นฐาน (${BASE_HP}) + สเตตัส (+${statBonusHp}) + ฉายา (+${titleBonusHp}) + เรื่องเล่า (+${storyBonusHp}) + สกิล (+${skillBonusHp}) + อุปกรณ์ (+${equipHpBonus})${consumedMaxHp > 0 ? ` + โอสถถาวร (+${consumedMaxHp})` : ''} = ${totalMaxHp} HP`;
-  return { baseHp: BASE_HP, statBonusHp, effectiveStrength, effectiveDurability, titleBonusHp, storyBonusHp, skillBonusHp, itemBonusHp: equipHpBonus, totalMaxHp, formulaDescription, itemsList };
+  return {
+    baseHp: BASE_HP,
+    statBonusHp,
+    effectiveStrength,
+    effectiveDurability,
+    titleBonusHp,
+    storyBonusHp,
+    skillBonusHp,
+    itemBonusHp: equipHpBonus,
+    totalMaxHp,
+    formulaDescription: `HP = พื้นฐาน (${BASE_HP}) + สเตตัส (+${statBonusHp}) + ฉายา (+${titleBonusHp}) + เรื่องเล่า (+${storyBonusHp}) + สกิล (+${skillBonusHp}) + อุปกรณ์ (+${equipHpBonus})${consumedMaxHp > 0 ? ` + โอสถถาวร (+${consumedMaxHp})` : ''} = ${totalMaxHp} HP`,
+    itemsList,
+  };
 }
 
 function signedAdminModifier(m: any): number {
-  return m.mode === 'buff' ? (m.amount || 0) : -(m.amount || 0);
+  return m.mode === 'buff' ? Number(m.amount || 0) : -Number(m.amount || 0);
 }
 
 function getAdminDeltas(character: CharacterProfile) {
@@ -182,45 +171,55 @@ function getAdminDeltas(character: CharacterProfile) {
   };
 }
 
+function makeBaseFromSnapshot(character: CharacterProfile): CharacterProfile {
+  const snapshot = character.adminBalanceSnapshot;
+  if (!snapshot) return character;
+  return {
+    ...character,
+    hp: snapshot.hp,
+    maxHp: snapshot.maxHp,
+    stats: { ...snapshot.stats },
+    skills: (snapshot.skills || []).map(s => ({ ...s })),
+    adminBalanceModifiers: [],
+    adminStatusEffects: [],
+    adminBalanceSnapshot: undefined,
+  };
+}
+
 function migrateMissingAdminSnapshot(character: CharacterProfile): CharacterProfile {
   const { modifiers, maxHpDelta, hpDelta } = getAdminDeltas(character);
   if (!modifiers.length || character.adminBalanceSnapshot) return character;
 
-  const baseCharacter: CharacterProfile = {
+  const base: CharacterProfile = {
     ...character,
     hp: Math.max(0, (Number(character.hp) || 0) - hpDelta),
     maxHp: Math.max(1, (Number(character.maxHp) || 1) - maxHpDelta),
+    adminBalanceModifiers: [],
+    adminStatusEffects: [],
     adminBalanceSnapshot: undefined,
   };
-
-  if (baseCharacter.stats) {
-    const stats = { ...baseCharacter.stats };
+  if (base.stats) {
+    const stats = { ...base.stats };
     (['strength', 'durability', 'agility', 'magic'] as const).forEach(key => {
       const delta = modifiers.filter(m => m.kind === 'stat' && m.stat === key).reduce((sum, m) => sum + signedAdminModifier(m), 0);
       stats[key] = Math.max(0, stats[key] - delta);
     });
-    baseCharacter.stats = stats;
+    base.stats = stats;
   }
-
-  if (Array.isArray(baseCharacter.skills)) {
-    baseCharacter.skills = baseCharacter.skills.map(skill => {
+  if (Array.isArray(base.skills)) {
+    base.skills = base.skills.map(skill => {
       const delta = modifiers.filter(m => m.kind === 'skill' && m.skillId === skill.id).reduce((sum, m) => sum + signedAdminModifier(m), 0);
       return { ...skill, level: Math.max(1, skill.level - delta) };
     });
   }
-
-  // IMPORTANT: the old effective maxHp may already contain a stale value.
-  // Recalculate the true base from the character with admin stat/skill deltas reversed.
-  const calculatedBase = calculateCharacterHealth(baseCharacter).totalMaxHp;
-  baseCharacter.maxHp = Math.max(1, calculatedBase);
-
+  const calculatedBase = calculateCharacterHealth(base).totalMaxHp;
   return {
     ...character,
     adminBalanceSnapshot: {
-      hp: baseCharacter.hp,
-      maxHp: baseCharacter.maxHp,
-      stats: { ...baseCharacter.stats },
-      skills: (baseCharacter.skills || []).map(s => ({ ...s })),
+      hp: base.hp,
+      maxHp: calculatedBase,
+      stats: { ...base.stats },
+      skills: (base.skills || []).map(s => ({ ...s })),
       capturedAt: Date.now(),
     },
   };
@@ -230,16 +229,29 @@ export function syncCharacterHealth(character: CharacterProfile): CharacterProfi
   if (!character) return character;
   const migrated = migrateMissingAdminSnapshot(character);
   const { modifiers, maxHpDelta, hpDelta } = getAdminDeltas(migrated);
-  const healthData = calculateCharacterHealth(migrated);
+  if (!modifiers.length) {
+    const healthData = calculateCharacterHealth(migrated);
+    const hp = typeof migrated.hp === 'number' ? Math.min(Math.max(0, migrated.hp), healthData.totalMaxHp) : healthData.totalMaxHp;
+    return { ...migrated, maxHp: healthData.totalMaxHp, hp };
+  }
 
-  const baseMaxHp = modifiers.length && migrated.adminBalanceSnapshot
-    ? migrated.adminBalanceSnapshot.maxHp
-    : healthData.totalMaxHp;
-  const targetMaxHp = Math.max(1, baseMaxHp + maxHpDelta);
-  const baseHp = modifiers.length && migrated.adminBalanceSnapshot
-    ? migrated.adminBalanceSnapshot.hp
-    : (typeof migrated.hp === 'number' ? migrated.hp : targetMaxHp);
-  const targetHp = Math.max(0, Math.min(targetMaxHp, baseHp + hpDelta));
+  // IMPORTANT: never trust snapshot.maxHp from an older/corrupted document.
+  // Rebuild the BASE max HP from the immutable snapshot stats/skills/etc, then
+  // apply the active admin modifier. This makes reloads deterministic.
+  const base = makeBaseFromSnapshot(migrated);
+  const recalculatedBaseMaxHp = calculateCharacterHealth(base).totalMaxHp;
+  const snapshot = migrated.adminBalanceSnapshot!;
+  const canonicalSnapshot = {
+    ...snapshot,
+    maxHp: recalculatedBaseMaxHp,
+  };
+  const targetMaxHp = Math.max(1, recalculatedBaseMaxHp + maxHpDelta);
+  const targetHp = Math.max(0, Math.min(targetMaxHp, snapshot.hp + hpDelta));
 
-  return { ...migrated, maxHp: targetMaxHp, hp: targetHp };
+  return {
+    ...migrated,
+    maxHp: targetMaxHp,
+    hp: targetHp,
+    adminBalanceSnapshot: canonicalSnapshot,
+  };
 }
