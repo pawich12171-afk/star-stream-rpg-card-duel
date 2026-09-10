@@ -103,9 +103,6 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   if (consumedMaxHp > 0) itemsList.push({ name: 'โอสถทองคำ/แก่นพลังชีวิตถาวรที่ดื่ม', bonus: consumedMaxHp, source: 'item' });
 
   const baseCalculatedMaxHp = BASE_HP + statBonusHp + titleBonusHp + storyBonusHp + skillBonusHp + equipHpBonus + consumedMaxHp;
-  // Admin MAX HP BUFF/NERF is part of the effective health value everywhere,
-  // including the normal StatusWindow calculation. This prevents one page from
-  // showing the modified value while another page shows the pre-admin value.
   const adminMaxHpDelta = (character.adminBalanceModifiers || [])
     .filter(m => m.kind === 'hp' && m.id.startsWith('admin-maxhp-'))
     .reduce((sum, m) => sum + (m.mode === 'buff' ? Number(m.amount || 0) : -Number(m.amount || 0)), 0);
@@ -153,6 +150,16 @@ function readOverlay(id: string): any | null {
 
 function readPersistentAdminOverlay(character: CharacterProfile): CharacterProfile {
   const local = readOverlay(character.id);
+
+  // Firestore explicitly has no admin modifiers: this is authoritative.
+  // Remove any stale browser recovery overlay so deleted BUFF/NERF cannot return.
+  if (!character.adminBalanceModifiers?.length) {
+    if (local) {
+      try { localStorage.removeItem(overlayKey(character.id)); } catch { /* ignore */ }
+    }
+    return character;
+  }
+
   if (!local || !Array.isArray(local.modifiers) || local.modifiers.length === 0) return character;
 
   const localRevision = Number(local.revision) || getAdminRevision(local.modifiers, local.snapshot);
@@ -175,7 +182,11 @@ function persistAdminOverlay(character: CharacterProfile) {
   try {
     const modifiers = character.adminBalanceModifiers || [];
     const snapshot = character.adminBalanceSnapshot;
-    if (!modifiers.length || !snapshot) return;
+    // Never leave an old overlay behind after all modifiers are removed.
+    if (!modifiers.length || !snapshot) {
+      localStorage.removeItem(overlayKey(character.id));
+      return;
+    }
     const nextRevision = getAdminRevision(modifiers, snapshot);
     const current = readOverlay(character.id);
     const currentRevision = Number(current?.revision) || getAdminRevision(current?.modifiers || [], current?.snapshot);
@@ -243,14 +254,39 @@ export function syncCharacterHealth(character: CharacterProfile): CharacterProfi
   const targetMaxHp = Math.max(1, baseMaxHp + maxHpDelta);
   const targetHp = Math.max(0, Math.min(targetMaxHp, Number(snapshot.hp || 0) + hpDelta));
 
-  persistAdminOverlay({ ...working, adminBalanceSnapshot: { ...snapshot, maxHp: baseMaxHp } });
+  // Apply every active admin modifier to the snapshot, including skill levels.
+  const effectiveStats = { ...snapshot.stats };
+  (['strength', 'durability', 'agility', 'magic'] as const).forEach((key) => {
+    const delta = modifiers
+      .filter(m => m.kind === 'stat' && m.stat === key)
+      .reduce((sum, m) => sum + signedAdminModifier(m), 0);
+    effectiveStats[key] = Math.max(0, Number(snapshot.stats[key] || 0) + delta);
+  });
+
+  const effectiveSkills = (snapshot.skills || []).map((baseSkill) => {
+    const delta = modifiers
+      .filter(m => m.kind === 'skill' && m.skillId === baseSkill.id)
+      .reduce((sum, m) => sum + signedAdminModifier(m), 0);
+    const maxLevel = Math.max(Number(baseSkill.maxLevel || 10), 1);
+    return {
+      ...baseSkill,
+      level: Math.max(1, Math.min(maxLevel, Number(baseSkill.level || 1) + delta)),
+    };
+  });
+
+  persistAdminOverlay({
+    ...working,
+    stats: effectiveStats,
+    skills: effectiveSkills,
+    adminBalanceSnapshot: { ...snapshot, maxHp: baseMaxHp },
+  });
 
   return {
     ...working,
     hp: targetHp,
     maxHp: targetMaxHp,
-    stats: { ...snapshot.stats },
-    skills: (snapshot.skills || []).map(s => ({ ...s })),
+    stats: effectiveStats,
+    skills: effectiveSkills,
   };
 }
 
