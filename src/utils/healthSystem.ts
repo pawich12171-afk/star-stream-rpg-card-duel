@@ -181,44 +181,103 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   return { baseHp: BASE_HP, statBonusHp, effectiveStrength, effectiveDurability, titleBonusHp, storyBonusHp, skillBonusHp, itemBonusHp: equipHpBonus, totalMaxHp, formulaDescription, itemsList };
 }
 
-export function syncCharacterHealth(character: CharacterProfile): CharacterProfile {
-  if (!character) return character;
-  const healthData = calculateCharacterHealth(character);
+function signedAdminModifier(m: any): number {
+  return m.mode === 'buff' ? (m.amount || 0) : -(m.amount || 0);
+}
 
+function getAdminDeltas(character: CharacterProfile) {
   const modifiers = character.adminBalanceModifiers || [];
-  const maxHpModifiers = modifiers.filter(m => m.kind === 'hp' && m.id.startsWith('admin-maxhp-'));
-  const adminMaxHpDelta = maxHpModifiers.reduce(
-    (sum, m) => sum + (m.mode === 'buff' ? (m.amount || 0) : -(m.amount || 0)),
-    0
-  );
+  return {
+    modifiers,
+    maxHpDelta: modifiers
+      .filter(m => m.kind === 'hp' && m.id.startsWith('admin-maxhp-'))
+      .reduce((sum, m) => sum + signedAdminModifier(m), 0),
+    hpDelta: modifiers
+      .filter(m => m.kind === 'hp' && !m.id.startsWith('admin-maxhp-'))
+      .reduce((sum, m) => sum + signedAdminModifier(m), 0),
+  };
+}
 
-  // Admin balance is a temporary overlay on a captured base snapshot.
-  // Do NOT recalculate the base HP every realtime tick while an admin
-  // modifier is active: doing so made the value jump after leaving/re-entering
-  // the page when skills, titles or other derived HP inputs were recalculated.
-  // The snapshot is the frozen base for the lifetime of the active modifiers.
-  const hasAdminSnapshot = !!character.adminBalanceSnapshot && modifiers.length > 0;
-  const baseMaxHp = hasAdminSnapshot
-    ? character.adminBalanceSnapshot!.maxHp
-    : healthData.totalMaxHp;
-  const targetMaxHp = Math.max(1, baseMaxHp + adminMaxHpDelta);
+/**
+ * If an older document has active admin modifiers but no snapshot, reconstruct
+ * the base snapshot from the persisted effective values exactly once. This is
+ * the migration that prevents the old 158 <-> 169 flip after a page reload.
+ */
+function migrateMissingAdminSnapshot(character: CharacterProfile): CharacterProfile {
+  const { modifiers, maxHpDelta, hpDelta } = getAdminDeltas(character);
+  if (!modifiers.length || character.adminBalanceSnapshot) return character;
 
-  let newHp = character.hp;
-  if (
-    typeof newHp !== 'number' ||
-    !Number.isFinite(newHp) ||
-    !character.maxHp ||
-    character.maxHp > 200 ||
-    character.maxHp === 1500 ||
-    character.maxHp === 800 ||
-    character.maxHp === 950
-  ) {
-    newHp = targetMaxHp;
+  const baseCharacter: CharacterProfile = {
+    ...character,
+    hp: Math.max(0, (Number(character.hp) || 0) - hpDelta),
+    maxHp: Math.max(1, (Number(character.maxHp) || 1) - maxHpDelta),
+    adminBalanceSnapshot: undefined,
+  };
+
+  // Reverse active stat modifiers.
+  if (baseCharacter.stats) {
+    const stats = { ...baseCharacter.stats };
+    (['strength', 'durability', 'agility', 'magic'] as const).forEach(key => {
+      const delta = modifiers
+        .filter(m => m.kind === 'stat' && m.stat === key)
+        .reduce((sum, m) => sum + signedAdminModifier(m), 0);
+      stats[key] = Math.max(0, stats[key] - delta);
+    });
+    baseCharacter.stats = stats;
   }
+
+  // Reverse active skill-level modifiers.
+  if (Array.isArray(baseCharacter.skills)) {
+    baseCharacter.skills = baseCharacter.skills.map(skill => {
+      const delta = modifiers
+        .filter(m => m.kind === 'skill' && m.skillId === skill.id)
+        .reduce((sum, m) => sum + signedAdminModifier(m), 0);
+      return { ...skill, level: Math.max(1, skill.level - delta) };
+    });
+  }
+
+  const calculatedBase = calculateCharacterHealth(baseCharacter).totalMaxHp;
+  // Prefer the persisted effective maxHp reversed by the explicit admin delta.
+  // It preserves the value that was actually visible before this migration.
+  baseCharacter.maxHp = Math.max(1, (Number(character.maxHp) || calculatedBase) - maxHpDelta);
+  baseCharacter.hp = Math.max(0, (Number(character.hp) || 0) - hpDelta);
 
   return {
     ...character,
+    adminBalanceSnapshot: {
+      hp: baseCharacter.hp,
+      maxHp: baseCharacter.maxHp,
+      stats: { ...baseCharacter.stats },
+      skills: (baseCharacter.skills || []).map(s => ({ ...s })),
+      capturedAt: Date.now(),
+    },
+  };
+}
+
+export function syncCharacterHealth(character: CharacterProfile): CharacterProfile {
+  if (!character) return character;
+
+  const migrated = migrateMissingAdminSnapshot(character);
+  const { modifiers, maxHpDelta, hpDelta } = getAdminDeltas(migrated);
+  const healthData = calculateCharacterHealth(migrated);
+
+  // With an active admin overlay, the snapshot is the ONLY source of the
+  // underlying base values. Derived HP must never overwrite it during a
+  // Firestore realtime tick.
+  const baseMaxHp = modifiers.length && migrated.adminBalanceSnapshot
+    ? migrated.adminBalanceSnapshot.maxHp
+    : healthData.totalMaxHp;
+  const targetMaxHp = Math.max(1, baseMaxHp + maxHpDelta);
+
+  const baseHp = modifiers.length && migrated.adminBalanceSnapshot
+    ? migrated.adminBalanceSnapshot.hp
+    : (typeof migrated.hp === 'number' ? migrated.hp : targetMaxHp);
+
+  const targetHp = Math.max(0, Math.min(targetMaxHp, baseHp + hpDelta));
+
+  return {
+    ...migrated,
     maxHp: targetMaxHp,
-    hp: Math.max(0, Math.min(newHp, targetMaxHp)),
+    hp: targetHp,
   };
 }
