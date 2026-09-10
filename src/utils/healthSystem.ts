@@ -150,11 +150,17 @@ function readOverlay(id: string): any | null {
 
 function readPersistentAdminOverlay(character: CharacterProfile): CharacterProfile {
   const local = readOverlay(character.id);
+
+  // Firestore character documents with lastUpdated are authoritative.
+  // The browser overlay is only a legacy recovery cache for old records that
+  // predate the realtime persistence fix. Never let it overwrite an explicit
+  // character update, including BUFF/NERF deletions.
   const characterRevision = Number(character.lastUpdated) || 0;
+  if (characterRevision > 0) return character;
+
   const localRevision = Number(local?.revision) || getAdminRevision(local?.modifiers || [], local?.snapshot);
   if (characterRevision > localRevision) return character;
 
-  // Firestore is authoritative when there are no active modifiers. Remove the recovery cache.
   if (!character.adminBalanceModifiers?.length) {
     if (local) {
       try { localStorage.removeItem(overlayKey(character.id)); } catch { /* ignore */ }
