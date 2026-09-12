@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "node scripts/fix-save-race.mjs && node scripts/fix-status-save.mjs && node scripts/fix-persistence-before-build.mjs && node scripts/fix-shop-purchase-save.mjs && node scripts/fix-realtime-all.mjs && vite build",
+    "build": "node scripts/fix-save-race.mjs && node scripts/fix-status-save.mjs && node scripts/fix-persistence-before-build.mjs && node scripts/fix-shop-purchase-save.mjs && node scripts/run-realtime-all.mjs && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc --noEmit"
   },
