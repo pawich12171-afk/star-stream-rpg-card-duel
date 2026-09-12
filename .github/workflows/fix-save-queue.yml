@@ -1,0 +1,53 @@
+name: Fix character save race
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-save-queue.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Patch character persistence
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/services/characterService.ts')
+          s = p.read_text(encoding='utf-8')
+
+          marker = "const pendingShopDeletes = new Set<string>();"
+          queue = '''\n\n// Serialize writes per character. Firestore is last-write-wins; rapid saves\n// must not finish out of order and restore an older character version.\nconst characterWriteQueues = new Map<string, Promise<void>>();\n\nfunction enqueueCharacterWrite(id: string, write: () => Promise<void>): Promise<void> {\n  const previous = characterWriteQueues.get(id) || Promise.resolve();\n  const next = previous.catch(() => {}).then(write);\n  characterWriteQueues.set(id, next);\n  return next.finally(() => {\n    if (characterWriteQueues.get(id) === next) characterWriteQueues.delete(id);\n  });\n}\n'''
+          if 'const characterWriteQueues = new Map<string, Promise<void>>();' not in s:
+              if marker not in s:
+                  raise SystemExit('queue insertion marker not found')
+              s = s.replace(marker, marker + queue, 1)
+
+          old = '''  // Update Firestore\n  try {\n    const cleaned = sanitizeForFirestore(updated);\n    await setDoc(doc(db, CHARACTERS_COLLECTION, updated.id), cleaned);\n  } catch (err) {\n    pendingCharacterUpdates.delete(updated.id);\n    console.error("Error updating character in Firestore:", err);\n    throw err;\n  }'''
+          new = '''  // Serialize writes so rapid consecutive saves cannot finish out of order.\n  try {\n    await enqueueCharacterWrite(updated.id, async () => {\n      const cleaned = sanitizeForFirestore(updated);\n      await setDoc(doc(db, CHARACTERS_COLLECTION, updated.id), cleaned);\n    });\n  } catch (err) {\n    const pending = pendingCharacterUpdates.get(updated.id);\n    if (pending && valuesMatch(pending, updated)) pendingCharacterUpdates.delete(updated.id);\n    console.error("Error updating character in Firestore:", err);\n    throw err;\n  }'''
+          if old in s:
+              s = s.replace(old, new, 1)
+          elif 'await enqueueCharacterWrite(updated.id' not in s:
+              raise SystemExit('save block not found')
+
+          p.write_text(s, encoding='utf-8')
+
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/services/characterService.ts
+          if git diff --cached --quiet; then
+            echo 'Already patched'
+            exit 0
+          fi
+          git commit -m 'fix: serialize character saves to prevent stale overwrites'
+          git push
