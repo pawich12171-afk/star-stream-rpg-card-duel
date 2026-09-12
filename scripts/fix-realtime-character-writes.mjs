@@ -3,18 +3,52 @@ import path from 'node:path';
 
 const file = path.resolve('src/App.tsx');
 let source = fs.readFileSync(file, 'utf8');
-if (source.includes('latestCharactersRef') && source.includes('mergeStaleValue')) {
-  console.log('Realtime character write fix already present.');
-  process.exit(0);
-}
-source = source.replace("import React, { useState, useEffect } from 'react';", "import React, { useState, useEffect, useRef } from 'react';");
+
+// Make every character write build from a synchronous latest-state ref.
+source = source.replace(
+  "import React, { useState, useEffect } from 'react';",
+  "import React, { useState, useEffect, useRef } from 'react';"
+);
+
 const marker = "  const currentUser = characters.find(c => c.id === currentUserId) || characters[0];";
 if (!source.includes(marker)) throw new Error('currentUser marker not found');
-const helpers = `  const renderedCharactersRef = useRef<CharacterProfile[]>(characters);\n  const latestCharactersRef = useRef<CharacterProfile[]>(characters);\n  useEffect(() => { renderedCharactersRef.current = characters; }, [characters]);\n\n  const isPlainObject = (value: unknown): value is Record<string, any> => !!value && typeof value === 'object' && !Array.isArray(value);\n  const mergeStaleValue = (latest: any, base: any, incoming: any): any => {\n    if (incoming === undefined) return latest;\n    if (Object.is(incoming, base)) return latest;\n    if (Object.is(latest, base)) return incoming;\n    if (typeof incoming === 'number' && typeof base === 'number' && typeof latest === 'number') return latest + (incoming - base);\n    if (Array.isArray(incoming) && Array.isArray(base) && Array.isArray(latest)) {\n      const keyed = incoming.every(v => isPlainObject(v) && typeof v.id === 'string') && base.every(v => isPlainObject(v) && typeof v.id === 'string');\n      if (keyed) {\n        const baseMap = new Map(base.map(v => [v.id, v]));\n        const latestMap = new Map(latest.map(v => [v.id, v]));\n        const result = latest.map(v => v);\n        for (const item of incoming) {\n          const oldItem = baseMap.get(item.id);\n          const currentItem = latestMap.get(item.id);\n          if (!oldItem) { if (!latestMap.has(item.id)) result.push(item); continue; }\n          if (currentItem) { const index = result.findIndex(v => v.id === item.id); result[index] = mergeStaleValue(currentItem, oldItem, item); }\n        }\n        return result;\n      }\n      const added = incoming.filter(v => !base.some(b => Object.is(b, v)));\n      const removed = base.filter(v => !incoming.some(i => Object.is(i, v)));\n      return [...latest, ...added.filter(v => !latest.some(l => Object.is(l, v)))].filter(v => !removed.some(r => Object.is(r, v)));\n    }\n    if (isPlainObject(incoming) && isPlainObject(base) && isPlainObject(latest)) {\n      const result = { ...latest };\n      for (const key of Object.keys(incoming)) result[key] = mergeStaleValue(latest[key], base[key], incoming[key]);\n      return result;\n    }\n    return incoming;\n  };\n\n`;
-source = source.replace(marker, helpers + marker);
-const oldHandler = `  const handleUpdateCharacter = async (updated: CharacterProfile): Promise<boolean> => {\n    const previous = characters.find(character => character.id === updated.id);\n    // Update the visible state immediately; Firestore realtime listeners can lag\n    // or be unavailable when the app is running in local fallback mode.\n    setCharacters(prev => {\n      const exists = prev.some(character => character.id === updated.id);\n      return exists\n        ? prev.map(character => character.id === updated.id ? updated : character)\n        : [...prev, updated];\n    });\n    try {\n      await updateCharacterInDB(updated);\n      return true;\n    } catch (error) {\n      if (previous) {\n        setCharacters(prev => prev.map(character => character.id === previous.id ? previous : character));\n      }\n      console.error('Failed to persist character update:', error);\n      alert('บันทึกข้อมูลตัวละครไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');\n      return false;\n    }\n  };`;
-const newHandler = `  const handleUpdateCharacter = async (updated: CharacterProfile): Promise<boolean> => {\n    const base = renderedCharactersRef.current.find(character => character.id === updated.id);\n    const latest = latestCharactersRef.current.find(character => character.id === updated.id) || base || updated;\n    const committed = { ...(base ? mergeStaleValue(latest, base, updated) : updated), lastUpdated: Math.max(Date.now(), Number(latest.lastUpdated || 0) + 1) } as CharacterProfile;\n    latestCharactersRef.current = latestCharactersRef.current.some(c => c.id === committed.id)\n      ? latestCharactersRef.current.map(c => c.id === committed.id ? committed : c)\n      : [...latestCharactersRef.current, committed];\n    setCharacters(latestCharactersRef.current);\n    try { await updateCharacterInDB(committed); return true; }\n    catch (error) { console.error('Failed to persist character update:', error); return false; }\n  };`;
-if (!source.includes(oldHandler)) throw new Error('handleUpdateCharacter block not found');
-source = source.replace(oldHandler, newHandler);
+
+if (!source.includes('const latestCharactersRef = useRef<CharacterProfile[]>(characters);')) {
+  const helpers = `  const latestCharactersRef = useRef<CharacterProfile[]>(characters);\n  useEffect(() => {\n    latestCharactersRef.current = characters;\n  }, [characters]);\n\n`;
+  source = source.replace(marker, helpers + marker);
+}
+
+const start = source.indexOf('  const handleUpdateCharacter = ');
+if (start < 0) throw new Error('handleUpdateCharacter not found');
+const end = source.indexOf('\n  };', start);
+if (end < 0) throw new Error('handleUpdateCharacter end not found');
+const endPos = end + 5;
+
+const handler = `  const handleUpdateCharacter = async (updated: CharacterProfile): Promise<boolean> => {
+    // IMPORTANT: do not depend on React's async render cycle. Each action gets
+    // the exact character currently committed by the previous action.
+    const current = latestCharactersRef.current.find(c => c.id === updated.id);
+    const committed: CharacterProfile = {
+      ...(current || {} as CharacterProfile),
+      ...updated,
+      lastUpdated: Math.max(Date.now(), Number(current?.lastUpdated || 0) + 1),
+    };
+
+    latestCharactersRef.current = latestCharactersRef.current.some(c => c.id === committed.id)
+      ? latestCharactersRef.current.map(c => c.id === committed.id ? committed : c)
+      : [...latestCharactersRef.current, committed];
+
+    // Render immediately, then persist this exact version.
+    setCharacters([...latestCharactersRef.current]);
+    try {
+      await updateCharacterInDB(committed);
+      return true;
+    } catch (error) {
+      console.error('Failed to persist character update:', error);
+      return false;
+    }
+  };`;
+source = source.slice(0, start) + handler + source.slice(endPos);
+
 fs.writeFileSync(file, source, 'utf8');
-console.log('Applied realtime latest-state character write fix.');
+console.log('Applied synchronous latest-state character persistence fix.');
