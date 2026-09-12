@@ -1,5 +1,5 @@
 {
-  "buildCommand": "node scripts/fix-persistence-before-build.mjs && node scripts/fix-status-save.mjs && vite build",
+  "buildCommand": "node scripts/fix-shop-purchase-save.mjs && node scripts/fix-persistence-before-build.mjs && node scripts/fix-status-save.mjs && vite build",
   "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": "dist",
   "framework": "vite",
