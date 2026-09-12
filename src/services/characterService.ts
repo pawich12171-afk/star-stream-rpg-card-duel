@@ -133,6 +133,20 @@ const pendingCharacterUpdates = new Map<string, CharacterProfile>();
 const pendingShopItems = new Map<string, Item>();
 const pendingShopDeletes = new Set<string>();
 
+// Serialize writes per character. Firestore is last-write-wins; rapid saves
+// must not finish out of order and restore an older character version.
+const characterWriteQueues = new Map<string, Promise<void>>();
+
+function enqueueCharacterWrite(id: string, write: () => Promise<void>): Promise<void> {
+  const previous = characterWriteQueues.get(id) || Promise.resolve();
+  const next = previous.catch(() => {}).then(write);
+  characterWriteQueues.set(id, next);
+  return next.finally(() => {
+    if (characterWriteQueues.get(id) === next) characterWriteQueues.delete(id);
+  });
+}
+
+
 let localGachaConfig: GachaConfig = (() => {
   try {
     const saved = localStorage.getItem('starstream_gacha_config');
@@ -431,12 +445,15 @@ export async function updateCharacterData(char: CharacterProfile): Promise<void>
   saveLocalAll();
   broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
 
-  // Update Firestore
+  // Serialize writes so rapid consecutive saves cannot finish out of order.
   try {
-    const cleaned = sanitizeForFirestore(updated);
-    await setDoc(doc(db, CHARACTERS_COLLECTION, updated.id), cleaned);
+    await enqueueCharacterWrite(updated.id, async () => {
+      const cleaned = sanitizeForFirestore(updated);
+      await setDoc(doc(db, CHARACTERS_COLLECTION, updated.id), cleaned);
+    });
   } catch (err) {
-    pendingCharacterUpdates.delete(updated.id);
+    const pending = pendingCharacterUpdates.get(updated.id);
+    if (pending && valuesMatch(pending, updated)) pendingCharacterUpdates.delete(updated.id);
     console.error("Error updating character in Firestore:", err);
     throw err;
   }
