@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "node scripts/fix-save-race.mjs && node scripts/fix-status-save.mjs && node scripts/fix-persistence-before-build.mjs && node scripts/fix-shop-purchase-save.mjs && vite build",
+    "build": "node scripts/fix-save-race.mjs && node scripts/fix-status-save.mjs && node scripts/fix-persistence-before-build.mjs && node scripts/fix-shop-purchase-save.mjs && node scripts/fix-realtime-all.mjs && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc --noEmit"
   },
@@ -19,7 +19,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwind-merge": "^3.3.1",
-    "tailwindcss": "^4.1.14",
+    "tailwindcss": "^4.3.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.2"
   },
