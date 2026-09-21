@@ -2,28 +2,24 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getFirestore,
   initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
+  memoryLocalCache,
 } from "firebase/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
 
 // Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Use Firestore's persistent IndexedDB cache so writes survive page/app close.
-// This is important for Status updates: if the user closes the app immediately
-// after changing HP, Stats, Buffs/Nerfs, Skills, etc., Firestore can keep the
-// pending write locally and send it when the app is opened again.
-// Multiple tabs are supported so the persistent cache remains safe across tabs.
+// Keep Firestore server-authoritative across devices.
+// Do not persist an IndexedDB cache here: a device-local persistent cache can
+// make different devices appear to have different data until a server snapshot
+// arrives. Pending writes are still handled by Firestore while the page is open.
 let db: ReturnType<typeof getFirestore>;
 try {
   const dbId = (firebaseConfig as any).firestoreDatabaseId;
   const settings = {
     ignoreUndefinedProperties: true,
     experimentalForceLongPolling: true,
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager(),
-    }),
+    localCache: memoryLocalCache(),
   };
 
   db = dbId
