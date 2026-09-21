@@ -2307,7 +2307,8 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       // Skill-specific critical chance is separate from the dice's critical face.
       // This makes an Admin-created skill capable of critical hits regardless of the roll.
       if (skill && result.damage > 0) {
-        const critChance = Math.max(0, Math.min(100, Number(skill.battleCriticalChance) || getSkillStat(skill, 'critical_chance_percent')));
+        const passiveCritChance = getEquippedItemPassives(current).filter(effect => effect.kind === 'critical_chance').reduce((sum, effect) => sum + Math.max(0, Number(effect.value) || 0), 0);
+        const critChance = Math.max(0, Math.min(100, (Number(skill.battleCriticalChance) || getSkillStat(skill, 'critical_chance_percent')) + passiveCritChance));
         const critMultiplier = Math.max(1, Number(skill.battleCriticalMultiplier) || getSkillStat(skill, 'critical_multiplier') || 1);
         if (critChance > 0 && Math.random() * 100 < critChance) {
           result.damage = Math.max(0, Math.round(result.damage * critMultiplier));
