@@ -299,6 +299,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newBannerTenCost, setNewBannerTenCost] = useState(4500);
   const [newBannerEnabled, setNewBannerEnabled] = useState(true);
   const selectedBanner = safeGachaBanners.find(b => b.id === selectedBannerId);
+
+  useEffect(() => {
+    if (safeGachaBanners.length === 0) {
+      setSelectedBannerId('main');
+      return;
+    }
+    if (!safeGachaBanners.some(b => b.id === selectedBannerId)) {
+      setSelectedBannerId(safeGachaBanners[0].id);
+    }
+  }, [safeGachaBanners, selectedBannerId]);
   const [editBannerName, setEditBannerName] = useState('');
   const [editBannerTitle, setEditBannerTitle] = useState('');
   const [editBannerDesc, setEditBannerDesc] = useState('');
@@ -2115,7 +2125,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <Gift className="w-4 h-4 text-purple-400" />
-                ของรางวัลในตู้กาชาและตั้งเรทออก ({gachaRewards.filter(r => !r.bannerId || r.bannerId === selectedBannerId).length} รายการ)
+                ของรางวัลในตู้กาชาและตั้งเรทออก ({gachaRewards.filter(r => r.bannerId === selectedBannerId || (!r.bannerId && selectedBannerId === 'main')).length} รายการ)
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
