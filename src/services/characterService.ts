@@ -498,6 +498,20 @@ export async function updateCharacterData(char: CharacterProfile): Promise<void>
   }
 }
 
+export async function deleteCharacterFromDB(characterId: string): Promise<void> {
+  const id = String(characterId || '').trim();
+  if (!id) throw new Error('ไม่พบ ID ตัวละครที่ต้องการลบ');
+
+  await enqueueCharacterWrite(id, async () => {
+    await deleteDoc(doc(db, CHARACTERS_COLLECTION, id));
+  });
+
+  pendingCharacterUpdates.delete(id);
+  localCharacters = localCharacters.filter(character => character.id !== id);
+  saveLocalAll();
+  broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
+}
+
 // Atomic partial character update used by systems that change only a few fields.
 // The transaction reads the newest Firestore document first, then applies only
 // the requested fields so stale component snapshots cannot overwrite unrelated data.
