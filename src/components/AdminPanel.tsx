@@ -340,7 +340,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const spawnerTargetChar = characters.find(c => c.id === spawnerTargetCharId) || characters[0];
 
   // Calculate total gacha rate sum
-  const totalGachaRate = gachaRewards.filter(r => !r.bannerId || r.bannerId === selectedBannerId).reduce((sum, r) => sum + (Number(r.rate) || 0), 0);
+  const totalGachaRate = gachaRewards.filter(r => r.bannerId === selectedBannerId || (!r.bannerId && selectedBannerId === 'main')).reduce((sum, r) => sum + (Number(r.rate) || 0), 0);
 
   // Quick coin action handlers
   const handleAddCoins = () => {
