@@ -2335,6 +2335,16 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         result.cooldownRemaining = cooldown;
       }
     }
+    if (!skill && result.damage > 0) {
+      const passiveCritChance = getEquippedItemPassives(current)
+        .filter(effect => effect.kind === 'critical_chance')
+        .reduce((sum, effect) => sum + Math.max(0, Number(effect.value) || 0), 0);
+      if (passiveCritChance > 0 && Math.random() * 100 < Math.min(100, passiveCritChance)) {
+        result.damage = Math.max(0, Math.round(result.damage * 2));
+        result.message += ` • 💥 Passive CRITICAL! ${passiveCritChance}% ×2`;
+        result.effect = 'critical';
+      }
+    }
     if (!skill) {
       const passiveRepeatChance = getEquippedItemPassives(current)
         .filter(effect => effect.kind === 'repeat_attack_chance')
