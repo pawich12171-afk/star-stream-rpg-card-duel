@@ -31,7 +31,23 @@ const inputClass = 'w-full rounded-xl border border-slate-700 bg-slate-950/80 px
 const buttonClass = 'rounded-xl px-3 py-2 text-xs font-black transition-all';
 
 function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): BattleCombatant {
-  return { id: `player:${character.id}`, sourceId: character.id, name: character.displayName, avatarUrl: character.avatarUrl, type: 'player', team, stats: { ...character.stats }, hp: character.hp, maxHp: character.maxHp, adminStatusEffects: character.adminStatusEffects?.map(effect => ({ ...effect })) };
+  const equippedPassives = (character.inventory || [])
+    .filter(item => item.isEquipped && item.passiveEffects?.length)
+    .flatMap(item => (item.passiveEffects || []).map(effect => ({ ...effect })));
+  return {
+    id: `player:${character.id}`,
+    sourceId: character.id,
+    name: character.displayName,
+    avatarUrl: character.avatarUrl,
+    type: 'player',
+    team,
+    stats: { ...character.stats },
+    hp: character.hp,
+    maxHp: character.maxHp,
+    adminStatusEffects: character.adminStatusEffects?.map(effect => ({ ...effect })),
+    equippedPassives,
+    passiveStacks: {},
+  };
 }
 
 function makeBotCombatant(bot: BattleBot, team: 'a' | 'b'): BattleCombatant {
