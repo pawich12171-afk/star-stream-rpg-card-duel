@@ -64,6 +64,17 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [newSkillBattleEffect, setNewSkillBattleEffect] = useState<NonNullable<Skill['battleEffect']>>('damage');
   const [newSkillBattlePower, setNewSkillBattlePower] = useState(5);
   const [newSkillCooldownTurns, setNewSkillCooldownTurns] = useState(3);
+  const [newSkillCritChance, setNewSkillCritChance] = useState(0);
+  const [newSkillCritMultiplier, setNewSkillCritMultiplier] = useState(2);
+  const [newSkillBattleStats, setNewSkillBattleStats] = useState<NonNullable<Skill['battleStats']>>([]);
+  const [newSkillStatKind, setNewSkillStatKind] = useState<NonNullable<Skill['battleStats']>[number]['kind']>('attack_power');
+  const [newSkillStatValue, setNewSkillStatValue] = useState(15);
+  const [newSkillStatDuration, setNewSkillStatDuration] = useState(1);
+  const [newSkillExtraEffects, setNewSkillExtraEffects] = useState<NonNullable<Skill['battleEffects']>>([]);
+  const [newSkillExtraKind, setNewSkillExtraKind] = useState<NonNullable<Skill['battleEffects']>[number]['kind']>('bleeding');
+  const [newSkillExtraValue, setNewSkillExtraValue] = useState(15);
+  const [newSkillExtraDuration, setNewSkillExtraDuration] = useState(3);
+  const [newSkillExtraChance, setNewSkillExtraChance] = useState(100);
 
   const [showHpBreakdown, setShowHpBreakdown] = useState(false);
   const [showStatEditModal, setShowStatEditModal] = useState(false);
@@ -316,6 +327,10 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       battlePower: Math.max(1, Number(newSkillBattlePower) || 1),
       cooldownTurns: Math.max(0, Math.min(99, Number(newSkillCooldownTurns) || 0)),
       cooldown: Number(newSkillCooldownTurns) > 0 ? `${newSkillCooldownTurns} เทิร์น` : undefined,
+      battleCriticalChance: Math.max(0, Math.min(100, Number(newSkillCritChance) || 0)),
+      battleCriticalMultiplier: Math.max(1, Number(newSkillCritMultiplier) || 1),
+      battleStats: newSkillBattleStats.length ? [...newSkillBattleStats] : undefined,
+      battleEffects: newSkillExtraEffects.length ? [...newSkillExtraEffects] : undefined,
       upgradeCount: 0,
     };
 
@@ -341,6 +356,10 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     setNewSkillBattleEffect('damage');
     setNewSkillBattlePower(5);
     setNewSkillCooldownTurns(3);
+    setNewSkillCritChance(0);
+    setNewSkillCritMultiplier(2);
+    setNewSkillBattleStats([]);
+    setNewSkillExtraEffects([]);
     setShowAddSkillModal(false);
   };
 
@@ -1051,6 +1070,49 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                 </div>
                 <div className="rounded-xl border border-cyan-400/15 bg-slate-950/35 px-3 py-2 text-[10px] leading-relaxed text-cyan-100/65">
                   เคล็ดลับ: ตั้งค่า <strong className="text-cyan-200">ค่าพลัง</strong> ให้สอดคล้องกับคำอธิบายด้านบน เพื่อให้ผู้เล่นเข้าใจผลของสกิลได้ทันที
+                </div>
+
+                <div className="rounded-xl border border-amber-500/25 bg-amber-950/10 p-3 space-y-2">
+                  <div className="text-[11px] font-black text-amber-200">💥 คริติคอล</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="text-[10px] text-slate-400">โอกาสคริติคอล (%)
+                      <input type="number" min={0} max={100} value={newSkillCritChance} onChange={e=>setNewSkillCritChance(Math.max(0,Math.min(100,Number(e.target.value)||0)))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-2 text-xs text-amber-200 outline-none"/>
+                    </label>
+                    <label className="text-[10px] text-slate-400">ตัวคูณคริติคอล (x)
+                      <input type="number" min={1} max={20} step={0.1} value={newSkillCritMultiplier} onChange={e=>setNewSkillCritMultiplier(Math.max(1,Number(e.target.value)||1))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-2 text-xs text-amber-200 outline-none"/>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-cyan-400/20 bg-cyan-950/10 p-3 space-y-2">
+                  <div className="text-[11px] font-black text-cyan-200">📊 สเตตัสสกิล — เพิ่มได้หลายรายการ</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select value={newSkillStatKind} onChange={e=>setNewSkillStatKind(e.target.value as NonNullable<Skill['battleStats']>[number]['kind'])} className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white">
+                      <option value="attack_power">พลังโจมตี</option><option value="defense_power">พลังป้องกัน</option><option value="heal_percent">ฟื้น HP %</option><option value="accuracy_percent">ความแม่นยำ %</option><option value="speed">ความเร็ว</option><option value="status_chance_percent">โอกาสติดสถานะ %</option><option value="status_duration">ระยะเวลาสถานะ</option><option value="critical_chance_percent">โอกาสคริ %</option><option value="critical_multiplier">ตัวคูณคริ</option><option value="cooldown_turns">ลดคูลดาวน์</option>
+                    </select>
+                    <input type="number" step={0.1} value={newSkillStatValue} onChange={e=>setNewSkillStatValue(Number(e.target.value)||0)} placeholder="ค่า" className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"/>
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <input type="number" min={1} value={newSkillStatDuration} onChange={e=>setNewSkillStatDuration(Math.max(1,Number(e.target.value)||1))} placeholder="ระยะเวลา (เทิร์น)" className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"/>
+                    <button type="button" onClick={()=>setNewSkillBattleStats(prev=>[...prev,{kind:newSkillStatKind,value:Number(newSkillStatValue)||0,duration:Math.max(1,Number(newSkillStatDuration)||1)}])} className="rounded-lg bg-cyan-500/20 px-3 py-2 text-xs font-black text-cyan-100">+ เพิ่ม</button>
+                  </div>
+                  {newSkillBattleStats.map((stat,index)=><div key={index} className="flex items-center justify-between rounded-lg bg-black/20 px-2 py-1.5 text-[10px] text-slate-300"><span>{stat.kind} • {stat.value} • {stat.duration} เทิร์น</span><button type="button" onClick={()=>setNewSkillBattleStats(prev=>prev.filter((_,i)=>i!==index))} className="text-rose-300">ลบ</button></div>)}
+                </div>
+
+                <div className="rounded-xl border border-fuchsia-400/20 bg-fuchsia-950/10 p-3 space-y-2">
+                  <div className="text-[11px] font-black text-fuchsia-200">✨ เอฟเฟกต์เพิ่มเติม — เพิ่มได้หลายรายการและทำงานพร้อมกัน</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select value={newSkillExtraKind} onChange={e=>setNewSkillExtraKind(e.target.value as NonNullable<Skill['battleEffects']>[number]['kind'])} className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white">
+                      <option value="bleeding">เลือดไหล</option><option value="burn">เผาไหม้</option><option value="poison">พิษ</option><option value="freeze">Freeze</option><option value="stun">สตัน</option><option value="reduce_max_hp_percent">ลด MAX HP %</option><option value="reduce_defense_percent">ลดป้องกัน %</option><option value="damage_percent">เพิ่มดาเมจ %</option><option value="heal_percent">ฟื้น HP %</option><option value="shield">โล่</option><option value="reflect">สะท้อน %</option>
+                    </select>
+                    <input type="number" min={0} value={newSkillExtraValue} onChange={e=>setNewSkillExtraValue(Math.max(0,Number(e.target.value)||0))} placeholder="ค่า" className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"/>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <input type="number" min={1} value={newSkillExtraDuration} onChange={e=>setNewSkillExtraDuration(Math.max(1,Number(e.target.value)||1))} placeholder="เทิร์น" className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"/>
+                    <input type="number" min={0} max={100} value={newSkillExtraChance} onChange={e=>setNewSkillExtraChance(Math.max(0,Math.min(100,Number(e.target.value)||0)))} placeholder="โอกาส %" className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"/>
+                    <button type="button" onClick={()=>setNewSkillExtraEffects(prev=>[...prev,{kind:newSkillExtraKind,value:Math.max(0,Number(newSkillExtraValue)||0),duration:Math.max(1,Number(newSkillExtraDuration)||1),chance:Math.max(0,Math.min(100,Number(newSkillExtraChance)||0)),target:['heal_percent','shield','reflect'].includes(newSkillExtraKind)?'self':'enemy',label:newSkillExtraKind==='freeze'?'Freeze':undefined}])} className="rounded-lg bg-fuchsia-500/20 px-2 py-2 text-xs font-black text-fuchsia-100">+ เพิ่ม</button>
+                  </div>
+                  {newSkillExtraEffects.map((effect,index)=><div key={index} className="flex items-center justify-between rounded-lg bg-black/20 px-2 py-1.5 text-[10px] text-slate-300"><span>{effect.kind} • {effect.value}{effect.kind.includes('percent')||effect.kind==='reflect'?'%':''} • {effect.duration} เทิร์น • {effect.chance ?? 100}%</span><button type="button" onClick={()=>setNewSkillExtraEffects(prev=>prev.filter((_,i)=>i!==index))} className="text-rose-300">ลบ</button></div>)}
                 </div>
               </section>
 
