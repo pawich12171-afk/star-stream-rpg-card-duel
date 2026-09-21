@@ -4,6 +4,8 @@ import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceF
 import {
   DEFAULT_BATTLE_CONFIG,
   createBattleRoom,
+  createBattleRoomWithEntryFee,
+  settleBattleVictoryReward,
   deleteBattleBot,
   deleteBattleRoom,
   getBattleSkillProfile,
@@ -137,6 +139,14 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
 
   useEffect(() => { if (!selectedTeamIds.includes(currentUser.id)) setSelectedTeamIds([currentUser.id]); }, [currentUser.id, selectedTeamIds]);
   useEffect(() => { if (!isAdmin) setShowAdmin(false); }, [isAdmin]);
+  useEffect(() => {
+    const completed = rooms.filter(room => room.mode === 'pve' && room.status === 'completed' && room.createdBy === currentUser.id && room.winnerTeam === 'a' && !room.rewardClaimedBy);
+    completed.forEach(room => {
+      void settleBattleVictoryReward(room, currentUser.id).then(paid => {
+        if (paid > 0) alert(\`ชนะการต่อสู้! ได้รับรางวัล +${paid.toLocaleString()} Coins\`);
+      }).catch(error => console.warn('ไม่สามารถจ่ายรางวัลการต่อสู้ได้', error));
+    });
+  }, [rooms, currentUser.id]);
 
   const otherPlayers = useMemo(() => allCharacters.filter(character => character.id !== currentUser.id), [allCharacters, currentUser.id]);
   const activeBots = bots.filter(bot => bot.hp > 0);
@@ -145,6 +155,9 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   const bossDice = config.bossDice || DEFAULT_BATTLE_CONFIG.bossDice;
   const normalFaces = useMemo(() => makeDiceFaces(normalDice.faces, normalDice.sides), [config.faces, config.sides]);
   const bossFaces = useMemo(() => makeDiceFaces(bossDice.faces, bossDice.sides), [bossDice.faces, bossDice.sides]);
+  const BATTLE_ENTRY_FEE = 5000;
+  const BOT_VICTORY_REWARD = 7000;
+  const BOSS_VICTORY_REWARD = 10000;
 
   const toggleTeamMember = (id: string) => { if (id !== currentUser.id) setSelectedTeamIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]); };
   const toggleBot = (id: string) => setSelectedBotIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
@@ -156,9 +169,29 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
     const enemies = mode === 'pve' ? bots.filter(bot => selectedBotIds.includes(bot.id)) : otherPlayers.filter(character => character.id === selectedOpponentId);
     if (!enemies.length) { alert(mode === 'pve' ? 'เลือกบอทหรือบอสก่อนสร้างห้อง' : 'เลือกผู้เล่นฝ่ายตรงข้ามก่อนสร้างห้อง'); return; }
     const teamA = teamMembers.slice(0, 3).map(character => makePlayerCombatant(character, 'a'));
-    const teamB = mode === 'pve' ? enemies.slice(0, 3).map(bot => makeBotCombatant(bot as BattleBot, 'b')) : enemies.slice(0, 3).map(character => makePlayerCombatant(character as CharacterProfile, 'b'));
+    const selectedBots = mode === 'pve' ? enemies.slice(0, 3).map(bot => bot as BattleBot) : [];
+    const teamB = mode === 'pve' ? selectedBots.map(bot => makeBotCombatant(bot, 'b')) : enemies.slice(0, 3).map(character => makePlayerCombatant(character as CharacterProfile, 'b'));
+    const isPveBoss = selectedBots.some(bot => bot.isBoss);
+    const entryFee = mode === 'pve' ? BATTLE_ENTRY_FEE : 0;
+    const victoryReward = mode === 'pve' ? (isPveBoss ? BOSS_VICTORY_REWARD : BOT_VICTORY_REWARD) : 0;
+    if (mode === 'pve' && (Number(currentUser.coins) || 0) < entryFee) {
+      alert(\`Coins ไม่พอ ต้องมีอย่างน้อย ${entryFee.toLocaleString()} Coins เพื่อเข้าต่อสู้\`);
+      return;
+    }
     const now = Date.now();
-    await createBattleRoom({ id: 'battle-' + now, mode, status: 'active', createdBy: currentUser.id, createdByName: currentUser.displayName, teamA, teamB, turnActorId: teamA[0].id, round: 1, log: [{ id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: 'เริ่มการต่อสู้ — เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' }], createdAt: now, updatedAt: now });
+    const room: BattleRoom = {
+      id: 'battle-' + now, mode, status: 'active', createdBy: currentUser.id, createdByName: currentUser.displayName,
+      teamA, teamB, turnActorId: teamA[0].id, round: 1,
+      log: [{ id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pve' ? \`เริ่มการต่อสู้ — ค่าเข้า ${entryFee.toLocaleString()} Coins · ชนะรับ ${victoryReward.toLocaleString()} Coins\` : 'เริ่มการต่อสู้ — เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' }],
+      entryFeeCoins: entryFee, victoryRewardCoins: victoryReward, createdAt: now, updatedAt: now
+    };
+    try {
+      if (mode === 'pve') await createBattleRoomWithEntryFee(room, currentUser.id, entryFee);
+      else await createBattleRoom(room);
+    } catch (error: any) {
+      alert(error?.message || 'ไม่สามารถเปิดห้องรบได้');
+      return;
+    }
     setSelectedBotIds([]);
     setSelectedOpponentId('');
   };
