@@ -551,43 +551,46 @@ export async function updateCharacterStatusData(
   let result: CharacterProfile | null = null;
 
   await enqueueCharacterWrite(charId, async () => {
-    await runTransaction(db, async (transaction) => {
-      const snap = await transaction.get(ref);
-      if (!snap.exists()) throw new Error('ไม่พบตัวละครที่ต้องการบันทึก');
+    // Status is a partial update. Read the current shared Firestore document,
+    // then update only Status fields. This avoids a transaction being rejected
+    // when the client briefly loses connectivity and avoids overwriting newer
+    // unrelated fields from another device.
+    const snap = await getDoc(ref);
+    if (!snap.exists()) throw new Error('ไม่พบตัวละครที่ต้องการบันทึก');
 
-      const current = { ...snap.data(), id: snap.id } as CharacterProfile;
-      const updated: CharacterProfile = {
-        ...current,
-        stats: {
-          ...current.stats,
-          strength: Number(patch.stats.strength),
-          durability: Number(patch.stats.durability),
-          agility: Number(patch.stats.agility),
-          magic: Number(patch.stats.magic),
-        },
-        hp: Number(patch.hp),
-        maxHp: Number(patch.maxHp),
-        statusBuffs: patch.statusBuffs || '',
-        characteristics: [...(patch.characteristics || [])],
-        lastUpdated: Math.max(Date.now(), Number(current.lastUpdated || 0) + 1),
-      };
+    const current = { ...snap.data(), id: snap.id } as CharacterProfile;
+    const updated: CharacterProfile = {
+      ...current,
+      stats: {
+        ...current.stats,
+        strength: Number(patch.stats.strength),
+        durability: Number(patch.stats.durability),
+        agility: Number(patch.stats.agility),
+        magic: Number(patch.stats.magic),
+      },
+      hp: Number(patch.hp),
+      maxHp: Number(patch.maxHp),
+      statusBuffs: patch.statusBuffs || '',
+      characteristics: [...(patch.characteristics || [])],
+      lastUpdated: Math.max(Date.now(), Number(current.lastUpdated || 0) + 1),
+    };
 
-      updated.powerScore = calculatePowerScore(updated);
-      result = updated;
+    updated.powerScore = calculatePowerScore(updated);
 
-      transaction.update(ref, {
-        stats: updated.stats,
-        hp: updated.hp,
-        maxHp: updated.maxHp,
-        statusBuffs: updated.statusBuffs,
-        characteristics: updated.characteristics,
-        powerScore: updated.powerScore,
-        lastUpdated: updated.lastUpdated,
-      });
-    });
+    await updateDoc(ref, sanitizeForFirestore({
+      stats: updated.stats,
+      hp: updated.hp,
+      maxHp: updated.maxHp,
+      statusBuffs: updated.statusBuffs,
+      characteristics: updated.characteristics,
+      powerScore: updated.powerScore,
+      lastUpdated: updated.lastUpdated,
+    }));
+
+    result = updated;
   });
 
-  if (!result) throw new Error('ไม่สามารถสร้างข้อมูลตัวละครหลังบันทึกได้');
+  if (!result) throw new Error('ไม่สามารถบันทึกการเปลี่ยนแปลงตัวละครได้');
 
   pendingCharacterUpdates.set(charId, result);
   localCharacters = localCharacters.some(c => c.id === charId)
@@ -598,7 +601,6 @@ export async function updateCharacterStatusData(
 
   return result;
 }
-
 // Delete Character
 export async function deleteCharacter(charId: string): Promise<void> {
   const previous = localCharacters.find(c => c.id === charId);
