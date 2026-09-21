@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CharacterProfile, Item, Skill, Quest, GachaReward, GachaConfig, GachaRarity, MAX_GACHA_REWARDS, BattleExtraEffect, BattleSkillStat } from '../types';
+import { CharacterProfile, Item, Skill, Quest, GachaReward, GachaBanner, GachaConfig, GachaRarity, MAX_GACHA_REWARDS, BattleExtraEffect, BattleSkillStat } from '../types';
 import { 
   ShieldCheck, 
   Coins, 
@@ -37,6 +37,7 @@ interface AdminPanelProps {
   shopItems: Item[];
   gachaRewards: GachaReward[];
   gachaConfig: GachaConfig;
+  gachaBanners: GachaBanner[];
   onUpdateCharacterCoins: (characterId: string, deltaCoins: number) => void;
   onSetCharacterCoins: (characterId: string, newCoins: number) => void;
   onAddShopItem: (item: Item) => void | Promise<void>;
@@ -44,6 +45,8 @@ interface AdminPanelProps {
   onUpdateGachaConfig: (config: GachaConfig) => void;
   onAddGachaReward: (reward: GachaReward) => void;
   onDeleteGachaReward: (rewardId: string) => void;
+  onSaveGachaBanner: (banner: GachaBanner) => void | Promise<void>;
+  onDeleteGachaBanner: (bannerId: string) => void | Promise<void>;
   onDirectEditCharacter: (char: CharacterProfile) => void;
   onResetToDefaults: () => void;
   onToggleAdminRole?: (char: CharacterProfile) => void;
@@ -284,6 +287,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [bannerTitleInput, setBannerTitleInput] = useState<string>(gachaConfig.bannerTitle || 'หีบสมบัติจักรวาลแห่งดวงดาว');
   const [bannerDescInput, setBannerDescInput] = useState<string>(gachaConfig.bannerDescription || 'สุ่มรับเหรียญรางวัลมหาศาล สกิลพิเศษระดับตำนาน และไอเทมสเตตัสหายาก');
   const [gachaEnabledInput, setGachaEnabledInput] = useState<boolean>(gachaConfig.enabled !== false);
+  const [selectedBannerId, setSelectedBannerId] = useState<string>(gachaBanners[0]?.id || 'main');
+  const [newBannerName, setNewBannerName] = useState('ตู้กาชาใหม่');
+  const [newBannerTitle, setNewBannerTitle] = useState('หีบสมบัติแห่งดวงดาว');
+  const [newBannerDesc, setNewBannerDesc] = useState('ตู้กาชาพิเศษ');
+  const [newBannerPullCost, setNewBannerPullCost] = useState(500);
+  const [newBannerTenCost, setNewBannerTenCost] = useState(4500);
+  const [newBannerEnabled, setNewBannerEnabled] = useState(true);
 
   // New Gacha Reward Form
   const [newRewardName, setNewRewardName] = useState('');
@@ -318,7 +328,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const spawnerTargetChar = characters.find(c => c.id === spawnerTargetCharId) || characters[0];
 
   // Calculate total gacha rate sum
-  const totalGachaRate = gachaRewards.reduce((sum, r) => sum + (Number(r.rate) || 0), 0);
+  const totalGachaRate = gachaRewards.filter(r => !r.bannerId || r.bannerId === selectedBannerId).reduce((sum, r) => sum + (Number(r.rate) || 0), 0);
 
   // Quick coin action handlers
   const handleAddCoins = () => {
@@ -456,6 +466,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const handleCreateGachaBanner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBannerName.trim()) { alert('กรุณากรอกชื่อตู้กาชา'); return; }
+    const banner: GachaBanner = {
+      id: `banner-${Date.now()}`,
+      name: newBannerName.trim(),
+      pullCost: Math.max(10, Number(newBannerPullCost) || 10),
+      tenPullCost: Math.max(100, Number(newBannerTenCost) || 100),
+      enabled: newBannerEnabled,
+      bannerTitle: newBannerTitle.trim() || newBannerName.trim(),
+      bannerDescription: newBannerDesc.trim() || 'ตู้กาชาพิเศษ',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    try {
+      await onSaveGachaBanner(banner);
+      setSelectedBannerId(banner.id);
+      setNewBannerName('ตู้กาชาใหม่');
+      alert(`สร้างตู้กาชา "${banner.name}" สำเร็จแล้ว`);
+    } catch (error) {
+      console.error(error);
+      alert('สร้างตู้กาชาไม่สำเร็จ');
+    }
+  };
+
   // Save Gacha Config Handler
   const handleSaveGachaConfig = (e: React.FormEvent) => {
     e.preventDefault();
@@ -498,6 +533,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       rate: Math.max(0, Number(newRewardRate) || 0),
       rarity: newRewardRarity,
       description: newRewardDesc.trim() || 'ของรางวัลกาชาใน Star Stream',
+      bannerId: selectedBannerId || 'main',
       coinAmount: newRewardType === 'coin' ? newRewardCoinAmount : undefined,
       itemData,
       characteristic: newRewardType === 'characteristic' ? newRewardCharacteristic.trim() : undefined,
@@ -1681,6 +1717,39 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {activeTab === 'gacha_manage' && (
         <div className="space-y-6">
+          <div className="bg-slate-900 border border-purple-500/30 rounded-3xl p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-black text-white">🎰 จัดการตู้กาชา</h3>
+                <p className="text-[11px] text-slate-400">สร้างได้หลายตู้ • ตั้งราคา • เปิด/ปิด • ลบตู้</p>
+              </div>
+              <span className="text-[10px] text-purple-300">{gachaBanners.length} ตู้</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {gachaBanners.map(b => (
+                <div key={b.id} className={`rounded-2xl border p-3 ${selectedBannerId === b.id ? 'border-amber-400 bg-amber-500/10' : 'border-slate-700 bg-slate-800/50'}`}>
+                  <button type="button" onClick={() => setSelectedBannerId(b.id)} className="w-full text-left">
+                    <div className="text-xs font-black text-white">{b.name}</div>
+                    <div className="text-[10px] text-slate-400">{b.pullCost.toLocaleString()} C / 10 = {b.tenPullCost.toLocaleString()} C</div>
+                    <div className={`text-[9px] mt-1 ${b.enabled ? 'text-emerald-400' : 'text-rose-400'}`}>{b.enabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}</div>
+                  </button>
+                  <button type="button" onClick={async () => { if (!confirm(`ลบตู้ "${b.name}" หรือไม่?`)) return; try { await onDeleteGachaBanner(b.id); if (selectedBannerId === b.id) setSelectedBannerId(gachaBanners.find(x => x.id !== b.id)?.id || 'main'); } catch (e: any) { alert(e?.message || 'ลบตู้ไม่สำเร็จ'); } }} className="mt-2 text-[10px] text-rose-400 hover:text-rose-300 flex items-center gap-1">
+                    <Trash2 className="w-3 h-3" /> ลบตู้
+                  </button>
+                </div>
+              ))}
+            </div>
+            <form onSubmit={handleCreateGachaBanner} className="grid grid-cols-2 md:grid-cols-6 gap-2 pt-2 border-t border-slate-800">
+              <input value={newBannerName} onChange={e=>setNewBannerName(e.target.value)} placeholder="ชื่อตู้" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs md:col-span-2" />
+              <input type="number" min={10} value={newBannerPullCost} onChange={e=>setNewBannerPullCost(Number(e.target.value))} placeholder="1 ครั้ง" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
+              <input type="number" min={100} value={newBannerTenCost} onChange={e=>setNewBannerTenCost(Number(e.target.value))} placeholder="10 ครั้ง" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
+              <input value={newBannerTitle} onChange={e=>setNewBannerTitle(e.target.value)} placeholder="หัวข้อ" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
+              <button type="submit" className="px-3 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-black text-xs"><Plus className="w-3 h-3 inline mr-1"/>สร้างตู้</button>
+              <input value={newBannerDesc} onChange={e=>setNewBannerDesc(e.target.value)} placeholder="คำอธิบาย" className="col-span-2 md:col-span-5 px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
+              <label className="text-[10px] text-slate-300 flex items-center gap-2"><input type="checkbox" checked={newBannerEnabled} onChange={e=>setNewBannerEnabled(e.target.checked)} /> เปิดใช้งาน</label>
+            </form>
+          </div>
+
           {/* Top: Gacha Config & Total Rate Progress */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Gacha System Parameters */}
@@ -2012,7 +2081,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <Gift className="w-4 h-4 text-purple-400" />
-                ของรางวัลในตู้กาชาและตั้งเรทออก ({gachaRewards.length} รายการ)
+                ของรางวัลในตู้กาชาและตั้งเรทออก ({gachaRewards.filter(r => !r.bannerId || r.bannerId === selectedBannerId).length} รายการ)
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -2026,7 +2095,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
-                    {gachaRewards.map((rw) => {
+                    {gachaRewards.filter(r => !r.bannerId || r.bannerId === selectedBannerId).map((rw) => {
                       const currentVal = editingRates[rw.id] !== undefined ? editingRates[rw.id] : rw.rate;
                       const hasChanged = editingRates[rw.id] !== undefined && editingRates[rw.id] !== rw.rate;
                       return (
