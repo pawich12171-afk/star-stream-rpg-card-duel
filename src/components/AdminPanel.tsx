@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CharacterProfile, Item, Skill, Quest, GachaReward, GachaBanner, GachaConfig, GachaRarity, MAX_GACHA_REWARDS, BattleExtraEffect, BattleSkillStat } from '../types';
+import { CharacterProfile, Item, Skill, Quest, GachaReward, GachaBanner, GachaConfig, GachaRarity, MAX_GACHA_REWARDS, BattleExtraEffect, BattleSkillStat, ItemPassiveEffect } from '../types';
 import { 
   ShieldCheck, 
   Coins, 
@@ -268,6 +268,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [shopItemIcon, setShopItemIcon] = useState('HeartPulse');
   const [shopItemDesc, setShopItemDesc] = useState('');
   const [shopSearch, setShopSearch] = useState('');
+  const [shopItemPassiveEffects, setShopItemPassiveEffects] = useState<ItemPassiveEffect[]>([]);
+  const [shopPassiveName, setShopPassiveName] = useState('พลังติดตัว');
+  const [shopPassiveTrigger, setShopPassiveTrigger] = useState<ItemPassiveEffect['trigger']>('attack');
+  const [shopPassiveKind, setShopPassiveKind] = useState<ItemPassiveEffect['kind']>('stack');
+  const [shopPassiveValue, setShopPassiveValue] = useState(1);
+  const [shopPassiveChance, setShopPassiveChance] = useState(100);
+  const [shopPassiveDuration, setShopPassiveDuration] = useState(1);
+  const [shopPassiveMaxStacks, setShopPassiveMaxStacks] = useState(6);
+  const [shopPassiveStackKey, setShopPassiveStackKey] = useState('flower');
+  const [shopPassiveTargetStat, setShopPassiveTargetStat] = useState<'strength' | 'durability' | 'agility' | 'magic'>('strength');
+  const [shopPassiveDesc, setShopPassiveDesc] = useState('');
 
   const applyShopPreset = (preset: typeof SHOP_PRESET_TEMPLATES[0]) => {
     setShopItemName(preset.name);
@@ -399,6 +410,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       skillEnhanceTarget: shopItemEffectType === 'enhance_skill' ? shopItemSkillTarget : undefined,
       usableByPlayers: true,
       equipped: false,
+      passiveEffects: shopItemPassiveEffects.length ? shopItemPassiveEffects : undefined,
     };
 
     try {
@@ -410,6 +422,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
     setShopItemName('');
     setShopItemDesc('');
+    setShopItemPassiveEffects([]);
     alert(`เพิ่มไอเทม "${newItem.name}" ลงร้านค้าสำเร็จแล้ว!`);
   };
 
@@ -1228,6 +1241,54 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   />
                 </div>
               )}
+
+              <div className="rounded-2xl border border-fuchsia-500/30 bg-fuchsia-950/10 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-xs font-black text-fuchsia-200">✨ Passive ติดตัว — ทำงานตลอดในสนามรบ</div>
+                    <div className="text-[10px] text-slate-400">ไอเทมต้องสวมใส่จึงทำงาน และสามารถใส่หลายเอฟเฟกต์ในชิ้นเดียวได้</div>
+                  </div>
+                  <span className="text-[10px] text-fuchsia-300">{shopItemPassiveEffects.length} เอฟเฟกต์</span>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={shopPassiveName} onChange={e => setShopPassiveName(e.target.value)} placeholder="ชื่อ Passive" />
+                  <select className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={shopPassiveTrigger} onChange={e => setShopPassiveTrigger(e.target.value as ItemPassiveEffect['trigger'])}>
+                    <option value="attack">ทุกครั้งที่โจมตี</option><option value="turn_start">ต้นเทิร์นของตัวเอง</option>
+                  </select>
+                  <select className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={shopPassiveKind} onChange={e => setShopPassiveKind(e.target.value as ItemPassiveEffect['kind'])}>
+                    <option value="stack">สะสม Stack</option><option value="true_damage_per_stack">True Damage ต่อ Stack</option><option value="damage">เพิ่มดาเมจคงที่</option><option value="damage_percent">เพิ่มดาเมจ %</option><option value="heal">ฟื้น HP คงที่</option><option value="heal_percent">ฟื้น HP %</option><option value="buff_stat">เพิ่มค่าสเตตัส</option><option value="shield">สร้างโล่</option><option value="reflect">สะท้อนดาเมจ %</option><option value="repeat_attack_chance">โอกาสตีซ้ำ %</option><option value="critical_chance">โอกาสคริติคอล %</option>
+                  </select>
+                  <input type="number" step="0.1" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={shopPassiveValue} onChange={e => setShopPassiveValue(Number(e.target.value))} placeholder="ค่า" />
+                  <input type="number" step="0.1" min="0" max="100" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={shopPassiveChance} onChange={e => setShopPassiveChance(Number(e.target.value))} placeholder="โอกาส %" />
+                  <input type="number" min="1" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={shopPassiveMaxStacks} onChange={e => setShopPassiveMaxStacks(Number(e.target.value))} placeholder="Max Stack" />
+                  <input className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={shopPassiveStackKey} onChange={e => setShopPassiveStackKey(e.target.value)} placeholder="ชื่อ Stack เช่น flower" />
+                  <select className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={shopPassiveTargetStat} onChange={e => setShopPassiveTargetStat(e.target.value as any)}>
+                    <option value="strength">STR</option><option value="durability">DUR</option><option value="agility">AGI</option><option value="magic">MAG</option>
+                  </select>
+                  <input type="number" min="1" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={shopPassiveDuration} onChange={e => setShopPassiveDuration(Number(e.target.value))} placeholder="ระยะเวลา (รอบ)" />
+                </div>
+                <input className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={shopPassiveDesc} onChange={e => setShopPassiveDesc(e.target.value)} placeholder="คำอธิบาย Passive เช่น สะสมดอกไม้ทุกครั้งที่โจมตี สูงสุด 6 ดอก" />
+                <button type="button" className="w-full rounded-xl bg-fuchsia-500/20 px-3 py-2 text-xs font-black text-fuchsia-100 hover:bg-fuchsia-500/30" onClick={() => {
+                  const effect: ItemPassiveEffect = {
+                    id: `item-passive-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+                    name: shopPassiveName.trim() || 'Passive ติดตัว',
+                    trigger: shopPassiveTrigger,
+                    kind: shopPassiveKind,
+                    value: Math.max(0, Number(shopPassiveValue) || 0),
+                    chance: Math.max(0, Math.min(100, Number(shopPassiveChance) || 0)),
+                    duration: Math.max(1, Math.round(Number(shopPassiveDuration) || 1)),
+                    maxStacks: Math.max(1, Math.round(Number(shopPassiveMaxStacks) || 1)),
+                    stackKey: shopPassiveStackKey.trim() || 'default',
+                    targetStat: shopPassiveKind === 'buff_stat' ? shopPassiveTargetStat : undefined,
+                    description: shopPassiveDesc.trim() || undefined,
+                  };
+                  setShopItemPassiveEffects(prev => [...prev, effect]);
+                }}>+ เพิ่ม Passive นี้ลงไอเทม</button>
+                {shopItemPassiveEffects.map(effect => <div key={effect.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-fuchsia-500/20 bg-slate-950/50 px-3 py-2 text-[10px] text-fuchsia-100">
+                  <span>{effect.name} · {effect.kind} · {effect.value}{effect.kind.includes('percent') || effect.kind === 'repeat_attack_chance' || effect.kind === 'critical_chance' ? '%' : ''} · {effect.trigger}</span>
+                  <button type="button" className="text-rose-300" onClick={() => setShopItemPassiveEffects(prev => prev.filter(item => item.id !== effect.id))}>ลบ</button>
+                </div>)}
+              </div>
 
               <div>
                 <label className="text-xs text-slate-300 block mb-1">คำอธิบายไอเทม</label>
