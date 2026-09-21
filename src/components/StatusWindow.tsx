@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CharacterProfile, Skill, ORVSkillRank } from '../types';
 import { 
   Sparkles, 
@@ -71,6 +71,17 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [tempBuffs, setTempBuffs] = useState(character.statusBuffs || '');
   const [tempCharacteristics, setTempCharacteristics] = useState<string[]>(character.characteristics || []);
   const [newCharacteristic, setNewCharacteristic] = useState('');
+  const latestCharacterRef = useRef<CharacterProfile>(character);
+
+  useEffect(() => {
+    latestCharacterRef.current = character;
+  }, [character]);
+
+  const commitCharacterUpdate = (updated: CharacterProfile) => {
+    const committed = { ...updated, lastUpdated: Date.now() };
+    latestCharacterRef.current = committed;
+    onUpdateCharacter(committed);
+  };
 
   const healthData = calculateCharacterHealth(character);
 
@@ -311,18 +322,21 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   };
 
   const handleSaveStats = () => {
-    const updated = {
-      ...character,
-      stats: tempStats,
-      hp: tempHp,
-      maxHp: tempMaxHp,
+    const latest = latestCharacterRef.current;
+    const updated: CharacterProfile = {
+      ...latest,
+      stats: { ...tempStats },
+      hp: Number(tempHp),
+      maxHp: Number(tempMaxHp),
       statusBuffs: tempBuffs,
-      characteristics: tempCharacteristics,
+      characteristics: [...tempCharacteristics],
+      lastUpdated: Date.now(),
     };
-    onUpdateCharacter(syncCharacterHealth(updated));
+
+    // Direct Status edits are authoritative. Do not rebuild them from stale admin snapshots.
+    commitCharacterUpdate(updated);
     setShowStatEditModal(false);
   };
-
   return (
     <div id="status-window-container" className="space-y-6">
       {/* Top Banner: ORV System Window Header */}
