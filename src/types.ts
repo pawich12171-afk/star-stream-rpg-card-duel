@@ -57,6 +57,23 @@ export interface EquippedBonus {
 export type GachaRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
 export const MAX_GACHA_REWARDS = 20;
 
+export type ItemPassiveTrigger = 'turn_start' | 'attack';
+export type ItemPassiveKind = 'stack' | 'true_damage_per_stack' | 'damage' | 'damage_percent' | 'heal' | 'heal_percent' | 'buff_stat' | 'shield' | 'reflect' | 'repeat_attack_chance' | 'critical_chance';
+
+export interface ItemPassiveEffect {
+  id: string;
+  name: string;
+  trigger: ItemPassiveTrigger;
+  kind: ItemPassiveKind;
+  value: number;
+  chance?: number;
+  duration?: number;
+  maxStacks?: number;
+  stackKey?: string;
+  targetStat?: keyof CharacterStats;
+  description?: string;
+}
+
 export interface Item {
   id: string;
   name: string;
@@ -73,6 +90,7 @@ export interface Item {
   skillEnhanceDesc?: string;
   usableByPlayers: boolean;
   rarity?: GachaRarity;
+  passiveEffects?: ItemPassiveEffect[];
 }
 
 export interface InventoryItem extends Item {
@@ -211,6 +229,8 @@ export interface CharacterProfile {
   adminBalanceSnapshot?: AdminBalanceSnapshot;
   adminBalanceModifiers?: AdminBalanceModifier[];
   adminStatusEffects?: AdminStatusEffect[];
+  equippedPassives?: ItemPassiveEffect[];
+  passiveStacks?: Record<string, number>;
 }
 
 export interface TransactionHistory {
