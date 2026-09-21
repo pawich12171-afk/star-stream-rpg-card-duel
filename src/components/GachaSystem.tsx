@@ -29,11 +29,13 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   const [isPulling, setIsPulling] = useState(false);
   const [pullResults, setPullResults] = useState<GachaReward[] | null>(null);
   const [filterRarity, setFilterRarity] = useState<string>('all');
-  const fallbackBanner: GachaBanner = { id: 'main', name: 'ตู้หลัก', pullCost: gachaConfig.pullCost, tenPullCost: gachaConfig.tenPullCost, enabled: gachaConfig.enabled, bannerTitle: gachaConfig.bannerTitle, bannerDescription: gachaConfig.bannerDescription, createdAt: 0, updatedAt: 0 };
-  const availableBanners = (gachaBanners.length ? gachaBanners : [fallbackBanner]).filter(b => b.enabled);
+  const configuredBanners = Array.isArray(gachaBanners) ? gachaBanners : [];
+  const availableBanners = configuredBanners.filter(b => b.enabled);
   const [selectedBannerId, setSelectedBannerId] = useState<string>(availableBanners[0]?.id || 'main');
-  const activeBanner = availableBanners.find(b => b.id === selectedBannerId) || availableBanners[0] || fallbackBanner;
-  const activeRewards = gachaRewards.filter(r => r.bannerId === activeBanner.id || (!r.bannerId && activeBanner.id === 'main'));
+  const activeBanner = availableBanners.find(b => b.id === selectedBannerId) || availableBanners[0] || null;
+  const activeRewards = activeBanner
+    ? gachaRewards.filter(r => r.bannerId === activeBanner.id || (!r.bannerId && activeBanner.id === 'main'))
+    : [];
   const characterRef = useRef<CharacterProfile>(character);
 
   useEffect(() => {
@@ -46,8 +48,8 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     }
   }, [gachaBanners, selectedBannerId]);
 
-  const pullCost = activeBanner?.pullCost || gachaConfig?.pullCost || 500;
-  const tenPullCost = activeBanner?.tenPullCost || gachaConfig?.tenPullCost || 4500;
+  const pullCost = activeBanner?.pullCost ?? 500;
+  const tenPullCost = activeBanner?.tenPullCost ?? 4500;
 
   // Helper to pick a random reward based on rate %
   const pickRandomReward = (rewardsList: GachaReward[]): GachaReward => {
@@ -77,6 +79,10 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
 
   // Perform Gacha Pull
   const handlePull = (count: number) => {
+    if (!activeBanner) {
+      alert('ขณะนี้ไม่มีตู้กาชาที่เปิดใช้งาน');
+      return;
+    }
     if (!activeBanner.enabled) {
       alert('ตู้กาชานี้ถูกปิดใช้งานโดยผู้ดูแลระบบ');
       return;
@@ -239,9 +245,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     }
   };
 
-  const filteredRewards = filterRarity === 'all' 
-    ? gachaRewards 
-    : gachaRewards.filter(r => r.rarity === filterRarity);
+  const filteredRewards = (filterRarity === 'all' ? activeRewards : activeRewards.filter(r => r.rarity === filterRarity));
 
   return (
     <div className="space-y-6">
@@ -257,10 +261,10 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
               </span>
             </div>
             <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
-              {activeBanner?.bannerTitle || "หีบสมบัติจักรวาลแห่งดวงดาว"}
+              {activeBanner?.bannerTitle || "ยังไม่มีตู้กาชาที่เปิดใช้งาน"}
             </h2>
             <p className="text-xs md:text-sm text-slate-300 max-w-xl leading-relaxed">
-              {activeBanner?.bannerDescription || "สุ่มรับเหรียญรางวัลมหาศาล สกิลพิเศษระดับตำนาน และไอเทมสเตตัสหายาก"}
+              {activeBanner?.bannerDescription || "ผู้ดูแลระบบยังไม่ได้เปิดใช้งานตู้กาชา"}
             </p>
           </div>
 
@@ -306,7 +310,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
           <button
             id="btn-gacha-single"
             onClick={() => handlePull(1)}
-            disabled={isPulling || character.coins < pullCost}
+            disabled={isPulling || !activeBanner || character.coins < pullCost}
             className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-sm shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <Sparkles className="w-4 h-4" />
@@ -315,7 +319,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
           <button
             id="btn-gacha-ten"
             onClick={() => handlePull(10)}
-            disabled={isPulling || character.coins < tenPullCost}
+            disabled={isPulling || !activeBanner || character.coins < tenPullCost}
             className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-sm shadow-[0_0_25px_rgba(245,158,11,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <Gift className="w-4 h-4 text-slate-950" />
