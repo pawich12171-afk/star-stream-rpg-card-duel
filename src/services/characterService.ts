@@ -2032,6 +2032,13 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         }
       }
       if (skill) {
+        const repeatChance = Math.max(0, Math.min(100, Number(skill.repeatAttackChance) || 0));
+        if (result.damage > 0 && repeatChance > 0 && Math.random() * 100 < repeatChance) {
+          const repeat = rollBattleAttack(current, defender, diceConfig);
+          result.damage += repeat.damage;
+          result.heal += repeat.heal;
+          result.message += ` • 🔁 ตีซ้ำอีก 1 รอบ! โอกาส ${repeatChance}% (+${repeat.damage} ดาเมจ)`;
+        }
         const configuredCooldown = getSkillStat(skill, 'cooldown_turns') || skillProfile.cooldownTurns;
         const speed = Math.max(0, getSkillStat(skill, 'speed'));
         const cooldown = Math.max(0, Math.min(99, Math.round(configuredCooldown - speed / 10)));
