@@ -2307,7 +2307,9 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       // Skill-specific critical chance is separate from the dice's critical face.
       // This makes an Admin-created skill capable of critical hits regardless of the roll.
       if (skill && result.damage > 0) {
-        const passiveCritChance = getEquippedItemPassives(current).filter(effect => effect.kind === 'critical_chance').reduce((sum, effect) => sum + Math.max(0, Number(effect.value) || 0), 0);
+        const passiveCritChance = [...(current.activeSkillPassives || []), ...getEquippedItemPassives(current)]
+          .filter(effect => effect.kind === 'critical_chance')
+          .reduce((sum, effect) => sum + Math.max(0, Number(effect.value) || 0), 0);
         const critChance = Math.max(0, Math.min(100, (Number(skill.battleCriticalChance) || getSkillStat(skill, 'critical_chance_percent')) + passiveCritChance));
         const critMultiplier = Math.max(1, Number(skill.battleCriticalMultiplier) || getSkillStat(skill, 'critical_multiplier') || 1);
         if (critChance > 0 && Math.random() * 100 < critChance) {
@@ -2317,7 +2319,9 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         }
       }
       if (skill) {
-        const passiveRepeatChance = getEquippedItemPassives(current).filter(effect => effect.kind === 'repeat_attack_chance').reduce((sum, effect) => sum + Math.max(0, Number(effect.value) || 0), 0);
+        const passiveRepeatChance = [...(current.activeSkillPassives || []), ...getEquippedItemPassives(current)]
+          .filter(effect => effect.kind === 'repeat_attack_chance')
+          .reduce((sum, effect) => sum + Math.max(0, Number(effect.value) || 0), 0);
         const repeatChance = Math.max(0, Math.min(100, (Number(skill.repeatAttackChance) || 0) + passiveRepeatChance));
         const maxRepeats = Math.max(1, Math.min(20, Number(skill.maxRepeatAttacks) || 1));
         let repeatsDone = 0;
@@ -2336,7 +2340,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       }
     }
     if (!skill && result.damage > 0) {
-      const passiveCritChance = getEquippedItemPassives(current)
+      const passiveCritChance = [...(current.activeSkillPassives || []), ...getEquippedItemPassives(current)]
         .filter(effect => effect.kind === 'critical_chance')
         .reduce((sum, effect) => sum + Math.max(0, Number(effect.value) || 0), 0);
       if (passiveCritChance > 0 && Math.random() * 100 < Math.min(100, passiveCritChance)) {
@@ -2346,7 +2350,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       }
     }
     if (!skill) {
-      const passiveRepeatChance = getEquippedItemPassives(current)
+      const passiveRepeatChance = [...(current.activeSkillPassives || []), ...getEquippedItemPassives(current)]
         .filter(effect => effect.kind === 'repeat_attack_chance')
         .reduce((sum, effect) => sum + Math.max(0, Number(effect.value) || 0), 0);
       const repeatChance = Math.max(0, Math.min(100, passiveRepeatChance));
