@@ -2028,16 +2028,26 @@ function applyItemPassiveEffects(
     const value = Math.max(0, Number(passive.value) || 0);
     const maxStacks = Math.max(1, Math.min(999, Math.round(Number(passive.maxStacks) || 999)));
     const stackKey = passive.stackKey || passive.id;
-    const stacks = Math.max(0, Number(attacker.passiveStacks?.[stackKey]) || 0);
+    let stacks = Math.max(0, Number(attacker.passiveStacks?.[stackKey]) || 0);
 
     if (passive.kind === 'stack') {
-      attacker.passiveStacks = { ...(attacker.passiveStacks || {}), [stackKey]: Math.min(maxStacks, stacks + Math.max(1, value)) };
-      result.message += ` • 🌸 ${passive.name}: สะสม ${attacker.passiveStacks[stackKey]}/${maxStacks}`;
+      stacks = Math.min(maxStacks, stacks + Math.max(1, value));
+      attacker.passiveStacks = { ...(attacker.passiveStacks || {}), [stackKey]: stacks };
+      result.message += ` • 🌸 ${passive.name}: สะสม ${stacks}/${maxStacks}`;
     } else if (passive.kind === 'true_damage_per_stack') {
       const trueDamage = Math.max(0, Math.round(value * stacks));
       if (trueDamage > 0) {
         result.trueDamage = (result.trueDamage || 0) + trueDamage;
         result.message += ` • 💠 ${passive.name}: True Damage +${trueDamage} (${stacks} stack)`;
+      }
+    } else if (passive.kind === 'true_damage_at_max_stacks') {
+      if (stacks >= maxStacks) {
+        const trueDamage = Math.max(0, Math.round(value));
+        if (trueDamage > 0) {
+          result.trueDamage = (result.trueDamage || 0) + trueDamage;
+          result.message += ` • 💠 ${passive.name}: ครบ ${maxStacks} Stack → True Damage +${trueDamage}`;
+          attacker.passiveStacks = { ...(attacker.passiveStacks || {}), [stackKey]: 0 };
+        }
       }
     } else if (passive.kind === 'damage') {
       result.damage += Math.round(value);
