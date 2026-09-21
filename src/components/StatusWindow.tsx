@@ -79,6 +79,26 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   useEffect(() => {
     latestCharacterRef.current = character;
   }, [character]);
+  useEffect(() => {
+    // Keep the edit form aligned with the newest character snapshot.
+    // A realtime update must not leave the modal editing an older copy.
+    if (!showStatEditModal) {
+      setTempStats({ ...character.stats });
+      setTempHp(character.hp);
+      setTempMaxHp(character.maxHp);
+      setTempBuffs(character.statusBuffs || '');
+      setTempCharacteristics([...(character.characteristics || [])]);
+    }
+  }, [
+    character.id,
+    character.stats,
+    character.hp,
+    character.maxHp,
+    character.statusBuffs,
+    character.characteristics,
+    showStatEditModal,
+  ]);
+
 
   const commitCharacterUpdate = async (updated: CharacterProfile): Promise<boolean> => {
     const latest = latestCharacterRef.current;
