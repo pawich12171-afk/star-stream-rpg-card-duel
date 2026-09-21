@@ -2034,6 +2034,31 @@ function applyItemPassiveEffects(
       stacks = Math.min(maxStacks, stacks + Math.max(1, value));
       attacker.passiveStacks = { ...(attacker.passiveStacks || {}), [stackKey]: stacks };
       result.message += ` • 🌸 ${passive.name}: สะสม ${stacks}/${maxStacks}`;
+
+      // เมื่อ Stack ถึง Max ให้เช็ก Passive "ครบ Max Stack → True Damage" ทันที
+      // รองรับข้อมูลเก่าที่ไม่ได้บันทึก stackKey ตรงกันด้วย
+      if (stacks >= maxStacks) {
+        const thresholdPassives = passives.filter(effect => effect.kind === 'true_damage_at_max_stacks');
+        const matchingThresholds = thresholdPassives.filter(effect => {
+          const thresholdKey = effect.stackKey;
+          if (thresholdKey && thresholdKey === stackKey) return true;
+          if (!thresholdKey) return true;
+          return thresholdPassives.length === 1;
+        });
+
+        for (const threshold of matchingThresholds) {
+          const thresholdChance = threshold.chance == null ? 100 : Math.max(0, Math.min(100, Number(threshold.chance) || 0));
+          if (Math.random() * 100 >= thresholdChance) continue;
+          const thresholdMax = Math.max(1, Math.round(Number(threshold.maxStacks) || maxStacks));
+          if (stacks < thresholdMax) continue;
+          const thresholdDamage = Math.max(0, Math.round(Number(threshold.value) || 0));
+          if (thresholdDamage > 0) {
+            result.trueDamage = (result.trueDamage || 0) + thresholdDamage;
+            result.message += ` • 💠 ${threshold.name}: ครบ ${thresholdMax} Stack → True Damage +${thresholdDamage}`;
+            attacker.passiveStacks = { ...(attacker.passiveStacks || {}), [stackKey]: 0 };
+          }
+        }
+      }
     } else if (passive.kind === 'true_damage_per_stack') {
       const trueDamage = Math.max(0, Math.round(value * stacks));
       if (trueDamage > 0) {
