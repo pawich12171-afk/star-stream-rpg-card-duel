@@ -276,6 +276,11 @@ export async function seedInitialDataIfNeeded() {
 
 // Subscribe to characters
 export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => void) {
+  // Render the local seed immediately so the UI never stays on LINKING while
+  // the first server request is in flight. A successful server snapshot below
+  // will replace it with the shared Supabase data.
+  callback([...localCharacters]);
+
   try {
     const q = collection(db, CHARACTERS_COLLECTION);
     const unsub = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
