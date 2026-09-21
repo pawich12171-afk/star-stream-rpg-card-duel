@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CharacterProfile, GachaReward, GachaConfig, Skill, InventoryItem } from '../types';
 import { 
   Sparkles, 
@@ -27,6 +27,11 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   const [isPulling, setIsPulling] = useState(false);
   const [pullResults, setPullResults] = useState<GachaReward[] | null>(null);
   const [filterRarity, setFilterRarity] = useState<string>('all');
+  const characterRef = useRef<CharacterProfile>(character);
+
+  useEffect(() => {
+    characterRef.current = character;
+  }, [character]);
 
   const pullCost = gachaConfig?.pullCost || 500;
   const tenPullCost = gachaConfig?.tenPullCost || 4500;
@@ -59,8 +64,9 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
 
   // Perform Gacha Pull
   const handlePull = (count: number) => {
+    const currentCharacter = characterRef.current;
     const cost = count === 1 ? pullCost : tenPullCost;
-    if (character.coins < cost) {
+    if (currentCharacter.coins < cost) {
       alert(`เหรียญไม่เพียงพอ ต้องการ ${cost.toLocaleString()} C แต่คุณมี ${character.coins.toLocaleString()} C`);
       return;
     }
@@ -125,9 +131,9 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       }
 
       const netCoinChange = totalCoinReward - cost;
-      const updatedCoins = Math.max(0, character.coins + netCoinChange);
+      const updatedCoins = Math.max(0, currentCharacter.coins + netCoinChange);
 
-      const existingInventory = [...(character.inventory || [])];
+      const existingInventory = [...(currentCharacter.inventory || [])];
       newItemsToAdd.forEach(newItem => {
         const existingIdx = existingInventory.findIndex(
           inv => inv.id === newItem.id && !inv.isEquipped && newItem.category === 'consumable'
@@ -139,7 +145,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         }
       });
 
-      const existingSkills = [...(character.skills || [])];
+      const existingSkills = [...(currentCharacter.skills || [])];
       newSkillsToAdd.forEach(newSkill => {
         const existingSkill = existingSkills.find(s => s.name === newSkill.name);
         if (existingSkill) {
@@ -153,7 +159,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         }
       });
 
-      const existingCharacteristics = [...(character.characteristics || [])];
+      const existingCharacteristics = [...(currentCharacter.characteristics || [])];
       newCharacteristicsToAdd.forEach(newCharacteristic => {
         const alreadyHasCharacteristic = existingCharacteristics.some(
           characteristic => characteristic.trim().toLowerCase() === newCharacteristic.toLowerCase()
@@ -171,17 +177,21 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
           read: false,
           type: 'gacha' as const,
         },
-        ...(character.notifications || []),
+        ...(currentCharacter.notifications || []),
       ];
 
-      onUpdateCharacter({
-        ...character,
+      const updatedCharacter: CharacterProfile = {
+        ...currentCharacter,
         coins: updatedCoins,
         inventory: existingInventory,
         skills: existingSkills,
         characteristics: existingCharacteristics,
         notifications: updatedNotifications,
-      });
+        lastUpdated: Math.max(Date.now(), Number(currentCharacter.lastUpdated || 0) + 1),
+      };
+
+      characterRef.current = updatedCharacter;
+      onUpdateCharacter(updatedCharacter);
 
       setPullResults(results);
       setIsPulling(false);
