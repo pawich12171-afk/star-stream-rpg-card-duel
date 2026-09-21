@@ -13,6 +13,7 @@ import {
   subscribeToCharacters, 
   subscribeToShop, 
   subscribeToGachaRewards, 
+  subscribeToGachaBanners,
   subscribeToGachaConfig, 
   subscribeToDuelRooms,
   updateCharacterInDB, updateCharacterStatusData,
