@@ -601,7 +601,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                 </span>
               </div>
               <div className="text-[10px] text-emerald-400 bg-emerald-950/60 px-2 py-1 rounded-lg border border-emerald-800">
-                +20% รอบถัดไป ({nextStatUpgradeCost.toLocaleString()} C)
+                +5% รอบถัดไป ({nextStatUpgradeCost.toLocaleString()} C)
               </div>
             </div>
           )}
