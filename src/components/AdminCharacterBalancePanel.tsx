@@ -36,6 +36,9 @@ export const AdminCharacterBalancePanel: React.FC<Props> = ({ characters, onUpda
   const [skillExtraValue, setSkillExtraValue] = useState(15);
   const [skillExtraDuration, setSkillExtraDuration] = useState(3);
   const [skillExtraChance, setSkillExtraChance] = useState(100);
+  const [skillStatKind, setSkillStatKind] = useState<BattleSkillStat['kind']>('attack_power');
+  const [skillStatValue, setSkillStatValue] = useState(15);
+  const [skillStatDuration, setSkillStatDuration] = useState(1);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -97,6 +100,21 @@ export const AdminCharacterBalancePanel: React.FC<Props> = ({ characters, onUpda
     const all=[...modifiers,modifier];
     const nextSkills=snapshot.skills.map(base=>{const d=all.filter(m=>m.kind==='skill'&&m.skillId===base.id).reduce((s,m)=>s+signed(m),0);const max=Math.max(base.maxLevel||10,1);return {...base,level:Math.max(1,Math.min(max,base.level+d))};});
     void save({...target,skills:nextSkills,adminBalanceSnapshot:snapshot,adminBalanceModifiers:all},`${mode==='buff'?'เพิ่ม':'ลด'}ระดับสกิลแล้ว`);
+  };
+
+  const addBattleStatToSkill = () => {
+    if (!target || !skillId) return;
+    const snapshot = snapshotFor(target);
+    const stat: BattleSkillStat = { kind: skillStatKind, value: Number.isFinite(Number(skillStatValue)) ? Number(skillStatValue) : 0, duration: Math.max(1, Number(skillStatDuration) || 1) };
+    const nextSkills = snapshot.skills.map(s => s.id === skillId ? { ...s, battleStats: [...(s.battleStats || []), stat] } : { ...s });
+    void save({ ...target, skills: nextSkills, adminBalanceSnapshot: snapshot }, 'เพิ่มสเตตัสสกิลแล้ว');
+  };
+
+  const removeBattleStatFromSkill = (index:number) => {
+    if (!target || !skillId) return;
+    const snapshot = snapshotFor(target);
+    const nextSkills = snapshot.skills.map(s => s.id === skillId ? { ...s, battleStats: (s.battleStats || []).filter((_, i) => i !== index) } : { ...s });
+    void save({ ...target, skills: nextSkills, adminBalanceSnapshot: snapshot }, 'ลบสเตตัสสกิลแล้ว');
   };
 
   const addBattleEffectToSkill = () => {
@@ -198,18 +216,17 @@ export const AdminCharacterBalancePanel: React.FC<Props> = ({ characters, onUpda
 
         <div className="grid gap-3 sm:grid-cols-2"><button disabled={saving} onClick={()=>applyHp(mode==='buff'?amount:-amount)} className={`rounded-2xl border px-4 py-4 text-left transition ${buttonClass}`}><div className="flex items-center gap-2 font-black"><Heart className="h-5 w-5"/> {sign} HP ปัจจุบัน</div><div className="mt-1 text-xs opacity-70">เปลี่ยนเลือดปัจจุบันเท่านั้น • MAX HP ไม่เปลี่ยน</div></button><button disabled={saving} onClick={()=>applyMaxHp(mode==='buff'?amount:-amount)} className={`rounded-2xl border px-4 py-4 text-left transition ${buttonClass}`}><div className="flex items-center gap-2 font-black"><Shield className="h-5 w-5"/> {sign} MAX HP</div><div className="mt-1 text-xs opacity-70">เปลี่ยนเพดาน HP เท่านั้น • ไม่ทำ Damage/Heal</div></button><button disabled={saving} onClick={()=>applyStat(mode==='buff'?amount:-amount)} className={`rounded-2xl border px-4 py-4 text-left transition ${buttonClass}`}><div className="flex items-center gap-2 font-black"><Swords className="h-5 w-5"/> {sign} {statLabels[stat]}</div><div className="mt-1 text-xs opacity-70">ปรับค่าสเตตัสสะสม กดซ้ำได้</div></button></div>
 
-        <div className="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-4">
-          <div className="mb-3"><h3 className="font-black text-fuchsia-100">ผลพิเศษของสกิลในการต่อสู้</h3><p className="text-xs text-slate-500">แอดมินเพิ่มได้หลายผล • สกิลเดิมยังทำงานเหมือนเดิม</p></div>
-          <div className="grid gap-2 sm:grid-cols-4">
-            <select value={skillExtraKind} onChange={e=>setSkillExtraKind(e.target.value as BattleExtraEffect['kind'])} className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-3 text-white">
-              <option value="bleeding">เลือดไหล</option><option value="burn">เผาไหม้</option><option value="poison">พิษ</option><option value="freeze">Freeze</option><option value="stun">สตัน</option><option value="reduce_max_hp_percent">ลด MAX HP %</option><option value="reduce_defense_percent">ลดป้องกัน %</option><option value="damage_percent">เพิ่มดาเมจ %</option><option value="heal_percent">ฟื้น HP %</option><option value="shield">โล่</option><option value="reflect">สะท้อน %</option>
+        <div className="rounded-2xl border border-cyan-500/20 bg-cyan-950/10 p-4">
+          <div className="mb-3"><h3 className="font-black text-cyan-100">📊 สเตตัสสกิล — ใช้ได้จริงในสนามรบ</h3><p className="text-xs text-slate-500">เลือกสกิลแล้วเพิ่มได้หลายรายการ • ค่าจะถูกนำไปคำนวณตอนใช้สกิลจริง</p></div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <select value={skillStatKind} onChange={e=>setSkillStatKind(e.target.value as BattleSkillStat['kind'])} className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-3 text-white">
+              <option value="attack_power">พลังโจมตี +</option><option value="defense_power">พลังป้องกัน +</option><option value="heal_percent">ฟื้น HP %</option><option value="accuracy_percent">แม่นยำ %</option><option value="speed">ความเร็ว</option><option value="status_chance_percent">โอกาสติดสถานะ %</option><option value="status_duration">ระยะเวลาสถานะ +</option><option value="critical_chance_percent">คริติคอล %</option><option value="critical_multiplier">ตัวคูณคริติคอล x</option><option value="cooldown_turns">คูลดาวน์ (เทิร์น)</option>
             </select>
-            <input type="number" min="0" value={skillExtraValue} onChange={e=>setSkillExtraValue(Number(e.target.value)||0)} className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-3 text-white" placeholder="ค่า"/>
-            <input type="number" min="1" value={skillExtraDuration} onChange={e=>setSkillExtraDuration(Math.max(1,Number(e.target.value)||1))} className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-3 text-white" placeholder="รอบ"/>
-            <input type="number" min="0" max="100" value={skillExtraChance} onChange={e=>setSkillExtraChance(Math.max(0,Math.min(100,Number(e.target.value)||0)))} className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-3 text-white" placeholder="โอกาส %"/>
+            <input type="number" step="0.1" value={skillStatValue} onChange={e=>setSkillStatValue(Number(e.target.value)||0)} className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-3 text-white" placeholder="ค่า"/>
+            <input type="number" min="1" value={skillStatDuration} onChange={e=>setSkillStatDuration(Math.max(1,Number(e.target.value)||1))} className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-3 text-white" placeholder="ระยะเวลา (เทิร์น)"/>
           </div>
-          <button disabled={saving||!skillId} onClick={addBattleEffectToSkill} className="mt-2 w-full rounded-xl border border-fuchsia-400/40 bg-fuchsia-500/15 px-4 py-3 text-sm font-black text-fuchsia-100 hover:bg-fuchsia-500/25">+ เพิ่มผลพิเศษให้สกิลที่เลือก</button>
-          {!!skills.find(s=>s.id===skillId)?.battleEffects?.length && <div className="mt-3 space-y-2">{skills.find(s=>s.id===skillId)?.battleEffects?.map((e,i)=><div key={i} className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-300"><span>{e.label||e.kind} • {e.value}{e.kind.includes('percent')||e.kind==='reflect'?'%':''} • {e.duration||1} รอบ • {e.chance??100}%</span><button disabled={saving} onClick={()=>removeBattleEffectFromSkill(i)} className="text-rose-300">ลบ</button></div>)}</div>}
+          <button disabled={saving||!skillId} onClick={addBattleStatToSkill} className="mt-2 w-full rounded-xl border border-cyan-400/40 bg-cyan-500/15 px-4 py-3 text-sm font-black text-cyan-100 hover:bg-cyan-500/25">+ เพิ่มสเตตัสให้สกิลที่เลือก</button>
+          {!!selectedSkill?.battleStats?.length && <div className="mt-3 space-y-2">{selectedSkill.battleStats.map((s,i)=><div key={i} className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-300"><span>{s.kind} • {s.value}{s.kind.includes('percent')?'%':''}{s.kind==='critical_multiplier'?'x':''}</span><button disabled={saving} onClick={()=>removeBattleStatFromSkill(i)} className="text-rose-300">ลบ</button></div>)}</div>}
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-black/20 p-4"><div className="mb-3 flex items-center justify-between"><div><h3 className="font-black text-white">ระดับสกิล</h3><p className="text-xs text-slate-500">เลือกสกิลแล้วเพิ่ม/ลดระดับได้ • บันทึก Real-time</p></div></div>{skills.length===0?<div className="rounded-xl border border-dashed border-white/10 p-4 text-center text-sm text-slate-500">ตัวละครนี้ยังไม่มีสกิล</div>:<div className="grid gap-3 sm:grid-cols-[1fr_auto]"><select value={skillId} onChange={e=>setSkillId(e.target.value)} className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-3 text-white">{skills.map(s=><option key={s.id} value={s.id}>{s.name} • Lv {s.level}/{s.maxLevel||10}</option>)}</select><button disabled={saving||!skillId} onClick={()=>applySkill(mode==='buff'?amount:-amount)} className={`rounded-xl border px-4 py-3 font-black ${buttonClass}`}>{sign} ระดับสกิล</button></div>}{selectedSkill&&<div className="mt-3 rounded-xl border border-white/10 bg-white/[.03] px-3 py-2 text-xs text-slate-300">สกิลที่เลือก: <span className="font-black text-white">{selectedSkill.name}</span> • ระดับปัจจุบัน Lv {selectedSkill.level}/{selectedSkill.maxLevel||10}</div>}</div>
