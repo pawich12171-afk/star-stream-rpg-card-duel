@@ -14,6 +14,10 @@ export type ORVSkillRank =
   | 'myth'
   | 'transcendent';
 
+export type BattleSkillStatKind = 'attack_power' | 'defense_power' | 'heal_percent' | 'accuracy_percent' | 'speed' | 'status_chance_percent' | 'status_duration' | 'critical_chance_percent' | 'critical_multiplier' | 'cooldown_turns';
+
+export interface BattleSkillStat { kind: BattleSkillStatKind; value: number; duration?: number; }
+
 export interface Skill {
   id: string;
   name: string;
@@ -37,6 +41,7 @@ export interface Skill {
   battleCriticalChance?: number;
   battleCriticalMultiplier?: number;
   battleEffects?: BattleExtraEffect[];
+  battleStats?: BattleSkillStat[];
 }
 
 export interface EquippedBonus {
