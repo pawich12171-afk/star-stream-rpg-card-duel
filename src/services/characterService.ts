@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDocs,
+  getDocsFromServer,
   getDoc,
   setDoc,
   updateDoc,
@@ -315,9 +316,11 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
       saveLocalAll();
       callback(list);
     }, (err) => {
-      console.warn("Characters listener error, using local:", err);
-      localCharacters = [...localCharacters];
-      callback(localCharacters);
+      // Firestore is the shared source of truth. Do not fall back to a
+      // device-local character snapshot because that makes different devices
+      // display different data.
+      console.error("Characters listener error:", err);
+      callback([]);
     });
 
     if (broadcast) {
@@ -374,8 +377,8 @@ export function subscribeToShop(callback: (items: Item[]) => void) {
       saveLocalAll();
       callback(list);
     }, (err) => {
-      console.warn("Shop listener error, using local:", err);
-      callback(localShopItems);
+      console.error("Shop listener error:", err);
+      callback([]);
     });
 
     if (broadcast) {
