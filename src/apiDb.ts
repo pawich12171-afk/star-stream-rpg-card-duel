@@ -56,7 +56,7 @@ export async function deleteDoc(ref: DocumentReference) {
 
 export function onSnapshot(ref: CollectionReference | DocumentReference, optionsOrCallback: any, maybeCallback?: any, maybeError?: any) {
   const callback = typeof optionsOrCallback === 'function' ? optionsOrCallback : maybeCallback;
-  const errorCallback = typeof optionsOrCallback === 'function' ? maybeCallback : arguments[3];
+  const errorCallback = typeof optionsOrCallback === 'function' ? maybeCallback : maybeError;
   let stopped = false;
   let lastSerialized = '';
   const poll = async () => {
