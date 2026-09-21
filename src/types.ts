@@ -420,4 +420,5 @@ export interface BattleRollResult {
   skillEffect?: BattleSkillEffect;
   skillPower?: number;
   cooldownRemaining?: number;
+  trueDamage?: number;
 }
