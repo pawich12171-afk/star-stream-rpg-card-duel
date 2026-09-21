@@ -265,7 +265,36 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   };
 
   const takeTurn = async (room: BattleRoom, skill?: Skill) => {
-    const resolved = resolveBattleTurn(room, config, skill);
+    const actor = [...room.teamA, ...room.teamB].find(unit => unit.id === room.turnActorId);
+    if (!actor || actor.type !== 'player' || actor.sourceId !== currentUser.id) return;
+
+    // Always resolve the skill from the actor's latest character snapshot.
+    // Gacha skills are stored in CharacterProfile.skills, so this prevents a
+    // stale/partial selected object from making the skill appear unusable.
+    let resolvedSkill = skill;
+    if (skill) {
+      const actorCharacter = allCharacters.find(character => character.id === actor.sourceId);
+      const latestSkill = actorCharacter?.skills?.find(item => item.id === skill.id || item.name === skill.name);
+      if (!latestSkill) {
+        alert('ไม่พบสกิลนี้ในตัวละครแล้ว กรุณาเลือกสกิลใหม่');
+        setSelectedSkillId('');
+        return;
+      }
+      resolvedSkill = {
+        ...latestSkill,
+        battleEffect: latestSkill.battleEffect || 'damage',
+        battlePower: Math.max(1, Number(latestSkill.battlePower) || 5),
+        cooldownTurns: Math.max(0, Number(latestSkill.cooldownTurns) || 0),
+        maxRepeatAttacks: Math.max(1, Number(latestSkill.maxRepeatAttacks) || 1),
+      };
+      const cooldown = actor.skillCooldowns?.[resolvedSkill.id] || 0;
+      if (cooldown > 0) {
+        alert(`สกิล "${resolvedSkill.name}" ยังติดคูลดาวน์อีก ${cooldown} เทิร์น`);
+        return;
+      }
+    }
+
+    const resolved = resolveBattleTurn(room, config, resolvedSkill);
     if (resolved.result || resolved.room.status !== room.status || resolved.room.turnActorId !== room.turnActorId) {
       await updateBattleRoom(resolved.room);
       try { await persistBattleHp(resolved.room); } catch (error) { console.warn('ไม่สามารถบันทึก HP หลังเทิร์นได้', error); }
