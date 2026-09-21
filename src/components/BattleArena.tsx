@@ -203,10 +203,13 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
       const activeEffects = unit.adminStatusEffects?.filter(effect => effect.remaining > 0) ?? unit.adminStatusEffects;
       const statusSummary = activeEffects?.map(effect => `${effect.mode === 'buff' ? '✨' : '⚠️'} ${effect.name} (${effect.remaining}/${effect.duration})`).join(' · ') || '';
       const statusPatch = unit.adminStatusEffects === undefined ? {} : { adminStatusEffects: activeEffects || [], statusBuffs: statusSummary };
-      if (character.hp !== unit.hp || unit.adminStatusEffects !== undefined) {
+      const nextMaxHp = Math.max(1, Number(unit.maxHp) || Number(character.maxHp) || 1);
+      const nextHp = Math.max(0, Math.min(nextMaxHp, Number(unit.hp) || 0));
+      if (character.hp !== nextHp || character.maxHp !== nextMaxHp || unit.adminStatusEffects !== undefined) {
         await updateCharacterFields(character.id, {
           ...statusPatch,
-          hp: Math.max(0, Math.min(character.maxHp, unit.hp)),
+          hp: nextHp,
+          maxHp: nextMaxHp,
         });
       }
     }));
