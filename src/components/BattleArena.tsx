@@ -34,8 +34,17 @@ function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): Batt
   const equippedPassives = (character.inventory || [])
     .filter(item => item.isEquipped && item.passiveEffects?.length)
     .flatMap(item => (item.passiveEffects || []).map(effect => ({ ...effect })));
+  // Skill passives are true "ติดตัว": every skill the character owns is active
+  // for the whole battle, just like an equipped item's passive.
+  const skillPassives = (character.skills || [])
+    .filter(skill => skill.passiveEffects?.length)
+    .flatMap(skill => (skill.passiveEffects || []).map(effect => ({
+      ...effect,
+      stackKey: effect.stackKey || `skill:${skill.id}:${effect.id}`,
+    })));
+  const allPassives = [...equippedPassives, ...skillPassives];
   const stats = { ...character.stats };
-  equippedPassives.filter(effect => effect.kind === 'buff_stat' && effect.targetStat).forEach(effect => {
+  allPassives.filter(effect => effect.kind === 'buff_stat' && effect.targetStat).forEach(effect => {
     const stat = effect.targetStat as keyof typeof stats;
     stats[stat] = (stats[stat] || 0) + (Number(effect.value) || 0);
   });
@@ -51,6 +60,7 @@ function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): Batt
     maxHp: character.maxHp,
     adminStatusEffects: character.adminStatusEffects?.map(effect => ({ ...effect })),
     equippedPassives,
+    activeSkillPassives: skillPassives,
     passiveStacks: {},
   };
 }
