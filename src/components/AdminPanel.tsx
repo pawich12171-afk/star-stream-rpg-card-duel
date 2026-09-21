@@ -37,7 +37,7 @@ interface AdminPanelProps {
   shopItems: Item[];
   gachaRewards: GachaReward[];
   gachaConfig: GachaConfig;
-  gachaBanners?: GachaBanner[];
+  gachaBanners: GachaBanner[];
   onUpdateCharacterCoins: (characterId: string, deltaCoins: number) => void;
   onSetCharacterCoins: (characterId: string, newCoins: number) => void;
   onAddShopItem: (item: Item) => void | Promise<void>;
