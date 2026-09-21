@@ -316,11 +316,10 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
       saveLocalAll();
       callback(list);
     }, (err) => {
-      // Firestore is the shared source of truth. Do not fall back to a
-      // device-local character snapshot because that makes different devices
-      // display different data.
+      // Keep the app usable while the API/Supabase connection is unavailable.
+      // The next successful poll will replace this fallback with server data.
       console.error("Characters listener error:", err);
-      callback([]);
+      callback([...localCharacters]);
     });
 
     if (broadcast) {
