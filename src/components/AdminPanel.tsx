@@ -537,17 +537,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // Save Gacha Config Handler
-  const handleSaveGachaConfig = (e: React.FormEvent) => {
+  const handleSaveGachaConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updatedConfig: GachaConfig = {
-      pullCost: pullCostInput,
-      tenPullCost: tenPullCostInput,
-      bannerTitle: bannerTitleInput,
-      bannerDescription: bannerDescInput,
-      enabled: gachaEnabledInput,
-    };
-    onUpdateGachaConfig(updatedConfig);
-    alert('บันทึกการตั้งค่าตู้กาชาเรียบร้อยแล้ว!');
+    const mainBanner = safeGachaBanners.find(b => b.id === 'main');
+    if (!mainBanner) {
+      alert('ยังไม่มี gacha_banners/main กรุณาสร้าง/seed ตู้หลักก่อน');
+      return;
+    }
+    try {
+      await onSaveGachaBanner({
+        ...mainBanner,
+        pullCost: Math.max(10, Number(pullCostInput) || 10),
+        tenPullCost: Math.max(100, Number(tenPullCostInput) || 100),
+        bannerTitle: bannerTitleInput.trim() || mainBanner.name,
+        bannerDescription: bannerDescInput.trim() || 'ตู้กาชาพิเศษ',
+        enabled: gachaEnabledInput,
+        updatedAt: Date.now(),
+      });
+      alert('บันทึกการตั้งค่าตู้หลักลง gacha_banners/main แล้ว!');
+    } catch (error) {
+      console.error(error);
+      alert('บันทึกตู้หลักไม่สำเร็จ');
+    }
   };
 
   // Create Gacha Reward Handler
@@ -1778,7 +1789,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div className="text-[10px] text-slate-400">{b.pullCost.toLocaleString()} C / 10 = {b.tenPullCost.toLocaleString()} C</div>
                     <div className={`text-[9px] mt-1 ${b.enabled ? 'text-emerald-400' : 'text-rose-400'}`}>{b.enabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}</div>
                   </button>
-                  <button type="button" onClick={async () => { if (!confirm(`ลบตู้ "${b.name}" หรือไม่?`)) return; try { await onDeleteGachaBanner(b.id); if (selectedBannerId === b.id) setSelectedBannerId(gachaBanners.find(x => x.id !== b.id)?.id || 'main'); } catch (e: any) { alert(e?.message || 'ลบตู้ไม่สำเร็จ'); } }} className="mt-2 text-[10px] text-rose-400 hover:text-rose-300 flex items-center gap-1">
+                  <button type="button" onClick={async () => { if (!confirm(`ลบตู้ "${b.name}" หรือไม่?`)) return; try { await onDeleteGachaBanner(b.id); if (selectedBannerId === b.id) setSelectedBannerId(safeGachaBanners.find(x => x.id !== b.id)?.id || 'main'); } catch (e: any) { alert(e?.message || 'ลบตู้ไม่สำเร็จ'); } }} className="mt-2 text-[10px] text-rose-400 hover:text-rose-300 flex items-center gap-1">
                     <Trash2 className="w-3 h-3" /> ลบตู้
                   </button>
                 </div>
@@ -1823,13 +1834,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
           </div>
 
-          {/* Top: Gacha Config & Total Rate Progress */}
+          {/* Legacy config controls are kept only as a shortcut to gacha_banners/main. */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Gacha System Parameters */}
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-amber-400" />
-                ตั้งค่าตู้กาชา (Gacha Configuration)
+                ตั้งค่าตู้หลัก (gacha_banners/main)
               </h3>
               <form onSubmit={handleSaveGachaConfig} className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
@@ -1907,7 +1918,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     ตรวจสอบผลรวมเรทออกกาชา (Total Rate Validation)
                   </h3>
                   <p className="text-xs text-slate-400">
-                    ผลรวมของเปอร์เซ็นต์เรทออกควรอยู่ที่ 100% เพื่อความสมดุล
+                    ค่านี้ใช้ตรวจเรทของตู้ที่เลือกด้านบนเท่านั้น
                   </p>
                 </div>
                 <div className={`px-3 py-1.5 rounded-xl border text-xs font-mono font-bold flex items-center gap-1.5 ${
