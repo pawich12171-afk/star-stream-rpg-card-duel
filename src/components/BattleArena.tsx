@@ -34,6 +34,11 @@ function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): Batt
   const equippedPassives = (character.inventory || [])
     .filter(item => item.isEquipped && item.passiveEffects?.length)
     .flatMap(item => (item.passiveEffects || []).map(effect => ({ ...effect })));
+  const stats = { ...character.stats };
+  equippedPassives.filter(effect => effect.kind === 'buff_stat' && effect.targetStat).forEach(effect => {
+    const stat = effect.targetStat as keyof typeof stats;
+    stats[stat] = (stats[stat] || 0) + (Number(effect.value) || 0);
+  });
   return {
     id: `player:${character.id}`,
     sourceId: character.id,
@@ -41,7 +46,7 @@ function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): Batt
     avatarUrl: character.avatarUrl,
     type: 'player',
     team,
-    stats: { ...character.stats },
+    stats,
     hp: character.hp,
     maxHp: character.maxHp,
     adminStatusEffects: character.adminStatusEffects?.map(effect => ({ ...effect })),
