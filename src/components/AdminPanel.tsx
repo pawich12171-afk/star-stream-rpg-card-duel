@@ -346,6 +346,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newRewardCooldownTurns, setNewRewardCooldownTurns] = useState(0);
   const [newRewardCritChance, setNewRewardCritChance] = useState(0);
   const [newRewardCritMultiplier, setNewRewardCritMultiplier] = useState(2);
+  const [newSkillPassiveEffects, setNewSkillPassiveEffects] = useState<ItemPassiveEffect[]>([]);
+  const [newSkillPassiveName, setNewSkillPassiveName] = useState('Skill Passive');
+  const [newSkillPassiveKind, setNewSkillPassiveKind] = useState<ItemPassiveEffect['kind']>('stack');
+  const [newSkillPassiveValue, setNewSkillPassiveValue] = useState(1);
+  const [newSkillPassiveMaxStacks, setNewSkillPassiveMaxStacks] = useState(6);
+  const [newSkillPassiveChance, setNewSkillPassiveChance] = useState(100);
+  const [newSkillPassiveStackKey, setNewSkillPassiveStackKey] = useState('skill_stack');
   const [newRewardRepeatAttackChance, setNewRewardRepeatAttackChance] = useState(0);
   const [newRewardMaxRepeatAttacks, setNewRewardMaxRepeatAttacks] = useState(1);
   const [newRewardBattleEffects, setNewRewardBattleEffects] = useState<BattleExtraEffect[]>([]);
@@ -621,6 +628,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         battleCriticalChance: Math.max(0, Math.min(100, Number(newRewardCritChance) || 0)),
         battleCriticalMultiplier: Math.max(1, Number(newRewardCritMultiplier) || 1),
         repeatAttackChance: Math.max(0, Math.min(100, Number(newRewardRepeatAttackChance) || 0)),
+        passiveEffects: newSkillPassiveEffects.length ? newSkillPassiveEffects : undefined,
         maxRepeatAttacks: Math.max(1, Math.min(20, Number(newRewardMaxRepeatAttacks) || 1)),
         battleEffects: [...newRewardBattleEffects],
         battleStats: [...newRewardBattleStats],
@@ -2142,6 +2150,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                     <label className="text-[10px] text-slate-400">🔁 โอกาสตีซ้ำอีก 1 รอบ (%)
                       <input type="number" min={0} max={100} step={0.001} value={newRewardRepeatAttackChance} onChange={(e) => setNewRewardRepeatAttackChance(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-emerald-200 outline-none" />
+              <div className="rounded-2xl border border-cyan-500/30 bg-cyan-950/10 p-3 space-y-2">
+                <div className="text-xs font-black text-cyan-200">✨ Passive ติดตัวของสกิล</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newSkillPassiveName} onChange={e=>setNewSkillPassiveName(e.target.value)} placeholder="ชื่อ Passive"/>
+                  <select className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newSkillPassiveKind} onChange={e=>setNewSkillPassiveKind(e.target.value as ItemPassiveEffect['kind'])}><option value="stack">สะสม Stack</option><option value="true_damage_per_stack">True Damage ต่อ Stack</option><option value="damage">เพิ่มดาเมจ</option><option value="damage_percent">เพิ่มดาเมจ %</option><option value="heal">ฟื้น HP</option><option value="heal_percent">ฟื้น HP %</option><option value="buff_stat">บัพค่าสเตตัส</option><option value="shield">โล่</option><option value="reflect">สะท้อน %</option><option value="repeat_attack_chance">ตีซ้ำ %</option><option value="critical_chance">คริ %</option></select>
+                  <input type="number" step="0.1" className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newSkillPassiveValue} onChange={e=>setNewSkillPassiveValue(Number(e.target.value))} placeholder="ค่า"/>
+                  <input type="number" min="1" className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newSkillPassiveMaxStacks} onChange={e=>setNewSkillPassiveMaxStacks(Number(e.target.value))} placeholder="Max Stack"/>
+                  <input type="number" min="0" max="100" step="0.1" className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newSkillPassiveChance} onChange={e=>setNewSkillPassiveChance(Number(e.target.value))} placeholder="โอกาส %"/>
+                  <input className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newSkillPassiveStackKey} onChange={e=>setNewSkillPassiveStackKey(e.target.value)} placeholder="Stack Key"/>
+                </div>
+                <button type="button" className="w-full rounded-xl bg-cyan-500/20 px-3 py-2 text-xs font-black text-cyan-100" onClick={()=>setNewSkillPassiveEffects(prev=>[...prev,{id:`skill-passive-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,name:newSkillPassiveName.trim()||'Skill Passive',trigger:'attack',kind:newSkillPassiveKind,value:Math.max(0,Number(newSkillPassiveValue)||0),chance:Math.max(0,Math.min(100,Number(newSkillPassiveChance)||0)),maxStacks:Math.max(1,Math.round(Number(newSkillPassiveMaxStacks)||1)),stackKey:newSkillPassiveStackKey.trim()||'skill_stack'}])}>+ เพิ่ม Passive ให้สกิล</button>
+                {newSkillPassiveEffects.map(effect=><div key={effect.id} className="flex justify-between rounded-lg bg-slate-950/60 px-2 py-1 text-[10px] text-cyan-100"><span>{effect.name} · {effect.kind} · {effect.value}</span><button type="button" className="text-rose-300" onClick={()=>setNewSkillPassiveEffects(prev=>prev.filter(x=>x.id!==effect.id))}>ลบ</button></div>)}
+              </div>
                       <span className="block mt-1 text-[9px] text-slate-500">0% = ไม่มีโอกาสตีซ้ำ • ใส่ทศนิยมได้ เช่น 0.1% หรือ 0.01%</span>
                     </label>
                     <label className="block mt-2 text-[10px] text-slate-400">🔢 ตีซ้ำได้สูงสุดกี่รอบ
