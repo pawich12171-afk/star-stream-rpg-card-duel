@@ -772,16 +772,37 @@ export async function deleteShopItem(itemId: string): Promise<void> {
 // Gacha Banner management
 export function subscribeToGachaBanners(callback: (banners: GachaBanner[]) => void) {
   gachaBannerListeners.add(callback);
-  const fallback: GachaBanner[] = localGachaBanners.length ? localGachaBanners : [{ id: 'main', name: 'ตู้หลัก', pullCost: localGachaConfig.pullCost, tenPullCost: localGachaConfig.tenPullCost, enabled: localGachaConfig.enabled, bannerTitle: localGachaConfig.bannerTitle, bannerDescription: localGachaConfig.bannerDescription, createdAt: Date.now(), updatedAt: Date.now() }];
+  const fallback: GachaBanner[] = localGachaBanners.length ? [...localGachaBanners] : [{
+    id: 'main',
+    name: 'ตู้หลัก',
+    pullCost: localGachaConfig.pullCost,
+    tenPullCost: localGachaConfig.tenPullCost,
+    enabled: localGachaConfig.enabled,
+    bannerTitle: localGachaConfig.bannerTitle,
+    bannerDescription: localGachaConfig.bannerDescription,
+    createdAt: 0,
+    updatedAt: 0,
+  }];
   callback([...fallback]);
   try {
     const unsub = onSnapshot(collection(db, GACHA_BANNERS_COLLECTION), { includeMetadataChanges: true }, (snapshot) => {
       if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) return;
-      const list: GachaBanner[] = []; snapshot.forEach(s => list.push({ ...s.data(), id: s.id } as GachaBanner));
-      localGachaBanners = list.length ? list : fallback; saveLocalAll(); callback([...localGachaBanners]);
-    }, () => callback(localGachaBanners.length ? [...localGachaBanners] : fallback));
+      const list: GachaBanner[] = [];
+      snapshot.forEach(s => list.push({ ...s.data(), id: s.id } as GachaBanner));
+      // An empty server collection is authoritative. Only use the local fallback
+      // while the first server snapshot has not arrived.
+      localGachaBanners = list;
+      saveLocalAll();
+      callback([...list]);
+    }, (err) => {
+      console.warn('Gacha banners listener error:', err);
+      callback([...localGachaBanners]);
+    });
     return () => { gachaBannerListeners.delete(callback); unsub(); };
-  } catch { return () => { gachaBannerListeners.delete(callback); }; }
+  } catch (err) {
+    console.warn('Gacha banners subscription error:', err);
+    return () => { gachaBannerListeners.delete(callback); };
+  }
 }
 
 export async function saveGachaBanner(banner: GachaBanner): Promise<void> {
