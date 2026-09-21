@@ -143,7 +143,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
     const completed = rooms.filter(room => room.mode === 'pve' && room.status === 'completed' && room.createdBy === currentUser.id && room.winnerTeam === 'a' && !room.rewardClaimedBy);
     completed.forEach(room => {
       void settleBattleVictoryReward(room, currentUser.id).then(paid => {
-        if (paid > 0) alert(\`ชนะการต่อสู้! ได้รับรางวัล +${paid.toLocaleString()} Coins\`);
+        if (paid > 0) alert(`ชนะการต่อสู้! ได้รับรางวัล +${paid.toLocaleString()} Coins`);
       }).catch(error => console.warn('ไม่สามารถจ่ายรางวัลการต่อสู้ได้', error));
     });
   }, [rooms, currentUser.id]);
@@ -175,14 +175,14 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
     const entryFee = mode === 'pve' ? BATTLE_ENTRY_FEE : 0;
     const victoryReward = mode === 'pve' ? (isPveBoss ? BOSS_VICTORY_REWARD : BOT_VICTORY_REWARD) : 0;
     if (mode === 'pve' && (Number(currentUser.coins) || 0) < entryFee) {
-      alert(\`Coins ไม่พอ ต้องมีอย่างน้อย ${entryFee.toLocaleString()} Coins เพื่อเข้าต่อสู้\`);
+      alert(`Coins ไม่พอ ต้องมีอย่างน้อย ${entryFee.toLocaleString()} Coins เพื่อเข้าต่อสู้`);
       return;
     }
     const now = Date.now();
     const room: BattleRoom = {
       id: 'battle-' + now, mode, status: 'active', createdBy: currentUser.id, createdByName: currentUser.displayName,
       teamA, teamB, turnActorId: teamA[0].id, round: 1,
-      log: [{ id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pve' ? \`เริ่มการต่อสู้ — ค่าเข้า ${entryFee.toLocaleString()} Coins · ชนะรับ ${victoryReward.toLocaleString()} Coins\` : 'เริ่มการต่อสู้ — เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' }],
+      log: [{ id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pve' ? `เริ่มการต่อสู้ — ค่าเข้า ${entryFee.toLocaleString()} Coins · ชนะรับ ${victoryReward.toLocaleString()} Coins` : 'เริ่มการต่อสู้ — เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' }],
       entryFeeCoins: entryFee, victoryRewardCoins: victoryReward, createdAt: now, updatedAt: now
     };
     try {
