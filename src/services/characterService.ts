@@ -916,7 +916,21 @@ export async function saveGachaBanner(banner: GachaBanner): Promise<void> {
   try {
     await enqueuePersistenceWrite(
       `gacha-banner:${normalized.id}`,
-      () => setDoc(doc(db, GACHA_BANNERS_COLLECTION, normalized.id), sanitizeForFirestore(normalized))
+      async () => {
+        const cleaned = sanitizeForFirestore(normalized);
+        await setDoc(doc(db, GACHA_BANNERS_COLLECTION, normalized.id), cleaned);
+
+        // Do not report success until the API/Supabase can read the exact banner back.
+        // This prevents a local optimistic banner from looking saved when the server write failed.
+        const saved = await getDoc(doc(db, GACHA_BANNERS_COLLECTION, normalized.id));
+        if (!saved.exists()) {
+          throw new Error('สร้างตู้กาชาไม่สำเร็จ: Supabase ไม่พบข้อมูลที่เพิ่งบันทึก');
+        }
+        const savedData = { ...saved.data(), id: saved.id } as GachaBanner;
+        if (!valuesMatch(savedData, cleaned)) {
+          throw new Error('สร้างตู้กาชาไม่สำเร็จ: ข้อมูลใน Supabase ไม่ตรงกับข้อมูลที่บันทึก');
+        }
+      }
     );
   } catch (error) {
     pendingGachaBanners.delete(normalized.id);
