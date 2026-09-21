@@ -296,7 +296,7 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
           continue;
         }
 
-        if (pending && valuesMatch(raw, pending)) {
+        if (pending && (valuesMatch(raw, pending) || serverVersion >= pendingVersion)) {
           pendingCharacterUpdates.delete(raw.id);
         }
 
