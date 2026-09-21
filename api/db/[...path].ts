@@ -7,18 +7,31 @@ function env(name: string) {
 async function supabase(path: string, init: RequestInit = {}) {
   const base = env('SUPABASE_URL');
   const key = env('SUPABASE_SERVICE_ROLE_KEY');
-  const res = await fetch(`${base}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      ...(init.headers || {}),
-    },
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(text || `Supabase error ${res.status}`);
-  return text ? JSON.parse(text) : null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch(`${base}/rest/v1/${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        ...(init.headers || {}),
+      },
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(text || `Supabase error ${res.status}`);
+    return text ? JSON.parse(text) : null;
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Supabase request timed out after 8 seconds');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function getPath(req: any): string[] {
