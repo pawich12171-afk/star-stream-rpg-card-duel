@@ -7,6 +7,7 @@ import {
   CardDuelRoom,
   Quest
 } from './types';
+import { INITIAL_CHARACTERS } from './initialData';
 import { 
   subscribeToCharacters, 
   subscribeToShop, 
@@ -143,13 +144,29 @@ export default function App() {
 
     void initializeRealtimeData();
 
+    // Hard fallback: the app must never remain on LINKING forever just because
+    // the production API/Supabase request is slow or unavailable. If no
+    // character snapshot has arrived after a few seconds, render the bundled
+    // starter character so the UI is usable; a later server snapshot replaces it.
+    const startupFallback = window.setTimeout(() => {
+      if (disposed || charactersRef.current.length > 0) return;
+      charactersRef.current = [...INITIAL_CHARACTERS];
+      setCharacters([...INITIAL_CHARACTERS]);
+      setCurrentUserId(INITIAL_CHARACTERS[0]?.id || '');
+      setIsRealtimeLinked(false);
+      console.warn('Realtime startup fallback: using bundled character data.');
+    }, 4000);
+
     return () => {
       disposed = true;
+      window.clearTimeout(startupFallback);
       cleanups.forEach(cleanup => cleanup());
     };
   }, []);
 
-  const currentUser = characters.find(c => c.id === currentUserId) || characters[0];
+  // Keep the shell usable even if localStorage contains an empty collection
+  // from an earlier failed sync. The realtime snapshot can still replace it.
+  const currentUser = characters.find(c => c.id === currentUserId) || characters[0] || INITIAL_CHARACTERS[0];
 
   const handleSelectCharacter = (charId: string) => {
     setCurrentUserId(charId);
