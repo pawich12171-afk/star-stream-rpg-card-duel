@@ -17,6 +17,7 @@ import {
   updateCharacterInDB, updateCharacterStatusData,
   calculatePowerScore,
   addCharacterToDB, 
+  deleteCharacterFromDB,
   transferCoinsBetweenCharacters,
   addShopItemToDB,
   deleteShopItemFromDB,
@@ -267,6 +268,32 @@ export default function App() {
     await addCharacterToDB(newChar);
     setCurrentUserId(newChar.id);
     confetti({ particleCount: 80, spread: 60 });
+  };
+
+  const handleDeleteCharacter = async (characterId: string): Promise<void> => {
+    const target = charactersRef.current.find(character => character.id === characterId);
+    if (!target) return;
+
+    try {
+      await deleteCharacterFromDB(characterId);
+      const remaining = charactersRef.current.filter(character => character.id !== characterId);
+      charactersRef.current = remaining;
+      setCharacters(remaining);
+
+      if (currentUserId === characterId) {
+        const nextId = remaining[0]?.id || '';
+        setCurrentUserId(nextId);
+        try {
+          if (nextId) localStorage.setItem('starstream_current_user_id', nextId);
+          else localStorage.removeItem('starstream_current_user_id');
+        } catch {}
+      }
+
+      alert('ลบตัวละคร "' + target.displayName + '" ออกจากระบบเรียบร้อยแล้ว');
+    } catch (error: any) {
+      console.error('Failed to delete character:', error);
+      alert(error?.message || 'ลบตัวละครไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+    }
   };
 
   const handleUpdateCharacterStatus = async (
@@ -682,6 +709,7 @@ export default function App() {
             onDeleteGachaReward={deleteGachaRewardFromDB}
             onUpdateGachaConfig={updateGachaConfigInDB}
             onDirectEditCharacter={handleUpdateCharacter}
+            onDeleteCharacter={handleDeleteCharacter}
             onResetToDefaults={() => { void resetDatabaseToDefaults(); }}
           />
         )}
