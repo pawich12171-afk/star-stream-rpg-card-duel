@@ -34,6 +34,7 @@ export interface Skill {
   battleEffect?: BattleSkillEffect;
   battlePower?: number;
   cooldownTurns?: number;
+  battleEffects?: BattleExtraEffect[];
 }
 
 export interface EquippedBonus {
@@ -271,6 +272,10 @@ export interface CardDuelRoom {
 
 export type BattleMode = 'pvp' | 'pve';
 export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect' | 'stun';
+
+export type BattleExtraEffectKind = 'bleeding' | 'burn' | 'poison' | 'freeze' | 'stun' | 'reduce_max_hp_percent' | 'reduce_defense_percent' | 'damage_percent' | 'heal_percent' | 'shield' | 'reflect';
+
+export interface BattleExtraEffect { kind: BattleExtraEffectKind; value: number; duration?: number; chance?: number; target?: 'self' | 'enemy'; label?: string; }
 export type BattleDiceEffect = 'damage' | 'critical' | 'heal' | 'miss' | 'stun' | 'defense' | 'reflect';
 
 export interface BattleDiceFace {
@@ -279,6 +284,7 @@ export interface BattleDiceFace {
   value: number;
   label: string;
   description: string;
+  extraEffects?: BattleExtraEffect[];
 }
 
 export interface BattleDiceConfig {
@@ -325,6 +331,7 @@ export interface BattleCombatant {
   maxHp: number;
   isBoss?: boolean;
   stunnedTurns?: number;
+  frozenTurns?: number;
   defenseValue?: number;
   defenseTurns?: number;
   reflectPercent?: number;
