@@ -3,6 +3,7 @@ import {
   CharacterProfile, 
   Item, 
   GachaReward, 
+  GachaBanner,
   GachaConfig, 
   CardDuelRoom,
   Quest
@@ -24,6 +25,8 @@ import {
   updateGachaConfigInDB,
   addGachaRewardToDB,
   deleteGachaRewardFromDB,
+  saveGachaBanner,
+  deleteGachaBanner,
   grantItemToPlayer as grantItemToPlayerInDB,
   removeItemFromPlayer as removeItemFromPlayerInDB,
   resetDatabaseToDefaults,
@@ -69,6 +72,7 @@ export default function App() {
   const [currentUserId, setCurrentUserId] = useState<string>(() => INITIAL_CHARACTERS[0]?.id || '');
   const [shopItems, setShopItems] = useState<Item[]>(() => []);
   const [gachaRewards, setGachaRewards] = useState<GachaReward[]>(() => []);
+  const [gachaBanners, setGachaBanners] = useState<GachaBanner[]>(() => []);
   const [gachaConfig, setGachaConfig] = useState<GachaConfig>({
     pullCost: 500,
     tenPullCost: 4500,
@@ -132,6 +136,10 @@ export default function App() {
 
       cleanups.push(subscribeToGachaRewards((rewards) => {
         setGachaRewards(rewards);
+      }));
+
+      cleanups.push(subscribeToGachaBanners((banners) => {
+        setGachaBanners(banners);
       }));
 
       cleanups.push(subscribeToGachaConfig((config) => {
@@ -661,6 +669,7 @@ export default function App() {
             character={currentUser}
             gachaRewards={gachaRewards}
             gachaConfig={gachaConfig}
+            gachaBanners={gachaBanners}
             onUpdateCharacter={handleUpdateCharacter}
           />
         )}
