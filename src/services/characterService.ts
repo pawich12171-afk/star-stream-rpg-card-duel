@@ -997,4 +997,932 @@ export async function removeItemFromPlayer(
 
   const currentInventory: InventoryItem[] = [...(char.inventory || [])];
   const targetItemIndex = currentInventory.findIndex(i => i.instanceId === instanceId || i.id === instanceId);
-  if (targetItemIndex === -1) {
+  if (targetItemIndex === -1) {    return { success: false, message: "ไม่พบไอเทมนี้ในคลังของผู้เล่น" };
+  }
+
+  const targetItem = currentInventory[targetItemIndex];
+  const removedItemName = targetItem.name;
+
+  if (quantityToRemove && quantityToRemove < targetItem.quantity) {
+    currentInventory[targetItemIndex] = {
+      ...targetItem,
+      quantity: targetItem.quantity - quantityToRemove
+    };
+  } else {
+    currentInventory.splice(targetItemIndex, 1);
+  }
+
+  const notifs = [
+    {
+      id: `notif-revoke-${Date.now()}`,
+      title: "ระบบได้ทำการลบไอเทมออกจากคลัง",
+      message: `${adminName} ได้ทำการลบไอเทม "${removedItemName}" ออกจากคลังกระเป๋าของคุณ`,
+      timestamp: Date.now(),
+      read: false,
+      type: "admin" as const
+    },
+    ...(char.notifications || [])
+  ];
+
+  const updated: CharacterProfile = {
+    ...char,
+    inventory: currentInventory,
+    notifications: notifs,
+    lastUpdated: Date.now()
+  };
+
+  await updateCharacterData(updated);
+  return { 
+    success: true, 
+    message: `ลบไอเทม "${removedItemName}" ออกจากคลังของ ${char.displayName} สำเร็จ!`,
+    updatedChar: updated
+  };
+}
+
+// Subscribe to Card Duel Rooms
+export function subscribeToDuelRooms(callback: (rooms: CardDuelRoom[]) => void) {
+  duelRoomListeners.add(callback);
+
+  try {
+    const q = collection(db, CARD_DUEL_ROOMS_COLLECTION);
+    const unsub = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+      if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) return;
+      applyDuelRoomSnapshot(snapshot);
+    }, (err) => {
+      console.warn("Duel rooms listener error, using local fallback:", err);
+      notifyDuelRooms();
+    });
+
+    let handleBroadcast: ((ev: MessageEvent) => void) | null = null;
+    if (broadcast) {
+      handleBroadcast = (ev: MessageEvent) => {
+        if (ev.data?.type !== 'DUEL_ROOMS_UPDATE') return;
+        if (ev.data.room?.id) {
+          pendingDuelRooms.set(ev.data.room.id, ev.data.room);
+          pendingDuelDeletes.delete(ev.data.room.id);
+          localDuelRooms = [ev.data.room, ...localDuelRooms.filter(room => room.id !== ev.data.room.id)];
+        } else if (ev.data.roomId) {
+          pendingDuelDeletes.add(ev.data.roomId);
+          pendingDuelRooms.delete(ev.data.roomId);
+          localDuelRooms = localDuelRooms.filter(room => room.id !== ev.data.roomId);
+        }
+        saveLocalAll();
+        notifyDuelRooms();
+      };
+      broadcast.addEventListener('message', handleBroadcast);
+    }
+
+    return () => {
+      duelRoomListeners.delete(callback);
+      if (broadcast && handleBroadcast) broadcast.removeEventListener('message', handleBroadcast);
+      unsub();
+    };
+  } catch (err) {
+    notifyDuelRooms();
+    return () => duelRoomListeners.delete(callback);
+  }
+}
+
+// Create Card Duel Room
+export async function createDuelRoom(room: CardDuelRoom): Promise<string> {
+  const id = room.id || `room-${Date.now()}`;
+  const fullRoom = {
+    ...room,
+    id,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+
+  pendingDuelRooms.set(id, fullRoom);
+  pendingDuelDeletes.delete(id);
+  localDuelRooms = [fullRoom, ...localDuelRooms.filter(r => r.id !== id)];
+  saveLocalAll();
+  notifyDuelRooms();
+  broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE', room: fullRoom });
+
+  // If invitedPlayerId or opponentId is specified, notify them!
+  const targetOpponentId = room.invitedPlayerId || room.opponentId;
+  if (targetOpponentId) {
+    const opp = localCharacters.find(c => c.id === targetOpponentId);
+    if (opp) {
+      opp.notifications = [
+        {
+          id: `notif-duel-invite-${Date.now()}`,
+          title: "มีสารท้าดวลศึกไพ่ 21!",
+          message: `"${room.creatorName}" ได้เชิญคุณเข้าร่วมศึกดวลไพ่ 21 เดิมพัน ${room.betAmount.toLocaleString()} Coins กดเข้าสู่โหมดการ์ดเกมเพื่อตอบรับคำท้า`,
+          timestamp: Date.now(),
+          read: false,
+          type: "game" as const
+        },
+        ...(opp.notifications || [])
+      ];
+      await updateCharacterData(opp);
+    }
+  }
+
+  const cleaned = sanitizeForFirestore(fullRoom);
+  try {
+    await enqueuePersistenceWrite(`duel:${id}`, () =>
+      setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, id), cleaned)
+    );
+  } catch (err: any) {
+    console.warn("Firestore create duel room error:", err?.code, err?.message);
+    pendingDuelRooms.delete(id);
+    localDuelRooms = localDuelRooms.filter(r => r.id !== id);
+    saveLocalAll();
+    notifyDuelRooms();
+    console.error("Error creating duel room in Firestore:", err);
+    throw new Error("ไม่สามารถสร้างห้องดวลบนเซิร์ฟเวอร์ได้: " + (err?.message || ''));
+  }
+  return id;
+}
+
+// Update Card Duel Room
+export async function updateDuelRoom(room: CardDuelRoom): Promise<void> {
+  const updated = {
+    ...room,
+    updatedAt: Date.now()
+  };
+  pendingDuelRooms.set(updated.id, updated);
+  pendingDuelDeletes.delete(updated.id);
+  localDuelRooms = localDuelRooms.map(r => r.id === updated.id ? updated : r);
+  saveLocalAll();
+  notifyDuelRooms();
+  broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE', room: updated });
+
+  try {
+    await enqueuePersistenceWrite(`duel:${updated.id}`, () =>
+      setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, updated.id), sanitizeForFirestore(updated))
+    );
+  } catch (err: any) {
+    console.warn("Firestore updateDuelRoom failed:", err?.message || err);
+    throw err;
+  }
+}
+
+// Force-sync a specific duel room by ID from Firestore and flush any local pending writes
+export async function syncDuelRoomById(roomId: string): Promise<CardDuelRoom | null> {
+  // 1. Flush any pending write for this room
+  const pending = pendingDuelRooms.get(roomId);
+  if (pending) {
+    try {
+      await enqueuePersistenceWrite(`duel:${roomId}`, () =>
+        setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, roomId), sanitizeForFirestore(pending))
+      );
+    } catch (e) {
+      console.warn("Could not flush pending room yet during sync:", e);
+    }
+  }
+
+  // 2. Fetch fresh room doc from Firestore
+  try {
+    const snap = await getDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, roomId));
+    if (snap.exists()) {
+      const room = { ...snap.data(), id: snap.id } as CardDuelRoom;
+      const currentPending = pendingDuelRooms.get(roomId);
+      // If we still have an unflushed pending action that is newer, don't overwrite with older remote
+      if (currentPending && currentPending.updatedAt && room.updatedAt && currentPending.updatedAt > room.updatedAt) {
+        return currentPending;
+      }
+      if (currentPending && (valuesMatch(currentPending, room) || !isPendingNewer(currentPending, room))) {
+        pendingDuelRooms.delete(roomId);
+      }
+      localDuelRooms = [room, ...localDuelRooms.filter(r => r.id !== roomId)];
+      saveLocalAll();
+      notifyDuelRooms();
+      return room;
+    }
+  } catch (err) {
+    console.warn("syncDuelRoomById getDoc error:", err);
+  }
+  return null;
+}
+
+// Accept Card Duel Challenge / Join Room
+export async function acceptDuelChallenge(roomId: string, opponent: CharacterProfile): Promise<void> {
+  const room = localDuelRooms.find(r => r.id === roomId);
+  if (!room) throw new Error("ไม่พบห้องดวลที่เลือก");
+  if (room.status !== 'waiting') throw new Error("ห้องนี้มีผู้เข้าร่วมครบแล้วหรือการแข่งขันได้เริ่มขึ้นแล้ว");
+
+  // Deduct/hold coins or prepare match
+  const readyList = Array.from(new Set([...(room.readyPlayers || []), room.creatorId, opponent.id]));
+  const isFullAndReady = readyList.length >= (room.requiredPlayersCount || 2);
+
+  room.opponentId = opponent.id;
+  room.opponentName = opponent.displayName;
+  room.opponentAvatar = opponent.avatarUrl;
+  room.readyPlayers = readyList;
+  room.status = isFullAndReady ? 'ready' : 'waiting';
+  room.updatedAt = Date.now();
+
+  // Send immediate notifications to both players
+  const creator = localCharacters.find(c => c.id === room.creatorId);
+  if (creator) {
+    creator.notifications = [
+      {
+        id: `notif-duel-ready-${Date.now()}`,
+        title: "ผู้เล่นพร้อมเล่นครบตามจำนวนแล้ว!",
+        message: `"${opponent.displayName}" ได้เข้าร่วมห้องดวลไพ่ 21 แล้ว! ผู้เล่นพร้อมครบตามจำนวนที่กำหนดไว้ทันที สามารถเริ่มการดวลได้เลย`,
+        timestamp: Date.now(),
+        read: false,
+        type: "game" as const
+      },
+      ...(creator.notifications || [])
+    ];
+    await updateCharacterData(creator);
+  }
+
+  opponent.notifications = [
+    {
+      id: `notif-duel-accepted-${Date.now()}`,
+      title: "เข้าร่วมศึกดวลไพ่ 21 สำเร็จ!",
+      message: `คุณได้เข้าร่วมห้องดวลกับ "${room.creatorName}" แล้ว! ผู้เล่นครบตามจำนวนพร้อมเริ่มการประลองทันที`,
+      timestamp: Date.now(),
+      read: false,
+      type: "game" as const
+    },
+    ...(opponent.notifications || [])
+  ];
+  await updateCharacterData(opponent);
+
+  await updateDuelRoom(room);
+}
+
+// Cancel or Delete Card Duel Room
+export async function cancelDuelRoom(roomId: string): Promise<void> {
+  const previous = localDuelRooms.find(room => room.id === roomId);
+  pendingDuelDeletes.add(roomId);
+  pendingDuelRooms.delete(roomId);
+  localDuelRooms = localDuelRooms.filter(r => r.id !== roomId);
+  saveLocalAll();
+  notifyDuelRooms();
+  broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE', roomId });
+
+  try {
+    await enqueuePersistenceWrite(`duel:${roomId}`, () =>
+      deleteDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, roomId))
+    );
+  } catch (err) {
+    pendingDuelDeletes.delete(roomId);
+    if (previous) localDuelRooms = [previous, ...localDuelRooms.filter(room => room.id !== roomId)];
+    saveLocalAll();
+    notifyDuelRooms();
+    console.error("Error deleting duel room in Firestore:", err);
+    throw err;
+  }
+}
+
+// Reset all database collections to initial values
+export async function resetDatabaseToDefaults(): Promise<void> {
+  pendingCharacterUpdates.clear();
+  pendingCharacterDeletes.clear();
+  pendingShopItems.clear();
+  pendingShopDeletes.clear();
+  pendingGachaRewards.clear();
+  pendingGachaDeletes.clear();
+  pendingGachaConfig = null;
+  pendingDuelRooms.clear();
+  pendingDuelDeletes.clear();
+  pendingBattleConfig = null;
+  pendingBattleBots.clear();
+  pendingBattleBotDeletes.clear();
+  pendingBattleRooms.clear();
+  pendingBattleRoomDeletes.clear();
+
+  localCharacters = INITIAL_CHARACTERS;
+  localShopItems = INITIAL_SHOP_ITEMS;
+  localGachaRewards = INITIAL_GACHA_REWARDS;
+  localGachaConfig = INITIAL_GACHA_CONFIG;
+  localDuelRooms = [];
+  saveLocalAll();
+
+  broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
+  broadcast?.postMessage({ type: 'SHOP_UPDATE' });
+  broadcast?.postMessage({ type: 'GACHA_REWARDS_UPDATE' });
+  broadcast?.postMessage({ type: 'GACHA_CONFIG_UPDATE' });
+  broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE' });
+
+  try {
+    const [charsSnap, shopSnap, rewardsSnap, configSnap, duelSnap] = await Promise.all([
+      getDocs(collection(db, CHARACTERS_COLLECTION)),
+      getDocs(collection(db, SHOP_ITEMS_COLLECTION)),
+      getDocs(collection(db, GACHA_REWARDS_COLLECTION)),
+      getDocs(collection(db, GACHA_CONFIG_COLLECTION)),
+      getDocs(collection(db, CARD_DUEL_ROOMS_COLLECTION)),
+    ]);
+    const batch = writeBatch(db);
+    [...charsSnap.docs, ...shopSnap.docs, ...rewardsSnap.docs, ...configSnap.docs, ...duelSnap.docs]
+      .forEach(item => batch.delete(item.ref));
+    INITIAL_CHARACTERS.forEach(char => {
+      batch.set(doc(db, CHARACTERS_COLLECTION, char.id), {
+        ...char,
+        powerScore: calculatePowerScore(char),
+      });
+    });
+    INITIAL_SHOP_ITEMS.forEach(item => {
+      batch.set(doc(db, SHOP_ITEMS_COLLECTION, item.id), sanitizeForFirestore(item));
+    });
+    INITIAL_GACHA_REWARDS.forEach(reward => {
+      batch.set(doc(db, GACHA_REWARDS_COLLECTION, reward.id), sanitizeForFirestore(reward));
+    });
+    batch.set(doc(db, GACHA_CONFIG_COLLECTION, "main"), sanitizeForFirestore(INITIAL_GACHA_CONFIG));
+    await batch.commit();
+  } catch (error) {
+    console.error("Error resetting database:", error);
+    throw error;
+  }
+}
+
+// Card 21 Match Bet Settlement
+export async function settleCard21Bet(
+  winnerChar: CharacterProfile,
+  loserChar: CharacterProfile | null,
+  betAmount: number,
+  isTie: boolean,
+  reason: string
+): Promise<void> {
+  if (betAmount <= 0) return;
+  if (isTie) return;
+
+  if (!loserChar) {
+    const newCoins = winnerChar.coins + betAmount;
+    await updateCharacterData({
+      ...winnerChar,
+      coins: newCoins,
+      notifications: [
+        {
+          id: `notif-card21-win-${Date.now()}`,
+          title: "ชนะศึกดวลไพ่ 21!",
+          message: `${reason} ได้รับเหรียญรางวัล +${betAmount.toLocaleString()} Coins`,
+          timestamp: Date.now(),
+          read: false,
+          type: "game",
+        },
+        ...winnerChar.notifications,
+      ],
+    });
+  } else {
+    await transferCoins(
+      loserChar,
+      winnerChar.id,
+      betAmount,
+      winnerChar.displayName
+    );
+  }
+}
+
+// Aliases
+export const subscribeToShopItems = subscribeToShop;
+export const updateCharacter = updateCharacterData;
+export const updateCharacterInDB = updateCharacterData;
+export const addCharacterToDB = updateCharacterData;
+export const transferCoinsBetweenCharacters = transferCoins;
+export const saveShopItem = addShopItem;
+export const addShopItemToDB = addShopItem;
+export const removeShopItem = deleteShopItem;
+export const deleteShopItemFromDB = deleteShopItem;
+export const removeGachaReward = deleteGachaReward;
+export const deleteGachaRewardFromDB = deleteGachaReward;
+export const addGachaRewardToDB = saveGachaReward;
+export const updateGachaRewardInDB = saveGachaReward;
+export const saveGachaConfig = updateGachaConfig;
+export const updateGachaConfigInDB = updateGachaConfig;
+
+
+// TEAM BATTLE DATA AND RULES
+const BATTLE_CONFIG_COLLECTION = "battle_config";
+const BATTLE_BOTS_COLLECTION = "battle_bots";
+const BATTLE_ROOMS_COLLECTION = "battle_rooms";
+
+export const DEFAULT_BATTLE_CONFIG: BattleConfig = {
+  id: "main",
+  enabled: true,
+  sides: 6,
+  strengthPerDamage: 3,
+  faces: [
+    { face: 1, effect: "miss", value: 0, label: "พลาด", description: "การโจมตีไม่สร้างความเสียหาย" },
+    { face: 2, effect: "damage", value: 1, label: "โจมตีปกติ", description: "ดาเมจพื้นฐาน" },
+    { face: 3, effect: "damage", value: 1, label: "โจมตีปกติ", description: "ดาเมจพื้นฐาน" },
+    { face: 4, effect: "damage", value: 1.5, label: "โจมตีหนัก", description: "ดาเมจพื้นฐาน x1.5" },
+    { face: 5, effect: "critical", value: 2, label: "คริติคอล", description: "ดาเมจพื้นฐาน x2" },
+    { face: 6, effect: "heal", value: 2, label: "ฟื้นฟู", description: "ฟื้น HP 2 หน่วย" },
+  ],
+  bossDice: {
+    enabled: true,
+    sides: 8,
+    strengthPerDamage: 2,
+    faces: [
+      { face: 1, effect: "miss", value: 0, label: "พลาด", description: "บอสพลาดการโจมตี" },
+      { face: 2, effect: "damage", value: 1, label: "กรงเล็บอสูร", description: "ดาเมจบอสพื้นฐาน" },
+      { face: 3, effect: "damage", value: 1.5, label: "คำรามทำลาย", description: "ดาเมจบอส x1.5" },
+      { face: 4, effect: "defense", value: 5, label: "เกราะบอส", description: "ลดดาเมจที่ได้รับ 5 ในเทิร์นถัดไป" },
+      { face: 5, effect: "critical", value: 2, label: "คริติคอลบอส", description: "ดาเมจบอส x2" },
+      { face: 6, effect: "heal", value: 4, label: "ฟื้นฟูบอส", description: "บอสฟื้น HP 4 หน่วย" },
+      { face: 7, effect: "reflect", value: 35, label: "สะท้อนคำสาป", description: "สะท้อนดาเมจ 35% ในเทิร์นถัดไป" },
+      { face: 8, effect: "stun", value: 1, label: "ทุบให้สตัน", description: "สร้างดาเมจและทำให้เป้าหมายเสียเทิร์น" },
+    ],
+  },
+  updatedAt: Date.now(),
+};
+
+let localBattleConfig: BattleConfig = readLocalValue("starstream_battle_config", DEFAULT_BATTLE_CONFIG);
+let localBattleBots: BattleBot[] = readLocalArray("starstream_battle_bots", []);
+let localBattleRooms: BattleRoom[] = readLocalArray("starstream_battle_rooms", []);
+const battleConfigListeners = new Set<(config: BattleConfig) => void>();
+const battleBotListeners = new Set<(bots: BattleBot[]) => void>();
+const battleRoomListeners = new Set<(rooms: BattleRoom[]) => void>();
+let pendingBattleConfig: BattleConfig | null = null;
+const pendingBattleBots = new Map<string, BattleBot>();
+const pendingBattleBotDeletes = new Set<string>();
+const pendingBattleRooms = new Map<string, BattleRoom>();
+const pendingBattleRoomDeletes = new Set<string>();
+
+function saveBattleLocal() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem("starstream_battle_config", JSON.stringify(localBattleConfig));
+    window.localStorage.setItem("starstream_battle_bots", JSON.stringify(localBattleBots));
+    window.localStorage.setItem("starstream_battle_rooms", JSON.stringify(localBattleRooms));
+  } catch {}
+}
+function notifyBattleConfig() { battleConfigListeners.forEach(listener => listener(localBattleConfig)); }
+function notifyBattleBots() { battleBotListeners.forEach(listener => listener([...localBattleBots])); }
+function notifyBattleRooms() { battleRoomListeners.forEach(listener => listener([...localBattleRooms])); }
+
+export function subscribeToBattleConfig(callback: (config: BattleConfig) => void) {
+  callback(localBattleConfig);
+  battleConfigListeners.add(callback);
+  try {
+    const unsub = onSnapshot(doc(db, BATTLE_CONFIG_COLLECTION, "main"), { includeMetadataChanges: true }, (snapshot) => {
+      if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) return;
+      if (snapshot.exists()) {
+        const serverConfig = { ...DEFAULT_BATTLE_CONFIG, ...snapshot.data(), id: "main" } as BattleConfig;
+        if (pendingBattleConfig && (valuesMatch(serverConfig, pendingBattleConfig) || !isPendingNewer(pendingBattleConfig, serverConfig))) {
+          pendingBattleConfig = null;
+        }
+        localBattleConfig = pendingBattleConfig || serverConfig;
+      } else if (!pendingBattleConfig) {
+        localBattleConfig = DEFAULT_BATTLE_CONFIG;
+      }
+      saveBattleLocal();
+      notifyBattleConfig();
+    }, () => notifyBattleConfig());
+    return () => {
+      battleConfigListeners.delete(callback);
+      unsub();
+    };
+  } catch (err) {
+    return () => {};
+  }
+}
+
+export function subscribeToBattleBots(callback: (bots: BattleBot[]) => void) {
+  callback(localBattleBots);
+  battleBotListeners.add(callback);
+  try {
+    const unsub = onSnapshot(collection(db, BATTLE_BOTS_COLLECTION), { includeMetadataChanges: true }, (snapshot) => {
+      if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) return;
+      const serverIds = new Set(snapshot.docs.map(item => item.id));
+      localBattleBots = snapshot.docs
+        .map(item => ({ ...item.data(), id: item.id } as BattleBot))
+        .filter(item => !pendingBattleBotDeletes.has(item.id))
+        .map(item => {
+          const pending = pendingBattleBots.get(item.id);
+          if (pending && (valuesMatch(item, pending) || !isPendingNewer(pending, item))) {
+            pendingBattleBots.delete(item.id);
+            return item;
+          }
+          return pending || item;
+        });
+      pendingBattleBotDeletes.forEach(id => {
+        if (!serverIds.has(id)) pendingBattleBotDeletes.delete(id);
+      });
+      pendingBattleBots.forEach((pending, id) => {
+        if (!serverIds.has(id) && !pendingBattleBotDeletes.has(id)) localBattleBots.push(pending);
+      });
+      localBattleBots.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      saveBattleLocal();
+      notifyBattleBots();
+    }, () => notifyBattleBots());
+    return () => {
+      battleBotListeners.delete(callback);
+      unsub();
+    };
+  } catch (err) {
+    return () => {};
+  }
+}
+
+export function subscribeToBattleRooms(callback: (rooms: BattleRoom[]) => void) {
+  callback(localBattleRooms);
+  battleRoomListeners.add(callback);
+  try {
+    const unsub = onSnapshot(collection(db, BATTLE_ROOMS_COLLECTION), { includeMetadataChanges: true }, (snapshot) => {
+      if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) return;
+      const serverIds = new Set(snapshot.docs.map(item => item.id));
+      localBattleRooms = snapshot.docs
+        .map(item => ({ ...item.data(), id: item.id } as BattleRoom))
+        .filter(item => !pendingBattleRoomDeletes.has(item.id))
+        .map(item => {
+          const pending = pendingBattleRooms.get(item.id);
+          if (pending && (valuesMatch(item, pending) || !isPendingNewer(pending, item))) {
+            pendingBattleRooms.delete(item.id);
+            return item;
+          }
+          return pending || item;
+        })
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      pendingBattleRoomDeletes.forEach(id => {
+        if (!serverIds.has(id)) pendingBattleRoomDeletes.delete(id);
+      });
+      pendingBattleRooms.forEach((pending, id) => {
+        if (!serverIds.has(id) && !pendingBattleRoomDeletes.has(id)) localBattleRooms.push(pending);
+      });
+      localBattleRooms.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      saveBattleLocal();
+      notifyBattleRooms();
+    }, () => notifyBattleRooms());
+    return () => {
+      battleRoomListeners.delete(callback);
+      unsub();
+    };
+  } catch (err) {
+    return () => {};
+  }
+}
+
+export async function saveBattleConfig(config: BattleConfig): Promise<void> {
+  const previous = localBattleConfig;
+  const next = { ...config, id: "main", updatedAt: Math.max(Date.now(), (localBattleConfig.updatedAt || 0) + 1) };
+  pendingBattleConfig = next;
+  localBattleConfig = next;
+  saveBattleLocal();
+  notifyBattleConfig();
+  try {
+    await enqueuePersistenceWrite("battle-config:main", () =>
+      setDoc(doc(db, BATTLE_CONFIG_COLLECTION, "main"), sanitizeForFirestore(next))
+    );
+  } catch (error) {
+    if (pendingBattleConfig === next) pendingBattleConfig = null;
+    localBattleConfig = previous;
+    saveBattleLocal();
+    notifyBattleConfig();
+    throw error;
+  }
+}
+
+export async function saveBattleBot(bot: BattleBot): Promise<void> {
+  const id = bot.id || "bot-" + Date.now();
+  const previous = localBattleBots.find(item => item.id === id);
+  const next = {
+    ...bot,
+    id,
+    createdAt: bot.createdAt || Date.now(),
+    updatedAt: Math.max(Date.now(), (localBattleBots.find(item => item.id === id)?.updatedAt || 0) + 1),
+  };
+  pendingBattleBots.set(id, next);
+  pendingBattleBotDeletes.delete(id);
+  localBattleBots = [next, ...localBattleBots.filter(item => item.id !== id)];
+  saveBattleLocal();
+  notifyBattleBots();
+  try {
+    await enqueuePersistenceWrite(`battle-bot:${id}`, () =>
+      setDoc(doc(db, BATTLE_BOTS_COLLECTION, id), sanitizeForFirestore(next))
+    );
+  } catch (error) {
+    pendingBattleBots.delete(id);
+    localBattleBots = previous
+      ? [previous, ...localBattleBots.filter(item => item.id !== id)]
+      : localBattleBots.filter(item => item.id !== id);
+    saveBattleLocal();
+    notifyBattleBots();
+    throw error;
+  }
+}
+
+export async function deleteBattleBot(botId: string): Promise<void> {
+  const previous = localBattleBots.find(bot => bot.id === botId);
+  pendingBattleBotDeletes.add(botId);
+  pendingBattleBots.delete(botId);
+  localBattleBots = localBattleBots.filter(bot => bot.id !== botId);
+  saveBattleLocal();
+  notifyBattleBots();
+  try {
+    await enqueuePersistenceWrite(`battle-bot:${botId}`, () =>
+      deleteDoc(doc(db, BATTLE_BOTS_COLLECTION, botId))
+    );
+  } catch (error) {
+    pendingBattleBotDeletes.delete(botId);
+    if (previous) localBattleBots = [previous, ...localBattleBots.filter(bot => bot.id !== botId)];
+    saveBattleLocal();
+    notifyBattleBots();
+    throw error;
+  }
+}
+
+export async function createBattleRoom(room: BattleRoom): Promise<string> {
+  const id = room.id || "battle-" + Date.now();
+  const previous = localBattleRooms.find(item => item.id === id);
+  const next = {
+    ...room,
+    id,
+    createdAt: room.createdAt || Date.now(),
+    updatedAt: Math.max(Date.now(), (localBattleRooms.find(item => item.id === id)?.updatedAt || 0) + 1),
+  };
+  pendingBattleRooms.set(id, next);
+  pendingBattleRoomDeletes.delete(id);
+  localBattleRooms = [next, ...localBattleRooms.filter(item => item.id !== id)];
+  saveBattleLocal();
+  notifyBattleRooms();
+  try {
+    await enqueuePersistenceWrite(`battle-room:${id}`, () =>
+      setDoc(doc(db, BATTLE_ROOMS_COLLECTION, id), sanitizeForFirestore(next))
+    );
+  } catch (error) {
+    pendingBattleRooms.delete(id);
+    localBattleRooms = previous
+      ? [previous, ...localBattleRooms.filter(item => item.id !== id)]
+      : localBattleRooms.filter(item => item.id !== id);
+    saveBattleLocal();
+    notifyBattleRooms();
+    throw error;
+  }
+  return id;
+}
+
+export async function updateBattleRoom(room: BattleRoom): Promise<void> {
+  const previous = localBattleRooms.find(item => item.id === room.id);
+  const next = {
+    ...room,
+    updatedAt: Math.max(Date.now(), (localBattleRooms.find(item => item.id === room.id)?.updatedAt || 0) + 1),
+  };
+  pendingBattleRooms.set(next.id, next);
+  pendingBattleRoomDeletes.delete(next.id);
+  localBattleRooms = [next, ...localBattleRooms.filter(item => item.id !== next.id)];
+  saveBattleLocal();
+  notifyBattleRooms();
+  try {
+    await enqueuePersistenceWrite(`battle-room:${next.id}`, () =>
+      setDoc(doc(db, BATTLE_ROOMS_COLLECTION, next.id), sanitizeForFirestore(next))
+    );
+  } catch (error) {
+    pendingBattleRooms.delete(next.id);
+    localBattleRooms = previous
+      ? [previous, ...localBattleRooms.filter(item => item.id !== next.id)]
+      : localBattleRooms.filter(item => item.id !== next.id);
+    saveBattleLocal();
+    notifyBattleRooms();
+    throw error;
+  }
+}
+
+export async function deleteBattleRoom(roomId: string): Promise<void> {
+  const previous = localBattleRooms.find(room => room.id === roomId);
+  pendingBattleRoomDeletes.add(roomId);
+  pendingBattleRooms.delete(roomId);
+  localBattleRooms = localBattleRooms.filter(room => room.id !== roomId);
+  saveBattleLocal();
+  notifyBattleRooms();
+  try {
+    await enqueuePersistenceWrite(`battle-room:${roomId}`, () =>
+      deleteDoc(doc(db, BATTLE_ROOMS_COLLECTION, roomId))
+    );
+  } catch (error) {
+    pendingBattleRoomDeletes.delete(roomId);
+    if (previous) localBattleRooms = [previous, ...localBattleRooms.filter(room => room.id !== roomId)];
+    saveBattleLocal();
+    notifyBattleRooms();
+    throw error;
+  }
+}
+
+export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect; power: number; cooldownTurns: number } {
+  const text = `${skill.name || ""} ${skill.description || ""} ${skill.type || ""}`.toLowerCase();
+  const effect = skill.battleEffect
+    || (text.includes("สะท้อน") || text.includes("reflect") ? "reflect"
+      : text.includes("ป้องกัน") || text.includes("เกราะ") || text.includes("ม่าน") || text.includes("shield") || text.includes("หลบ") ? "defense"
+        : text.includes("สตัน") || text.includes("มึนงง") || text.includes("stun") ? "stun"
+          : text.includes("ฟื้น") || text.includes("รักษา") || text.includes("heal") ? "heal" : "damage");
+  const percent = Number(text.match(/(\d+)\s*%/)?.[1] || 0);
+  // Skills created before cooldownTurns existed use the migration default of 3 turns.
+  const configuredCooldown = skill.cooldownTurns == null ? 3 : skill.cooldownTurns;
+  const cooldownTurns = Math.max(0, Math.min(99, Math.round(configuredCooldown)));
+  const power = Math.max(1, skill.battlePower ?? (effect === "reflect" ? percent || 35 : effect === "defense" ? 5 : 5));
+  return { effect, power, cooldownTurns };
+}
+
+function getActiveAdminStatusEffects(unit: BattleCombatant): AdminStatusEffect[] {
+  return (unit.adminStatusEffects || []).filter(effect => effect.remaining > 0);
+}
+
+function getAdminOutgoingDamageMultiplier(unit: BattleCombatant): number {
+  return getActiveAdminStatusEffects(unit).reduce((multiplier, effect) => {
+    if (!['curse', 'weakness', 'slow'].includes(effect.kind)) return multiplier;
+    const percent = Math.min(100, Math.max(0, Number(effect.power) || 0)) / 100;
+    return multiplier * (effect.mode === 'buff' ? 1 + percent : 1 - percent);
+  }, 1);
+}
+
+function getAdminIncomingDamageMultiplier(unit: BattleCombatant): number {
+  return getActiveAdminStatusEffects(unit).reduce((multiplier, effect) => {
+    if (effect.kind !== 'shield') return multiplier;
+    const percent = Math.min(100, Math.max(0, Number(effect.power) || 0)) / 100;
+    return multiplier * (effect.mode === 'buff' ? 1 - percent : 1 + percent);
+  }, 1);
+}
+
+function getAdminReflectPercent(unit: BattleCombatant): number {
+  return getActiveAdminStatusEffects(unit)
+    .filter(effect => effect.kind === 'reflect')
+    .reduce((percent, effect) => Math.max(percent, Math.min(100, Math.max(0, Number(effect.power) || 0))), 0);
+}
+
+function tickAdminStatusEffects(unit: BattleCombatant): { message: string; skipTurn: boolean } {
+  const active = getActiveAdminStatusEffects(unit);
+  let damage = 0;
+  let healing = 0;
+  let skipTurn = false;
+  const messages: string[] = [];
+  active.forEach(effect => {
+    const power = Math.max(0, Math.round(Number(effect.power) || 0));
+    if (['bleeding', 'burn', 'poison'].includes(effect.kind) && effect.mode === 'nerf') damage += power;
+    if (effect.kind === 'regen' && effect.mode === 'buff') healing += power;
+    if (effect.kind === 'stun') skipTurn = true;
+  });
+  if (damage > 0) {
+    unit.hp = Math.max(0, unit.hp - damage);
+    messages.push(unit.name + ' ได้รับความเสียหายจากสถานะ ' + damage);
+  }
+  if (healing > 0) {
+    const restored = Math.min(healing, Math.max(0, unit.maxHp - unit.hp));
+    unit.hp = Math.min(unit.maxHp, unit.hp + healing);
+    if (restored > 0) messages.push(unit.name + ' ฟื้นฟูจากสถานะ ' + restored);
+  }
+  return { message: messages.join(' • '), skipTurn };
+}
+
+function advanceAdminStatusEffects(unit: BattleCombatant) {
+  if (!unit.adminStatusEffects) return;
+  unit.adminStatusEffects = unit.adminStatusEffects
+    .map(effect => ({ ...effect, remaining: Math.max(0, effect.remaining - 1) }))
+    .filter(effect => effect.remaining > 0);
+}
+
+export function rollBattleAttack(attacker: BattleCombatant, defender: BattleCombatant, config: BattleDiceConfig): BattleRollResult {
+  const sides = Math.max(2, config.sides || 6);
+  const roll = Math.floor(Math.random() * sides) + 1;
+  const face = config.faces.find(item => item.face === roll) || {
+    face: roll, effect: "damage" as const, value: 1, label: "โจมตีปกติ", description: "ดาเมจพื้นฐาน"
+  };
+  const baseDamage = Math.max(1, Math.round(Math.floor((attacker.stats?.strength || 0) / Math.max(1, config.strengthPerDamage || 3)) * getAdminOutgoingDamageMultiplier(attacker)));
+  let damage = 0;
+  let heal = 0;
+  if (face.effect === "damage" || face.effect === "critical" || face.effect === "stun") {
+    damage = Math.max(0, Math.round(baseDamage * Math.max(0, face.value || 1)));
+  }
+  if (face.effect === "heal") heal = Math.max(1, Math.round(face.value || 1));
+  const message = face.effect === "miss"
+    ? attacker.name + " ทอยได้หน้า " + roll + " — " + face.label
+    : face.effect === "heal"
+      ? attacker.name + " ทอยได้หน้า " + roll + " — " + face.label + " ฟื้น HP " + heal
+      : face.effect === "defense"
+        ? attacker.name + " ทอยได้หน้า " + roll + " — " + face.label + " ลดดาเมจ " + Math.max(0, Math.round(face.value || 0)) + " ในเทิร์นถัดไป"
+        : face.effect === "reflect"
+          ? attacker.name + " ทอยได้หน้า " + roll + " — " + face.label + " สะท้อนดาเมจ " + Math.max(0, Math.round(face.value || 0)) + "%"
+      : attacker.name + " ทอยได้หน้า " + roll + " — " + face.label + " สร้างดาเมจ " + damage;
+  return { roll, face, damage, heal, message };
+}
+
+function getBattleCombatants(room: BattleRoom): BattleCombatant[] {
+  return [...room.teamA, ...room.teamB];
+}
+function getNextBattleActor(room: BattleRoom, actorId: string): BattleCombatant | undefined {
+  const all = getBattleCombatants(room);
+  const start = Math.max(0, all.findIndex(item => item.id === actorId));
+  for (let step = 1; step <= all.length; step += 1) {
+    const candidate = all[(start + step) % all.length];
+    if (candidate && candidate.hp > 0) return candidate;
+  }
+  return undefined;
+}
+
+export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?: Skill): { room: BattleRoom; result: BattleRollResult | null } {
+  if (room.status !== "active") return { room, result: null };
+  const nextRoom: BattleRoom = {
+    ...room,
+    teamA: room.teamA.map(item => ({ ...item })),
+    teamB: room.teamB.map(item => ({ ...item })),
+    log: [...(room.log || [])],
+  };
+  const all = getBattleCombatants(nextRoom);
+  const actor = all.find(item => item.id === nextRoom.turnActorId) || all.find(item => item.hp > 0);
+  if (!actor || actor.hp <= 0) return { room, result: null };
+  const opponentTeam = actor.team === "a" ? nextRoom.teamB : nextRoom.teamA;
+  const defender = opponentTeam.find(item => item.hp > 0);
+  if (!defender) return { room: { ...nextRoom, status: "completed", winnerTeam: actor.team }, result: null };
+  const current = all.find(item => item.id === actor.id) as BattleCombatant;
+  const statusTick = tickAdminStatusEffects(current);
+  if (statusTick.skipTurn) current.stunnedTurns = Math.max(current.stunnedTurns || 0, 1);
+  let result: BattleRollResult | null = null;
+  if (current.hp <= 0) {
+    nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: current.name + (statusTick.message ? " • " + statusTick.message : "") + " หมดสติจากผลสถานะ", effect: "stun_skip" });
+  } else if ((current.stunnedTurns || 0) > 0) {
+    current.stunnedTurns = Math.max(0, (current.stunnedTurns || 0) - 1);
+    nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: current.name + (statusTick.message ? " • " + statusTick.message : "") + " ถูกสตัน จึงเสียเทิร์น", effect: "stun_skip" });
+  } else {
+    const diceConfig = current.isBoss && config.bossDice?.enabled ? config.bossDice : {
+      enabled: true,
+      sides: config.sides,
+      strengthPerDamage: config.strengthPerDamage,
+      faces: config.faces,
+    };
+    const cooldowns = { ...(current.skillCooldowns || {}) };
+    Object.keys(cooldowns).forEach(skillId => {
+      cooldowns[skillId] = Math.max(0, (cooldowns[skillId] || 0) - 1);
+      if (cooldowns[skillId] === 0) delete cooldowns[skillId];
+    });
+    current.skillCooldowns = cooldowns;
+    const skillProfile = skill ? getBattleSkillProfile(skill) : null;
+    const skillName = skill?.name || "สกิล";
+    if (skill && skillProfile && (current.skillCooldowns[skill.id] || 0) > 0) {
+      return { room, result: null };
+    }
+    result = rollBattleAttack(current, defender, diceConfig);
+    if (statusTick.message) result.message = statusTick.message + ' • ' + result.message;
+    if (skillProfile) {
+      result.skillEffect = skillProfile.effect;
+      result.skillPower = skillProfile.power;
+      if (skillProfile.effect === "damage") {
+        const skillDamage = Math.max(0, Math.round(skillProfile.power * getAdminOutgoingDamageMultiplier(current)));
+        result.damage += skillDamage;
+        result.message += ` • ใช้สกิล ${skillName} เพิ่มดาเมจ ${skillDamage}`;
+      } else if (skillProfile.effect === "heal") {
+        result.heal += skillProfile.power;
+        result.message += ` • ใช้สกิล ${skillName} ฟื้นฟู ${skillProfile.power}`;
+      } else if (skillProfile.effect === "defense") {
+        current.defenseValue = skillProfile.power;
+        current.defenseTurns = 1;
+        result.message += ` • ใช้สกิล ${skillName} ป้องกันดาเมจ ${skillProfile.power} ในเทิร์นถัดไป`;
+      } else if (skillProfile.effect === "reflect") {
+        current.reflectPercent = Math.min(100, skillProfile.power);
+        current.reflectTurns = 1;
+        result.message += ` • ใช้สกิล ${skillName} สะท้อนดาเมจ ${current.reflectPercent}% ในเทิร์นถัดไป`;
+      } else if (skillProfile.effect === "stun") {
+        defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
+        result.message += ` • ใช้สกิล ${skillName} ทำให้ ${defender.name} ติดสตัน 1 เทิร์น`;
+      }
+      if (skill && skillProfile.cooldownTurns > 0) {
+        current.skillCooldowns = { ...(current.skillCooldowns || {}), [skill.id]: skillProfile.cooldownTurns };
+        result.cooldownRemaining = skillProfile.cooldownTurns;
+      }
+    }
+    if (result.face.effect === "defense") {
+      current.defenseValue = Math.max(current.defenseValue || 0, Math.max(0, Math.round(result.face.value || 0)));
+      current.defenseTurns = 1;
+    }
+    if (result.face.effect === "reflect") {
+      current.reflectPercent = Math.max(current.reflectPercent || 0, Math.min(100, Math.round(result.face.value || 0)));
+      current.reflectTurns = 1;
+    }
+    if (result.damage > 0) {
+      const damageAfterStatus = Math.max(0, Math.round(result.damage * getAdminIncomingDamageMultiplier(defender)));
+      const statusBlocked = Math.max(0, result.damage - damageAfterStatus);
+      const blocked = Math.min(damageAfterStatus, defender.defenseTurns ? (defender.defenseValue || 0) : 0);
+      const finalDamage = Math.max(0, damageAfterStatus - blocked);
+      if (statusBlocked > 0) result.message += ` • สถานะลดดาเมจ ${statusBlocked}`;
+      defender.hp = Math.max(0, defender.hp - finalDamage);
+      if (blocked > 0) {
+        result.message += ` • ป้องกันไว้ ${blocked}`;
+        defender.defenseTurns = 0;
+        defender.defenseValue = 0;
+      }
+      const adminReflectPercent = getAdminReflectPercent(defender);
+      const reflectPercent = Math.max(defender.reflectTurns && defender.reflectPercent ? defender.reflectPercent : 0, adminReflectPercent);
+      if (reflectPercent > 0 && finalDamage > 0) {
+        const reflected = Math.max(1, Math.round(finalDamage * reflectPercent / 100));
+        current.hp = Math.max(0, current.hp - reflected);
+        result.message += ` • สะท้อนกลับ ${reflected}`;
+        if (defender.reflectTurns) {
+          defender.reflectTurns = 0;
+          defender.reflectPercent = 0;
+        }
+      }
+      result.damage = finalDamage;
+    }
+    if (result.heal > 0) current.hp = Math.min(current.maxHp, current.hp + result.heal);
+    if (result.face.effect === "stun" && defender.hp > 0) defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
+    nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: result.message + (result.face.effect === "stun" ? " และทำให้เป้าหมายติดสตัน" : ""), roll: result.roll, damage: result.damage, effect: result.face.effect });
+  }
+  const remainingOpponent = opponentTeam.filter(item => item.hp > 0);
+  if (remainingOpponent.length === 0) {
+    nextRoom.status = "completed";
+    nextRoom.winnerTeam = actor.team;
+    nextRoom.turnActorId = current.id;
+    return { room: nextRoom, result };
+  }
+  const nextActor = getNextBattleActor(nextRoom, current.id);
+  if (nextActor?.team === "a" && current.team === "b") getBattleCombatants(nextRoom).forEach(advanceAdminStatusEffects);
+  nextRoom.turnActorId = nextActor?.id || current.id;
+  nextRoom.round = (nextRoom.round || 1) + (nextActor?.team === "a" && current.team === "b" ? 1 : 0);
+  return { room: nextRoom, result };
+}
