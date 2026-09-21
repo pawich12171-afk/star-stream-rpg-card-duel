@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Bot, Check, Crown, Dice5, Plus, Settings2, Shield, Skull, Swords, Target, Trash2, UsersRound, Zap } from 'lucide-react';
-import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleRoom, CharacterProfile, Skill } from '../types';
+import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRoom, CharacterProfile, Skill } from '../types';
 import {
   DEFAULT_BATTLE_CONFIG,
   createBattleRoom,
@@ -89,6 +89,29 @@ function DiceEditor({ title, accent, dice, faces, onPatch, onSidesChange }: {
       <select className={inputClass} value={face.effect} onChange={event => onPatch({ faces: faces.map(item => item.face === face.face ? { ...item, effect: event.target.value as BattleDiceFace['effect'] } : item) })}><option value="damage">โจมตี</option><option value="critical">คริติคอล</option><option value="heal">ฟื้นฟู</option><option value="miss">พลาด</option><option value="stun">สตัน</option><option value="defense">ป้องกัน</option><option value="reflect">สะท้อน</option></select>
       <input className={inputClass} type="number" step="0.5" value={face.value} onChange={event => onPatch({ faces: faces.map(item => item.face === face.face ? { ...item, value: Number(event.target.value) || 0 } : item) })} placeholder="ค่า" />
       <div className="grid gap-2 sm:grid-cols-2"><input className={inputClass} value={face.label} onChange={event => onPatch({ faces: faces.map(item => item.face === face.face ? { ...item, label: event.target.value } : item) })} placeholder="ชื่อผล" /><input className={inputClass} value={face.description} onChange={event => onPatch({ faces: faces.map(item => item.face === face.face ? { ...item, description: event.target.value } : item) })} placeholder="คำอธิบาย" /></div>
+      <div className="sm:col-span-4 rounded-xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-2">
+        <div className="mb-2 text-[10px] font-black text-fuchsia-200">เพิ่มผลพิเศษสำหรับหน้านี้ (ของเดิมยังทำงานเหมือนเดิม)</div>
+        <div className="grid gap-2 sm:grid-cols-[1fr_5rem_5rem_5rem_auto]">
+          <select id={`extra-${face.face}-kind`} className={inputClass} defaultValue="bleeding">
+            <option value="bleeding">เลือดไหล</option><option value="burn">เผาไหม้</option><option value="poison">พิษ</option><option value="freeze">Freeze</option><option value="stun">สตัน</option><option value="reduce_max_hp_percent">ลด MAX HP %</option><option value="reduce_defense_percent">ลดป้องกัน %</option><option value="damage_percent">เพิ่มดาเมจ %</option><option value="heal_percent">ฟื้น HP %</option><option value="shield">โล่</option><option value="reflect">สะท้อน %</option>
+          </select>
+          <input id={`extra-${face.face}-value`} className={inputClass} type="number" min="0" step="0.1" defaultValue="15" placeholder="ค่า" />
+          <input id={`extra-${face.face}-duration`} className={inputClass} type="number" min="1" defaultValue="1" placeholder="รอบ" />
+          <input id={`extra-${face.face}-chance`} className={inputClass} type="number" min="0" max="100" defaultValue="100" placeholder="โอกาส %" />
+          <button type="button" className={buttonClass + " bg-fuchsia-500/15 text-fuchsia-100"} onClick={() => {
+            const kind = (document.getElementById(`extra-${face.face}-kind`) as HTMLSelectElement)?.value as BattleExtraEffect['kind'];
+            const value = Number((document.getElementById(`extra-${face.face}-value`) as HTMLInputElement)?.value || 0);
+            const duration = Number((document.getElementById(`extra-${face.face}-duration`) as HTMLInputElement)?.value || 1);
+            const chance = Number((document.getElementById(`extra-${face.face}-chance`) as HTMLInputElement)?.value || 100);
+            const extra: BattleExtraEffect = { kind, value, duration, chance, target: kind === 'heal_percent' || kind === 'shield' || kind === 'reflect' ? 'self' : 'enemy', label: kind === 'freeze' ? 'Freeze' : undefined };
+            onPatch({ faces: faces.map(item => item.face === face.face ? { ...item, extraEffects: [...(item.extraEffects || []), extra] } : item) });
+          }}>+ เพิ่ม</button>
+        </div>
+        {(face.extraEffects || []).map((extra, index) => <div key={index} className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-[10px] text-slate-300">
+          <span>{extra.label || extra.kind} • {extra.value}{extra.kind.includes("percent") || extra.kind === "reflect" ? "%" : ""} • {extra.duration || 1} รอบ • {extra.chance ?? 100}%</span>
+          <button type="button" className="text-rose-300 hover:text-white" onClick={() => onPatch({ faces: faces.map(item => item.face === face.face ? { ...item, extraEffects: (item.extraEffects || []).filter((_, i) => i !== index) } : item) })}>ลบ</button>
+        </div>)}
+      </div>
     </div>)}
   </div>;
 }
