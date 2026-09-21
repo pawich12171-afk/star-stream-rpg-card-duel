@@ -40,6 +40,7 @@ export interface Skill {
   cooldownTurns?: number;
   battleCriticalChance?: number;
   battleCriticalMultiplier?: number;
+  repeatAttackChance?: number;
   battleEffects?: BattleExtraEffect[];
   battleStats?: BattleSkillStat[];
 }
