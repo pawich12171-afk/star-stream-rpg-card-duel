@@ -41,6 +41,7 @@ export interface Skill {
   battleCriticalChance?: number;
   battleCriticalMultiplier?: number;
   repeatAttackChance?: number;
+  passiveEffects?: ItemPassiveEffect[];
   maxRepeatAttacks?: number;
   battleEffects?: BattleExtraEffect[];
   battleStats?: BattleSkillStat[];
