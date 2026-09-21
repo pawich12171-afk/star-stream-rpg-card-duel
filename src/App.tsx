@@ -706,6 +706,7 @@ export default function App() {
             shopItems={shopItems}
             gachaRewards={gachaRewards}
             gachaConfig={gachaConfig}
+            gachaBanners={gachaBanners}
             onUpdateCharacterCoins={handleUpdateCharacterCoins}
             onSetCharacterCoins={handleSetCharacterCoins}
             onAddShopItem={handleAddShopItem}
@@ -716,6 +717,8 @@ export default function App() {
             onReviewQuestProof={handleReviewQuestProof}
             onAddGachaReward={addGachaRewardToDB}
             onDeleteGachaReward={deleteGachaRewardFromDB}
+            onSaveGachaBanner={saveGachaBanner}
+            onDeleteGachaBanner={deleteGachaBanner}
             onUpdateGachaConfig={updateGachaConfigInDB}
             onDirectEditCharacter={handleUpdateCharacter}
             onDeleteCharacter={handleDeleteCharacter}
