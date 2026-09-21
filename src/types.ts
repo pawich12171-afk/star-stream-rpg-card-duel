@@ -381,6 +381,9 @@ export interface BattleCombatant {
   reflectTurns?: number;
   skillCooldowns?: Record<string, number>;
   adminStatusEffects?: AdminStatusEffect[];
+  equippedPassives?: ItemPassiveEffect[];
+  activeSkillPassives?: ItemPassiveEffect[];
+  passiveStacks?: Record<string, number>;
 }
 
 export interface BattleLogEntry {
