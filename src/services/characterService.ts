@@ -10,8 +10,8 @@ import {
   runTransaction,
   deleteDoc,
   writeBatch
-} from "firebase/firestore";
-import { db } from "../firebase";
+} from "../apiDb";
+import { db } from "../apiDb";
 import { 
   CharacterProfile, 
   Item, 
