@@ -30,7 +30,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   const [pullResults, setPullResults] = useState<GachaReward[] | null>(null);
   const [filterRarity, setFilterRarity] = useState<string>('all');
   const fallbackBanner: GachaBanner = { id: 'main', name: 'ตู้หลัก', pullCost: gachaConfig.pullCost, tenPullCost: gachaConfig.tenPullCost, enabled: gachaConfig.enabled, bannerTitle: gachaConfig.bannerTitle, bannerDescription: gachaConfig.bannerDescription, createdAt: 0, updatedAt: 0 };
-  const availableBanners = gachaBanners.length ? gachaBanners : [fallbackBanner];
+  const availableBanners = (gachaBanners.length ? gachaBanners : [fallbackBanner]).filter(b => b.enabled);
   const [selectedBannerId, setSelectedBannerId] = useState<string>(availableBanners[0]?.id || 'main');
   const activeBanner = availableBanners.find(b => b.id === selectedBannerId) || availableBanners[0] || fallbackBanner;
   const activeRewards = gachaRewards.filter(r => r.bannerId === activeBanner.id || (!r.bannerId && activeBanner.id === 'main'));
@@ -40,7 +40,11 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     characterRef.current = character;
   }, [character]);
 
-  useEffect(() => { if (!availableBanners.some(b => b.id === selectedBannerId)) setSelectedBannerId(availableBanners[0]?.id || 'main'); }, [gachaBanners, selectedBannerId]);
+  useEffect(() => {
+    if (!availableBanners.some(b => b.id === selectedBannerId)) {
+      setSelectedBannerId(availableBanners[0]?.id || 'main');
+    }
+  }, [gachaBanners, selectedBannerId]);
 
   const pullCost = activeBanner?.pullCost || gachaConfig?.pullCost || 500;
   const tenPullCost = activeBanner?.tenPullCost || gachaConfig?.tenPullCost || 4500;
@@ -73,6 +77,10 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
 
   // Perform Gacha Pull
   const handlePull = (count: number) => {
+    if (!activeBanner.enabled) {
+      alert('ตู้กาชานี้ถูกปิดใช้งานโดยผู้ดูแลระบบ');
+      return;
+    }
     const currentCharacter = characterRef.current;
     const cost = count === 1 ? pullCost : tenPullCost;
     if (currentCharacter.coins < cost) {
