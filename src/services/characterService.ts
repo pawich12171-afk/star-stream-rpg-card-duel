@@ -1766,6 +1766,10 @@ export async function deleteBattleRoom(roomId: string): Promise<void> {
   }
 }
 
+function getSkillStat(skill: Skill | undefined, kind: NonNullable<Skill['battleStats']>[number]['kind']): number {
+  return (skill?.battleStats || []).filter(s => s.kind === kind).reduce((sum, s) => sum + (Number(s.value) || 0), 0);
+}
+
 export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect; power: number; cooldownTurns: number } {
   const text = `${skill.name || ""} ${skill.description || ""} ${skill.type || ""}`.toLowerCase();
   const effect = skill.battleEffect
@@ -1962,7 +1966,12 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
     if (skill && skillProfile && (current.skillCooldowns[skill.id] || 0) > 0) {
       return { room, result: null };
     }
-    result = rollBattleAttack(current, defender, diceConfig);
+    const skillAccuracy = Math.max(0, Math.min(100, getSkillStat(skill, 'accuracy_percent')));
+    if (skill && skillAccuracy > 0 && Math.random() * 100 >= skillAccuracy) {
+      result = { roll: 0, face: diceConfig.faces[0], damage: 0, heal: 0, message: `${current.name} ใช้สกิล ${skill.name} แต่พลาดเป้าหมาย (แม่นยำ ${skillAccuracy}%)` };
+    } else {
+      result = rollBattleAttack(current, defender, diceConfig);
+    }
     if (statusTick.message) result.message = statusTick.message + ' • ' + result.message;
     if (skillProfile) {
       result.skillEffect = skillProfile.effect;
@@ -1972,10 +1981,11 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         result.damage += skillDamage;
         result.message += ` • ใช้สกิล ${skillName} เพิ่มดาเมจ ${skillDamage}`;
       } else if (skillProfile.effect === "heal") {
-        result.heal += skillProfile.power;
-        result.message += ` • ใช้สกิล ${skillName} ฟื้นฟู ${skillProfile.power}`;
+        const bonusHeal = healPercent > 0 ? Math.round(current.maxHp * healPercent / 100) : 0;
+        result.heal += skillProfile.power + bonusHeal;
+        result.message += ` • ใช้สกิล ${skillName} ฟื้นฟู ${skillProfile.power + bonusHeal}`;
       } else if (skillProfile.effect === "defense") {
-        current.defenseValue = skillProfile.power;
+        current.defenseValue = skillProfile.power + defensePower;
         current.defenseTurns = 1;
         result.message += ` • ใช้สกิล ${skillName} ป้องกันดาเมจ ${skillProfile.power} ในเทิร์นถัดไป`;
       } else if (skillProfile.effect === "reflect") {
@@ -1986,21 +1996,33 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
         result.message += ` • ใช้สกิล ${skillName} ทำให้ ${defender.name} ติดสตัน 1 เทิร์น`;
       }
-      if (skill?.battleEffects?.length) applyBattleExtraEffects(current, defender, skill.battleEffects, result);
+      if (skill?.battleEffects?.length) {
+        const statusChanceBonus = getSkillStat(skill, 'status_chance_percent');
+        const durationBonus = Math.max(0, Math.round(getSkillStat(skill, 'status_duration')));
+        const adjustedEffects = skill.battleEffects.map(effect => ({
+          ...effect,
+          chance: effect.chance == null ? Math.min(100, 100 + statusChanceBonus) : Math.min(100, Math.max(0, Number(effect.chance) + statusChanceBonus)),
+          duration: Math.max(1, Math.round((Number(effect.duration) || 1) + durationBonus)),
+        }));
+        applyBattleExtraEffects(current, defender, adjustedEffects, result);
+      }
       // Skill-specific critical chance is separate from the dice's critical face.
       // This makes an Admin-created skill capable of critical hits regardless of the roll.
       if (skill && result.damage > 0) {
-        const critChance = Math.max(0, Math.min(100, Number(skill.battleCriticalChance) || 0));
-        const critMultiplier = Math.max(1, Number(skill.battleCriticalMultiplier) || 1);
+        const critChance = Math.max(0, Math.min(100, Number(skill.battleCriticalChance) || getSkillStat(skill, 'critical_chance_percent')));
+        const critMultiplier = Math.max(1, Number(skill.battleCriticalMultiplier) || getSkillStat(skill, 'critical_multiplier') || 1);
         if (critChance > 0 && Math.random() * 100 < critChance) {
           result.damage = Math.max(0, Math.round(result.damage * critMultiplier));
           result.message += ` • 💥 CRITICAL! ${critChance}% ×${critMultiplier}`;
           result.effect = 'critical';
         }
       }
-      if (skill && skillProfile.cooldownTurns > 0) {
-        current.skillCooldowns = { ...(current.skillCooldowns || {}), [skill.id]: skillProfile.cooldownTurns };
-        result.cooldownRemaining = skillProfile.cooldownTurns;
+      if (skill) {
+        const configuredCooldown = getSkillStat(skill, 'cooldown_turns') || skillProfile.cooldownTurns;
+        const speed = Math.max(0, getSkillStat(skill, 'speed'));
+        const cooldown = Math.max(0, Math.min(99, Math.round(configuredCooldown - speed / 10)));
+        if (cooldown > 0) current.skillCooldowns = { ...(current.skillCooldowns || {}), [skill.id]: cooldown };
+        result.cooldownRemaining = cooldown;
       }
     }
     if (result.face.extraEffects?.length) applyBattleExtraEffects(current, defender, result.face.extraEffects, result);
