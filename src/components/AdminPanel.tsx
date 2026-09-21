@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CharacterProfile, Item, Skill, Quest, GachaReward, GachaBanner, GachaConfig, GachaRarity, MAX_GACHA_REWARDS, BattleExtraEffect, BattleSkillStat } from '../types';
 import { 
   ShieldCheck, 
@@ -294,6 +294,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newBannerPullCost, setNewBannerPullCost] = useState(500);
   const [newBannerTenCost, setNewBannerTenCost] = useState(4500);
   const [newBannerEnabled, setNewBannerEnabled] = useState(true);
+  const selectedBanner = gachaBanners.find(b => b.id === selectedBannerId);
+  const [editBannerName, setEditBannerName] = useState('');
+  const [editBannerTitle, setEditBannerTitle] = useState('');
+  const [editBannerDesc, setEditBannerDesc] = useState('');
+  const [editBannerPullCost, setEditBannerPullCost] = useState(500);
+  const [editBannerTenCost, setEditBannerTenCost] = useState(4500);
+  const [editBannerEnabled, setEditBannerEnabled] = useState(true);
+  useEffect(() => {
+    if (!selectedBanner) return;
+    setEditBannerName(selectedBanner.name); setEditBannerTitle(selectedBanner.bannerTitle); setEditBannerDesc(selectedBanner.bannerDescription);
+    setEditBannerPullCost(selectedBanner.pullCost); setEditBannerTenCost(selectedBanner.tenPullCost); setEditBannerEnabled(selectedBanner.enabled);
+  }, [selectedBannerId, gachaBanners]);
 
   // New Gacha Reward Form
   const [newRewardName, setNewRewardName] = useState('');
@@ -464,6 +476,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       });
       alert(`ลบไอเทม "${itemName}" เรียบร้อยแล้ว!`);
     }
+  };
+
+  const handleUpdateGachaBanner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBanner) return;
+    try {
+      await onSaveGachaBanner({
+        ...selectedBanner,
+        name: editBannerName.trim() || selectedBanner.name,
+        bannerTitle: editBannerTitle.trim() || selectedBanner.bannerTitle,
+        bannerDescription: editBannerDesc.trim() || selectedBanner.bannerDescription,
+        pullCost: Math.max(10, Number(editBannerPullCost) || 10),
+        tenPullCost: Math.max(100, Number(editBannerTenCost) || 100),
+        enabled: editBannerEnabled,
+        updatedAt: Date.now(),
+      });
+      alert('บันทึกการตั้งค่าตู้กาชาเรียบร้อยแล้ว');
+    } catch (error) { console.error(error); alert('บันทึกตู้กาชาไม่สำเร็จ'); }
   };
 
   const handleCreateGachaBanner = async (e: React.FormEvent) => {
