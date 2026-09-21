@@ -807,10 +807,13 @@ export function subscribeToGachaBanners(callback: (banners: GachaBanner[]) => vo
   // If this is an existing database created before multi-banner support,
   // materialize the legacy main banner once so Admin and players both have
   // a real persistent banner document to work with.
-  if (!gachaBannerInitializationStarted && localGachaBanners.length === 0) {
+  if (!gachaBannerInitializationStarted) {
     gachaBannerInitializationStarted = true;
     void getDocs(collection(db, GACHA_BANNERS_COLLECTION)).then(snapshot => {
-      if (!snapshot.empty) return;
+      if (!snapshot.empty) {
+        mergeServerBanners(snapshot.docs.map(s => ({ ...s.data(), id: s.id } as GachaBanner)));
+        return;
+      }
       const mainBanner: GachaBanner = {
         id: 'main',
         name: 'ตู้หลัก',
@@ -823,7 +826,10 @@ export function subscribeToGachaBanners(callback: (banners: GachaBanner[]) => vo
         updatedAt: Date.now(),
       };
       return saveGachaBanner(mainBanner);
-    }).catch(error => console.warn('Could not initialize main gacha banner:', error));
+    }).catch(error => {
+      gachaBannerInitializationStarted = false;
+      console.warn('Could not initialize main gacha banner:', error);
+    });
   }
 
   const mergeServerBanners = (serverList: GachaBanner[]) => {
@@ -861,6 +867,14 @@ export function subscribeToGachaBanners(callback: (banners: GachaBanner[]) => vo
     }
   };
   broadcast?.addEventListener('message', onBroadcast);
+
+  // Force one authoritative server read immediately. This prevents an old localStorage snapshot
+  // or a delayed polling cycle from making Admin temporarily show 0 banners.
+  void getDocs(collection(db, GACHA_BANNERS_COLLECTION)).then(snapshot => {
+    const list: GachaBanner[] = [];
+    snapshot.forEach(s => list.push({ ...s.data(), id: s.id } as GachaBanner));
+    mergeServerBanners(list);
+  }).catch(error => console.warn('Initial gacha banner fetch failed:', error));
 
   try {
     const unsub = onSnapshot(collection(db, GACHA_BANNERS_COLLECTION), { includeMetadataChanges: true }, (snapshot) => {
