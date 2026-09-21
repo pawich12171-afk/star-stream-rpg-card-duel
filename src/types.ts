@@ -362,6 +362,9 @@ export interface BattleRoom {
   round: number;
   log: BattleLogEntry[];
   winnerTeam?: 'a' | 'b' | 'draw';
+  entryFeeCoins?: number;
+  victoryRewardCoins?: number;
+  rewardClaimedBy?: string;
   createdAt: number;
   updatedAt: number;
 }
