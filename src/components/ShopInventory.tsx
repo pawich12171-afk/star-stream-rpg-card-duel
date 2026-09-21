@@ -127,6 +127,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const characterRef = useRef(character);
   characterRef.current = character;
   const purchaseQueueRef = useRef<Promise<void>>(Promise.resolve());
+  // Synchronous lock: reject rapid clicks before React has time to re-render.
+  const purchaseLockRef = useRef(false);
 
   // New item form for admin
   const [newItemName, setNewItemName] = useState('');
@@ -249,20 +251,28 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
 
   // Buy Item handler
   const handleBuyItem = (item: Item) => {
+    // Lock immediately on the first click. Do not queue duplicate clicks.
+    if (purchaseLockRef.current) return;
+    purchaseLockRef.current = true;
+    setBuyingItemId(item.id);
+
     purchaseQueueRef.current = purchaseQueueRef.current.then(async () => {
       const currentCharacter = characterRef.current;
       const coins = Number(currentCharacter.coins);
       const price = Number(item.price);
       if (!Number.isFinite(price) || price <= 0) {
         alert('ไอเทมนี้มีราคาไม่ถูกต้อง กรุณาแจ้ง Admin');
+        purchaseLockRef.current = false;
+        setBuyingItemId(null);
         return;
       }
       if (!Number.isFinite(coins) || coins < price) {
         alert('เหรียญไม่เพียงพอ! กรุณาสะสมเหรียญหรือให้ Admin เพิ่มเหรียญให้');
+        purchaseLockRef.current = false;
+        setBuyingItemId(null);
         return;
       }
 
-      setBuyingItemId(item.id);
       const newCoins = coins - price;
       const currentInventory: InventoryItem[] = (currentCharacter.inventory || []).map((invItem, index) => ({
         ...invItem,
@@ -319,6 +329,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         return;
       } finally {
         setBuyingItemId(current => current === item.id ? null : current);
+        purchaseLockRef.current = false;
       }
 
       confetti({
@@ -327,6 +338,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         origin: { y: 0.8 }
       });
     }).catch(error => {
+      purchaseLockRef.current = false;
+      setBuyingItemId(current => current === item.id ? null : current);
       console.error('Purchase queue failed:', error);
       alert('การซื้อไอเทมล้มเหลว กรุณาลองใหม่');
     });
@@ -656,7 +669,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                       id={`btn-buy-${item.id}`}
                       type="button"
                       onClick={() => handleBuyItem(item)}
-                      disabled={buyingItemId === item.id || Number(character.coins) < Number(item.price)}
+                      disabled={purchaseLockRef.current || Number(character.coins) < Number(item.price)}
                       className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
                         character.coins >= item.price
                           ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-900/30'
@@ -664,7 +677,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                       }`}
                     >
                       <ShoppingBag className="w-3.5 h-3.5" />
-                      {buyingItemId === item.id ? 'กำลังซื้อ...' : Number(character.coins) >= Number(item.price) ? 'ซื้อไอเทม' : 'เหรียญไม่พอ'}
+                      {purchaseLockRef.current && buyingItemId === item.id ? 'กำลังซื้อ...' : Number(character.coins) >= Number(item.price) ? 'ซื้อไอเทม' : 'เหรียญไม่พอ'}
                     </button>
                   </div>
                 </div>
