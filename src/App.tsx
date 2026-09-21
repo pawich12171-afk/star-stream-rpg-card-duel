@@ -222,7 +222,8 @@ export default function App() {
         : charactersRef.current.filter(c => c.id !== committed.id);
       setCharacters([...charactersRef.current]);
       console.error('Failed to persist character update:', error);
-      alert('บันทึกข้อมูลตัวละครไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+      const detail = error instanceof Error ? error.message : String(error || 'ไม่ทราบสาเหตุ');
+      alert('บันทึกข้อมูลตัวละครไม่สำเร็จ\\n\\n' + detail + '\\n\\nกรุณาตรวจสอบการเชื่อมต่อฐานข้อมูลแล้วลองใหม่อีกครั้ง');
       return false;
     }
   };
