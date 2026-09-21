@@ -53,9 +53,27 @@ async function supabase(path: string, init: RequestInit = {}) {
 }
 
 function getPath(req: any): string[] {
+  // Vercel normally exposes a catch-all route as req.query.path, but this can
+  // be absent depending on the runtime/router. Fall back to the actual URL so
+  // /api/db/characters/... is still resolved correctly.
   const raw = req.query?.path;
-  const parts = Array.isArray(raw) ? raw : raw ? [raw] : [];
-  return parts.map((part: any) => decodeURIComponent(String(part)));
+  let parts = Array.isArray(raw) ? raw : raw ? [raw] : [];
+
+  if (!parts.length) {
+    const rawUrl = String(req.url || '');
+    const pathname = rawUrl.split('?')[0];
+    const marker = '/api/db/';
+    const index = pathname.indexOf(marker);
+    if (index >= 0) {
+      const remainder = pathname.slice(index + marker.length);
+      parts = remainder.split('/').filter(Boolean);
+    }
+  }
+
+  return parts.map((part: any) => {
+    try { return decodeURIComponent(String(part)); }
+    catch { return String(part); }
+  });
 }
 
 export default async function handler(req: any, res: any) {
@@ -63,16 +81,15 @@ export default async function handler(req: any, res: any) {
     const parts = getPath(req);
     const collection = parts[0] || '';
     const id = parts.length > 1 ? parts[1] : '';
+
     if (!collection || !/^[a-zA-Z0-9_-]+$/.test(collection)) {
-      return res.status(400).json({ error: 'Invalid collection' });
+      return res.status(400).json({ error: 'Invalid collection', path: parts });
     }
     if (parts.length > 2 || (id && !/^[a-zA-Z0-9_.:-]+$/.test(id))) {
-      return res.status(400).json({ error: 'Invalid document reference' });
+      return res.status(400).json({ error: 'Invalid document reference', path: parts });
     }
 
     // Batch/transaction writes used by the game services.
-    // The frontend sends these to /api/db/transaction. Handle them explicitly
-    // instead of treating "transaction" as a normal collection name.
     if (req.method === 'POST' && collection === 'transaction' && !id) {
       const operations = Array.isArray(req.body?.operations) ? req.body.operations : [];
       if (!operations.length) return res.status(400).json({ error: 'No database operations supplied' });
