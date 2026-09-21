@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CharacterProfile, GachaReward, GachaConfig, Skill, InventoryItem } from '../types';
+import { CharacterProfile, GachaReward, GachaConfig, GachaBanner, Skill, InventoryItem } from '../types';
 import { 
   Sparkles, 
   Coins, 
@@ -15,6 +15,7 @@ interface GachaSystemProps {
   character: CharacterProfile;
   gachaRewards: GachaReward[];
   gachaConfig: GachaConfig;
+  gachaBanners: GachaBanner[];
   onUpdateCharacter: (updated: CharacterProfile) => void;
 }
 
@@ -22,19 +23,27 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   character,
   gachaRewards,
   gachaConfig,
+  gachaBanners,
   onUpdateCharacter,
 }) => {
   const [isPulling, setIsPulling] = useState(false);
   const [pullResults, setPullResults] = useState<GachaReward[] | null>(null);
   const [filterRarity, setFilterRarity] = useState<string>('all');
+  const fallbackBanner: GachaBanner = { id: 'main', name: 'ตู้หลัก', pullCost: gachaConfig.pullCost, tenPullCost: gachaConfig.tenPullCost, enabled: gachaConfig.enabled, bannerTitle: gachaConfig.bannerTitle, bannerDescription: gachaConfig.bannerDescription, createdAt: 0, updatedAt: 0 };
+  const availableBanners = gachaBanners.length ? gachaBanners : [fallbackBanner];
+  const [selectedBannerId, setSelectedBannerId] = useState<string>(availableBanners[0]?.id || 'main');
+  const activeBanner = availableBanners.find(b => b.id === selectedBannerId) || availableBanners[0] || fallbackBanner;
+  const activeRewards = gachaRewards.filter(r => !r.bannerId || r.bannerId === activeBanner.id);
   const characterRef = useRef<CharacterProfile>(character);
 
   useEffect(() => {
     characterRef.current = character;
   }, [character]);
 
-  const pullCost = gachaConfig?.pullCost || 500;
-  const tenPullCost = gachaConfig?.tenPullCost || 4500;
+  useEffect(() => { if (!availableBanners.some(b => b.id === selectedBannerId)) setSelectedBannerId(availableBanners[0]?.id || 'main'); }, [gachaBanners, selectedBannerId]);
+
+  const pullCost = activeBanner?.pullCost || gachaConfig?.pullCost || 500;
+  const tenPullCost = activeBanner?.tenPullCost || gachaConfig?.tenPullCost || 4500;
 
   // Helper to pick a random reward based on rate %
   const pickRandomReward = (rewardsList: GachaReward[]): GachaReward => {
@@ -70,7 +79,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       alert(`เหรียญไม่เพียงพอ ต้องการ ${cost.toLocaleString()} C แต่คุณมี ${character.coins.toLocaleString()} C`);
       return;
     }
-    if (gachaRewards.length === 0) {
+    if (activeRewards.length === 0) {
       alert('ขณะนี้ไม่มีรายการของรางวัลในตู้กาชา');
       return;
     }
@@ -86,7 +95,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       const newCharacteristicsToAdd: string[] = [];
 
       for (let i = 0; i < count; i++) {
-        const reward = pickRandomReward(gachaRewards);
+        const reward = pickRandomReward(activeRewards);
         results.push(reward);
 
         if (reward.type === 'coin' && reward.coinAmount) {
@@ -240,10 +249,10 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
               </span>
             </div>
             <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
-              {gachaConfig?.bannerTitle || "หีบสมบัติจักรวาลแห่งดวงดาว"}
+              {activeBanner?.bannerTitle || "หีบสมบัติจักรวาลแห่งดวงดาว"}
             </h2>
             <p className="text-xs md:text-sm text-slate-300 max-w-xl leading-relaxed">
-              {gachaConfig?.bannerDescription || "สุ่มรับเหรียญรางวัลมหาศาล สกิลพิเศษระดับตำนาน และไอเทมสเตตัสหายาก"}
+              {activeBanner?.bannerDescription || "สุ่มรับเหรียญรางวัลมหาศาล สกิลพิเศษระดับตำนาน และไอเทมสเตตัสหายาก"}
             </p>
           </div>
 
@@ -264,7 +273,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
           </div>
         </div>
 
-        {/* Summon Buttons Area */}
+        <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">\n          <label className="text-xs text-slate-400 whitespace-nowrap">เลือกตู้กาชา</label>\n          <select value={selectedBannerId} onChange={(e) => setSelectedBannerId(e.target.value)} className="flex-1 px-3 py-2 rounded-xl bg-slate-900/90 border border-purple-500/40 text-white text-xs outline-none">\n            {availableBanners.filter(b => b.enabled).map(b => <option key={b.id} value={b.id}>{b.name} — {b.pullCost.toLocaleString()} C / 10 ครั้ง {b.tenPullCost.toLocaleString()} C</option>)}\n          </select>\n        </div>\n\n        {/* Summon Buttons Area */}
         <div className="mt-8 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-center gap-4">
           <button
             id="btn-gacha-single"
