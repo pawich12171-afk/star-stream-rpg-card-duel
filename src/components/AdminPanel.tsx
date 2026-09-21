@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CharacterProfile, Item, Skill, Quest, GachaReward, GachaConfig, GachaRarity, MAX_GACHA_REWARDS, BattleExtraEffect } from '../types';
+import { CharacterProfile, Item, Skill, Quest, GachaReward, GachaConfig, GachaRarity, MAX_GACHA_REWARDS, BattleExtraEffect, BattleSkillStat } from '../types';
 import { 
   ShieldCheck, 
   Coins, 
@@ -304,6 +304,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newRewardEffectValue, setNewRewardEffectValue] = useState(15);
   const [newRewardEffectDuration, setNewRewardEffectDuration] = useState(1);
   const [newRewardEffectChance, setNewRewardEffectChance] = useState(100);
+  const [newRewardBattleStats, setNewRewardBattleStats] = useState<BattleSkillStat[]>([]);
+  const [newRewardStatKind, setNewRewardStatKind] = useState<BattleSkillStat['kind']>('attack_power');
+  const [newRewardStatValue, setNewRewardStatValue] = useState(15);
+  const [newRewardStatDuration, setNewRewardStatDuration] = useState(1);
 
   // Inline edit rate map
   const [editingRates, setEditingRates] = useState<Record<string, number>>({});
@@ -510,6 +514,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         battleCriticalChance: Math.max(0, Math.min(100, Number(newRewardCritChance) || 0)),
         battleCriticalMultiplier: Math.max(1, Number(newRewardCritMultiplier) || 1),
         battleEffects: [...newRewardBattleEffects],
+        battleStats: [...newRewardBattleStats],
       } : undefined,
     };
 
@@ -524,6 +529,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setNewRewardCritChance(0);
       setNewRewardCritMultiplier(2);
       setNewRewardBattleEffects([]);
+      setNewRewardBattleStats([]);
+      setNewRewardStatKind('attack_power');
+      setNewRewardStatValue(15);
+      setNewRewardStatDuration(1);
       setNewRewardEffectKind('bleeding');
       setNewRewardEffectValue(15);
       setNewRewardEffectDuration(1);
@@ -1911,6 +1920,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <label className="text-[10px] text-slate-400">โอกาสคริติคอล (%)<input type="number" min={0} max={100} value={newRewardCritChance} onChange={(e) => setNewRewardCritChance(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-amber-200 outline-none" /></label>
                       <label className="text-[10px] text-slate-400">ตัวคูณคริติคอล (เช่น 2 = x2)<input type="number" min={1} max={20} step={0.1} value={newRewardCritMultiplier} onChange={(e) => setNewRewardCritMultiplier(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-amber-200 outline-none" /></label>
                     </div>
+                    <div className="rounded-lg border border-cyan-500/20 bg-cyan-950/10 p-2">
+                      <div className="mb-2 text-[10px] font-black text-cyan-200">📊 สเตตัสสกิล — เพิ่มได้หลายรายการ และใช้จริงในการต่อสู้</div>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <select value={newRewardStatKind} onChange={e => setNewRewardStatKind(e.target.value as BattleSkillStat['kind'])} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white">
+                          <option value="attack_power">พลังโจมตี</option>
+                          <option value="defense_power">พลังป้องกัน</option>
+                          <option value="heal_percent">ฟื้น HP %</option>
+                          <option value="accuracy_percent">ความแม่นยำ %</option>
+                          <option value="speed">ความเร็ว</option>
+                          <option value="status_chance_percent">โอกาสติดสถานะ %</option>
+                          <option value="status_duration">ระยะเวลาสถานะ</option>
+                          <option value="critical_chance_percent">โอกาสคริ %</option>
+                          <option value="critical_multiplier">ตัวคูณคริ</option>
+                          <option value="cooldown_turns">ลดคูลดาวน์</option>
+                        </select>
+                        <input type="number" step="0.1" value={newRewardStatValue} onChange={e => setNewRewardStatValue(Number(e.target.value))} placeholder="ค่า" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
+                        <input type="number" min={1} value={newRewardStatDuration} onChange={e => setNewRewardStatDuration(Math.max(1, Number(e.target.value) || 1))} placeholder="เทิร์น" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
+                        <button type="button" onClick={() => setNewRewardBattleStats(prev => [...prev, { kind: newRewardStatKind, value: Number(newRewardStatValue) || 0, duration: Math.max(1, Number(newRewardStatDuration) || 1) }])} className="rounded-lg bg-cyan-500/20 px-2 py-2 text-xs font-black text-cyan-100">+ เพิ่ม</button>
+                      </div>
+                      {newRewardBattleStats.map((stat, index) => (
+                        <div key={index} className="mt-1 flex items-center justify-between rounded bg-black/20 px-2 py-1 text-[10px] text-slate-300">
+                          <span>{stat.kind} • {stat.value} • {stat.duration} เทิร์น</span>
+                          <button type="button" onClick={() => setNewRewardBattleStats(prev => prev.filter((_, i) => i !== index))} className="text-rose-300">ลบ</button>
+                        </div>
+                      ))}
+                    </div>
+
                     <div className="rounded-lg border border-fuchsia-500/20 bg-fuchsia-950/10 p-2">
                       <div className="mb-2 text-[10px] font-black text-fuchsia-200">เอฟเฟกต์เพิ่มเติมของสกิล — เพิ่มได้หลายรายการและทำงานพร้อมกัน</div>
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
