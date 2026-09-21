@@ -141,7 +141,8 @@ export function getSkillORVRank(skill: Skill): ORVRankDetails {
 
 export const BASE_SKILL_UPGRADE_COST = 350; // Coins
 export const BASE_STAT_UPGRADE_COST = 1000; // Coins
-export const COMPOUND_RATE = 1.20; // +20% compounded per upgrade
+export const COMPOUND_RATE = 1.20; // skill upgrades: +20% compounded per upgrade
+export const STAT_COMPOUND_RATE = 1.05; // transcendence stat upgrades: +5% compounded per upgrade
 
 export function calculateSkillUpgradeCost(skill: Skill): number {
   const timesUpgraded = skill.upgradeCount ?? (
@@ -151,7 +152,7 @@ export function calculateSkillUpgradeCost(skill: Skill): number {
 }
 
 export function calculateStatUpgradeCost(timesUpgraded: number = 0): number {
-  return Math.round(BASE_STAT_UPGRADE_COST * Math.pow(COMPOUND_RATE, timesUpgraded));
+  return Math.round(BASE_STAT_UPGRADE_COST * Math.pow(STAT_COMPOUND_RATE, timesUpgraded));
 }
 
 export function getLevel10Perk(skill: Skill): string {
