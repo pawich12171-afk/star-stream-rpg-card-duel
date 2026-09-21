@@ -122,6 +122,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const [activeTab, setActiveTab] = useState<'shop' | 'inventory'>('shop');
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
+  const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
+  const [editingPrice, setEditingPrice] = useState('');
 
   // Serialize purchases so rapid clicks cannot calculate from the same stale character.
   const characterRef = useRef(character);
@@ -343,6 +345,24 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       console.error('Purchase queue failed:', error);
       alert('การซื้อไอเทมล้มเหลว กรุณาลองใหม่');
     });
+  };
+
+  const handleUpdateItemPrice = async (item: Item) => {
+    if (!isAdmin || !onAddShopItem) return;
+    const price = Math.floor(Number(editingPrice));
+    if (!Number.isFinite(price) || price <= 0) {
+      alert('ราคาต้องเป็น Coins มากกว่า 0');
+      return;
+    }
+    try {
+      await onAddShopItem({ ...item, price });
+      setEditingPriceId(null);
+      setEditingPrice('');
+      alert(`แก้ราคา "${item.name}" เป็น ${price.toLocaleString()} Coins แล้ว`);
+    } catch (error) {
+      console.error('Failed to update shop item price:', error);
+      alert('แก้ราคาไม่สำเร็จ กรุณาลองใหม่');
+    }
   };
 
   // Use Item handler
@@ -658,12 +678,53 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
-                    <div className="flex items-center gap-1 text-amber-400 font-black text-sm">
-                      <Coins className="w-4 h-4" />
-                      <span>{item.price.toLocaleString()}</span>
-                      <span className="text-[10px] text-slate-400 font-normal">Coins</span>
-                    </div>
+                  <div className="pt-3 border-t border-slate-800 space-y-2">
+                    {isAdmin && editingPriceId === item.id ? (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-950 border border-amber-500/60">
+                          <Coins className="w-4 h-4 text-amber-400 shrink-0" />
+                          <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            value={editingPrice}
+                            onChange={(e) => setEditingPrice(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') void handleUpdateItemPrice(item);
+                              if (e.key === 'Escape') {
+                                setEditingPriceId(null);
+                                setEditingPrice('');
+                              }
+                            }}
+                            className="w-full bg-transparent text-amber-300 font-black text-sm outline-none"
+                            autoFocus
+                          />
+                          <span className="text-[10px] text-slate-400">Coins</span>
+                        </div>
+                        <button type="button" onClick={() => void handleUpdateItemPrice(item)} className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer">บันทึก</button>
+                        <button type="button" onClick={() => { setEditingPriceId(null); setEditingPrice(''); }} className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer">ยกเลิก</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1 text-amber-400 font-black text-sm">
+                          <Coins className="w-4 h-4" />
+                          <span>{item.price.toLocaleString()}</span>
+                          <span className="text-[10px] text-slate-400 font-normal">Coins</span>
+                        </div>
+                        {isAdmin && onAddShopItem && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingPriceId(item.id);
+                              setEditingPrice(String(item.price));
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:bg-amber-500/25 text-[11px] font-bold cursor-pointer"
+                          >
+                            ✏️ แก้ราคา
+                          </button>
+                        )}
+                      </div>
+                    )}
 
                     <button
                       id={`btn-buy-${item.id}`}
