@@ -15,6 +15,7 @@ import {
   subscribeToBattleRooms,
   updateBattleRoom,
   updateCharacterInDB,
+  updateCharacterFields,
 } from '../services/characterService';
 
 type BattleArenaProps = {
@@ -147,7 +148,10 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
       const statusSummary = activeEffects?.map(effect => `${effect.mode === 'buff' ? '✨' : '⚠️'} ${effect.name} (${effect.remaining}/${effect.duration})`).join(' · ') || '';
       const statusPatch = unit.adminStatusEffects === undefined ? {} : { adminStatusEffects: activeEffects || [], statusBuffs: statusSummary };
       if (character.hp !== unit.hp || unit.adminStatusEffects !== undefined) {
-        await updateCharacterInDB({ ...character, ...statusPatch, hp: Math.max(0, Math.min(character.maxHp, unit.hp)), lastUpdated: Date.now() });
+        await updateCharacterFields(character.id, {
+          ...statusPatch,
+          hp: Math.max(0, Math.min(character.maxHp, unit.hp)),
+        });
       }
     }));
   };
