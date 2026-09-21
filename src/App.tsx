@@ -64,10 +64,10 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'card_game' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin'>('status');
 
   // Real-time State
-  const [characters, setCharacters] = useState<CharacterProfile[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string>('');
-  const [shopItems, setShopItems] = useState<Item[]>([]);
-  const [gachaRewards, setGachaRewards] = useState<GachaReward[]>([]);
+  const [characters, setCharacters] = useState<CharacterProfile[]>(() => [...INITIAL_CHARACTERS]);
+  const [currentUserId, setCurrentUserId] = useState<string>(() => INITIAL_CHARACTERS[0]?.id || '');
+  const [shopItems, setShopItems] = useState<Item[]>(() => []);
+  const [gachaRewards, setGachaRewards] = useState<GachaReward[]>(() => []);
   const [gachaConfig, setGachaConfig] = useState<GachaConfig>({
     pullCost: 500,
     tenPullCost: 4500,
@@ -75,7 +75,7 @@ export default function App() {
     bannerTitle: "หีบสมบัติจักรวาลแห่งดวงดาว (Constellation Treasure)",
     bannerDescription: "โอกาสได้รับเหรียญรางวัลพิเศษ ไอเทมสเตตัส และสกิลระดับสวรรค์"
   });
-  const [duelRooms, setDuelRooms] = useState<CardDuelRoom[]>([]);
+  const [duelRooms, setDuelRooms] = useState<CardDuelRoom[]>(() => []);
   const [isRealtimeLinked, setIsRealtimeLinked] = useState(false);
   const charactersRef = useRef<CharacterProfile[]>([]);
 
@@ -370,25 +370,6 @@ export default function App() {
   // Waiting rooms count
   const waitingDuelRoomsCount = duelRooms.filter(r => r.status === 'waiting').length;
   const unreadNotifsCount = currentUser?.notifications?.filter(n => !n.read).length || 0;
-
-  if (!currentUser) {
-    return (
-      <div className="star-shell min-h-[100dvh] bg-slate-950 flex items-center justify-center text-cyan-300 font-mono p-6">
-        <div className="w-full max-w-sm space-y-4">
-          <div className="flex items-center gap-3 text-xs tracking-[.18em] uppercase">
-            <span className="w-2 h-2 rounded-full bg-cyan-300 star-live-dot" />
-            <span>STAR STREAM / LINKING</span>
-          </div>
-          <div className="rounded-3xl border border-slate-700 bg-slate-900/80 p-5 space-y-3">
-            <div className="h-3 w-2/3 rounded-full star-skeleton" />
-            <div className="h-3 w-full rounded-full star-skeleton" />
-            <div className="h-3 w-5/6 rounded-full star-skeleton" />
-            <p className="pt-2 text-xs text-slate-400">กำลังเชื่อมต่อโครงข่ายข้อมูลแบบเรียลไทม์...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="star-shell min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
