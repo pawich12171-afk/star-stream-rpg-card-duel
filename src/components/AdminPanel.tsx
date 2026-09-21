@@ -37,7 +37,7 @@ interface AdminPanelProps {
   shopItems: Item[];
   gachaRewards: GachaReward[];
   gachaConfig: GachaConfig;
-  gachaBanners: GachaBanner[];
+  gachaBanners?: GachaBanner[];
   onUpdateCharacterCoins: (characterId: string, deltaCoins: number) => void;
   onSetCharacterCoins: (characterId: string, newCoins: number) => void;
   onAddShopItem: (item: Item) => void | Promise<void>;
@@ -287,14 +287,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [bannerTitleInput, setBannerTitleInput] = useState<string>(gachaConfig.bannerTitle || 'หีบสมบัติจักรวาลแห่งดวงดาว');
   const [bannerDescInput, setBannerDescInput] = useState<string>(gachaConfig.bannerDescription || 'สุ่มรับเหรียญรางวัลมหาศาล สกิลพิเศษระดับตำนาน และไอเทมสเตตัสหายาก');
   const [gachaEnabledInput, setGachaEnabledInput] = useState<boolean>(gachaConfig.enabled !== false);
-  const [selectedBannerId, setSelectedBannerId] = useState<string>(gachaBanners[0]?.id || 'main');
+  const [selectedBannerId, setSelectedBannerId] = useState<string>(safeGachaBanners[0]?.id || 'main');
   const [newBannerName, setNewBannerName] = useState('ตู้กาชาใหม่');
   const [newBannerTitle, setNewBannerTitle] = useState('หีบสมบัติแห่งดวงดาว');
   const [newBannerDesc, setNewBannerDesc] = useState('ตู้กาชาพิเศษ');
   const [newBannerPullCost, setNewBannerPullCost] = useState(500);
   const [newBannerTenCost, setNewBannerTenCost] = useState(4500);
   const [newBannerEnabled, setNewBannerEnabled] = useState(true);
-  const selectedBanner = gachaBanners.find(b => b.id === selectedBannerId);
+  const safeGachaBanners = Array.isArray(gachaBanners) ? gachaBanners : [];
+  const selectedBanner = safeGachaBanners.find(b => b.id === selectedBannerId);
   const [editBannerName, setEditBannerName] = useState('');
   const [editBannerTitle, setEditBannerTitle] = useState('');
   const [editBannerDesc, setEditBannerDesc] = useState('');
@@ -305,7 +306,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!selectedBanner) return;
     setEditBannerName(selectedBanner.name); setEditBannerTitle(selectedBanner.bannerTitle); setEditBannerDesc(selectedBanner.bannerDescription);
     setEditBannerPullCost(selectedBanner.pullCost); setEditBannerTenCost(selectedBanner.tenPullCost); setEditBannerEnabled(selectedBanner.enabled);
-  }, [selectedBannerId, gachaBanners]);
+  }, [selectedBannerId, safeGachaBanners]);
 
   // New Gacha Reward Form
   const [newRewardName, setNewRewardName] = useState('');
@@ -1753,10 +1754,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <h3 className="text-sm font-black text-white">🎰 จัดการตู้กาชา</h3>
                 <p className="text-[11px] text-slate-400">สร้างได้หลายตู้ • ตั้งราคา • เปิด/ปิด • ลบตู้</p>
               </div>
-              <span className="text-[10px] text-purple-300">{gachaBanners.length} ตู้</span>
+              <span className="text-[10px] text-purple-300">{safeGachaBanners.length} ตู้</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              {gachaBanners.map(b => (
+              {safeGachaBanners.map(b => (
                 <div key={b.id} className={`rounded-2xl border p-3 ${selectedBannerId === b.id ? 'border-amber-400 bg-amber-500/10' : 'border-slate-700 bg-slate-800/50'}`}>
                   <button type="button" onClick={() => setSelectedBannerId(b.id)} className="w-full text-left">
                     <div className="text-xs font-black text-white">{b.name}</div>
