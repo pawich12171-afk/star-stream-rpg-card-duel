@@ -293,14 +293,12 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
         // Firestore may emit cached/previous data while a write is still settling.
         if (pending && pendingVersion > serverVersion) {
           list.push(pending);
-          continue;
+        } else {
+          if (pending && (valuesMatch(raw, pending) || serverVersion >= pendingVersion)) {
+            pendingCharacterUpdates.delete(raw.id);
+          }
+          list.push(raw);
         }
-
-        if (pending && (valuesMatch(raw, pending) || serverVersion >= pendingVersion)) {
-          pendingCharacterUpdates.delete(raw.id);
-        }
-
-        list.push(raw);
 
       });
       list.sort((a, b) => (b.powerScore || 0) - (a.powerScore || 0));
