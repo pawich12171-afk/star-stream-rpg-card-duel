@@ -123,47 +123,55 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const currentStatUpgradeCost = calculateStatUpgradeCost(currentStatUpgradeTimes);
   const nextStatUpgradeCost = Math.round(currentStatUpgradeCost * COMPOUND_RATE);
 
-  const handleUpgradeTranscendenceStat = (statName: 'strength' | 'durability' | 'agility' | 'magic') => {
-    if (!isAllStats100) {
+  const handleUpgradeTranscendenceStat = async (statName: 'strength' | 'durability' | 'agility' | 'magic') => {
+    const base = latestCharacterRef.current;
+    const allStats100 =
+      Number(base.stats.strength) >= 100 &&
+      Number(base.stats.durability) >= 100 &&
+      Number(base.stats.agility) >= 100 &&
+      Number(base.stats.magic) >= 100;
+    const upgradeTimes = Number(base.statUpgradeCount || 0);
+    const cost = calculateStatUpgradeCost(upgradeTimes);
+
+    if (!allStats100) {
       alert('ต้องมีสเตตัสครบ 100 ทุกค่าก่อนจึงจะปลดล็อกการอัปเกรดทะลุขีดจำกัด!');
       return;
     }
-    if (character.coins < currentStatUpgradeCost) {
-      alert(`เหรียญไม่เพียงพอ ต้องการ ${currentStatUpgradeCost.toLocaleString()} Coins (คุณมี ${character.coins.toLocaleString()} Coins)`);
+    if (Number(base.coins) < cost) {
+      alert(`เหรียญไม่เพียงพอ ต้องการ ${cost.toLocaleString()} Coins (คุณมี ${Number(base.coins).toLocaleString()} Coins)`);
       return;
     }
 
-    const nextTimes = currentStatUpgradeTimes + 1;
+    const now = Date.now();
+    const nextTimes = upgradeTimes + 1;
     const newStats = {
-      ...character.stats,
-      [statName]: character.stats[statName] + 1,
+      ...base.stats,
+      [statName]: Number(base.stats[statName] || 0) + 1,
     };
 
     const updatedChar: CharacterProfile = {
-      ...character,
-      coins: character.coins - currentStatUpgradeCost,
+      ...base,
+      coins: Number(base.coins) - cost,
       stats: newStats,
       statUpgradeCount: nextTimes,
+      lastUpdated: Math.max(now, Number(base.lastUpdated || 0) + 1),
       notifications: [
         {
-          id: `notif-stat-up-${Date.now()}`,
+          id: `notif-stat-up-${now}-${nextTimes}`,
           title: 'อัปเกรดสเตตัสทะลุขีดจำกัดสำเร็จ!',
-          message: `เพิ่มค่า ${statName} +1 (ปัจจุบัน Lv.${newStats[statName]}) ใช้เหรียญ ${currentStatUpgradeCost.toLocaleString()} Coins (ครั้งต่อไป +20% เป็น ${nextStatUpgradeCost.toLocaleString()} C)`,
-          timestamp: Date.now(),
+          message: `เพิ่มค่า ${statName} +1 (ปัจจุบัน Lv.${newStats[statName]}) ใช้เหรียญ ${cost.toLocaleString()} Coins`,
+          timestamp: now,
           read: false,
           type: 'system',
         },
-        ...(character.notifications || []),
+        ...(base.notifications || []),
       ],
     };
 
-    confetti({
-      particleCount: 70,
-      spread: 60,
-      origin: { y: 0.5 }
-    });
-
-    onUpdateCharacter(syncCharacterHealth(updatedChar));
+    latestCharacterRef.current = updatedChar;
+    confetti({ particleCount: 70, spread: 60, origin: { y: 0.5 } });
+    const saved = await onUpdateCharacter(syncCharacterHealth(updatedChar));
+    if (saved === false) latestCharacterRef.current = base;
   };
 
   const handleUpgradeSkill = (skillId: string) => {
@@ -339,8 +347,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const handleSaveStats = async () => {
     if (isSavingStats) return;
     setIsSavingStats(true);
-
     try {
+      const base = latestCharacterRef.current;
       const patch = {
         stats: {
           strength: Number(tempStats.strength),
@@ -353,26 +361,19 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         statusBuffs: tempBuffs,
         characteristics: [...tempCharacteristics],
       };
-
-      // Status uses a dedicated Firestore transaction so only Status fields
-      // are written. It cannot overwrite newer Coins/Inventory/Skills data.
       const saved = onPersistStatus
         ? await onPersistStatus(character.id, patch)
         : await commitCharacterUpdate({
-            ...latestCharacterRef.current,
+            ...base,
             ...patch,
-            stats: { ...latestCharacterRef.current.stats, ...patch.stats },
+            stats: { ...base.stats, ...patch.stats },
           });
-
-      if (saved) {
-        setShowStatEditModal(false);
-      } else {
-        alert('บันทึกสเตตัสไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
-      }
+      if (saved) setShowStatEditModal(false);
     } finally {
       setIsSavingStats(false);
     }
   };
+
   return (
     <div id="status-window-container" className="space-y-6">
       {/* Top Banner: ORV System Window Header */}
