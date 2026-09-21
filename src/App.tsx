@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   CharacterProfile, 
   Item, 
@@ -75,6 +75,11 @@ export default function App() {
   });
   const [duelRooms, setDuelRooms] = useState<CardDuelRoom[]>([]);
   const [isRealtimeLinked, setIsRealtimeLinked] = useState(false);
+  const charactersRef = useRef<CharacterProfile[]>([]);
+
+  useEffect(() => {
+    charactersRef.current = characters;
+  }, [characters]);
 
   // Admin Mode Toggle
   const [isAdminMode, setIsAdminMode] = useState<boolean>(true);
@@ -97,6 +102,7 @@ export default function App() {
       if (disposed) return;
 
       cleanups.push(subscribeToCharacters((chars) => {
+        charactersRef.current = chars;
         setCharacters(chars);
         setIsRealtimeLinked(true);
         if (chars.length > 0) {
@@ -147,21 +153,29 @@ export default function App() {
 
   // Handlers
   const handleUpdateCharacter = async (updated: CharacterProfile): Promise<boolean> => {
-    const previous = characters.find(character => character.id === updated.id);
-    // Update the visible state immediately; Firestore realtime listeners can lag
-    // or be unavailable when the app is running in local fallback mode.
-    setCharacters(prev => {
-      const exists = prev.some(character => character.id === updated.id);
-      return exists
-        ? prev.map(character => character.id === updated.id ? updated : character)
-        : [...prev, updated];
-    });
+    const previous = charactersRef.current.find(character => character.id === updated.id);
+    // Always commit against the newest character object known to this tab.
+    // This prevents an older Status/Gacha/Admin update from overwriting a newer edit.
+    const base = previous && Number(previous.lastUpdated || 0) > Number(updated.lastUpdated || 0)
+      ? previous
+      : updated;
+    const committed: CharacterProfile = {
+      ...base,
+      lastUpdated: Math.max(Date.now(), Number(previous?.lastUpdated || 0) + 1, Number(updated.lastUpdated || 0)),
+    };
+
+    charactersRef.current = charactersRef.current.some(c => c.id === committed.id)
+      ? charactersRef.current.map(c => c.id === committed.id ? committed : c)
+      : [...charactersRef.current, committed];
+    setCharacters(charactersRef.current);
+
     try {
-      await updateCharacterInDB(updated);
+      await updateCharacterInDB(committed);
       return true;
     } catch (error) {
       if (previous) {
-        setCharacters(prev => prev.map(character => character.id === previous.id ? previous : character));
+        charactersRef.current = charactersRef.current.map(character => character.id === previous.id ? previous : character);
+        setCharacters(charactersRef.current);
       }
       console.error('Failed to persist character update:', error);
       alert('บันทึกข้อมูลตัวละครไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
