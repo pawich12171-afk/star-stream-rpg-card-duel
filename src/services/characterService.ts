@@ -286,13 +286,21 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
       snapshot.forEach((docSnap) => {
         const raw = { ...docSnap.data(), id: docSnap.id } as CharacterProfile;
         const pending = pendingCharacterUpdates.get(raw.id);
-        const confirmed = pending ? valuesMatch(raw, pending) : false;
-        const source = pending && !confirmed ? pending : raw;
-        const synced = source;
-        if (confirmed) {
+        const serverVersion = Number(raw.lastUpdated || 0);
+        const pendingVersion = Number(pending?.lastUpdated || 0);
+
+        // Never let an older Firestore snapshot overwrite a newer optimistic write.
+        // Firestore may emit cached/previous data while a write is still settling.
+        if (pending && pendingVersion > serverVersion) {
+          list.push(pending);
+          continue;
+        }
+
+        if (pending && valuesMatch(raw, pending)) {
           pendingCharacterUpdates.delete(raw.id);
         }
-        list.push(synced);
+
+        list.push(raw);
 
       });
       list.sort((a, b) => (b.powerScore || 0) - (a.powerScore || 0));
