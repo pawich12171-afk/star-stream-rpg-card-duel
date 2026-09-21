@@ -1506,6 +1506,8 @@ export async function resetDatabaseToDefaults(): Promise<void> {
   pendingShopDeletes.clear();
   pendingGachaRewards.clear();
   pendingGachaDeletes.clear();
+  pendingGachaBanners.clear();
+  pendingGachaBannerDeletes.clear();
   pendingGachaConfig = null;
   pendingDuelRooms.clear();
   pendingDuelDeletes.clear();
@@ -1519,6 +1521,17 @@ export async function resetDatabaseToDefaults(): Promise<void> {
   localShopItems = INITIAL_SHOP_ITEMS;
   localGachaRewards = INITIAL_GACHA_REWARDS;
   localGachaConfig = INITIAL_GACHA_CONFIG;
+  localGachaBanners = [{
+    id: "main",
+    name: "ตู้หลัก",
+    pullCost: INITIAL_GACHA_CONFIG.pullCost,
+    tenPullCost: INITIAL_GACHA_CONFIG.tenPullCost,
+    enabled: INITIAL_GACHA_CONFIG.enabled,
+    bannerTitle: INITIAL_GACHA_CONFIG.bannerTitle,
+    bannerDescription: INITIAL_GACHA_CONFIG.bannerDescription,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  }];
   localDuelRooms = [];
   saveLocalAll();
 
@@ -1526,6 +1539,7 @@ export async function resetDatabaseToDefaults(): Promise<void> {
   broadcast?.postMessage({ type: 'SHOP_UPDATE' });
   broadcast?.postMessage({ type: 'GACHA_REWARDS_UPDATE' });
   broadcast?.postMessage({ type: 'GACHA_CONFIG_UPDATE' });
+  broadcast?.postMessage({ type: 'GACHA_BANNERS_UPDATE' });
   broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE' });
 
   try {
@@ -1534,10 +1548,11 @@ export async function resetDatabaseToDefaults(): Promise<void> {
       getDocs(collection(db, SHOP_ITEMS_COLLECTION)),
       getDocs(collection(db, GACHA_REWARDS_COLLECTION)),
       getDocs(collection(db, GACHA_CONFIG_COLLECTION)),
+      getDocs(collection(db, GACHA_BANNERS_COLLECTION)),
       getDocs(collection(db, CARD_DUEL_ROOMS_COLLECTION)),
     ]);
     const batch = writeBatch(db);
-    [...charsSnap.docs, ...shopSnap.docs, ...rewardsSnap.docs, ...configSnap.docs, ...duelSnap.docs]
+    [...charsSnap.docs, ...shopSnap.docs, ...rewardsSnap.docs, ...configSnap.docs, ...gachaBannersSnap.docs, ...duelSnap.docs]
       .forEach(item => batch.delete(item.ref));
     INITIAL_CHARACTERS.forEach(char => {
       batch.set(doc(db, CHARACTERS_COLLECTION, char.id), {
@@ -1552,6 +1567,17 @@ export async function resetDatabaseToDefaults(): Promise<void> {
       batch.set(doc(db, GACHA_REWARDS_COLLECTION, reward.id), sanitizeForFirestore(reward));
     });
     batch.set(doc(db, GACHA_CONFIG_COLLECTION, "main"), sanitizeForFirestore(INITIAL_GACHA_CONFIG));
+    batch.set(doc(db, GACHA_BANNERS_COLLECTION, "main"), sanitizeForFirestore({
+      id: "main",
+      name: "ตู้หลัก",
+      pullCost: INITIAL_GACHA_CONFIG.pullCost,
+      tenPullCost: INITIAL_GACHA_CONFIG.tenPullCost,
+      enabled: INITIAL_GACHA_CONFIG.enabled,
+      bannerTitle: INITIAL_GACHA_CONFIG.bannerTitle,
+      bannerDescription: INITIAL_GACHA_CONFIG.bannerDescription,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }));
     await batch.commit();
   } catch (error) {
     console.error("Error resetting database:", error);
