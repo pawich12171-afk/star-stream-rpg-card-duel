@@ -91,6 +91,6 @@ export async function runTransaction(_db: typeof db, callback: (tx: any) => Prom
     delete(ref: DocumentReference) { operations.push({ op: 'delete', collection: ref.collection, id: ref.id }); }
   };
   await callback(tx);
-  await request(`${API_BASE}/transaction`, { method: 'POST', body: JSON.stringify({ operations }) });
+  await request(`${API_BASE}?transaction=1`, { method: 'POST', body: JSON.stringify({ operations }) });
 }
 export { db };
