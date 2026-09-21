@@ -1664,18 +1664,20 @@ export async function createBattleRoomWithEntryFee(room: BattleRoom, playerId: s
   const fee = Math.max(0, Math.floor(Number(entryFeeCoins) || 0));
   const next = { ...room, id, entryFeeCoins: fee, createdAt: room.createdAt || Date.now(), updatedAt: Date.now() };
   if (fee > 0) {
-    await runTransaction(db, async transaction => {
-      const charRef = doc(db, CHARACTERS_COLLECTION, playerId);
-      const snap = await transaction.get(charRef);
-      if (!snap.exists()) throw new Error("ไม่พบตัวละครผู้เข้าต่อสู้");
-      const character = { ...snap.data(), id: snap.id } as CharacterProfile;
-      const coins = Number(character.coins) || 0;
-      if (coins < fee) throw new Error(`Coins ไม่พอ ต้องใช้ ${fee.toLocaleString()} Coins`);
-      transaction.update(charRef, sanitizeForFirestore({
-        coins: coins - fee,
-        lastUpdated: Date.now(),
-      }));
-      transaction.set(doc(db, BATTLE_ROOMS_COLLECTION, id), sanitizeForFirestore(next));
+    await enqueueCharacterWrite(playerId, async () => {
+      await runTransaction(db, async transaction => {
+        const charRef = doc(db, CHARACTERS_COLLECTION, playerId);
+        const snap = await transaction.get(charRef);
+        if (!snap.exists()) throw new Error("ไม่พบตัวละครผู้เข้าต่อสู้");
+        const character = { ...snap.data(), id: snap.id } as CharacterProfile;
+        const coins = Number(character.coins) || 0;
+        if (coins < fee) throw new Error(`Coins ไม่พอ ต้องใช้ ${fee.toLocaleString()} Coins`);
+        transaction.update(charRef, sanitizeForFirestore({
+          coins: coins - fee,
+          lastUpdated: Date.now(),
+        }));
+        transaction.set(doc(db, BATTLE_ROOMS_COLLECTION, id), sanitizeForFirestore(next));
+      });
     });
   } else {
     await setDoc(doc(db, BATTLE_ROOMS_COLLECTION, id), sanitizeForFirestore(next));
@@ -1693,19 +1695,21 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
   const roomRef = doc(db, BATTLE_ROOMS_COLLECTION, room.id);
   const charRef = doc(db, CHARACTERS_COLLECTION, playerId);
   let paid = 0;
-  await runTransaction(db, async transaction => {
-    const roomSnap = await transaction.get(roomRef);
-    const charSnap = await transaction.get(charRef);
-    if (!roomSnap.exists() || !charSnap.exists()) return;
-    const freshRoom = roomSnap.data() as BattleRoom;
-    if (freshRoom.rewardClaimedBy) return;
-    const character = { ...charSnap.data(), id: charSnap.id } as CharacterProfile;
-    transaction.update(charRef, sanitizeForFirestore({
-      coins: (Number(character.coins) || 0) + reward,
-      lastUpdated: Date.now(),
-    }));
-    transaction.update(roomRef, sanitizeForFirestore({ rewardClaimedBy: playerId, updatedAt: Date.now() }));
-    paid = reward;
+  await enqueueCharacterWrite(playerId, async () => {
+    await runTransaction(db, async transaction => {
+      const roomSnap = await transaction.get(roomRef);
+      const charSnap = await transaction.get(charRef);
+      if (!roomSnap.exists() || !charSnap.exists()) return;
+      const freshRoom = roomSnap.data() as BattleRoom;
+      if (freshRoom.rewardClaimedBy) return;
+      const character = { ...charSnap.data(), id: charSnap.id } as CharacterProfile;
+      transaction.update(charRef, sanitizeForFirestore({
+        coins: (Number(character.coins) || 0) + reward,
+        lastUpdated: Date.now(),
+      }));
+      transaction.update(roomRef, sanitizeForFirestore({ rewardClaimedBy: playerId, updatedAt: Date.now() }));
+      paid = reward;
+    });
   });
   if (paid > 0) {
     const updatedRoom = { ...room, rewardClaimedBy: playerId, updatedAt: Date.now() };
