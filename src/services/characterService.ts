@@ -18,6 +18,7 @@ import {
   Quest, 
   InventoryItem, 
   GachaReward, 
+  GachaBanner,
   GachaConfig, 
   CardDuelRoom,
   BattleConfig,
@@ -42,6 +43,7 @@ const CHARACTERS_COLLECTION = "characters";
 const SHOP_ITEMS_COLLECTION = "shop_items";
 const GACHA_REWARDS_COLLECTION = "gacha_rewards";
 const GACHA_CONFIG_COLLECTION = "gacha_config";
+const GACHA_BANNERS_COLLECTION = "gacha_banners";
 const CARD_DUEL_ROOMS_COLLECTION = "card_duel_rooms";
 
 // Cross-tab broadcast channel for instant local reactivity
@@ -79,6 +81,8 @@ let localShopItems: Item[] = readLocalArray('starstream_shop_items', INITIAL_SHO
 const gachaRewardsListeners = new Set<(rewards: GachaReward[]) => void>();
 
 let localGachaRewards: GachaReward[] = readLocalArray('starstream_gacha_rewards', INITIAL_GACHA_REWARDS);
+const gachaBannerListeners = new Set<(banners: GachaBanner[]) => void>();
+let localGachaBanners: GachaBanner[] = readLocalArray('starstream_gacha_banners', []);
 
 function notifyGachaRewards() {
   const snapshot = [...localGachaRewards].sort((a, b) => (Number(a.rate) || 0) - (Number(b.rate) || 0));
@@ -765,6 +769,34 @@ export async function deleteShopItem(itemId: string): Promise<void> {
   }
 }
 
+// Gacha Banner management
+export function subscribeToGachaBanners(callback: (banners: GachaBanner[]) => void) {
+  gachaBannerListeners.add(callback);
+  const fallback: GachaBanner[] = localGachaBanners.length ? localGachaBanners : [{ id: 'main', name: 'ตู้หลัก', pullCost: localGachaConfig.pullCost, tenPullCost: localGachaConfig.tenPullCost, enabled: localGachaConfig.enabled, bannerTitle: localGachaConfig.bannerTitle, bannerDescription: localGachaConfig.bannerDescription, createdAt: Date.now(), updatedAt: Date.now() }];
+  callback([...fallback]);
+  try {
+    const unsub = onSnapshot(collection(db, GACHA_BANNERS_COLLECTION), { includeMetadataChanges: true }, (snapshot) => {
+      if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) return;
+      const list: GachaBanner[] = []; snapshot.forEach(s => list.push({ ...s.data(), id: s.id } as GachaBanner));
+      localGachaBanners = list.length ? list : fallback; saveLocalAll(); callback([...localGachaBanners]);
+    }, () => callback(localGachaBanners.length ? [...localGachaBanners] : fallback));
+    return () => { gachaBannerListeners.delete(callback); unsub(); };
+  } catch { return () => { gachaBannerListeners.delete(callback); }; }
+}
+
+export async function saveGachaBanner(banner: GachaBanner): Promise<void> {
+  const normalized = { ...banner, id: banner.id || `banner-${Date.now()}`, updatedAt: Date.now() };
+  localGachaBanners = [normalized, ...localGachaBanners.filter(b => b.id !== normalized.id)]; saveLocalAll();
+  gachaBannerListeners.forEach(cb => cb([...localGachaBanners])); broadcast?.postMessage({ type: 'GACHA_BANNERS_UPDATE' });
+  await enqueuePersistenceWrite(`gacha-banner:${normalized.id}`, () => setDoc(doc(db, GACHA_BANNERS_COLLECTION, normalized.id), sanitizeForFirestore(normalized)));
+}
+
+export async function deleteGachaBanner(bannerId: string): Promise<void> {
+  if (localGachaBanners.length <= 1) throw new Error('ต้องเหลือตู้กาชาอย่างน้อย 1 ตู้');
+  localGachaBanners = localGachaBanners.filter(b => b.id !== bannerId); saveLocalAll();
+  gachaBannerListeners.forEach(cb => cb([...localGachaBanners])); broadcast?.postMessage({ type: 'GACHA_BANNERS_UPDATE' });
+  await enqueuePersistenceWrite(`gacha-banner:${bannerId}`, () => deleteDoc(doc(db, GACHA_BANNERS_COLLECTION, bannerId)));
+}
 // Subscribe to Gacha Rewards
 export function subscribeToGachaRewards(callback: (rewards: GachaReward[]) => void) {
   gachaRewardsListeners.add(callback);
