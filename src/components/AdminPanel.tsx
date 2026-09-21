@@ -2080,8 +2080,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <label className="text-[10px] text-slate-400">ตัวคูณคริติคอล (เช่น 2 = x2)<input type="number" min={1} max={20} step={0.1} value={newRewardCritMultiplier} onChange={(e) => setNewRewardCritMultiplier(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-amber-200 outline-none" /></label>
                     </div>
                     <label className="text-[10px] text-slate-400">🔁 โอกาสตีซ้ำอีก 1 รอบ (%)
-                      <input type="number" min={0} max={100} value={newRewardRepeatAttackChance} onChange={(e) => setNewRewardRepeatAttackChance(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-emerald-200 outline-none" />
-                      <span className="block mt-1 text-[9px] text-slate-500">0% = ไม่มีโอกาสตีซ้ำ</span>
+                      <input type="number" min={0} max={100} step={0.001} value={newRewardRepeatAttackChance} onChange={(e) => setNewRewardRepeatAttackChance(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-emerald-200 outline-none" />
+                      <span className="block mt-1 text-[9px] text-slate-500">0% = ไม่มีโอกาสตีซ้ำ • ใส่ทศนิยมได้ เช่น 0.1% หรือ 0.01%</span>
                     </label>
                     <label className="block mt-2 text-[10px] text-slate-400">🔢 ตีซ้ำได้สูงสุดกี่รอบ
                       <input type="number" min={1} max={20} value={newRewardMaxRepeatAttacks} onChange={(e) => setNewRewardMaxRepeatAttacks(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-emerald-200 outline-none" />
