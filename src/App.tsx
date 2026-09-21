@@ -154,29 +154,49 @@ export default function App() {
   // Handlers
   const handleUpdateCharacter = async (updated: CharacterProfile): Promise<boolean> => {
     const previous = charactersRef.current.find(character => character.id === updated.id);
-    // Always commit against the newest character object known to this tab.
-    // This prevents an older Status/Gacha/Admin update from overwriting a newer edit.
-    const base = previous && Number(previous.lastUpdated || 0) > Number(updated.lastUpdated || 0)
-      ? previous
-      : updated;
-    const committed: CharacterProfile = {
-      ...base,
-      lastUpdated: Math.max(Date.now(), Number(previous?.lastUpdated || 0) + 1, Number(updated.lastUpdated || 0)),
-    };
 
-    charactersRef.current = charactersRef.current.some(c => c.id === committed.id)
-      ? charactersRef.current.map(c => c.id === committed.id ? committed : c)
-      : [...charactersRef.current, committed];
-    setCharacters(charactersRef.current);
+    // Components often hold an older CharacterProfile in their closure.
+    // Merge only the top-level fields that this action actually changed.
+    // This prevents a stale Gacha/Shop/Battle/Admin object from restoring
+    // an older Status, Coins, Inventory, Skills, etc.
+    let committed: CharacterProfile;
+    if (previous) {
+      const merged: CharacterProfile = { ...previous };
+      const ignoredKeys = new Set(['id', 'lastUpdated', 'powerScore']);
+      (Object.keys(updated) as (keyof CharacterProfile)[]).forEach((key) => {
+        if (ignoredKeys.has(key as string)) return;
+        const before = JSON.stringify(previous[key]);
+        const after = JSON.stringify(updated[key]);
+        if (before !== after) {
+          (merged as any)[key] = updated[key];
+        }
+      });
+      committed = merged;
+    } else {
+      committed = { ...updated };
+    }
+
+    committed.powerScore = calculatePowerScore(committed);
+    committed.lastUpdated = Math.max(
+      Date.now(),
+      Number(previous?.lastUpdated || 0) + 1,
+      Number(updated.lastUpdated || 0) + 1
+    );
+
+    const oldList = charactersRef.current;
+    charactersRef.current = oldList.some(c => c.id === committed.id)
+      ? oldList.map(c => c.id === committed.id ? committed : c)
+      : [...oldList, committed];
+    setCharacters([...charactersRef.current]);
 
     try {
       await updateCharacterInDB(committed);
       return true;
     } catch (error) {
-      if (previous) {
-        charactersRef.current = charactersRef.current.map(character => character.id === previous.id ? previous : character);
-        setCharacters(charactersRef.current);
-      }
+      charactersRef.current = previous
+        ? charactersRef.current.map(c => c.id === previous.id ? previous : c)
+        : charactersRef.current.filter(c => c.id !== committed.id);
+      setCharacters([...charactersRef.current]);
       console.error('Failed to persist character update:', error);
       alert('บันทึกข้อมูลตัวละครไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
       return false;
