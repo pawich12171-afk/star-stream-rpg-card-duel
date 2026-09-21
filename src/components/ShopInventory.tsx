@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { CharacterProfile, Item, InventoryItem, GachaRarity } from '../types';
+import { CharacterProfile, Item, InventoryItem, GachaRarity, ItemPassiveEffect } from '../types';
 import { 
   ShoppingBag, 
   Package, 
@@ -144,6 +144,16 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const [newItemStat, setNewItemStat] = useState<'strength' | 'durability' | 'agility' | 'magic'>('strength');
   const [newItemSkillTarget, setNewItemSkillTarget] = useState('');
   const [newItemIcon, setNewItemIcon] = useState('HeartPulse');
+  const [newItemPassives, setNewItemPassives] = useState<ItemPassiveEffect[]>([]);
+  const [newPassiveName, setNewPassiveName] = useState('Passive ติดตัว');
+  const [newPassiveTrigger, setNewPassiveTrigger] = useState<ItemPassiveEffect['trigger']>('attack');
+  const [newPassiveKind, setNewPassiveKind] = useState<ItemPassiveEffect['kind']>('stack');
+  const [newPassiveValue, setNewPassiveValue] = useState(1);
+  const [newPassiveMaxStacks, setNewPassiveMaxStacks] = useState(6);
+  const [newPassiveChance, setNewPassiveChance] = useState(100);
+  const [newPassiveStackKey, setNewPassiveStackKey] = useState('flower');
+  const [newPassiveTargetStat, setNewPassiveTargetStat] = useState<'strength' | 'durability' | 'agility' | 'magic'>('strength');
+  const [newPassiveDuration, setNewPassiveDuration] = useState(1);
 
   // Quick preset templates for shopkeeper
   const PRESET_TEMPLATES = [
@@ -514,6 +524,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       skillEnhanceTarget: newItemEffectType === 'enhance_skill' ? newItemSkillTarget : undefined,
       usableByPlayers: true,
       equipped: false,
+      passiveEffects: newItemPassives.length ? newItemPassives : undefined,
     };
 
     try {
@@ -526,6 +537,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     setShowAddItemModal(false);
     setNewItemName('');
     setNewItemDesc('');
+    setNewItemPassives([]);
     alert(`เพิ่มไอเทม "${created.name}" ลงร้านค้าเรียบร้อยแล้ว!`);
   };
 
@@ -1235,6 +1247,23 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                       );
                     })}
                   </div>
+                </div>
+
+                <div className="rounded-2xl border border-fuchsia-500/30 bg-fuchsia-950/10 p-3 space-y-2">
+                  <div className="text-xs font-black text-fuchsia-200">✨ Passive ติดตัวของอุปกรณ์</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newPassiveName} onChange={e => setNewPassiveName(e.target.value)} placeholder="ชื่อ Passive" />
+                    <select className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newPassiveTrigger} onChange={e => setNewPassiveTrigger(e.target.value as ItemPassiveEffect['trigger'])}><option value="attack">ทุกครั้งที่โจมตี</option><option value="turn_start">ต้นเทิร์น</option></select>
+                    <select className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newPassiveKind} onChange={e => setNewPassiveKind(e.target.value as ItemPassiveEffect['kind'])}><option value="stack">สะสม Stack</option><option value="true_damage_per_stack">True Damage ต่อ Stack</option><option value="damage">เพิ่มดาเมจ</option><option value="damage_percent">เพิ่มดาเมจ %</option><option value="heal">ฟื้น HP</option><option value="heal_percent">ฟื้น HP %</option><option value="buff_stat">เพิ่มสเตตัส</option><option value="shield">โล่</option><option value="reflect">สะท้อน %</option><option value="repeat_attack_chance">ตีซ้ำ %</option><option value="critical_chance">คริ %</option></select>
+                    <input type="number" step="0.1" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newPassiveValue} onChange={e => setNewPassiveValue(Number(e.target.value))} placeholder="ค่า" />
+                    <input type="number" min="1" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newPassiveMaxStacks} onChange={e => setNewPassiveMaxStacks(Number(e.target.value))} placeholder="Max Stack" />
+                    <input type="number" min="0" max="100" step="0.1" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newPassiveChance} onChange={e => setNewPassiveChance(Number(e.target.value))} placeholder="โอกาส %" />
+                    <input className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newPassiveStackKey} onChange={e => setNewPassiveStackKey(e.target.value)} placeholder="Stack Key เช่น flower" />
+                    <select className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newPassiveTargetStat} onChange={e => setNewPassiveTargetStat(e.target.value as any)}><option value="strength">STR</option><option value="durability">DUR</option><option value="agility">AGI</option><option value="magic">MAG</option></select>
+                    <input type="number" min="1" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={newPassiveDuration} onChange={e => setNewPassiveDuration(Number(e.target.value))} placeholder="รอบ" />
+                  </div>
+                  <button type="button" className="w-full rounded-xl bg-fuchsia-500/20 px-3 py-2 text-xs font-black text-fuchsia-100" onClick={() => setNewItemPassives(prev => [...prev, { id: `item-passive-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, name: newPassiveName.trim() || 'Passive ติดตัว', trigger: newPassiveTrigger, kind: newPassiveKind, value: Math.max(0, Number(newPassiveValue) || 0), chance: Math.max(0, Math.min(100, Number(newPassiveChance) || 0)), duration: Math.max(1, Math.round(Number(newPassiveDuration) || 1)), maxStacks: Math.max(1, Math.round(Number(newPassiveMaxStacks) || 1)), stackKey: newPassiveStackKey.trim() || 'default', targetStat: newPassiveKind === 'buff_stat' ? newPassiveTargetStat : undefined }])}>+ เพิ่ม Passive</button>
+                  {newItemPassives.map(effect => <div key={effect.id} className="flex items-center justify-between rounded-lg bg-slate-950/60 px-2 py-1 text-[10px] text-fuchsia-100"><span>{effect.name} · {effect.kind} · {effect.value}</span><button type="button" className="text-rose-300" onClick={() => setNewItemPassives(prev => prev.filter(item => item.id !== effect.id))}>ลบ</button></div>)}
                 </div>
 
                 {/* Description */}
