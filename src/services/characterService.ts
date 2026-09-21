@@ -30,6 +30,7 @@ import {
   AdminStatusEffect,
   BattleSkillEffect,
   Skill,
+  ItemPassiveEffect,
   MAX_GACHA_REWARDS
 } from "../types";
 import { 
@@ -2009,6 +2010,58 @@ export async function deleteBattleRoom(roomId: string): Promise<void> {
   }
 }
 
+function getEquippedItemPassives(unit: BattleCombatant): ItemPassiveEffect[] {
+  return (unit.equippedPassives || []).filter(effect => effect && effect.id && effect.kind);
+}
+
+function applyItemPassiveEffects(
+  attacker: BattleCombatant,
+  defender: BattleCombatant,
+  result: BattleRollResult,
+  trigger: ItemPassiveEffect['trigger'],
+) {
+  const passives = getEquippedItemPassives(attacker).filter(effect => effect.trigger === trigger);
+  for (const passive of passives) {
+    const chance = passive.chance == null ? 100 : Math.max(0, Math.min(100, Number(passive.chance) || 0));
+    if (Math.random() * 100 >= chance) continue;
+    const value = Math.max(0, Number(passive.value) || 0);
+    const maxStacks = Math.max(1, Math.min(999, Math.round(Number(passive.maxStacks) || 999)));
+    const stackKey = passive.stackKey || passive.id;
+    const stacks = Math.max(0, Number(attacker.passiveStacks?.[stackKey]) || 0);
+
+    if (passive.kind === 'stack') {
+      attacker.passiveStacks = { ...(attacker.passiveStacks || {}), [stackKey]: Math.min(maxStacks, stacks + Math.max(1, value)) };
+      result.message += ` • 🌸 ${passive.name}: สะสม ${attacker.passiveStacks[stackKey]}/${maxStacks}`;
+    } else if (passive.kind === 'true_damage_per_stack') {
+      const trueDamage = Math.max(0, Math.round(value * stacks));
+      if (trueDamage > 0) {
+        result.trueDamage = (result.trueDamage || 0) + trueDamage;
+        result.message += ` • 💠 ${passive.name}: True Damage +${trueDamage} (${stacks} stack)`;
+      }
+    } else if (passive.kind === 'damage') {
+      result.damage += Math.round(value);
+      result.message += ` • ⚔️ ${passive.name} +${Math.round(value)} DMG`;
+    } else if (passive.kind === 'damage_percent') {
+      result.damage += Math.round(result.damage * value / 100);
+      result.message += ` • ⚔️ ${passive.name} +${value}% DMG`;
+    } else if (passive.kind === 'heal') {
+      result.heal += Math.round(value);
+      result.message += ` • 💚 ${passive.name} ฟื้น HP +${Math.round(value)}`;
+    } else if (passive.kind === 'heal_percent') {
+      result.heal += Math.max(0, Math.round(attacker.maxHp * value / 100));
+      result.message += ` • 💚 ${passive.name} ฟื้น HP +${value}%`;
+    } else if (passive.kind === 'shield') {
+      attacker.defenseValue = Math.max(attacker.defenseValue || 0, Math.round(value));
+      attacker.defenseTurns = Math.max(attacker.defenseTurns || 0, Math.max(1, Math.round(Number(passive.duration) || 1)));
+      result.message += ` • 🛡️ ${passive.name} โล่ ${Math.round(value)}`;
+    } else if (passive.kind === 'reflect') {
+      attacker.reflectPercent = Math.max(attacker.reflectPercent || 0, Math.min(100, value));
+      attacker.reflectTurns = Math.max(attacker.reflectTurns || 0, Math.max(1, Math.round(Number(passive.duration) || 1)));
+      result.message += ` • 🔄 ${passive.name} สะท้อน ${value}%`;
+    }
+  }
+}
+
 function getSkillStat(skill: Skill | undefined, kind: NonNullable<Skill['battleStats']>[number]['kind']): number {
   return (skill?.battleStats || []).filter(s => s.kind === kind).reduce((sum, s) => sum + (Number(s.value) || 0), 0);
 }
@@ -2216,6 +2269,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       result = rollBattleAttack(current, defender, diceConfig);
     }
     if (statusTick.message) result.message = statusTick.message + ' • ' + result.message;
+    applyItemPassiveEffects(current, defender, result, 'turn_start');
     if (skillProfile) {
       result.skillEffect = skillProfile.effect;
       result.skillPower = skillProfile.power;
@@ -2261,7 +2315,8 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         }
       }
       if (skill) {
-        const repeatChance = Math.max(0, Math.min(100, Number(skill.repeatAttackChance) || 0));
+        const passiveRepeatChance = getEquippedItemPassives(current).filter(effect => effect.kind === 'repeat_attack_chance').reduce((sum, effect) => sum + Math.max(0, Number(effect.value) || 0), 0);
+        const repeatChance = Math.max(0, Math.min(100, (Number(skill.repeatAttackChance) || 0) + passiveRepeatChance));
         const maxRepeats = Math.max(1, Math.min(20, Number(skill.maxRepeatAttacks) || 1));
         let repeatsDone = 0;
         while (result.damage > 0 && repeatsDone < maxRepeats && repeatChance > 0 && Math.random() * 100 < repeatChance) {
@@ -2278,6 +2333,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         result.cooldownRemaining = cooldown;
       }
     }
+    applyItemPassiveEffects(current, defender, result, 'attack');
     if (result.face.extraEffects?.length) applyBattleExtraEffects(current, defender, result.face.extraEffects, result);
     if (result.face.effect === "defense") {
       current.defenseValue = Math.max(current.defenseValue || 0, Math.max(0, Math.round(result.face.value || 0)));
@@ -2311,6 +2367,12 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         }
       }
       result.damage = finalDamage;
+    }
+    if ((result.trueDamage || 0) > 0) {
+      const appliedTrueDamage = Math.min(defender.hp, Math.max(0, Math.round(result.trueDamage || 0)));
+      defender.hp = Math.max(0, defender.hp - appliedTrueDamage);
+      result.message += ` • 💠 True Damage ${appliedTrueDamage}`;
+      result.trueDamage = appliedTrueDamage;
     }
     if (result.heal > 0) current.hp = Math.min(current.maxHp, current.hp + result.heal);
     if (result.face.effect === "stun" && defender.hp > 0) defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
