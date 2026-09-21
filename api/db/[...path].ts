@@ -7,31 +7,49 @@ function env(name: string) {
 async function supabase(path: string, init: RequestInit = {}) {
   const base = env('SUPABASE_URL');
   const key = env('SUPABASE_SERVICE_ROLE_KEY');
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  let lastError: any = null;
 
-  try {
-    const res = await fetch(`${base}/rest/v1/${path}`, {
-      ...init,
-      signal: controller.signal,
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-        ...(init.headers || {}),
-      },
-    });
-    const text = await res.text();
-    if (!res.ok) throw new Error(text || `Supabase error ${res.status}`);
-    return text ? JSON.parse(text) : null;
-  } catch (error: any) {
-    if (error?.name === 'AbortError') {
-      throw new Error('Supabase request timed out after 8 seconds');
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(base + '/rest/v1/' + path, {
+        ...init,
+        signal: controller.signal,
+        headers: {
+          apikey: key,
+          Authorization: 'Bearer ' + key,
+          'Content-Type': 'application/json',
+          ...(init.headers || {}),
+        },
+      });
+      const text = await res.text();
+      if (!res.ok) {
+        let detail = text;
+        try {
+          const parsed = text ? JSON.parse(text) : null;
+          detail = parsed?.message || parsed?.hint || parsed?.details || parsed?.error || text;
+        } catch {}
+        throw new Error('Supabase ' + res.status + ': ' + (detail || 'request failed'));
+      }
+      return text ? JSON.parse(text) : null;
+    } catch (error: any) {
+      lastError = error;
+      const message = String(error?.message || '');
+      const retryable = error?.name === 'AbortError'
+        || /^Supabase 5/.test(message)
+        || /fetch|network|ECONN|ETIMEDOUT/i.test(message);
+      if (!retryable || attempt === 2) break;
+      await new Promise(resolve => setTimeout(resolve, 350));
+    } finally {
+      clearTimeout(timeout);
     }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
   }
+
+  if (lastError?.name === 'AbortError') {
+    throw new Error('Supabase request timed out after 15 seconds');
+  }
+  throw lastError || new Error('Supabase request failed');
 }
 
 function getPath(req: any): string[] {
