@@ -4,6 +4,7 @@ import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceF
 import {
   DEFAULT_BATTLE_CONFIG,
   createBattleRoom,
+  createBattleRoomWithEntryFee,
   settleBattleVictoryReward,
   deleteBattleBot,
   deleteBattleRoom,
@@ -156,6 +157,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   const bossFaces = useMemo(() => makeDiceFaces(bossDice.faces, bossDice.sides), [bossDice.faces, bossDice.sides]);
   const BOT_VICTORY_REWARD = 7000;
   const BOSS_VICTORY_REWARD = 10000;
+  const BATTLE_ENTRY_FEE = 5000;
 
   const toggleTeamMember = (id: string) => { if (id !== currentUser.id) setSelectedTeamIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]); };
   const toggleBot = (id: string) => setSelectedBotIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
@@ -179,7 +181,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
       entryFeeCoins: 0, victoryRewardCoins: victoryReward, createdAt: now, updatedAt: now
     };
     try {
-      await createBattleRoom(room);
+      await (mode === 'pve' ? createBattleRoomWithEntryFee(room, currentUser.id, BATTLE_ENTRY_FEE) : createBattleRoom(room));
     } catch (error: any) {
       alert(error?.message || 'ไม่สามารถเปิดห้องรบได้');
       return;
