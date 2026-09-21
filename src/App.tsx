@@ -14,6 +14,7 @@ import {
   subscribeToGachaConfig, 
   subscribeToDuelRooms,
   updateCharacterInDB, updateCharacterStatusData,
+  calculatePowerScore,
   addCharacterToDB, 
   transferCoinsBetweenCharacters,
   addShopItemToDB,
