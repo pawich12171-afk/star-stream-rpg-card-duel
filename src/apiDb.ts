@@ -4,11 +4,11 @@ type SnapshotDoc = { id: string; data(): any; exists(): boolean; ref: DocumentRe
 type QuerySnapshot = { docs: SnapshotDoc[]; empty: boolean; metadata: { fromCache: boolean; hasPendingWrites: boolean }; forEach(cb: (doc: SnapshotDoc) => void): void };
 type DocSnapshot = SnapshotDoc & { metadata: { fromCache: boolean; hasPendingWrites: boolean } };
 
-const API_BASE = '/api/db';
+const API_BASE = '/api/database';
 const db = { type: 'star-stream-api' };
 
-function collectionPath(ref: CollectionReference) { return `${API_BASE}/${encodeURIComponent(ref.collection)}`; }
-function docPath(ref: DocumentReference) { return `${API_BASE}/${encodeURIComponent(ref.collection)}/${encodeURIComponent(ref.id)}`; }
+function collectionPath(ref: CollectionReference) { return `${API_BASE}?collection=${encodeURIComponent(ref.collection)}`; }
+function docPath(ref: DocumentReference) { return `${API_BASE}?collection=${encodeURIComponent(ref.collection)}&id=${encodeURIComponent(ref.id)}`; }
 
 async function request(url: string, init?: RequestInit) {
   const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
@@ -78,7 +78,7 @@ export function writeBatch(_db: typeof db) {
     set(ref: DocumentReference, data: any) { operations.push({ op: 'set', collection: ref.collection, id: ref.id, data }); },
     update(ref: DocumentReference, data: any) { operations.push({ op: 'update', collection: ref.collection, id: ref.id, data }); },
     delete(ref: DocumentReference) { operations.push({ op: 'delete', collection: ref.collection, id: ref.id }); },
-    async commit() { await request(`${API_BASE}/transaction`, { method: 'POST', body: JSON.stringify({ operations }) }); }
+    async commit() { await request(`${API_BASE}?transaction=1`, { method: 'POST', body: JSON.stringify({ operations }) }); }
   };
 }
 
