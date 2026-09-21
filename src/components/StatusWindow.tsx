@@ -32,7 +32,8 @@ import {
   getUpgradePreview, 
   getLevel10Perk,
   ORV_RANKS,
-  COMPOUND_RATE
+  COMPOUND_RATE,
+  STAT_COMPOUND_RATE
 } from '../utils/orvSkillSystem';
 
 interface StatusWindowProps {
@@ -66,6 +67,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [newSkillCooldownTurns, setNewSkillCooldownTurns] = useState(3);
   const [newSkillCritChance, setNewSkillCritChance] = useState(0);
   const [newSkillCritMultiplier, setNewSkillCritMultiplier] = useState(2);
+  const [newSkillRepeatAttackChance, setNewSkillRepeatAttackChance] = useState(0);
   const [newSkillBattleStats, setNewSkillBattleStats] = useState<NonNullable<Skill['battleStats']>>([]);
   const [newSkillStatKind, setNewSkillStatKind] = useState<NonNullable<Skill['battleStats']>[number]['kind']>('attack_power');
   const [newSkillStatValue, setNewSkillStatValue] = useState(15);
@@ -152,7 +154,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
   const currentStatUpgradeTimes = character.statUpgradeCount || 0;
   const currentStatUpgradeCost = calculateStatUpgradeCost(currentStatUpgradeTimes);
-  const nextStatUpgradeCost = Math.round(currentStatUpgradeCost * COMPOUND_RATE);
+  const nextStatUpgradeCost = Math.round(currentStatUpgradeCost * STAT_COMPOUND_RATE);
 
   const handleUpgradeTranscendenceStat = async (statName: 'strength' | 'durability' | 'agility' | 'magic') => {
     const base = latestCharacterRef.current;
@@ -329,6 +331,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       cooldown: Number(newSkillCooldownTurns) > 0 ? `${newSkillCooldownTurns} เทิร์น` : undefined,
       battleCriticalChance: Math.max(0, Math.min(100, Number(newSkillCritChance) || 0)),
       battleCriticalMultiplier: Math.max(1, Number(newSkillCritMultiplier) || 1),
+      repeatAttackChance: Math.max(0, Math.min(100, Number(newSkillRepeatAttackChance) || 0)),
       battleStats: newSkillBattleStats.length ? [...newSkillBattleStats] : undefined,
       battleEffects: newSkillExtraEffects.length ? [...newSkillExtraEffects] : undefined,
       upgradeCount: 0,
@@ -358,6 +361,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     setNewSkillCooldownTurns(3);
     setNewSkillCritChance(0);
     setNewSkillCritMultiplier(2);
+    setNewSkillRepeatAttackChance(0);
     setNewSkillBattleStats([]);
     setNewSkillExtraEffects([]);
     setShowAddSkillModal(false);
@@ -1115,6 +1119,13 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                   {newSkillExtraEffects.map((effect,index)=><div key={index} className="flex items-center justify-between rounded-lg bg-black/20 px-2 py-1.5 text-[10px] text-slate-300"><span>{effect.kind} • {effect.value}{effect.kind.includes('percent')||effect.kind==='reflect'?'%':''} • {effect.duration} เทิร์น • {effect.chance ?? 100}%</span><button type="button" onClick={()=>setNewSkillExtraEffects(prev=>prev.filter((_,i)=>i!==index))} className="text-rose-300">ลบ</button></div>)}
                 </div>
               </section>
+
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/10 p-3">
+                <label className="text-xs text-emerald-200">🔁 โอกาสตีซ้ำอีก 1 รอบ (%)
+                  <input type="number" min={0} max={100} value={newSkillRepeatAttackChance} onChange={(e) => setNewSkillRepeatAttackChance(Number(e.target.value))} className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none" />
+                  <span className="block mt-1 text-[10px] text-slate-500">0% = ไม่มีโอกาสตีซ้ำ</span>
+                </label>
+              </div>
 
               <section className="rounded-2xl border border-amber-500/25 bg-amber-950/15 p-4 space-y-2.5">
                 <div className="flex items-center gap-2"><Crown className="w-4 h-4 text-amber-300" /><h4 className="text-sm font-black text-amber-100">ผลพิเศษเมื่อทะลุ Lv.10</h4></div>
