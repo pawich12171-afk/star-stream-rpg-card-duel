@@ -38,6 +38,7 @@ import {
 interface StatusWindowProps {
   character: CharacterProfile;
   onUpdateCharacter: (updated: CharacterProfile) => void | Promise<boolean>;
+  onPersistStatus?: (characterId: string, patch: Pick<CharacterProfile, 'stats' | 'hp' | 'maxHp' | 'statusBuffs' | 'characteristics'>) => Promise<boolean>;
   onOpenTransfer: () => void;
   onOpenProfileCustomizer?: () => void;
   onOpenCharacterSelect?: () => void;
@@ -47,6 +48,7 @@ interface StatusWindowProps {
 export const StatusWindow: React.FC<StatusWindowProps> = ({
   character,
   onUpdateCharacter,
+  onPersistStatus,
   onOpenTransfer,
   onOpenProfileCustomizer,
   onOpenCharacterSelect,
@@ -339,13 +341,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     setIsSavingStats(true);
 
     try {
-      // Take the newest character object and merge ONLY the fields edited in
-      // this modal. This prevents another newer update from being erased.
-      const latest = latestCharacterRef.current;
-      const updated: CharacterProfile = {
-        ...latest,
+      const patch = {
         stats: {
-          ...latest.stats,
           strength: Number(tempStats.strength),
           durability: Number(tempStats.durability),
           agility: Number(tempStats.agility),
@@ -355,10 +352,18 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         maxHp: Number(tempMaxHp),
         statusBuffs: tempBuffs,
         characteristics: [...tempCharacteristics],
-        lastUpdated: Math.max(Date.now(), Number(latest.lastUpdated || 0) + 1),
       };
 
-      const saved = await commitCharacterUpdate(updated);
+      // Status uses a dedicated Firestore transaction so only Status fields
+      // are written. It cannot overwrite newer Coins/Inventory/Skills data.
+      const saved = onPersistStatus
+        ? await onPersistStatus(character.id, patch)
+        : await commitCharacterUpdate({
+            ...latestCharacterRef.current,
+            ...patch,
+            stats: { ...latestCharacterRef.current.stats, ...patch.stats },
+          });
+
       if (saved) {
         setShowStatEditModal(false);
       } else {
