@@ -1,0 +1,96 @@
+export type DocumentReference = { collection: string; id: string };
+export type CollectionReference = { collection: string };
+type SnapshotDoc = { id: string; data(): any; exists(): boolean; ref: DocumentReference };
+type QuerySnapshot = { docs: SnapshotDoc[]; empty: boolean; metadata: { fromCache: boolean; hasPendingWrites: boolean }; forEach(cb: (doc: SnapshotDoc) => void): void };
+type DocSnapshot = SnapshotDoc & { metadata: { fromCache: boolean; hasPendingWrites: boolean } };
+
+const API_BASE = '/api/db';
+const db = { type: 'star-stream-api' };
+
+function collectionPath(ref: CollectionReference) { return `${API_BASE}/${encodeURIComponent(ref.collection)}`; }
+function docPath(ref: DocumentReference) { return `${API_BASE}/${encodeURIComponent(ref.collection)}/${encodeURIComponent(ref.id)}`; }
+
+async function request(url: string, init?: RequestInit) {
+  const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
+  const text = await res.text();
+  let body: any = null;
+  try { body = text ? JSON.parse(text) : null; } catch { body = { error: text }; }
+  if (!res.ok) throw new Error(body?.error || `API request failed (${res.status})`);
+  return body;
+}
+
+function makeDoc(collection: string, raw: any): SnapshotDoc {
+  return { id: raw.id, data: () => raw.data ?? raw, exists: () => true, ref: { collection, id: raw.id } };
+}
+
+export function collection(_db: typeof db, name: string): CollectionReference { return { collection: name }; }
+export function doc(_db: typeof db, collectionName: string, id: string): DocumentReference { return { collection: collectionName, id }; }
+
+export async function getDocs(ref: CollectionReference): Promise<QuerySnapshot> {
+  const body = await request(collectionPath(ref));
+  const docs = (body?.docs || []).map((d: any) => makeDoc(ref.collection, d));
+  return { docs, empty: docs.length === 0, metadata: { fromCache: false, hasPendingWrites: false }, forEach: cb => docs.forEach(cb) };
+}
+export const getDocsFromServer = getDocs;
+
+export async function getDoc(ref: DocumentReference): Promise<DocSnapshot> {
+  try {
+    const body = await request(docPath(ref));
+    const d = makeDoc(ref.collection, body);
+    return { ...d, metadata: { fromCache: false, hasPendingWrites: false } };
+  } catch (error: any) {
+    if (String(error?.message || '').includes('(404)')) return { id: ref.id, data: () => undefined, exists: () => false, ref, metadata: { fromCache: false, hasPendingWrites: false } };
+    throw error;
+  }
+}
+
+export async function setDoc(ref: DocumentReference, data: any) {
+  await request(docPath(ref), { method: 'PUT', body: JSON.stringify({ data }) });
+}
+export async function updateDoc(ref: DocumentReference, data: any) {
+  await request(docPath(ref), { method: 'PATCH', body: JSON.stringify({ data }) });
+}
+export async function deleteDoc(ref: DocumentReference) {
+  await request(docPath(ref), { method: 'DELETE' });
+}
+
+export function onSnapshot(ref: CollectionReference | DocumentReference, optionsOrCallback: any, maybeCallback?: any, maybeError?: any) {
+  const callback = typeof optionsOrCallback === 'function' ? optionsOrCallback : maybeCallback;
+  const errorCallback = typeof optionsOrCallback === 'function' ? maybeCallback : arguments[3];
+  let stopped = false;
+  let lastSerialized = '';
+  const poll = async () => {
+    if (stopped) return;
+    try {
+      const snap = 'id' in ref ? await getDoc(ref) : await getDocs(ref);
+      const serial = JSON.stringify('id' in ref ? (snap.exists() ? snap.data() : null) : snap.docs.map(d => ({ id: d.id, data: d.data() })));
+      if (serial !== lastSerialized) { lastSerialized = serial; callback(snap); }
+    } catch (error) { errorCallback?.(error); }
+    if (!stopped) window.setTimeout(poll, 1500);
+  };
+  void poll();
+  return () => { stopped = true; };
+}
+
+export function writeBatch(_db: typeof db) {
+  const operations: any[] = [];
+  return {
+    set(ref: DocumentReference, data: any) { operations.push({ op: 'set', collection: ref.collection, id: ref.id, data }); },
+    update(ref: DocumentReference, data: any) { operations.push({ op: 'update', collection: ref.collection, id: ref.id, data }); },
+    delete(ref: DocumentReference) { operations.push({ op: 'delete', collection: ref.collection, id: ref.id }); },
+    async commit() { await request(`${API_BASE}/transaction`, { method: 'POST', body: JSON.stringify({ operations }) }); }
+  };
+}
+
+export async function runTransaction(_db: typeof db, callback: (tx: any) => Promise<void>) {
+  const operations: any[] = [];
+  const tx = {
+    async get(ref: DocumentReference) { return getDoc(ref); },
+    set(ref: DocumentReference, data: any) { operations.push({ op: 'set', collection: ref.collection, id: ref.id, data }); },
+    update(ref: DocumentReference, data: any) { operations.push({ op: 'update', collection: ref.collection, id: ref.id, data }); },
+    delete(ref: DocumentReference) { operations.push({ op: 'delete', collection: ref.collection, id: ref.id }); }
+  };
+  await callback(tx);
+  await request(`${API_BASE}/transaction`, { method: 'POST', body: JSON.stringify({ operations }) });
+}
+export { db };
