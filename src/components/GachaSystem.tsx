@@ -33,7 +33,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   const availableBanners = gachaBanners.length ? gachaBanners : [fallbackBanner];
   const [selectedBannerId, setSelectedBannerId] = useState<string>(availableBanners[0]?.id || 'main');
   const activeBanner = availableBanners.find(b => b.id === selectedBannerId) || availableBanners[0] || fallbackBanner;
-  const activeRewards = gachaRewards.filter(r => !r.bannerId || r.bannerId === activeBanner.id);
+  const activeRewards = gachaRewards.filter(r => r.bannerId === activeBanner.id || (!r.bannerId && activeBanner.id === 'main'));
   const characterRef = useRef<CharacterProfile>(character);
 
   useEffect(() => {
