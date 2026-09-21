@@ -459,6 +459,65 @@ export async function updateCharacterData(char: CharacterProfile): Promise<void>
   }
 }
 
+// Save only the fields edited by the Status window.
+// This prevents a stale full CharacterProfile from overwriting Coins,
+// inventory, skills, admin effects, or other newer fields.
+export async function updateCharacterStatusData(
+  charId: string,
+  patch: Pick<CharacterProfile, 'stats' | 'hp' | 'maxHp' | 'statusBuffs' | 'characteristics'>
+): Promise<CharacterProfile> {
+  const ref = doc(db, CHARACTERS_COLLECTION, charId);
+  let result: CharacterProfile | null = null;
+
+  await enqueueCharacterWrite(charId, async () => {
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if (!snap.exists()) throw new Error('ไม่พบตัวละครที่ต้องการบันทึก');
+
+      const current = { ...snap.data(), id: snap.id } as CharacterProfile;
+      const updated: CharacterProfile = {
+        ...current,
+        stats: {
+          ...current.stats,
+          strength: Number(patch.stats.strength),
+          durability: Number(patch.stats.durability),
+          agility: Number(patch.stats.agility),
+          magic: Number(patch.stats.magic),
+        },
+        hp: Number(patch.hp),
+        maxHp: Number(patch.maxHp),
+        statusBuffs: patch.statusBuffs || '',
+        characteristics: [...(patch.characteristics || [])],
+        lastUpdated: Math.max(Date.now(), Number(current.lastUpdated || 0) + 1),
+      };
+
+      updated.powerScore = calculatePowerScore(updated);
+      result = updated;
+
+      transaction.update(ref, {
+        stats: updated.stats,
+        hp: updated.hp,
+        maxHp: updated.maxHp,
+        statusBuffs: updated.statusBuffs,
+        characteristics: updated.characteristics,
+        powerScore: updated.powerScore,
+        lastUpdated: updated.lastUpdated,
+      });
+    });
+  });
+
+  if (!result) throw new Error('ไม่สามารถสร้างข้อมูลตัวละครหลังบันทึกได้');
+
+  pendingCharacterUpdates.set(charId, result);
+  localCharacters = localCharacters.some(c => c.id === charId)
+    ? localCharacters.map(c => c.id === charId ? result as CharacterProfile : c)
+    : [...localCharacters, result];
+  saveLocalAll();
+  broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
+
+  return result;
+}
+
 // Delete Character
 export async function deleteCharacter(charId: string): Promise<void> {
   localCharacters = localCharacters.filter(c => c.id !== charId);
