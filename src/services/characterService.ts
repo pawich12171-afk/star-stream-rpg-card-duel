@@ -83,6 +83,7 @@ const gachaRewardsListeners = new Set<(rewards: GachaReward[]) => void>();
 let localGachaRewards: GachaReward[] = readLocalArray('starstream_gacha_rewards', INITIAL_GACHA_REWARDS);
 const gachaBannerListeners = new Set<(banners: GachaBanner[]) => void>();
 let localGachaBanners: GachaBanner[] = readLocalArray('starstream_gacha_banners', []);
+let gachaBannerInitializationStarted = false;
 
 function notifyGachaRewards() {
   const snapshot = [...localGachaRewards].sort((a, b) => (Number(a.rate) || 0) - (Number(b.rate) || 0));
@@ -245,11 +246,12 @@ export function calculatePowerScore(char: CharacterProfile): number {
 // Seed initial data if Firestore is empty
 export async function seedInitialDataIfNeeded() {
   try {
-    const [charsSnap, shopSnap, gachaRewardsSnap, gachaConfigSnap] = await Promise.all([
+    const [charsSnap, shopSnap, gachaRewardsSnap, gachaConfigSnap, gachaBannersSnap] = await Promise.all([
       getDocs(collection(db, CHARACTERS_COLLECTION)),
       getDocs(collection(db, SHOP_ITEMS_COLLECTION)),
       getDocs(collection(db, GACHA_REWARDS_COLLECTION)),
       getDocs(collection(db, GACHA_CONFIG_COLLECTION)),
+      getDocs(collection(db, GACHA_BANNERS_COLLECTION)),
     ]);
 
     // Seed only a genuinely new database. Once any shared data exists, an empty
@@ -258,7 +260,8 @@ export async function seedInitialDataIfNeeded() {
       charsSnap.empty &&
       shopSnap.empty &&
       gachaRewardsSnap.empty &&
-      gachaConfigSnap.empty;
+      gachaConfigSnap.empty &&
+      gachaBannersSnap.empty;
     if (!isFreshDatabase) return;
 
     for (const char of INITIAL_CHARACTERS) {
@@ -275,6 +278,17 @@ export async function seedInitialDataIfNeeded() {
       await setDoc(doc(db, GACHA_REWARDS_COLLECTION, reward.id), reward);
     }
     await setDoc(doc(db, GACHA_CONFIG_COLLECTION, "main"), INITIAL_GACHA_CONFIG);
+    await setDoc(doc(db, GACHA_BANNERS_COLLECTION, "main"), {
+      id: "main",
+      name: "ตู้หลัก",
+      pullCost: INITIAL_GACHA_CONFIG.pullCost,
+      tenPullCost: INITIAL_GACHA_CONFIG.tenPullCost,
+      enabled: INITIAL_GACHA_CONFIG.enabled,
+      bannerTitle: INITIAL_GACHA_CONFIG.bannerTitle,
+      bannerDescription: INITIAL_GACHA_CONFIG.bannerDescription,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
   } catch (err) {
     console.warn("Firestore seed check fallback to local:", err);
   }
@@ -788,6 +802,28 @@ export function subscribeToGachaBanners(callback: (banners: GachaBanner[]) => vo
   }];
 
   callback([...fallback]);
+
+  // If this is an existing database created before multi-banner support,
+  // materialize the legacy main banner once so Admin and players both have
+  // a real persistent banner document to work with.
+  if (!gachaBannerInitializationStarted && localGachaBanners.length === 0) {
+    gachaBannerInitializationStarted = true;
+    void getDocs(collection(db, GACHA_BANNERS_COLLECTION)).then(snapshot => {
+      if (!snapshot.empty) return;
+      const mainBanner: GachaBanner = {
+        id: 'main',
+        name: 'ตู้หลัก',
+        pullCost: localGachaConfig.pullCost,
+        tenPullCost: localGachaConfig.tenPullCost,
+        enabled: localGachaConfig.enabled,
+        bannerTitle: localGachaConfig.bannerTitle,
+        bannerDescription: localGachaConfig.bannerDescription,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      return saveGachaBanner(mainBanner);
+    }).catch(error => console.warn('Could not initialize main gacha banner:', error));
+  }
 
   const mergeServerBanners = (serverList: GachaBanner[]) => {
     const serverIds = new Set(serverList.map(b => b.id));
