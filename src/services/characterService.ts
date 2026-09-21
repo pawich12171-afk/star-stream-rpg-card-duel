@@ -212,6 +212,7 @@ function saveLocalAll() {
     window.localStorage.setItem('starstream_shop_items', JSON.stringify(localShopItems));
     window.localStorage.setItem('starstream_gacha_rewards', JSON.stringify(localGachaRewards));
     window.localStorage.setItem('starstream_gacha_config', JSON.stringify(localGachaConfig));
+    window.localStorage.setItem('starstream_gacha_banners', JSON.stringify(localGachaBanners));
     window.localStorage.setItem('starstream_duel_rooms', JSON.stringify(localDuelRooms));
   } catch {}
 }
@@ -834,7 +835,14 @@ export function subscribeToGachaBanners(callback: (banners: GachaBanner[]) => vo
 
     const merged = serverList
       .filter(b => !pendingGachaBannerDeletes.has(b.id))
-      .map(serverBanner => pendingGachaBanners.get(serverBanner.id) || serverBanner);
+      .map(serverBanner => {
+        const pending = pendingGachaBanners.get(serverBanner.id);
+        if (pending && valuesMatch(serverBanner, pending)) {
+          pendingGachaBanners.delete(serverBanner.id);
+          return serverBanner;
+        }
+        return pending || serverBanner;
+      });
 
     pendingGachaBanners.forEach((pending, id) => {
       if (!pendingGachaBannerDeletes.has(id) && !merged.some(b => b.id === id)) {
