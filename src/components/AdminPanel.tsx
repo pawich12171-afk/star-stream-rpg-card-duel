@@ -2086,29 +2086,124 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 )}
 
-                {/* Skill Passive Settings — always visible in the Gacha settings screen */}
-                <div className="rounded-xl border border-fuchsia-500/30 bg-fuchsia-950/10 p-3 space-y-2">
+                {/* Skill Passive Settings — each passive has its own independent configuration */}
+                <div className="rounded-xl border border-fuchsia-500/30 bg-fuchsia-950/10 p-3 space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <div className="text-xs font-black text-fuchsia-200">✨ ตั้งค่า Passive ติดตัวของสกิล</div>
-                      <div className="text-[10px] text-slate-400">ส่วนนี้แสดงตลอดในหน้าตั้งค่ากาชา — Passive จะถูกบันทึกเมื่อประเภทของรางวัลเป็น “สกิล”</div>
+                      <div className="text-xs font-black text-fuchsia-200">✨ Passive ติดตัวของสกิลกาชา</div>
+                      <div className="text-[10px] text-slate-400">แยกตั้งค่าเป็นราย Passive — กดเพิ่มแล้วค่าจะถูกเก็บเป็นคนละรายการ ไม่ปนกัน</div>
                     </div>
                     <span className="rounded-full bg-fuchsia-500/10 px-2 py-1 text-[9px] text-fuchsia-200">SKILL PASSIVE</span>
                   </div>
-<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <input value={newSkillPassiveName} onChange={e => setNewSkillPassiveName(e.target.value)} placeholder="ชื่อ Passive เช่น ดอกไม้สะสม" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
-                        <select value={newSkillPassiveTrigger} onChange={e => setNewSkillPassiveTrigger(e.target.value as ItemPassiveEffect['trigger'])} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white"><option value="turn_start">ทุกต้นเทิร์น</option><option value="attack">ทุกครั้งที่โจมตี</option></select>
-                        <select value={newSkillPassiveKind} onChange={e => setNewSkillPassiveKind(e.target.value as ItemPassiveEffect['kind'])} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white"><option value="stack">สะสม Stack</option><option value="true_damage_per_stack">💠 True Damage ต่อ Stack</option><option value="true_damage_at_max_stacks">💥 ครบ Max Stack แล้วทำ True Damage</option><option value="damage">เพิ่มดาเมจ</option><option value="damage_percent">เพิ่มดาเมจ %</option><option value="heal">ฟื้น HP</option><option value="heal_percent">ฟื้น HP %</option><option value="buff_stat">เพิ่มสเตตัส</option><option value="shield">โล่</option><option value="reflect">สะท้อน %</option><option value="repeat_attack_chance">ตีซ้ำ %</option><option value="critical_chance">คริ %</option></select>
-                        <input type="number" step="0.001" value={newSkillPassiveValue} onChange={e => setNewSkillPassiveValue(Number(e.target.value))} placeholder="ค่า" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
-                        <input type="number" min={1} value={newSkillPassiveMaxStacks} onChange={e => setNewSkillPassiveMaxStacks(Number(e.target.value))} placeholder="Max Stack" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
-                        <input type="number" min={0} max={100} step={0.001} value={newSkillPassiveChance} onChange={e => setNewSkillPassiveChance(Number(e.target.value))} placeholder="โอกาส %" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
+
+                  <div className="rounded-lg border border-fuchsia-500/20 bg-black/20 p-3 space-y-2">
+                    <div className="text-[10px] font-black text-fuchsia-200">① สร้าง Passive ใหม่ 1 อัน</div>
+                    <input value={newSkillPassiveName} onChange={e => setNewSkillPassiveName(e.target.value)} placeholder="ชื่อ Passive เช่น ดอกไม้สะสม" className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <select value={newSkillPassiveKind} onChange={e => setNewSkillPassiveKind(e.target.value as ItemPassiveEffect['kind'])} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white">
+                        <option value="stack">🌸 สะสม Stack</option>
+                        <option value="true_damage_at_max_stacks">💥 ครบ Stack → True Damage</option>
+                        <option value="true_damage_per_stack">💠 True Damage ต่อ Stack</option>
+                        <option value="damage">⚔️ Damage</option>
+                        <option value="damage_percent">⚔️ Damage %</option>
+                        <option value="heal">❤️ Heal</option>
+                        <option value="heal_percent">❤️ Heal %</option>
+                        <option value="buff_stat">📈 Buff Stat</option>
+                        <option value="shield">🛡️ Shield</option>
+                        <option value="reflect">↩️ Reflect %</option>
+                        <option value="repeat_attack_chance">🔁 Repeat Attack %</option>
+                        <option value="critical_chance">🎯 Critical %</option>
+                      </select>
+                      <select value={newSkillPassiveTrigger} onChange={e => setNewSkillPassiveTrigger(e.target.value as ItemPassiveEffect['trigger'])} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white">
+                        <option value="turn_start">ทุกต้นเทิร์น</option>
+                        <option value="attack">ทุกครั้งที่โจมตี</option>
+                      </select>
+                    </div>
+
+                    {newSkillPassiveKind === 'stack' && (
+                      <div className="rounded-lg border border-pink-500/20 bg-pink-950/10 p-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <input type="number" min={1} step={1} value={newSkillPassiveValue} onChange={e => setNewSkillPassiveValue(Number(e.target.value))} placeholder="เพิ่ม Stack ต่อครั้ง" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
+                        <input type="number" min={1} step={1} value={newSkillPassiveMaxStacks} onChange={e => setNewSkillPassiveMaxStacks(Number(e.target.value))} placeholder="Max Stack" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
+                        <input value={newSkillPassiveStackKey} onChange={e => setNewSkillPassiveStackKey(e.target.value)} placeholder="ชื่อกอง Stack เช่น flower" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
+                      </div>
+                    )}
+
+                    {newSkillPassiveKind === 'true_damage_at_max_stacks' && (
+                      <div className="rounded-lg border border-red-500/20 bg-red-950/10 p-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <input type="number" min={1} step={1} value={newSkillPassiveMaxStacks} onChange={e => setNewSkillPassiveMaxStacks(Number(e.target.value))} placeholder="ต้องครบกี่ Stack" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
+                        <input type="number" min={0} step={1} value={newSkillPassiveValue} onChange={e => setNewSkillPassiveValue(Number(e.target.value))} placeholder="True Damage" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-red-200" />
+                        <input value={newSkillPassiveStackKey} onChange={e => setNewSkillPassiveStackKey(e.target.value)} placeholder="ใช้ Stack Key เดียวกับตัวสะสม เช่น flower" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
+                      </div>
+                    )}
+
+                    {newSkillPassiveKind === 'true_damage_per_stack' && (
+                      <div className="rounded-lg border border-cyan-500/20 bg-cyan-950/10 p-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <input type="number" min={0} step={0.1} value={newSkillPassiveValue} onChange={e => setNewSkillPassiveValue(Number(e.target.value))} placeholder="True Damage ต่อ 1 Stack" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
                         <input value={newSkillPassiveStackKey} onChange={e => setNewSkillPassiveStackKey(e.target.value)} placeholder="Stack Key เช่น flower" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
+                      </div>
+                    )}
+
+                    {['damage','damage_percent','heal','heal_percent','repeat_attack_chance','critical_chance','shield','reflect'].includes(newSkillPassiveKind) && (
+                      <div className="rounded-lg border border-emerald-500/20 bg-emerald-950/10 p-2">
+                        <label className="text-[10px] text-slate-400">
+                          {newSkillPassiveKind === 'damage' ? '⚔️ Damage จำนวน' :
+                           newSkillPassiveKind === 'damage_percent' ? '⚔️ Damage เพิ่ม (%)' :
+                           newSkillPassiveKind === 'heal' ? '❤️ Heal จำนวน' :
+                           newSkillPassiveKind === 'heal_percent' ? '❤️ Heal (%)' :
+                           newSkillPassiveKind === 'repeat_attack_chance' ? '🔁 โอกาสตีซ้ำ (%)' :
+                           newSkillPassiveKind === 'critical_chance' ? '🎯 โอกาสคริติคอล (%)' :
+                           newSkillPassiveKind === 'shield' ? '🛡️ Shield จำนวน' : '↩️ Reflect (%)'}
+                          <input type="number" min={0} step={0.001} value={newSkillPassiveValue} onChange={e => setNewSkillPassiveValue(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
+                        </label>
+                      </div>
+                    )}
+
+                    {newSkillPassiveKind === 'buff_stat' && (
+                      <div className="rounded-lg border border-blue-500/20 bg-blue-950/10 p-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                         <select value={newSkillPassiveTargetStat} onChange={e => setNewSkillPassiveTargetStat(e.target.value as any)} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white"><option value="strength">STR</option><option value="durability">DUR</option><option value="agility">AGI</option><option value="magic">MAG</option></select>
+                        <input type="number" step={0.1} value={newSkillPassiveValue} onChange={e => setNewSkillPassiveValue(Number(e.target.value))} placeholder="เพิ่มค่าสเตตัส" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
                         <input type="number" min={1} value={newSkillPassiveDuration} onChange={e => setNewSkillPassiveDuration(Number(e.target.value))} placeholder="ระยะเวลา (เทิร์น)" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
                       </div>
-                      <button type="button" onClick={() => setNewSkillPassiveEffects(prev => [...prev, { id: `skill-passive-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, name: newSkillPassiveName.trim() || 'Skill Passive', trigger: newSkillPassiveTrigger, kind: newSkillPassiveKind, value: Math.max(0, Number(newSkillPassiveValue) || 0), chance: Math.max(0, Math.min(100, Number(newSkillPassiveChance) || 0)), maxStacks: Math.max(1, Math.round(Number(newSkillPassiveMaxStacks) || 1)), stackKey: newSkillPassiveStackKey.trim() || 'flower', duration: Math.max(1, Math.round(Number(newSkillPassiveDuration) || 1)), targetStat: newSkillPassiveKind === 'buff_stat' ? newSkillPassiveTargetStat : undefined }])} className="mt-2 w-full rounded-lg bg-fuchsia-500/20 px-3 py-2 text-xs font-black text-fuchsia-100">+ เพิ่ม Passive ของสกิล</button>
-                      {newSkillPassiveEffects.map(effect => <div key={effect.id} className="mt-1 flex items-center justify-between rounded bg-black/20 px-2 py-1 text-[10px] text-fuchsia-100"><span>{effect.name} • {effect.kind} • {effect.value} • {effect.trigger}</span><button type="button" onClick={() => setNewSkillPassiveEffects(prev => prev.filter(item => item.id !== effect.id))} className="text-rose-300">ลบ</button></div>)}
+                    )}
+
+                    <div className="rounded-lg border border-yellow-500/20 bg-yellow-950/10 p-2">
+                      <label className="text-[10px] text-slate-400">โอกาสทำงานของ Passive นี้ (%)
+                        <input type="number" min={0} max={100} step={0.001} value={newSkillPassiveChance} onChange={e => setNewSkillPassiveChance(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-yellow-200" />
+                      </label>
                     </div>
+
+                    <button type="button" onClick={() => setNewSkillPassiveEffects(prev => [...prev, {
+                      id: `skill-passive-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+                      name: newSkillPassiveName.trim() || 'Skill Passive',
+                      trigger: newSkillPassiveTrigger,
+                      kind: newSkillPassiveKind,
+                      value: Math.max(0, Number(newSkillPassiveValue) || 0),
+                      chance: Math.max(0, Math.min(100, Number(newSkillPassiveChance) || 0)),
+                      maxStacks: Math.max(1, Math.round(Number(newSkillPassiveMaxStacks) || 1)),
+                      stackKey: newSkillPassiveStackKey.trim() || 'flower',
+                      duration: Math.max(1, Math.round(Number(newSkillPassiveDuration) || 1)),
+                      targetStat: newSkillPassiveKind === 'buff_stat' ? newSkillPassiveTargetStat : undefined
+                    }])} className="w-full rounded-lg bg-fuchsia-500/25 px-3 py-2 text-xs font-black text-fuchsia-100">＋ เพิ่ม Passive นี้เป็นรายการแยก</button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-black text-slate-300">② Passive ที่เพิ่มแล้ว — แต่ละอันแยกค่ากัน</div>
+                    {newSkillPassiveEffects.length === 0 && <div className="rounded-lg border border-dashed border-slate-700 p-3 text-center text-[10px] text-slate-500">ยังไม่มี Passive — เพิ่มจากช่องด้านบน</div>}
+                    {newSkillPassiveEffects.map((effect, index) => (
+                      <div key={effect.id} className="rounded-lg border border-fuchsia-500/25 bg-fuchsia-950/20 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-[11px] font-black text-fuchsia-100">#{index + 1} {effect.name}</div>
+                          <button type="button" onClick={() => setNewSkillPassiveEffects(prev => prev.filter(item => item.id !== effect.id))} className="rounded bg-rose-500/15 px-2 py-1 text-[9px] text-rose-300">ลบ Passive นี้</button>
+                        </div>
+                        <div className="mt-2 grid grid-cols-2 gap-1 text-[9px] text-slate-300 sm:grid-cols-4">
+                          <span>ประเภท: {effect.kind}</span><span>Trigger: {effect.trigger}</span><span>ค่า: {effect.value}</span><span>โอกาส: {effect.chance ?? 100}%</span>
+                          {['stack','true_damage_at_max_stacks','true_damage_per_stack'].includes(effect.kind) && <><span>Stack: {effect.maxStacks}</span><span>Key: {effect.stackKey}</span></>}
+                          {effect.kind === 'buff_stat' && <span>Stat: {effect.targetStat}</span>}
+                          {effect.duration && ['buff_stat','shield','reflect'].includes(effect.kind) && <span>ระยะเวลา: {effect.duration} เทิร์น</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {newRewardType === 'skill' && (
