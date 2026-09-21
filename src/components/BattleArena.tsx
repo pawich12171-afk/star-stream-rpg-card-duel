@@ -175,7 +175,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
     const room: BattleRoom = {
       id: 'battle-' + now, mode, status: 'active', createdBy: currentUser.id, createdByName: currentUser.displayName,
       teamA, teamB, turnActorId: teamA[0].id, round: 1,
-      log: [{ id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pve' ? `เริ่มการต่อสู้ — ค่าเข้า ${entryFee.toLocaleString()} Coins · ชนะรับ ${victoryReward.toLocaleString()} Coins` : 'เริ่มการต่อสู้ — เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' }],
+      log: [{ id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pve' ? `เริ่มการต่อสู้ — ไม่มีค่าเข้าร่วม · ชนะรับ ${victoryReward.toLocaleString()} Coins` : 'เริ่มการต่อสู้ — เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' }],
       entryFeeCoins: 0, victoryRewardCoins: victoryReward, createdAt: now, updatedAt: now
     };
     try {
