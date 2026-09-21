@@ -99,7 +99,13 @@ export default function App() {
     const cleanups: Array<() => void> = [];
 
     const initializeRealtimeData = async () => {
-      await seedInitialDataIfNeeded();
+      // Never block the whole app on the initial database seed check.
+      // If Supabase/API is slow or temporarily unavailable, listeners still
+      // start and the service can use its local seed until the server responds.
+      void seedInitialDataIfNeeded().catch((error) => {
+        console.warn('Initial database seed check failed:', error);
+      });
+
       if (disposed) return;
 
       cleanups.push(subscribeToCharacters((chars) => {
