@@ -1792,6 +1792,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <input value={newBannerDesc} onChange={e=>setNewBannerDesc(e.target.value)} placeholder="คำอธิบาย" className="col-span-2 md:col-span-5 px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
               <label className="text-[10px] text-slate-300 flex items-center gap-2"><input type="checkbox" checked={newBannerEnabled} onChange={e=>setNewBannerEnabled(e.target.checked)} /> เปิดใช้งาน</label>
             </form>
+
+            {selectedBanner && (
+              <form onSubmit={handleUpdateGachaBanner} className="rounded-2xl border border-amber-500/30 bg-slate-950/60 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-black text-amber-300">ตั้งค่าตู้ที่เลือก</div>
+                    <div className="text-[10px] text-slate-500">กำลังแก้ไข: {selectedBanner.name}</div>
+                  </div>
+                  <span className="text-[10px] text-cyan-300 font-mono">{selectedBanner.id}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <input value={editBannerName} onChange={e => setEditBannerName(e.target.value)} placeholder="ชื่อตู้" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
+                  <input value={editBannerTitle} onChange={e => setEditBannerTitle(e.target.value)} placeholder="หัวข้อบนหน้าสุ่ม" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
+                  <input type="number" min={10} value={editBannerPullCost} onChange={e => setEditBannerPullCost(Number(e.target.value))} placeholder="ราคา 1 ครั้ง" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
+                  <input type="number" min={100} value={editBannerTenCost} onChange={e => setEditBannerTenCost(Number(e.target.value))} placeholder="ราคา 10 ครั้ง" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
+                  <textarea value={editBannerDesc} onChange={e => setEditBannerDesc(e.target.value)} placeholder="คำอธิบายตู้" className="md:col-span-2 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs min-h-16" />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <label className="text-xs text-slate-300 flex items-center gap-2">
+                    <input type="checkbox" checked={editBannerEnabled} onChange={e => setEditBannerEnabled(e.target.checked)} />
+                    เปิดให้ผู้เล่นเลือกตู้และสุ่ม
+                  </label>
+                  <button type="submit" className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black">
+                    <Save className="w-3 h-3 inline mr-1" />บันทึกตู้ที่เลือก
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
 
           {/* Top: Gacha Config & Total Rate Progress */}
@@ -2139,7 +2167,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
-                    {gachaRewards.filter(r => !r.bannerId || r.bannerId === selectedBannerId).map((rw) => {
+                    {gachaRewards.filter(r => r.bannerId === selectedBannerId || (!r.bannerId && selectedBannerId === 'main')).map((rw) => {
                       const currentVal = editingRates[rw.id] !== undefined ? editingRates[rw.id] : rw.rate;
                       const hasChanged = editingRates[rw.id] !== undefined && editingRates[rw.id] !== rw.rate;
                       return (
