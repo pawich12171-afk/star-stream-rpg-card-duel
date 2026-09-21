@@ -13,7 +13,7 @@ import {
   subscribeToGachaRewards, 
   subscribeToGachaConfig, 
   subscribeToDuelRooms,
-  updateCharacterInDB, 
+  updateCharacterInDB, , updateCharacterStatusData
   addCharacterToDB, 
   transferCoinsBetweenCharacters,
   addShopItemToDB,
@@ -222,6 +222,24 @@ export default function App() {
     await addCharacterToDB(newChar);
     setCurrentUserId(newChar.id);
     confetti({ particleCount: 80, spread: 60 });
+  };
+
+  const handleUpdateCharacterStatus = async (
+    characterId: string,
+    patch: Pick<CharacterProfile, 'stats' | 'hp' | 'maxHp' | 'statusBuffs' | 'characteristics'>
+  ): Promise<boolean> => {
+    try {
+      const updated = await updateCharacterStatusData(characterId, patch);
+      charactersRef.current = charactersRef.current.some(c => c.id === updated.id)
+        ? charactersRef.current.map(c => c.id === updated.id ? updated : c)
+        : [...charactersRef.current, updated];
+      setCharacters([...charactersRef.current]);
+      return true;
+    } catch (error) {
+      console.error('Failed to persist status update:', error);
+      alert('บันทึกสเตตัสไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+      return false;
+    }
   };
 
   const handleUpdateCharacterCoins = (characterId: string, deltaCoins: number) => {
@@ -550,6 +568,7 @@ export default function App() {
           <StatusWindow
             character={currentUser}
             onUpdateCharacter={handleUpdateCharacter}
+            onPersistStatus={handleUpdateCharacterStatus}
             onOpenTransfer={() => setIsTransferOpen(true)}
             onOpenProfileCustomizer={() => setIsProfileCustomizerOpen(true)}
             onOpenCharacterSelect={() => setIsCharSelectOpen(true)}
