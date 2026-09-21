@@ -299,6 +299,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newRewardCooldownTurns, setNewRewardCooldownTurns] = useState(0);
   const [newRewardCritChance, setNewRewardCritChance] = useState(0);
   const [newRewardCritMultiplier, setNewRewardCritMultiplier] = useState(2);
+  const [newRewardRepeatAttackChance, setNewRewardRepeatAttackChance] = useState(0);
   const [newRewardBattleEffects, setNewRewardBattleEffects] = useState<BattleExtraEffect[]>([]);
   const [newRewardEffectKind, setNewRewardEffectKind] = useState<BattleExtraEffect['kind']>('bleeding');
   const [newRewardEffectValue, setNewRewardEffectValue] = useState(15);
@@ -513,6 +514,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         cooldown: Number(newRewardCooldownTurns) > 0 ? `${newRewardCooldownTurns} เทิร์น` : undefined,
         battleCriticalChance: Math.max(0, Math.min(100, Number(newRewardCritChance) || 0)),
         battleCriticalMultiplier: Math.max(1, Number(newRewardCritMultiplier) || 1),
+        repeatAttackChance: Math.max(0, Math.min(100, Number(newRewardRepeatAttackChance) || 0)),
         battleEffects: [...newRewardBattleEffects],
         battleStats: [...newRewardBattleStats],
       } : undefined,
@@ -528,6 +530,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setNewRewardCooldownTurns(0);
       setNewRewardCritChance(0);
       setNewRewardCritMultiplier(2);
+      setNewRewardRepeatAttackChance(0);
       setNewRewardBattleEffects([]);
       setNewRewardBattleStats([]);
       setNewRewardStatKind('attack_power');
@@ -1920,6 +1923,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <label className="text-[10px] text-slate-400">โอกาสคริติคอล (%)<input type="number" min={0} max={100} value={newRewardCritChance} onChange={(e) => setNewRewardCritChance(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-amber-200 outline-none" /></label>
                       <label className="text-[10px] text-slate-400">ตัวคูณคริติคอล (เช่น 2 = x2)<input type="number" min={1} max={20} step={0.1} value={newRewardCritMultiplier} onChange={(e) => setNewRewardCritMultiplier(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-amber-200 outline-none" /></label>
                     </div>
+                    <label className="text-[10px] text-slate-400">🔁 โอกาสตีซ้ำอีก 1 รอบ (%)
+                      <input type="number" min={0} max={100} value={newRewardRepeatAttackChance} onChange={(e) => setNewRewardRepeatAttackChance(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-emerald-200 outline-none" />
+                      <span className="block mt-1 text-[9px] text-slate-500">0% = ไม่มีโอกาสตีซ้ำ</span>
+                    </label>
                     <div className="rounded-lg border border-cyan-500/20 bg-cyan-950/10 p-2">
                       <div className="mb-2 text-[10px] font-black text-cyan-200">📊 สเตตัสสกิล — เพิ่มได้หลายรายการ และใช้จริงในการต่อสู้</div>
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
