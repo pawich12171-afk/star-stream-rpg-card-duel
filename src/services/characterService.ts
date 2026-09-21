@@ -7,7 +7,8 @@ import {
   updateDoc,
   onSnapshot,
   runTransaction,
-  deleteDoc
+  deleteDoc,
+  writeBatch
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { 
@@ -47,46 +48,36 @@ const broadcast = typeof window !== 'undefined' && 'BroadcastChannel' in window
   ? new BroadcastChannel('star_stream_realtime_channel') 
   : null;
 
-// Local fallback store
-let localCharacters: CharacterProfile[] = (() => {
+// Local storage is only an offline fallback. Preserve an intentionally empty
+// collection; otherwise deleted server records are resurrected after reload.
+function readLocalArray<T>(key: string, fallback: T[]): T[] {
+  if (typeof window === 'undefined') return [...fallback];
   try {
-    const saved = localStorage.getItem('starstream_characters');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (e) {}
-  return INITIAL_CHARACTERS;
-})();
+    const saved = window.localStorage.getItem(key);
+    if (saved == null) return [...fallback];
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [...fallback];
+  } catch {
+    return [...fallback];
+  }
+}
 
-let localShopItems: Item[] = (() => {
+function readLocalValue<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
   try {
-    const saved = localStorage.getItem('starstream_shop_items');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        // localStorage is only a temporary fallback; Firestore remains authoritative.
-        // Do not resurrect shop items that an admin deleted from the server.
-        return parsed;
-      }
-    }
-  } catch (e) {}
-  return INITIAL_SHOP_ITEMS;
-})();
+    const saved = window.localStorage.getItem(key);
+    return saved == null ? fallback : JSON.parse(saved) as T;
+  } catch {
+    return fallback;
+  }
+}
 
-let gachaDefaultsMigrationStarted = false;
+let localCharacters: CharacterProfile[] = readLocalArray('starstream_characters', INITIAL_CHARACTERS);
+let localShopItems: Item[] = readLocalArray('starstream_shop_items', INITIAL_SHOP_ITEMS);
 
 const gachaRewardsListeners = new Set<(rewards: GachaReward[]) => void>();
 
-let localGachaRewards: GachaReward[] = (() => {
-  try {
-    const saved = localStorage.getItem('starstream_gacha_rewards');
-    if (saved) return JSON.parse(saved);
-  } catch (e) {}
-  return INITIAL_GACHA_REWARDS;
-})();
+let localGachaRewards: GachaReward[] = readLocalArray('starstream_gacha_rewards', INITIAL_GACHA_REWARDS);
 
 function notifyGachaRewards() {
   const snapshot = [...localGachaRewards].sort((a, b) => (Number(a.rate) || 0) - (Number(b.rate) || 0));
@@ -130,12 +121,14 @@ const pendingGachaDeletes = new Set<string>();
 
 // Keep a local write ahead of an older Firestore realtime snapshot.
 const pendingCharacterUpdates = new Map<string, CharacterProfile>();
+const pendingCharacterDeletes = new Set<string>();
 const pendingShopItems = new Map<string, Item>();
 const pendingShopDeletes = new Set<string>();
 
 // Serialize writes per character. Firestore is last-write-wins; rapid saves
 // must not finish out of order and restore an older character version.
 const characterWriteQueues = new Map<string, Promise<void>>();
+const persistenceWriteQueues = new Map<string, Promise<void>>();
 
 function enqueueCharacterWrite(id: string, write: () => Promise<void>): Promise<void> {
   const previous = characterWriteQueues.get(id) || Promise.resolve();
@@ -146,24 +139,30 @@ function enqueueCharacterWrite(id: string, write: () => Promise<void>): Promise<
   });
 }
 
+function enqueuePersistenceWrite(key: string, write: () => Promise<void>): Promise<void> {
+  const previous = persistenceWriteQueues.get(key) || Promise.resolve();
+  const next = previous.catch(() => {}).then(write);
+  persistenceWriteQueues.set(key, next);
+  return next.finally(() => {
+    if (persistenceWriteQueues.get(key) === next) persistenceWriteQueues.delete(key);
+  });
+}
 
-let localGachaConfig: GachaConfig = (() => {
-  try {
-    const saved = localStorage.getItem('starstream_gacha_config');
-    if (saved) return JSON.parse(saved);
-  } catch (e) {}
-  return INITIAL_GACHA_CONFIG;
-})();
+function isPendingNewer(
+  pending: { updatedAt?: number; lastUpdated?: number },
+  server: { updatedAt?: number; lastUpdated?: number },
+): boolean {
+  const pendingVersion = Number(pending.updatedAt ?? pending.lastUpdated) || 0;
+  const serverVersion = Number(server.updatedAt ?? server.lastUpdated) || 0;
+  return pendingVersion > serverVersion;
+}
+
+
+let localGachaConfig: GachaConfig = readLocalValue('starstream_gacha_config', INITIAL_GACHA_CONFIG);
 
 let pendingGachaConfig: GachaConfig | null = null;
 
-let localDuelRooms: CardDuelRoom[] = (() => {
-  try {
-    const saved = localStorage.getItem('starstream_duel_rooms');
-    if (saved) return JSON.parse(saved);
-  } catch (e) {}
-  return [];
-})();
+let localDuelRooms: CardDuelRoom[] = readLocalArray('starstream_duel_rooms', []);
 const duelRoomListeners = new Set<(rooms: CardDuelRoom[]) => void>();
 const pendingDuelRooms = new Map<string, CardDuelRoom>();
 const pendingDuelDeletes = new Set<string>();
@@ -199,13 +198,14 @@ function applyDuelRoomSnapshot(snapshot: any) {
 
 
 function saveLocalAll() {
+  if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem('starstream_characters', JSON.stringify(localCharacters));
-    localStorage.setItem('starstream_shop_items', JSON.stringify(localShopItems));
-    localStorage.setItem('starstream_gacha_rewards', JSON.stringify(localGachaRewards));
-    localStorage.setItem('starstream_gacha_config', JSON.stringify(localGachaConfig));
-    localStorage.setItem('starstream_duel_rooms', JSON.stringify(localDuelRooms));
-  } catch (e) {}
+    window.localStorage.setItem('starstream_characters', JSON.stringify(localCharacters));
+    window.localStorage.setItem('starstream_shop_items', JSON.stringify(localShopItems));
+    window.localStorage.setItem('starstream_gacha_rewards', JSON.stringify(localGachaRewards));
+    window.localStorage.setItem('starstream_gacha_config', JSON.stringify(localGachaConfig));
+    window.localStorage.setItem('starstream_duel_rooms', JSON.stringify(localDuelRooms));
+  } catch {}
 }
 
 export function calculatePowerScore(char: CharacterProfile): number {
@@ -283,8 +283,11 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
       if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) return;
 
       const list: CharacterProfile[] = [];
+       const snapshotIds = new Set<string>();
       snapshot.forEach((docSnap) => {
         const raw = { ...docSnap.data(), id: docSnap.id } as CharacterProfile;
+         snapshotIds.add(raw.id);
+         if (pendingCharacterDeletes.has(raw.id)) return;
         const pending = pendingCharacterUpdates.get(raw.id);
         const serverVersion = Number(raw.lastUpdated || 0);
         const pendingVersion = Number(pending?.lastUpdated || 0);
@@ -297,10 +300,15 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
           if (pending && (valuesMatch(raw, pending) || serverVersion >= pendingVersion)) {
             pendingCharacterUpdates.delete(raw.id);
           }
-          list.push(raw);
+           list.push(raw);
         }
-
       });
+       pendingCharacterDeletes.forEach((id) => {
+         if (!snapshotIds.has(id)) pendingCharacterDeletes.delete(id);
+       });
+       pendingCharacterUpdates.forEach((pending, id) => {
+         if (!snapshotIds.has(id) && !pendingCharacterDeletes.has(id)) list.push(pending);
+       });
       list.sort((a, b) => (b.powerScore || 0) - (a.powerScore || 0));
       // Firestore is authoritative, including an empty collection.
       localCharacters = list;
@@ -318,7 +326,11 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
           callback(localCharacters);
         }
       };
-      broadcast.addEventListener('message', handleBroadcast);
+       broadcast?.addEventListener('message', handleBroadcast);
+       return () => {
+         broadcast?.removeEventListener('message', handleBroadcast);
+         unsub();
+       };
     }
     return unsub;
   } catch (err) {
@@ -372,7 +384,11 @@ export function subscribeToShop(callback: (items: Item[]) => void) {
           callback(localShopItems);
         }
       };
-      broadcast.addEventListener('message', handleBroadcast);
+       broadcast?.addEventListener('message', handleBroadcast);
+       return () => {
+         broadcast?.removeEventListener('message', handleBroadcast);
+         unsub();
+       };
     }
     return unsub;
   } catch (err) {
@@ -398,6 +414,7 @@ function sanitizeForFirestore(obj: any): any {
 
 // Update Character
 export async function updateCharacterData(char: CharacterProfile): Promise<void> {
+  const previousLocalCharacter = localCharacters.find(character => character.id === char.id);
   // IMPORTANT: the object passed by the UI is the user's newest edit.
   // Reconcile the admin snapshot BEFORE health sync so a deleted skill
   // cannot be resurrected from an older snapshot/local overlay.
@@ -460,6 +477,15 @@ export async function updateCharacterData(char: CharacterProfile): Promise<void>
   } catch (err) {
     const pending = pendingCharacterUpdates.get(updated.id);
     if (pending && valuesMatch(pending, updated)) pendingCharacterUpdates.delete(updated.id);
+    if (previousLocalCharacter) {
+      localCharacters = localCharacters.map(character =>
+        character.id === updated.id ? previousLocalCharacter : character
+      );
+    } else {
+      localCharacters = localCharacters.filter(character => character.id !== updated.id);
+    }
+    saveLocalAll();
+    broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
     console.error("Error updating character in Firestore:", err);
     throw err;
   }
@@ -572,6 +598,9 @@ export async function updateCharacterStatusData(
 
 // Delete Character
 export async function deleteCharacter(charId: string): Promise<void> {
+  const previous = localCharacters.find(c => c.id === charId);
+  pendingCharacterDeletes.add(charId);
+  pendingCharacterUpdates.delete(charId);
   localCharacters = localCharacters.filter(c => c.id !== charId);
   saveLocalAll();
   broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
@@ -579,7 +608,12 @@ export async function deleteCharacter(charId: string): Promise<void> {
   try {
     await deleteDoc(doc(db, CHARACTERS_COLLECTION, charId));
   } catch (err) {
-    console.warn("Error deleting character in Firestore:", err);
+    pendingCharacterDeletes.delete(charId);
+    if (previous) localCharacters = [previous, ...localCharacters.filter(c => c.id !== charId)];
+    saveLocalAll();
+    broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
+    console.error("Error deleting character in Firestore:", err);
+    throw err;
   }
 }
 
@@ -590,35 +624,70 @@ export async function transferCoins(
   amount: number,
   memoOrToName?: string
 ): Promise<{ success: boolean; message: string }> {
-  if (amount <= 0) return { success: false, message: "จำนวนเหรียญต้องมากกว่า 0" };
+  const normalizedAmount = Math.floor(Number(amount));
+  if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
+    return { success: false, message: "จำนวนเหรียญต้องมากกว่า 0" };
+  }
   const senderId = typeof fromCharOrId === 'string' ? fromCharOrId : fromCharOrId.id;
   if (senderId === toCharId) return { success: false, message: "ไม่สามารถโอนเหรียญให้ตนเองได้" };
 
-  const sender = localCharacters.find(c => c.id === senderId);
-  const receiver = localCharacters.find(c => c.id === toCharId);
-  if (!sender || !receiver) return { success: false, message: "ไม่พบข้อมูลผู้เล่น" };
+  const senderRef = doc(db, CHARACTERS_COLLECTION, senderId);
+  const receiverRef = doc(db, CHARACTERS_COLLECTION, toCharId);
+  const notificationId = `notif-transfer-${Date.now()}-${senderId}-${toCharId}`;
+  let committedSender: CharacterProfile | null = null;
+  let committedReceiver: CharacterProfile | null = null;
 
-  if (sender.coins < amount) {
-    return { success: false, message: "เหรียญไม่เพียงพอสำหรับการโอน" };
+  try {
+    await runTransaction(db, async (transaction) => {
+      const senderSnap = await transaction.get(senderRef);
+      const receiverSnap = await transaction.get(receiverRef);
+      if (!senderSnap.exists() || !receiverSnap.exists()) throw new Error("ไม่พบข้อมูลผู้เล่น");
+
+      const sender = { ...senderSnap.data(), id: senderSnap.id } as CharacterProfile;
+      const receiver = { ...receiverSnap.data(), id: receiverSnap.id } as CharacterProfile;
+      const senderCoins = Number(sender.coins) || 0;
+      if (senderCoins < normalizedAmount) throw new Error("เหรียญไม่เพียงพอสำหรับการโอน");
+
+      const timestamp = Date.now();
+      committedSender = {
+        ...sender,
+        coins: senderCoins - normalizedAmount,
+        lastUpdated: Math.max(timestamp, (Number(sender.lastUpdated) || 0) + 1),
+      };
+      committedReceiver = {
+        ...receiver,
+        coins: (Number(receiver.coins) || 0) + normalizedAmount,
+        notifications: [
+          {
+            id: notificationId,
+            title: "ได้รับเหรียญ Coins โอนเข้าบัญชี",
+            message: `ได้รับ ${normalizedAmount.toLocaleString()} Coins จาก "${sender.displayName}"${memoOrToName ? ` (บันทึก: ${memoOrToName})` : ''}`,
+            timestamp,
+            read: false,
+            type: "trade" as const,
+          },
+          ...(receiver.notifications || [])
+        ],
+        lastUpdated: Math.max(timestamp, (Number(receiver.lastUpdated) || 0) + 1),
+      };
+      transaction.set(senderRef, sanitizeForFirestore(committedSender));
+      transaction.set(receiverRef, sanitizeForFirestore(committedReceiver));
+    });
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : "การโอนเหรียญล้มเหลว" };
   }
 
-  sender.coins -= amount;
-  receiver.coins += amount;
-  receiver.notifications = [
-    {
-      id: `notif-transfer-${Date.now()}`,
-      title: "ได้รับเหรียญ Coins โอนเข้าบัญชี",
-      message: `ได้รับ ${amount.toLocaleString()} Coins จาก "${sender.displayName}"${memoOrToName ? ` (บันทึก: ${memoOrToName})` : ''}`,
-      timestamp: Date.now(),
-      read: false,
-      type: "trade",
-    },
-    ...(receiver.notifications || [])
-  ];
-
-  await updateCharacterData(sender);
-  await updateCharacterData(receiver);
-  return { success: true, message: `โอนสำเร็จ ${amount.toLocaleString()} Coins!` };
+  if (committedSender && committedReceiver) {
+    pendingCharacterUpdates.set(senderId, committedSender);
+    pendingCharacterUpdates.set(toCharId, committedReceiver);
+    localCharacters = localCharacters.map(character =>
+      character.id === senderId ? committedSender! :
+      character.id === toCharId ? committedReceiver! : character
+    );
+    saveLocalAll();
+    broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
+  }
+  return { success: true, message: `โอนสำเร็จ ${normalizedAmount.toLocaleString()} Coins!` };
 }
 
 // Add Shop item (Admin)
@@ -635,7 +704,9 @@ export async function addShopItem(item: Item): Promise<void> {
   try {
     // Admin forms intentionally leave unrelated effect fields undefined.
     // Firestore rejects undefined values, so sanitize before writing.
-    await setDoc(doc(db, SHOP_ITEMS_COLLECTION, id), sanitizeForFirestore(fullItem));
+    await enqueuePersistenceWrite(`shop:${id}`, () =>
+      setDoc(doc(db, SHOP_ITEMS_COLLECTION, id), sanitizeForFirestore(fullItem))
+    );
   } catch (err) {
     pendingShopItems.delete(id);
     localShopItems = previousItem
@@ -658,7 +729,9 @@ export async function deleteShopItem(itemId: string): Promise<void> {
   broadcast?.postMessage({ type: 'SHOP_UPDATE' });
 
   try {
-    await deleteDoc(doc(db, SHOP_ITEMS_COLLECTION, itemId));
+    await enqueuePersistenceWrite(`shop:${itemId}`, () =>
+      deleteDoc(doc(db, SHOP_ITEMS_COLLECTION, itemId))
+    );
   } catch (err) {
     pendingShopDeletes.delete(itemId);
     if (previousItem) localShopItems = [previousItem, ...localShopItems.filter(existing => existing.id !== itemId)];
@@ -672,30 +745,6 @@ export async function deleteShopItem(itemId: string): Promise<void> {
 // Subscribe to Gacha Rewards
 export function subscribeToGachaRewards(callback: (rewards: GachaReward[]) => void) {
   gachaRewardsListeners.add(callback);
-
-  async function migrateDefaultGachaRewards(currentRewards: GachaReward[]) {
-    if (gachaDefaultsMigrationStarted) return;
-    gachaDefaultsMigrationStarted = true;
-
-    try {
-      const markerRef = doc(db, GACHA_CONFIG_COLLECTION, "gacha-defaults-v1");
-      const markerSnap = await getDoc(markerRef);
-      if (markerSnap.exists()) return;
-
-      const missingDefaults = INITIAL_GACHA_REWARDS.filter(
-        defaultReward => !currentRewards.some(reward => reward.id === defaultReward.id)
-      );
-      await Promise.all(
-        missingDefaults.map(reward =>
-          setDoc(doc(db, GACHA_REWARDS_COLLECTION, reward.id), reward)
-        )
-      );
-      await setDoc(markerRef, { version: 1, migratedAt: Date.now() });
-    } catch (err) {
-      gachaDefaultsMigrationStarted = false;
-      console.warn("Error migrating default gacha rewards:", err);
-    }
-  }
 
   try {
     const q = collection(db, GACHA_REWARDS_COLLECTION);
@@ -718,8 +767,6 @@ export function subscribeToGachaRewards(callback: (rewards: GachaReward[]) => vo
         if (!snapshotIds.has(rewardId)) pendingGachaDeletes.delete(rewardId);
       });
 
-      void migrateDefaultGachaRewards(list);
-
       const pendingRewards = Array.from(pendingGachaRewards.values());
       const mergedList = [
         ...list.filter(reward => !pendingGachaRewards.has(reward.id) && !pendingGachaDeletes.has(reward.id)),
@@ -735,14 +782,16 @@ export function subscribeToGachaRewards(callback: (rewards: GachaReward[]) => vo
       callback(localGachaRewards);
     });
 
+    let handleBroadcast: ((ev: MessageEvent) => void) | null = null;
     if (broadcast) {
-      const handleBroadcast = (ev: MessageEvent) => {
+      handleBroadcast = (ev: MessageEvent) => {
         if (ev.data?.type === 'GACHA_REWARDS_UPDATE') callback(localGachaRewards);
       };
       broadcast.addEventListener('message', handleBroadcast);
     }
     return () => {
       gachaRewardsListeners.delete(callback);
+      if (broadcast && handleBroadcast) broadcast.removeEventListener('message', handleBroadcast);
       unsub();
     };
   } catch (err) {
@@ -783,15 +832,19 @@ export function subscribeToGachaConfig(callback: (config: GachaConfig) => void) 
       callback(localGachaConfig);
     });
 
+    let handleBroadcast: ((ev: MessageEvent) => void) | null = null;
     if (broadcast) {
-      const handleBroadcast = (ev: MessageEvent) => {
+      handleBroadcast = (ev: MessageEvent) => {
         if (ev.data?.type === 'GACHA_CONFIG_UPDATE') {
           callback(localGachaConfig);
         }
       };
       broadcast.addEventListener('message', handleBroadcast);
     }
-    return unsub;
+    return () => {
+      if (broadcast && handleBroadcast) broadcast.removeEventListener('message', handleBroadcast);
+      unsub();
+    };
   } catch (err) {
     callback(localGachaConfig);
     return () => {};
@@ -807,7 +860,9 @@ export async function updateGachaConfig(config: GachaConfig): Promise<void> {
   broadcast?.postMessage({ type: 'GACHA_CONFIG_UPDATE' });
 
   try {
-    await setDoc(doc(db, GACHA_CONFIG_COLLECTION, "main"), config);
+      await enqueuePersistenceWrite('gacha-config:main', () =>
+        setDoc(doc(db, GACHA_CONFIG_COLLECTION, "main"), sanitizeForFirestore(config))
+      );
   } catch (err) {
     pendingGachaConfig = null;
     localGachaConfig = previousConfig;
@@ -836,7 +891,9 @@ export async function saveGachaReward(reward: GachaReward): Promise<void> {
 
   try {
     const firestoreReward = stripUndefined(fullReward);
-    await setDoc(doc(db, GACHA_REWARDS_COLLECTION, id), firestoreReward);
+    await enqueuePersistenceWrite(`gacha-reward:${id}`, () =>
+      setDoc(doc(db, GACHA_REWARDS_COLLECTION, id), firestoreReward)
+    );
   } catch (err) {
     pendingGachaRewards.delete(id);
     localGachaRewards = previousReward
@@ -859,7 +916,9 @@ export async function deleteGachaReward(rewardId: string): Promise<void> {
   notifyGachaRewards();
 
   try {
-    await deleteDoc(doc(db, GACHA_REWARDS_COLLECTION, rewardId));
+    await enqueuePersistenceWrite(`gacha-reward:${rewardId}`, () =>
+      deleteDoc(doc(db, GACHA_REWARDS_COLLECTION, rewardId))
+    );
   } catch (err) {
     pendingGachaDeletes.delete(rewardId);
     if (deletedReward) localGachaRewards = [deletedReward, ...localGachaRewards];
@@ -939,826 +998,3 @@ export async function removeItemFromPlayer(
   const currentInventory: InventoryItem[] = [...(char.inventory || [])];
   const targetItemIndex = currentInventory.findIndex(i => i.instanceId === instanceId || i.id === instanceId);
   if (targetItemIndex === -1) {
-    return { success: false, message: "ไม่พบไอเทมนี้ในคลังของผู้เล่น" };
-  }
-
-  const targetItem = currentInventory[targetItemIndex];
-  const removedItemName = targetItem.name;
-
-  if (quantityToRemove && quantityToRemove < targetItem.quantity) {
-    currentInventory[targetItemIndex] = {
-      ...targetItem,
-      quantity: targetItem.quantity - quantityToRemove
-    };
-  } else {
-    currentInventory.splice(targetItemIndex, 1);
-  }
-
-  const notifs = [
-    {
-      id: `notif-revoke-${Date.now()}`,
-      title: "ระบบได้ทำการลบไอเทมออกจากคลัง",
-      message: `${adminName} ได้ทำการลบไอเทม "${removedItemName}" ออกจากคลังกระเป๋าของคุณ`,
-      timestamp: Date.now(),
-      read: false,
-      type: "admin" as const
-    },
-    ...(char.notifications || [])
-  ];
-
-  const updated: CharacterProfile = {
-    ...char,
-    inventory: currentInventory,
-    notifications: notifs,
-    lastUpdated: Date.now()
-  };
-
-  await updateCharacterData(updated);
-  return { 
-    success: true, 
-    message: `ลบไอเทม "${removedItemName}" ออกจากคลังของ ${char.displayName} สำเร็จ!`,
-    updatedChar: updated
-  };
-}
-
-// Subscribe to Card Duel Rooms
-export function subscribeToDuelRooms(callback: (rooms: CardDuelRoom[]) => void) {
-  duelRoomListeners.add(callback);
-
-  try {
-    const q = collection(db, CARD_DUEL_ROOMS_COLLECTION);
-    const unsub = onSnapshot(q, (snapshot) => {
-      applyDuelRoomSnapshot(snapshot);
-    }, (err) => {
-      console.warn("Duel rooms listener error, polling Firestore:", err);
-      notifyDuelRooms();
-    });
-
-    const pollTimer = setInterval(async () => {
-      // Automatically flush any pending room writes to Firestore
-      if (pendingDuelRooms.size > 0) {
-        for (const [id, pendingRoom] of Array.from(pendingDuelRooms.entries())) {
-          try {
-            await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, id), sanitizeForFirestore(pendingRoom));
-            pendingDuelRooms.delete(id);
-          } catch (e) {
-            // Keep in pending for next flush attempt
-          }
-        }
-      }
-      try {
-        const polledSnapshot = await getDocs(q);
-        applyDuelRoomSnapshot(polledSnapshot);
-      } catch (err) {
-        console.warn("Duel rooms polling error:", err);
-      }
-    }, 2000);
-
-    if (broadcast) {
-      const handleBroadcast = (ev: MessageEvent) => {
-        if (ev.data?.type !== 'DUEL_ROOMS_UPDATE') return;
-        if (ev.data.room?.id) {
-          pendingDuelRooms.set(ev.data.room.id, ev.data.room);
-          pendingDuelDeletes.delete(ev.data.room.id);
-          localDuelRooms = [ev.data.room, ...localDuelRooms.filter(room => room.id !== ev.data.room.id)];
-        } else if (ev.data.roomId) {
-          pendingDuelDeletes.add(ev.data.roomId);
-          pendingDuelRooms.delete(ev.data.roomId);
-          localDuelRooms = localDuelRooms.filter(room => room.id !== ev.data.roomId);
-        }
-        saveLocalAll();
-        notifyDuelRooms();
-      };
-      broadcast.addEventListener('message', handleBroadcast);
-      return () => {
-        duelRoomListeners.delete(callback);
-        broadcast.removeEventListener('message', handleBroadcast);
-        clearInterval(pollTimer);
-        unsub();
-      };
-    }
-
-    return () => {
-      duelRoomListeners.delete(callback);
-      clearInterval(pollTimer);
-      unsub();
-    };
-  } catch (err) {
-    notifyDuelRooms();
-    return () => duelRoomListeners.delete(callback);
-  }
-}
-
-// Create Card Duel Room
-export async function createDuelRoom(room: CardDuelRoom): Promise<string> {
-  const id = room.id || `room-${Date.now()}`;
-  const fullRoom = {
-    ...room,
-    id,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  };
-
-  pendingDuelRooms.set(id, fullRoom);
-  pendingDuelDeletes.delete(id);
-  localDuelRooms = [fullRoom, ...localDuelRooms.filter(r => r.id !== id)];
-  saveLocalAll();
-  notifyDuelRooms();
-  broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE', room: fullRoom });
-
-  // If invitedPlayerId or opponentId is specified, notify them!
-  const targetOpponentId = room.invitedPlayerId || room.opponentId;
-  if (targetOpponentId) {
-    const opp = localCharacters.find(c => c.id === targetOpponentId);
-    if (opp) {
-      opp.notifications = [
-        {
-          id: `notif-duel-invite-${Date.now()}`,
-          title: "มีสารท้าดวลศึกไพ่ 21!",
-          message: `"${room.creatorName}" ได้เชิญคุณเข้าร่วมศึกดวลไพ่ 21 เดิมพัน ${room.betAmount.toLocaleString()} Coins กดเข้าสู่โหมดการ์ดเกมเพื่อตอบรับคำท้า`,
-          timestamp: Date.now(),
-          read: false,
-          type: "game" as const
-        },
-        ...(opp.notifications || [])
-      ];
-      await updateCharacterData(opp);
-    }
-  }
-
-  const cleaned = sanitizeForFirestore(fullRoom);
-  try {
-    await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, id), cleaned);
-    pendingDuelRooms.delete(id);
-  } catch (err: any) {
-    console.warn("Firestore create duel room error:", err?.code, err?.message);
-    if (err?.code === 'unavailable' || err?.message?.includes('offline') || err?.message?.includes('unavailable')) {
-      // Offline / transient disconnect: keep room in local state and retry in background
-      setTimeout(async () => {
-        try {
-          await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, id), cleaned);
-          pendingDuelRooms.delete(id);
-        } catch (retryErr) {
-          console.warn("Background create retry failed:", retryErr);
-        }
-      }, 1500);
-      return id;
-    }
-    pendingDuelRooms.delete(id);
-    localDuelRooms = localDuelRooms.filter(r => r.id !== id);
-    saveLocalAll();
-    notifyDuelRooms();
-    console.error("Error creating duel room in Firestore:", err);
-    throw new Error("ไม่สามารถสร้างห้องดวลบนเซิร์ฟเวอร์ได้: " + (err?.message || ''));
-  }
-  return id;
-}
-
-// Update Card Duel Room
-export async function updateDuelRoom(room: CardDuelRoom): Promise<void> {
-  const updated = {
-    ...room,
-    updatedAt: Date.now()
-  };
-  pendingDuelRooms.set(updated.id, updated);
-  pendingDuelDeletes.delete(updated.id);
-  localDuelRooms = localDuelRooms.map(r => r.id === updated.id ? updated : r);
-  saveLocalAll();
-  notifyDuelRooms();
-  broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE', room: updated });
-
-  const cleaned = sanitizeForFirestore(updated);
-
-  // Write with a timeout so slow networks (e.g. mobile 0.40 KB/s) never hang the app
-  const doWrite = async () => {
-    let t: any;
-    const timeout = new Promise<never>((_, reject) => {
-      t = setTimeout(() => reject(new Error('timeout')), 3500);
-    });
-    try {
-      await Promise.race([
-        setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), cleaned),
-        timeout
-      ]);
-      clearTimeout(t);
-      pendingDuelRooms.delete(updated.id);
-    } catch (err) {
-      clearTimeout(t);
-      throw err;
-    }
-  };
-
-  try {
-    await doWrite();
-  } catch (err: any) {
-    console.warn("Direct Firestore updateDuelRoom deferred or timed out:", err?.message || err);
-    // Keep in pendingDuelRooms! The poll loop and syncDuelRoomById will automatically flush it to Firestore.
-    // Also schedule immediate retries
-    [800, 2000, 4000].forEach((delay) => {
-      setTimeout(async () => {
-        if (!pendingDuelRooms.has(updated.id)) return;
-        try {
-          await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, room.id), cleaned);
-          pendingDuelRooms.delete(updated.id);
-        } catch (retryErr) {
-          // Will be retried on next poll
-        }
-      }, delay);
-    });
-  }
-}
-
-// Force-sync a specific duel room by ID from Firestore and flush any local pending writes
-export async function syncDuelRoomById(roomId: string): Promise<CardDuelRoom | null> {
-  // 1. Flush any pending write for this room
-  const pending = pendingDuelRooms.get(roomId);
-  if (pending) {
-    try {
-      await setDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, roomId), sanitizeForFirestore(pending));
-      pendingDuelRooms.delete(roomId);
-    } catch (e) {
-      console.warn("Could not flush pending room yet during sync:", e);
-    }
-  }
-
-  // 2. Fetch fresh room doc from Firestore
-  try {
-    const snap = await getDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, roomId));
-    if (snap.exists()) {
-      const room = { ...snap.data(), id: snap.id } as CardDuelRoom;
-      const currentPending = pendingDuelRooms.get(roomId);
-      // If we still have an unflushed pending action that is newer, don't overwrite with older remote
-      if (currentPending && currentPending.updatedAt && room.updatedAt && currentPending.updatedAt > room.updatedAt) {
-        return currentPending;
-      }
-      localDuelRooms = [room, ...localDuelRooms.filter(r => r.id !== roomId)];
-      saveLocalAll();
-      notifyDuelRooms();
-      return room;
-    }
-  } catch (err) {
-    console.warn("syncDuelRoomById getDoc error:", err);
-  }
-  return null;
-}
-
-// Accept Card Duel Challenge / Join Room
-export async function acceptDuelChallenge(roomId: string, opponent: CharacterProfile): Promise<void> {
-  const room = localDuelRooms.find(r => r.id === roomId);
-  if (!room) throw new Error("ไม่พบห้องดวลที่เลือก");
-  if (room.status !== 'waiting') throw new Error("ห้องนี้มีผู้เข้าร่วมครบแล้วหรือการแข่งขันได้เริ่มขึ้นแล้ว");
-
-  // Deduct/hold coins or prepare match
-  const readyList = Array.from(new Set([...(room.readyPlayers || []), room.creatorId, opponent.id]));
-  const isFullAndReady = readyList.length >= (room.requiredPlayersCount || 2);
-
-  room.opponentId = opponent.id;
-  room.opponentName = opponent.displayName;
-  room.opponentAvatar = opponent.avatarUrl;
-  room.readyPlayers = readyList;
-  room.status = isFullAndReady ? 'ready' : 'waiting';
-  room.updatedAt = Date.now();
-
-  // Send immediate notifications to both players
-  const creator = localCharacters.find(c => c.id === room.creatorId);
-  if (creator) {
-    creator.notifications = [
-      {
-        id: `notif-duel-ready-${Date.now()}`,
-        title: "ผู้เล่นพร้อมเล่นครบตามจำนวนแล้ว!",
-        message: `"${opponent.displayName}" ได้เข้าร่วมห้องดวลไพ่ 21 แล้ว! ผู้เล่นพร้อมครบตามจำนวนที่กำหนดไว้ทันที สามารถเริ่มการดวลได้เลย`,
-        timestamp: Date.now(),
-        read: false,
-        type: "game" as const
-      },
-      ...(creator.notifications || [])
-    ];
-    await updateCharacterData(creator);
-  }
-
-  opponent.notifications = [
-    {
-      id: `notif-duel-accepted-${Date.now()}`,
-      title: "เข้าร่วมศึกดวลไพ่ 21 สำเร็จ!",
-      message: `คุณได้เข้าร่วมห้องดวลกับ "${room.creatorName}" แล้ว! ผู้เล่นครบตามจำนวนพร้อมเริ่มการประลองทันที`,
-      timestamp: Date.now(),
-      read: false,
-      type: "game" as const
-    },
-    ...(opponent.notifications || [])
-  ];
-  await updateCharacterData(opponent);
-
-  await updateDuelRoom(room);
-}
-
-// Cancel or Delete Card Duel Room
-export async function cancelDuelRoom(roomId: string): Promise<void> {
-  pendingDuelDeletes.add(roomId);
-  pendingDuelRooms.delete(roomId);
-  localDuelRooms = localDuelRooms.filter(r => r.id !== roomId);
-  saveLocalAll();
-  notifyDuelRooms();
-  broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE', roomId });
-
-  try {
-    await deleteDoc(doc(db, CARD_DUEL_ROOMS_COLLECTION, roomId));
-  } catch (err) {
-    console.warn("Error deleting duel room in Firestore:", err);
-  }
-}
-
-// Reset all database collections to initial values
-export async function resetDatabaseToDefaults(): Promise<void> {
-  localCharacters = INITIAL_CHARACTERS;
-  localShopItems = INITIAL_SHOP_ITEMS;
-  localGachaRewards = INITIAL_GACHA_REWARDS;
-  localGachaConfig = INITIAL_GACHA_CONFIG;
-  localDuelRooms = [];
-  saveLocalAll();
-
-  broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
-  broadcast?.postMessage({ type: 'SHOP_UPDATE' });
-  broadcast?.postMessage({ type: 'GACHA_REWARDS_UPDATE' });
-  broadcast?.postMessage({ type: 'GACHA_CONFIG_UPDATE' });
-  broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE' });
-
-  for (const char of INITIAL_CHARACTERS) {
-    const score = calculatePowerScore(char);
-    try {
-      await setDoc(doc(db, CHARACTERS_COLLECTION, char.id), {
-        ...char,
-        powerScore: score,
-      });
-    } catch (e) {}
-  }
-  for (const item of INITIAL_SHOP_ITEMS) {
-    try {
-      await setDoc(doc(db, SHOP_ITEMS_COLLECTION, item.id), item);
-    } catch (e) {}
-  }
-  for (const reward of INITIAL_GACHA_REWARDS) {
-    try {
-      await setDoc(doc(db, GACHA_REWARDS_COLLECTION, reward.id), reward);
-    } catch (e) {}
-  }
-  try {
-    await setDoc(doc(db, GACHA_CONFIG_COLLECTION, "main"), INITIAL_GACHA_CONFIG);
-  } catch (e) {}
-}
-
-// Card 21 Match Bet Settlement
-export async function settleCard21Bet(
-  winnerChar: CharacterProfile,
-  loserChar: CharacterProfile | null,
-  betAmount: number,
-  isTie: boolean,
-  reason: string
-): Promise<void> {
-  if (betAmount <= 0) return;
-  if (isTie) return;
-
-  if (!loserChar) {
-    const newCoins = winnerChar.coins + betAmount;
-    await updateCharacterData({
-      ...winnerChar,
-      coins: newCoins,
-      notifications: [
-        {
-          id: `notif-card21-win-${Date.now()}`,
-          title: "ชนะศึกดวลไพ่ 21!",
-          message: `${reason} ได้รับเหรียญรางวัล +${betAmount.toLocaleString()} Coins`,
-          timestamp: Date.now(),
-          read: false,
-          type: "game",
-        },
-        ...winnerChar.notifications,
-      ],
-    });
-  } else {
-    await transferCoins(
-      loserChar,
-      winnerChar.id,
-      betAmount,
-      winnerChar.displayName
-    );
-  }
-}
-
-// Aliases
-export const subscribeToShopItems = subscribeToShop;
-export const updateCharacter = updateCharacterData;
-export const updateCharacterInDB = updateCharacterData;
-export const addCharacterToDB = updateCharacterData;
-export const transferCoinsBetweenCharacters = transferCoins;
-export const saveShopItem = addShopItem;
-export const addShopItemToDB = addShopItem;
-export const removeShopItem = deleteShopItem;
-export const deleteShopItemFromDB = deleteShopItem;
-export const removeGachaReward = deleteGachaReward;
-export const deleteGachaRewardFromDB = deleteGachaReward;
-export const addGachaRewardToDB = saveGachaReward;
-export const updateGachaRewardInDB = saveGachaReward;
-export const saveGachaConfig = updateGachaConfig;
-export const updateGachaConfigInDB = updateGachaConfig;
-
-
-// TEAM BATTLE DATA AND RULES
-const BATTLE_CONFIG_COLLECTION = "battle_config";
-const BATTLE_BOTS_COLLECTION = "battle_bots";
-const BATTLE_ROOMS_COLLECTION = "battle_rooms";
-
-export const DEFAULT_BATTLE_CONFIG: BattleConfig = {
-  id: "main",
-  enabled: true,
-  sides: 6,
-  strengthPerDamage: 3,
-  faces: [
-    { face: 1, effect: "miss", value: 0, label: "พลาด", description: "การโจมตีไม่สร้างความเสียหาย" },
-    { face: 2, effect: "damage", value: 1, label: "โจมตีปกติ", description: "ดาเมจพื้นฐาน" },
-    { face: 3, effect: "damage", value: 1, label: "โจมตีปกติ", description: "ดาเมจพื้นฐาน" },
-    { face: 4, effect: "damage", value: 1.5, label: "โจมตีหนัก", description: "ดาเมจพื้นฐาน x1.5" },
-    { face: 5, effect: "critical", value: 2, label: "คริติคอล", description: "ดาเมจพื้นฐาน x2" },
-    { face: 6, effect: "heal", value: 2, label: "ฟื้นฟู", description: "ฟื้น HP 2 หน่วย" },
-  ],
-  bossDice: {
-    enabled: true,
-    sides: 8,
-    strengthPerDamage: 2,
-    faces: [
-      { face: 1, effect: "miss", value: 0, label: "พลาด", description: "บอสพลาดการโจมตี" },
-      { face: 2, effect: "damage", value: 1, label: "กรงเล็บอสูร", description: "ดาเมจบอสพื้นฐาน" },
-      { face: 3, effect: "damage", value: 1.5, label: "คำรามทำลาย", description: "ดาเมจบอส x1.5" },
-      { face: 4, effect: "defense", value: 5, label: "เกราะบอส", description: "ลดดาเมจที่ได้รับ 5 ในเทิร์นถัดไป" },
-      { face: 5, effect: "critical", value: 2, label: "คริติคอลบอส", description: "ดาเมจบอส x2" },
-      { face: 6, effect: "heal", value: 4, label: "ฟื้นฟูบอส", description: "บอสฟื้น HP 4 หน่วย" },
-      { face: 7, effect: "reflect", value: 35, label: "สะท้อนคำสาป", description: "สะท้อนดาเมจ 35% ในเทิร์นถัดไป" },
-      { face: 8, effect: "stun", value: 1, label: "ทุบให้สตัน", description: "สร้างดาเมจและทำให้เป้าหมายเสียเทิร์น" },
-    ],
-  },
-  updatedAt: Date.now(),
-};
-
-let localBattleConfig: BattleConfig = (() => {
-  try {
-    const saved = localStorage.getItem("starstream_battle_config");
-    if (saved) return JSON.parse(saved);
-  } catch (e) {}
-  return DEFAULT_BATTLE_CONFIG;
-})();
-let localBattleBots: BattleBot[] = (() => {
-  try {
-    const saved = localStorage.getItem("starstream_battle_bots");
-    if (saved) return JSON.parse(saved);
-  } catch (e) {}
-  return [];
-})();
-let localBattleRooms: BattleRoom[] = (() => {
-  try {
-    const saved = localStorage.getItem("starstream_battle_rooms");
-    if (saved) return JSON.parse(saved);
-  } catch (e) {}
-  return [];
-})();
-const battleConfigListeners = new Set<(config: BattleConfig) => void>();
-const battleBotListeners = new Set<(bots: BattleBot[]) => void>();
-const battleRoomListeners = new Set<(rooms: BattleRoom[]) => void>();
-
-function saveBattleLocal() {
-  try {
-    localStorage.setItem("starstream_battle_config", JSON.stringify(localBattleConfig));
-    localStorage.setItem("starstream_battle_bots", JSON.stringify(localBattleBots));
-    localStorage.setItem("starstream_battle_rooms", JSON.stringify(localBattleRooms));
-  } catch (e) {}
-}
-function notifyBattleConfig() { battleConfigListeners.forEach(listener => listener(localBattleConfig)); }
-function notifyBattleBots() { battleBotListeners.forEach(listener => listener([...localBattleBots])); }
-function notifyBattleRooms() { battleRoomListeners.forEach(listener => listener([...localBattleRooms])); }
-
-export function subscribeToBattleConfig(callback: (config: BattleConfig) => void) {
-  callback(localBattleConfig);
-  battleConfigListeners.add(callback);
-  try {
-    return onSnapshot(doc(db, BATTLE_CONFIG_COLLECTION, "main"), (snapshot) => {
-      if (snapshot.exists()) {
-        localBattleConfig = { ...DEFAULT_BATTLE_CONFIG, ...snapshot.data(), id: "main" } as BattleConfig;
-        saveBattleLocal();
-        callback(localBattleConfig);
-      }
-    }, () => callback(localBattleConfig));
-  } catch (err) {
-    return () => {};
-  }
-}
-
-export function subscribeToBattleBots(callback: (bots: BattleBot[]) => void) {
-  callback(localBattleBots);
-  battleBotListeners.add(callback);
-  try {
-    return onSnapshot(collection(db, BATTLE_BOTS_COLLECTION), (snapshot) => {
-      if (snapshot.empty) return;
-      localBattleBots = snapshot.docs.map(item => ({ ...item.data(), id: item.id } as BattleBot));
-      saveBattleLocal();
-      callback(localBattleBots);
-    }, () => callback(localBattleBots));
-  } catch (err) {
-    return () => {};
-  }
-}
-
-export function subscribeToBattleRooms(callback: (rooms: BattleRoom[]) => void) {
-  callback(localBattleRooms);
-  battleRoomListeners.add(callback);
-  try {
-    return onSnapshot(collection(db, BATTLE_ROOMS_COLLECTION), (snapshot) => {
-      if (snapshot.empty) return;
-      localBattleRooms = snapshot.docs
-        .map(item => ({ ...item.data(), id: item.id } as BattleRoom))
-        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-      saveBattleLocal();
-      callback(localBattleRooms);
-    }, () => callback(localBattleRooms));
-  } catch (err) {
-    return () => {};
-  }
-}
-
-export async function saveBattleConfig(config: BattleConfig): Promise<void> {
-  const next = { ...config, id: "main", updatedAt: Date.now() };
-  localBattleConfig = next;
-  saveBattleLocal();
-  notifyBattleConfig();
-  await setDoc(doc(db, BATTLE_CONFIG_COLLECTION, "main"), sanitizeForFirestore(next));
-}
-
-export async function saveBattleBot(bot: BattleBot): Promise<void> {
-  const id = bot.id || "bot-" + Date.now();
-  const next = { ...bot, id, createdAt: bot.createdAt || Date.now(), updatedAt: Date.now() };
-  localBattleBots = [next, ...localBattleBots.filter(item => item.id !== id)];
-  saveBattleLocal();
-  notifyBattleBots();
-  await setDoc(doc(db, BATTLE_BOTS_COLLECTION, id), sanitizeForFirestore(next));
-}
-
-export async function deleteBattleBot(botId: string): Promise<void> {
-  localBattleBots = localBattleBots.filter(bot => bot.id !== botId);
-  saveBattleLocal();
-  notifyBattleBots();
-  await deleteDoc(doc(db, BATTLE_BOTS_COLLECTION, botId));
-}
-
-export async function createBattleRoom(room: BattleRoom): Promise<string> {
-  const id = room.id || "battle-" + Date.now();
-  const next = { ...room, id, createdAt: room.createdAt || Date.now(), updatedAt: Date.now() };
-  localBattleRooms = [next, ...localBattleRooms.filter(item => item.id !== id)];
-  saveBattleLocal();
-  notifyBattleRooms();
-  await setDoc(doc(db, BATTLE_ROOMS_COLLECTION, id), sanitizeForFirestore(next));
-  return id;
-}
-
-export async function updateBattleRoom(room: BattleRoom): Promise<void> {
-  const next = { ...room, updatedAt: Date.now() };
-  localBattleRooms = [next, ...localBattleRooms.filter(item => item.id !== next.id)];
-  saveBattleLocal();
-  notifyBattleRooms();
-  await setDoc(doc(db, BATTLE_ROOMS_COLLECTION, next.id), sanitizeForFirestore(next));
-}
-
-export async function deleteBattleRoom(roomId: string): Promise<void> {
-  localBattleRooms = localBattleRooms.filter(room => room.id !== roomId);
-  saveBattleLocal();
-  notifyBattleRooms();
-  await deleteDoc(doc(db, BATTLE_ROOMS_COLLECTION, roomId));
-}
-
-export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect; power: number; cooldownTurns: number } {
-  const text = `${skill.name || ""} ${skill.description || ""} ${skill.type || ""}`.toLowerCase();
-  const effect = skill.battleEffect
-    || (text.includes("สะท้อน") || text.includes("reflect") ? "reflect"
-      : text.includes("ป้องกัน") || text.includes("เกราะ") || text.includes("ม่าน") || text.includes("shield") || text.includes("หลบ") ? "defense"
-        : text.includes("สตัน") || text.includes("มึนงง") || text.includes("stun") ? "stun"
-          : text.includes("ฟื้น") || text.includes("รักษา") || text.includes("heal") ? "heal" : "damage");
-  const percent = Number(text.match(/(\d+)\s*%/)?.[1] || 0);
-  // Skills created before cooldownTurns existed use the migration default of 3 turns.
-  const configuredCooldown = skill.cooldownTurns == null ? 3 : skill.cooldownTurns;
-  const cooldownTurns = Math.max(0, Math.min(99, Math.round(configuredCooldown)));
-  const power = Math.max(1, skill.battlePower ?? (effect === "reflect" ? percent || 35 : effect === "defense" ? 5 : 5));
-  return { effect, power, cooldownTurns };
-}
-
-function getActiveAdminStatusEffects(unit: BattleCombatant): AdminStatusEffect[] {
-  return (unit.adminStatusEffects || []).filter(effect => effect.remaining > 0);
-}
-
-function getAdminOutgoingDamageMultiplier(unit: BattleCombatant): number {
-  return getActiveAdminStatusEffects(unit).reduce((multiplier, effect) => {
-    if (!['curse', 'weakness', 'slow'].includes(effect.kind)) return multiplier;
-    const percent = Math.min(100, Math.max(0, Number(effect.power) || 0)) / 100;
-    return multiplier * (effect.mode === 'buff' ? 1 + percent : 1 - percent);
-  }, 1);
-}
-
-function getAdminIncomingDamageMultiplier(unit: BattleCombatant): number {
-  return getActiveAdminStatusEffects(unit).reduce((multiplier, effect) => {
-    if (effect.kind !== 'shield') return multiplier;
-    const percent = Math.min(100, Math.max(0, Number(effect.power) || 0)) / 100;
-    return multiplier * (effect.mode === 'buff' ? 1 - percent : 1 + percent);
-  }, 1);
-}
-
-function getAdminReflectPercent(unit: BattleCombatant): number {
-  return getActiveAdminStatusEffects(unit)
-    .filter(effect => effect.kind === 'reflect')
-    .reduce((percent, effect) => Math.max(percent, Math.min(100, Math.max(0, Number(effect.power) || 0))), 0);
-}
-
-function tickAdminStatusEffects(unit: BattleCombatant): { message: string; skipTurn: boolean } {
-  const active = getActiveAdminStatusEffects(unit);
-  let damage = 0;
-  let healing = 0;
-  let skipTurn = false;
-  const messages: string[] = [];
-  active.forEach(effect => {
-    const power = Math.max(0, Math.round(Number(effect.power) || 0));
-    if (['bleeding', 'burn', 'poison'].includes(effect.kind) && effect.mode === 'nerf') damage += power;
-    if (effect.kind === 'regen' && effect.mode === 'buff') healing += power;
-    if (effect.kind === 'stun') skipTurn = true;
-  });
-  if (damage > 0) {
-    unit.hp = Math.max(0, unit.hp - damage);
-    messages.push(unit.name + ' ได้รับความเสียหายจากสถานะ ' + damage);
-  }
-  if (healing > 0) {
-    const restored = Math.min(healing, Math.max(0, unit.maxHp - unit.hp));
-    unit.hp = Math.min(unit.maxHp, unit.hp + healing);
-    if (restored > 0) messages.push(unit.name + ' ฟื้นฟูจากสถานะ ' + restored);
-  }
-  return { message: messages.join(' • '), skipTurn };
-}
-
-function advanceAdminStatusEffects(unit: BattleCombatant) {
-  if (!unit.adminStatusEffects) return;
-  unit.adminStatusEffects = unit.adminStatusEffects
-    .map(effect => ({ ...effect, remaining: Math.max(0, effect.remaining - 1) }))
-    .filter(effect => effect.remaining > 0);
-}
-
-export function rollBattleAttack(attacker: BattleCombatant, defender: BattleCombatant, config: BattleDiceConfig): BattleRollResult {
-  const sides = Math.max(2, config.sides || 6);
-  const roll = Math.floor(Math.random() * sides) + 1;
-  const face = config.faces.find(item => item.face === roll) || {
-    face: roll, effect: "damage" as const, value: 1, label: "โจมตีปกติ", description: "ดาเมจพื้นฐาน"
-  };
-  const baseDamage = Math.max(1, Math.round(Math.floor((attacker.stats?.strength || 0) / Math.max(1, config.strengthPerDamage || 3)) * getAdminOutgoingDamageMultiplier(attacker)));
-  let damage = 0;
-  let heal = 0;
-  if (face.effect === "damage" || face.effect === "critical" || face.effect === "stun") {
-    damage = Math.max(0, Math.round(baseDamage * Math.max(0, face.value || 1)));
-  }
-  if (face.effect === "heal") heal = Math.max(1, Math.round(face.value || 1));
-  const message = face.effect === "miss"
-    ? attacker.name + " ทอยได้หน้า " + roll + " — " + face.label
-    : face.effect === "heal"
-      ? attacker.name + " ทอยได้หน้า " + roll + " — " + face.label + " ฟื้น HP " + heal
-      : face.effect === "defense"
-        ? attacker.name + " ทอยได้หน้า " + roll + " — " + face.label + " ลดดาเมจ " + Math.max(0, Math.round(face.value || 0)) + " ในเทิร์นถัดไป"
-        : face.effect === "reflect"
-          ? attacker.name + " ทอยได้หน้า " + roll + " — " + face.label + " สะท้อนดาเมจ " + Math.max(0, Math.round(face.value || 0)) + "%"
-      : attacker.name + " ทอยได้หน้า " + roll + " — " + face.label + " สร้างดาเมจ " + damage;
-  return { roll, face, damage, heal, message };
-}
-
-function getBattleCombatants(room: BattleRoom): BattleCombatant[] {
-  return [...room.teamA, ...room.teamB];
-}
-function getNextBattleActor(room: BattleRoom, actorId: string): BattleCombatant | undefined {
-  const all = getBattleCombatants(room);
-  const start = Math.max(0, all.findIndex(item => item.id === actorId));
-  for (let step = 1; step <= all.length; step += 1) {
-    const candidate = all[(start + step) % all.length];
-    if (candidate && candidate.hp > 0) return candidate;
-  }
-  return undefined;
-}
-
-export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?: Skill): { room: BattleRoom; result: BattleRollResult | null } {
-  if (room.status !== "active") return { room, result: null };
-  const nextRoom: BattleRoom = {
-    ...room,
-    teamA: room.teamA.map(item => ({ ...item })),
-    teamB: room.teamB.map(item => ({ ...item })),
-    log: [...(room.log || [])],
-  };
-  const all = getBattleCombatants(nextRoom);
-  const actor = all.find(item => item.id === nextRoom.turnActorId) || all.find(item => item.hp > 0);
-  if (!actor || actor.hp <= 0) return { room, result: null };
-  const opponentTeam = actor.team === "a" ? nextRoom.teamB : nextRoom.teamA;
-  const defender = opponentTeam.find(item => item.hp > 0);
-  if (!defender) return { room: { ...nextRoom, status: "completed", winnerTeam: actor.team }, result: null };
-  const current = all.find(item => item.id === actor.id) as BattleCombatant;
-  const statusTick = tickAdminStatusEffects(current);
-  if (statusTick.skipTurn) current.stunnedTurns = Math.max(current.stunnedTurns || 0, 1);
-  let result: BattleRollResult | null = null;
-  if (current.hp <= 0) {
-    nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: current.name + (statusTick.message ? " • " + statusTick.message : "") + " หมดสติจากผลสถานะ", effect: "stun_skip" });
-  } else if ((current.stunnedTurns || 0) > 0) {
-    current.stunnedTurns = Math.max(0, (current.stunnedTurns || 0) - 1);
-    nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: current.name + (statusTick.message ? " • " + statusTick.message : "") + " ถูกสตัน จึงเสียเทิร์น", effect: "stun_skip" });
-  } else {
-    const diceConfig = current.isBoss && config.bossDice?.enabled ? config.bossDice : {
-      enabled: true,
-      sides: config.sides,
-      strengthPerDamage: config.strengthPerDamage,
-      faces: config.faces,
-    };
-    const cooldowns = { ...(current.skillCooldowns || {}) };
-    Object.keys(cooldowns).forEach(skillId => {
-      cooldowns[skillId] = Math.max(0, (cooldowns[skillId] || 0) - 1);
-      if (cooldowns[skillId] === 0) delete cooldowns[skillId];
-    });
-    current.skillCooldowns = cooldowns;
-    const skillProfile = skill ? getBattleSkillProfile(skill) : null;
-    const skillName = skill?.name || "สกิล";
-    if (skill && skillProfile && (current.skillCooldowns[skill.id] || 0) > 0) {
-      return { room, result: null };
-    }
-    result = rollBattleAttack(current, defender, diceConfig);
-    if (statusTick.message) result.message = statusTick.message + ' • ' + result.message;
-    if (skillProfile) {
-      result.skillEffect = skillProfile.effect;
-      result.skillPower = skillProfile.power;
-      if (skillProfile.effect === "damage") {
-        const skillDamage = Math.max(0, Math.round(skillProfile.power * getAdminOutgoingDamageMultiplier(current)));
-        result.damage += skillDamage;
-        result.message += ` • ใช้สกิล ${skillName} เพิ่มดาเมจ ${skillDamage}`;
-      } else if (skillProfile.effect === "heal") {
-        result.heal += skillProfile.power;
-        result.message += ` • ใช้สกิล ${skillName} ฟื้นฟู ${skillProfile.power}`;
-      } else if (skillProfile.effect === "defense") {
-        current.defenseValue = skillProfile.power;
-        current.defenseTurns = 1;
-        result.message += ` • ใช้สกิล ${skillName} ป้องกันดาเมจ ${skillProfile.power} ในเทิร์นถัดไป`;
-      } else if (skillProfile.effect === "reflect") {
-        current.reflectPercent = Math.min(100, skillProfile.power);
-        current.reflectTurns = 1;
-        result.message += ` • ใช้สกิล ${skillName} สะท้อนดาเมจ ${current.reflectPercent}% ในเทิร์นถัดไป`;
-      } else if (skillProfile.effect === "stun") {
-        defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
-        result.message += ` • ใช้สกิล ${skillName} ทำให้ ${defender.name} ติดสตัน 1 เทิร์น`;
-      }
-      if (skill && skillProfile.cooldownTurns > 0) {
-        current.skillCooldowns = { ...(current.skillCooldowns || {}), [skill.id]: skillProfile.cooldownTurns };
-        result.cooldownRemaining = skillProfile.cooldownTurns;
-      }
-    }
-    if (result.face.effect === "defense") {
-      current.defenseValue = Math.max(current.defenseValue || 0, Math.max(0, Math.round(result.face.value || 0)));
-      current.defenseTurns = 1;
-    }
-    if (result.face.effect === "reflect") {
-      current.reflectPercent = Math.max(current.reflectPercent || 0, Math.min(100, Math.round(result.face.value || 0)));
-      current.reflectTurns = 1;
-    }
-    if (result.damage > 0) {
-      const damageAfterStatus = Math.max(0, Math.round(result.damage * getAdminIncomingDamageMultiplier(defender)));
-      const statusBlocked = Math.max(0, result.damage - damageAfterStatus);
-      const blocked = Math.min(damageAfterStatus, defender.defenseTurns ? (defender.defenseValue || 0) : 0);
-      const finalDamage = Math.max(0, damageAfterStatus - blocked);
-      if (statusBlocked > 0) result.message += ` • สถานะลดดาเมจ ${statusBlocked}`;
-      defender.hp = Math.max(0, defender.hp - finalDamage);
-      if (blocked > 0) {
-        result.message += ` • ป้องกันไว้ ${blocked}`;
-        defender.defenseTurns = 0;
-        defender.defenseValue = 0;
-      }
-      const adminReflectPercent = getAdminReflectPercent(defender);
-      const reflectPercent = Math.max(defender.reflectTurns && defender.reflectPercent ? defender.reflectPercent : 0, adminReflectPercent);
-      if (reflectPercent > 0 && finalDamage > 0) {
-        const reflected = Math.max(1, Math.round(finalDamage * reflectPercent / 100));
-        current.hp = Math.max(0, current.hp - reflected);
-        result.message += ` • สะท้อนกลับ ${reflected}`;
-        if (defender.reflectTurns) {
-          defender.reflectTurns = 0;
-          defender.reflectPercent = 0;
-        }
-      }
-      result.damage = finalDamage;
-    }
-    if (result.heal > 0) current.hp = Math.min(current.maxHp, current.hp + result.heal);
-    if (result.face.effect === "stun" && defender.hp > 0) defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
-    nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: result.message + (result.face.effect === "stun" ? " และทำให้เป้าหมายติดสตัน" : ""), roll: result.roll, damage: result.damage, effect: result.face.effect });
-  }
-  const remainingOpponent = opponentTeam.filter(item => item.hp > 0);
-  if (remainingOpponent.length === 0) {
-    nextRoom.status = "completed";
-    nextRoom.winnerTeam = actor.team;
-    nextRoom.turnActorId = current.id;
-    return { room: nextRoom, result };
-  }
-  const nextActor = getNextBattleActor(nextRoom, current.id);
-  if (nextActor?.team === "a" && current.team === "b") getBattleCombatants(nextRoom).forEach(advanceAdminStatusEffects);
-  nextRoom.turnActorId = nextActor?.id || current.id;
-  nextRoom.round = (nextRoom.round || 1) + (nextActor?.team === "a" && current.team === "b" ? 1 : 0);
-  return { room: nextRoom, result };
-}
