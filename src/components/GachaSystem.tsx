@@ -273,7 +273,27 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
           </div>
         </div>
 
-        <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">\n          <label className="text-xs text-slate-400 whitespace-nowrap">เลือกตู้กาชา</label>\n          <select value={selectedBannerId} onChange={(e) => setSelectedBannerId(e.target.value)} className="flex-1 px-3 py-2 rounded-xl bg-slate-900/90 border border-purple-500/40 text-white text-xs outline-none">\n            {availableBanners.filter(b => b.enabled).map(b => <option key={b.id} value={b.id}>{b.name} — {b.pullCost.toLocaleString()} C / 10 ครั้ง {b.tenPullCost.toLocaleString()} C</option>)}\n          </select>\n        </div>\n\n        {/* Summon Buttons Area */}
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {availableBanners.filter(b => b.enabled).map((banner) => (
+            <button
+              key={banner.id}
+              type="button"
+              onClick={() => setSelectedBannerId(banner.id)}
+              className={`text-left rounded-2xl border p-4 transition-all ${selectedBannerId === banner.id ? 'border-amber-400 bg-amber-500/10 shadow-lg shadow-amber-500/10' : 'border-slate-700 bg-slate-900/70 hover:border-purple-400/60'}`}
+            >
+              <div className="flex items-center gap-2">
+                <Gift className="w-5 h-5 text-amber-400" />
+                <span className="font-black text-white">{banner.name}</span>
+              </div>
+              <div className="mt-2 text-xs text-slate-400">{banner.bannerTitle}</div>
+              <div className="mt-3 flex gap-2 text-[10px]">
+                <span className="px-2 py-1 rounded-lg bg-slate-800 text-cyan-300">1 ครั้ง {banner.pullCost.toLocaleString()} C</span>
+                <span className="px-2 py-1 rounded-lg bg-slate-800 text-amber-300">10 ครั้ง {banner.tenPullCost.toLocaleString()} C</span>
+              </div>
+            </button>
+          ))}
+        </div>
+\n        {/* Summon Buttons Area */}
         <div className="mt-8 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-center gap-4">
           <button
             id="btn-gacha-single"
