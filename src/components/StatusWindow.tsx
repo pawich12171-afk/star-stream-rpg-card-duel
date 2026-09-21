@@ -37,7 +37,7 @@ import {
 
 interface StatusWindowProps {
   character: CharacterProfile;
-  onUpdateCharacter: (updated: CharacterProfile) => void;
+  onUpdateCharacter: (updated: CharacterProfile) => void | Promise<boolean>;
   onOpenTransfer: () => void;
   onOpenProfileCustomizer?: () => void;
   onOpenCharacterSelect?: () => void;
@@ -71,16 +71,29 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [tempBuffs, setTempBuffs] = useState(character.statusBuffs || '');
   const [tempCharacteristics, setTempCharacteristics] = useState<string[]>(character.characteristics || []);
   const [newCharacteristic, setNewCharacteristic] = useState('');
+  const [isSavingStats, setIsSavingStats] = useState(false);
   const latestCharacterRef = useRef<CharacterProfile>(character);
 
   useEffect(() => {
     latestCharacterRef.current = character;
   }, [character]);
 
-  const commitCharacterUpdate = (updated: CharacterProfile) => {
-    const committed = { ...updated, lastUpdated: Date.now() };
+  const commitCharacterUpdate = async (updated: CharacterProfile): Promise<boolean> => {
+    const latest = latestCharacterRef.current;
+    const committed: CharacterProfile = {
+      ...updated,
+      lastUpdated: Math.max(
+        Date.now(),
+        Number(latest.lastUpdated || 0) + 1,
+        Number(updated.lastUpdated || 0) + 1
+      ),
+    };
     latestCharacterRef.current = committed;
-    onUpdateCharacter(committed);
+    const result = onUpdateCharacter(committed);
+    if (result && typeof (result as Promise<boolean>).then === 'function') {
+      return (await result) !== false;
+    }
+    return true;
   };
 
   const healthData = calculateCharacterHealth(character);
@@ -321,21 +334,39 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     setTempCharacteristics(tempCharacteristics.filter((_, i) => i !== index));
   };
 
-  const handleSaveStats = () => {
-    const latest = latestCharacterRef.current;
-    const updated: CharacterProfile = {
-      ...latest,
-      stats: { ...tempStats },
-      hp: Number(tempHp),
-      maxHp: Number(tempMaxHp),
-      statusBuffs: tempBuffs,
-      characteristics: [...tempCharacteristics],
-      lastUpdated: Date.now(),
-    };
+  const handleSaveStats = async () => {
+    if (isSavingStats) return;
+    setIsSavingStats(true);
 
-    // Direct Status edits are authoritative. Do not rebuild them from stale admin snapshots.
-    commitCharacterUpdate(updated);
-    setShowStatEditModal(false);
+    try {
+      // Take the newest character object and merge ONLY the fields edited in
+      // this modal. This prevents another newer update from being erased.
+      const latest = latestCharacterRef.current;
+      const updated: CharacterProfile = {
+        ...latest,
+        stats: {
+          ...latest.stats,
+          strength: Number(tempStats.strength),
+          durability: Number(tempStats.durability),
+          agility: Number(tempStats.agility),
+          magic: Number(tempStats.magic),
+        },
+        hp: Number(tempHp),
+        maxHp: Number(tempMaxHp),
+        statusBuffs: tempBuffs,
+        characteristics: [...tempCharacteristics],
+        lastUpdated: Math.max(Date.now(), Number(latest.lastUpdated || 0) + 1),
+      };
+
+      const saved = await commitCharacterUpdate(updated);
+      if (saved) {
+        setShowStatEditModal(false);
+      } else {
+        alert('บันทึกสเตตัสไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+      }
+    } finally {
+      setIsSavingStats(false);
+    }
   };
   return (
     <div id="status-window-container" className="space-y-6">
@@ -1189,7 +1220,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                   onClick={handleSaveStats}
                   className="px-5 py-2 font-black text-slate-950 bg-gradient-to-r from-cyan-400 via-teal-300 to-cyan-400 hover:from-cyan-300 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)] cursor-pointer"
                 >
-                  บันทึกสเตตัส
+                  {isSavingStats ? 'กำลังบันทึก...' : 'บันทึกสเตตัส'}
                 </button>
               </div>
             </div>
