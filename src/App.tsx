@@ -13,7 +13,7 @@ import {
   subscribeToGachaRewards, 
   subscribeToGachaConfig, 
   subscribeToDuelRooms,
-  updateCharacterInDB, , updateCharacterStatusData
+  updateCharacterInDB, updateCharacterStatusData
   addCharacterToDB, 
   transferCoinsBetweenCharacters,
   addShopItemToDB,
