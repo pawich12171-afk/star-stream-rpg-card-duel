@@ -2021,7 +2021,8 @@ function applyItemPassiveEffects(
   trigger: ItemPassiveEffect['trigger'],
 ) {
   const passives = getEquippedItemPassives(attacker).filter(effect => effect.trigger === trigger);
-  for (const passive of passives) {
+  const ordered = [...passives.filter(effect => effect.kind === 'stack'), ...passives.filter(effect => effect.kind !== 'stack')];
+  for (const passive of ordered) {
     const chance = passive.chance == null ? 100 : Math.max(0, Math.min(100, Number(passive.chance) || 0));
     if (Math.random() * 100 >= chance) continue;
     const value = Math.max(0, Number(passive.value) || 0);
@@ -2331,6 +2332,21 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         const cooldown = Math.max(0, Math.min(99, Math.round(configuredCooldown - speed / 10)));
         if (cooldown > 0) current.skillCooldowns = { ...(current.skillCooldowns || {}), [skill.id]: cooldown };
         result.cooldownRemaining = cooldown;
+      }
+    }
+    if (!skill) {
+      const passiveRepeatChance = getEquippedItemPassives(current)
+        .filter(effect => effect.kind === 'repeat_attack_chance')
+        .reduce((sum, effect) => sum + Math.max(0, Number(effect.value) || 0), 0);
+      const repeatChance = Math.max(0, Math.min(100, passiveRepeatChance));
+      let repeatsDone = 0;
+      const maxRepeats = 20;
+      while (result.damage > 0 && repeatsDone < maxRepeats && repeatChance > 0 && Math.random() * 100 < repeatChance) {
+        const repeat = rollBattleAttack(current, defender, diceConfig);
+        result.damage += repeat.damage;
+        result.heal += repeat.heal;
+        repeatsDone += 1;
+        result.message += ` • 🔁 ไอเทมติดตัวตีซ้ำรอบที่ ${repeatsDone} (${repeatChance}%) +${repeat.damage} ดาเมจ`;
       }
     }
     applyItemPassiveEffects(current, defender, result, 'attack');
