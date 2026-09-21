@@ -287,6 +287,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [bannerTitleInput, setBannerTitleInput] = useState<string>(gachaConfig.bannerTitle || 'หีบสมบัติจักรวาลแห่งดวงดาว');
   const [bannerDescInput, setBannerDescInput] = useState<string>(gachaConfig.bannerDescription || 'สุ่มรับเหรียญรางวัลมหาศาล สกิลพิเศษระดับตำนาน และไอเทมสเตตัสหายาก');
   const [gachaEnabledInput, setGachaEnabledInput] = useState<boolean>(gachaConfig.enabled !== false);
+  const safeGachaBanners = Array.isArray(gachaBanners) ? gachaBanners : [];
   const [selectedBannerId, setSelectedBannerId] = useState<string>(safeGachaBanners[0]?.id || 'main');
   const [newBannerName, setNewBannerName] = useState('ตู้กาชาใหม่');
   const [newBannerTitle, setNewBannerTitle] = useState('หีบสมบัติแห่งดวงดาว');
@@ -294,7 +295,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newBannerPullCost, setNewBannerPullCost] = useState(500);
   const [newBannerTenCost, setNewBannerTenCost] = useState(4500);
   const [newBannerEnabled, setNewBannerEnabled] = useState(true);
-  const safeGachaBanners = Array.isArray(gachaBanners) ? gachaBanners : [];
   const selectedBanner = safeGachaBanners.find(b => b.id === selectedBannerId);
   const [editBannerName, setEditBannerName] = useState('');
   const [editBannerTitle, setEditBannerTitle] = useState('');
