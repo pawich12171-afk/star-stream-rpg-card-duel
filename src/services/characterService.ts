@@ -467,6 +467,52 @@ export async function updateCharacterData(char: CharacterProfile): Promise<void>
   }
 }
 
+// Atomic partial character update used by systems that change only a few fields.
+// The transaction reads the newest Firestore document first, then applies only
+// the requested fields so stale component snapshots cannot overwrite unrelated data.
+export async function updateCharacterFields(
+  charId: string,
+  patch: Partial<Omit<CharacterProfile, 'id' | 'lastUpdated' | 'powerScore'>>
+): Promise<CharacterProfile> {
+  const ref = doc(db, CHARACTERS_COLLECTION, charId);
+  let result: CharacterProfile | null = null;
+
+  await enqueueCharacterWrite(charId, async () => {
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if (!snap.exists()) throw new Error('ไม่พบตัวละครที่ต้องการบันทึก');
+
+      const current = { ...snap.data(), id: snap.id } as CharacterProfile;
+      const updated: CharacterProfile = {
+        ...current,
+        ...patch,
+        lastUpdated: Math.max(Date.now(), Number(current.lastUpdated || 0) + 1),
+      };
+
+      updated.powerScore = calculatePowerScore(updated);
+      result = updated;
+
+      const cleanPatch = sanitizeForFirestore({
+        ...patch,
+        powerScore: updated.powerScore,
+        lastUpdated: updated.lastUpdated,
+      });
+      transaction.update(ref, cleanPatch);
+    });
+  });
+
+  if (!result) throw new Error('ไม่สามารถบันทึกการเปลี่ยนแปลงตัวละครได้');
+
+  pendingCharacterUpdates.set(charId, result);
+  localCharacters = localCharacters.some(c => c.id === charId)
+    ? localCharacters.map(c => c.id === charId ? result as CharacterProfile : c)
+    : [...localCharacters, result];
+  saveLocalAll();
+  broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
+
+  return result;
+}
+
 // Save only the fields edited by the Status window.
 // This prevents a stale full CharacterProfile from overwriting Coins,
 // inventory, skills, admin effects, or other newer fields.
