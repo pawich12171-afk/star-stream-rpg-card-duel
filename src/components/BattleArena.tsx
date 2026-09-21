@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, Check, Crown, Dice5, Plus, Settings2, Shield, Skull, Swords, Target, Trash2, UsersRound, Zap } from 'lucide-react';
 import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRoom, CharacterProfile, Skill } from '../types';
 import {
@@ -128,6 +128,9 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   const [selectedBotIds, setSelectedBotIds] = useState<string[]>([]);
   const [selectedSkillId, setSelectedSkillId] = useState('');
   const [showAdmin, setShowAdmin] = useState(isAdmin);
+  // Lock room creation synchronously on the first click. This prevents rapid clicks
+  // from entering the async flow multiple times before React can re-render.
+  const creatingRoomRef = useRef(false);
   const [botForm, setBotForm] = useState({ name: '', description: '', hp: '30', strength: '9', durability: '6', agility: '5', magic: '0', isBoss: false, avatarUrl: '/avatars/system.svg' });
 
   useEffect(() => {
@@ -163,11 +166,27 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   const toggleBot = (id: string) => setSelectedBotIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
 
   const createRoom = async () => {
-    if (!config.enabled) { alert('สนามรบถูกปิดใช้งานโดยแอดมิน'); return; }
-    const teamMembers = allCharacters.filter(character => selectedTeamIds.includes(character.id));
+    // Synchronous double-click guard: only the first click is allowed into the
+    // async room/coin transaction. Other clicks return immediately.
+    if (creatingRoomRef.current) {
+      return;
+    }
+    creatingRoomRef.current = true;
+
+    if (!config.enabled) {
+      creatingRoomRef.current = false;
+      alert('สนามรบถูกปิดใช้งานโดยแอดมิน');
+      return;
+    }
+    try {
+      const teamMembers = allCharacters.filter(character => selectedTeamIds.includes(character.id));
     if (!teamMembers.some(character => character.id === currentUser.id)) teamMembers.unshift(currentUser);
     const enemies = mode === 'pve' ? bots.filter(bot => selectedBotIds.includes(bot.id)) : otherPlayers.filter(character => character.id === selectedOpponentId);
-    if (!enemies.length) { alert(mode === 'pve' ? 'เลือกบอทหรือบอสก่อนสร้างห้อง' : 'เลือกผู้เล่นฝ่ายตรงข้ามก่อนสร้างห้อง'); return; }
+    if (!enemies.length) {
+      creatingRoomRef.current = false;
+      alert(mode === 'pve' ? 'เลือกบอทหรือบอสก่อนสร้างห้อง' : 'เลือกผู้เล่นฝ่ายตรงข้ามก่อนสร้างห้อง');
+      return;
+    }
     const teamA = teamMembers.slice(0, 3).map(character => makePlayerCombatant(character, 'a'));
     const selectedBots = mode === 'pve' ? enemies.slice(0, 3).map(bot => bot as BattleBot) : [];
     const teamB = mode === 'pve' ? selectedBots.map(bot => makeBotCombatant(bot, 'b')) : enemies.slice(0, 3).map(character => makePlayerCombatant(character as CharacterProfile, 'b'));
@@ -180,14 +199,14 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
       log: [{ id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pve' ? `เริ่มการต่อสู้ — หักค่าเข้า ${BATTLE_ENTRY_FEE.toLocaleString()} Coins · ชนะรับ ${victoryReward.toLocaleString()} Coins` : 'เริ่มการต่อสู้ — เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' }],
       entryFeeCoins: mode === 'pve' ? BATTLE_ENTRY_FEE : 0, victoryRewardCoins: victoryReward, createdAt: now, updatedAt: now
     };
-    try {
       await (mode === 'pve' ? createBattleRoomWithEntryFee(room, currentUser.id, BATTLE_ENTRY_FEE) : createBattleRoom(room));
+      setSelectedBotIds([]);
+      setSelectedOpponentId('');
     } catch (error: any) {
       alert(error?.message || 'ไม่สามารถเปิดห้องรบได้');
-      return;
+    } finally {
+      creatingRoomRef.current = false;
     }
-    setSelectedBotIds([]);
-    setSelectedOpponentId('');
   };
 
   const persistBattleHp = async (room: BattleRoom) => {
