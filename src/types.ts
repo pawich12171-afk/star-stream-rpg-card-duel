@@ -59,7 +59,7 @@ export type GachaRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
 export const MAX_GACHA_REWARDS = 20;
 
 export type ItemPassiveTrigger = 'turn_start' | 'attack';
-export type ItemPassiveKind = 'stack' | 'true_damage_per_stack' | 'damage' | 'damage_percent' | 'heal' | 'heal_percent' | 'buff_stat' | 'shield' | 'reflect' | 'repeat_attack_chance' | 'critical_chance';
+export type ItemPassiveKind = 'stack' | 'true_damage_per_stack' | 'true_damage_at_max_stacks' | 'damage' | 'damage_percent' | 'heal' | 'heal_percent' | 'buff_stat' | 'shield' | 'reflect' | 'repeat_attack_chance' | 'critical_chance';
 
 export interface ItemPassiveEffect {
   id: string;
