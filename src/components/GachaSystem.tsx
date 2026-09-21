@@ -177,6 +177,19 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
           existingSkill.battlePower = newSkill.battlePower ?? existingSkill.battlePower;
           existingSkill.cooldownTurns = newSkill.cooldownTurns ?? existingSkill.cooldownTurns;
           existingSkill.cooldown = newSkill.cooldown ?? existingSkill.cooldown;
+          existingSkill.battleCriticalChance = newSkill.battleCriticalChance ?? existingSkill.battleCriticalChance;
+          existingSkill.battleCriticalMultiplier = newSkill.battleCriticalMultiplier ?? existingSkill.battleCriticalMultiplier;
+          existingSkill.repeatAttackChance = newSkill.repeatAttackChance ?? existingSkill.repeatAttackChance;
+          existingSkill.maxRepeatAttacks = newSkill.maxRepeatAttacks ?? existingSkill.maxRepeatAttacks;
+          existingSkill.passiveEffects = newSkill.passiveEffects?.length
+            ? newSkill.passiveEffects.map(effect => ({ ...effect }))
+            : existingSkill.passiveEffects;
+          existingSkill.battleEffects = newSkill.battleEffects?.length
+            ? newSkill.battleEffects.map(effect => ({ ...effect }))
+            : existingSkill.battleEffects;
+          existingSkill.battleStats = newSkill.battleStats?.length
+            ? newSkill.battleStats.map(stat => ({ ...stat }))
+            : existingSkill.battleStats;
         } else {
           existingSkills.push(newSkill);
         }
