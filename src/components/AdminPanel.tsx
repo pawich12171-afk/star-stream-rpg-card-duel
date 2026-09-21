@@ -354,7 +354,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const spawnerTargetChar = characters.find(c => c.id === spawnerTargetCharId) || characters[0];
 
   // Calculate total gacha rate sum
-  const totalGachaRate = gachaRewards.filter(r => r.bannerId === selectedBannerId || (!r.bannerId && selectedBannerId === 'main')).reduce((sum, r) => sum + (Number(r.rate) || 0), 0);
+  const selectedBannerRewards = gachaRewards.filter(r => r.bannerId === selectedBannerId || (!r.bannerId && selectedBannerId === 'main'));
+  const totalGachaRate = selectedBannerRewards.reduce((sum, r) => sum + (Number(r.rate) || 0), 0);
 
   // Quick coin action handlers
   const handleAddCoins = () => {
@@ -1940,8 +1941,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {/* Rarity Summary Badges */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2">
                 {(['mythic', 'legendary', 'epic', 'rare', 'common'] as GachaRarity[]).map((rarity) => {
-                  const count = gachaRewards.filter(r => r.rarity === rarity).length;
-                  const rateSum = gachaRewards
+                  const count = selectedBannerRewards.filter(r => r.rarity === rarity).length;
+                  const rateSum = selectedBannerRewards
                     .filter(r => r.rarity === rarity)
                     .reduce((sum, r) => sum + (Number(r.rate) || 0), 0);
                   return (
@@ -2167,7 +2168,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
-                    {gachaRewards.filter(r => r.bannerId === selectedBannerId || (!r.bannerId && selectedBannerId === 'main')).map((rw) => {
+                    {selectedBannerRewards.map((rw) => {
                       const currentVal = editingRates[rw.id] !== undefined ? editingRates[rw.id] : rw.rate;
                       const hasChanged = editingRates[rw.id] !== undefined && editingRates[rw.id] !== rw.rate;
                       return (
