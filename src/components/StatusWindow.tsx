@@ -1125,8 +1125,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
               <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/10 p-3">
                 <label className="text-xs text-emerald-200">🔁 โอกาสตีซ้ำอีก 1 รอบ (%)
-                  <input type="number" min={0} max={100} value={newSkillRepeatAttackChance} onChange={(e) => setNewSkillRepeatAttackChance(Number(e.target.value))} className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none" />
-                  <span className="block mt-1 text-[10px] text-slate-500">0% = ไม่มีโอกาสตีซ้ำ</span>
+                  <input type="number" min={0} max={100} step={0.001} value={newSkillRepeatAttackChance} onChange={(e) => setNewSkillRepeatAttackChance(Number(e.target.value))} className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none" />
+                  <span className="block mt-1 text-[10px] text-slate-500">0% = ไม่มีโอกาสตีซ้ำ • ใส่ทศนิยมได้ เช่น 0.1% หรือ 0.01%</span>
                 </label>
                 <label className="block mt-2 text-xs text-emerald-200">🔢 ตีซ้ำได้สูงสุดกี่รอบ
                   <input type="number" min={1} max={20} value={newSkillMaxRepeatAttacks} onChange={(e) => setNewSkillMaxRepeatAttacks(Number(e.target.value))} className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none" />
