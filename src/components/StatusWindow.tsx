@@ -68,6 +68,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [newSkillCritChance, setNewSkillCritChance] = useState(0);
   const [newSkillCritMultiplier, setNewSkillCritMultiplier] = useState(2);
   const [newSkillRepeatAttackChance, setNewSkillRepeatAttackChance] = useState(0);
+  const [newSkillMaxRepeatAttacks, setNewSkillMaxRepeatAttacks] = useState(1);
   const [newSkillBattleStats, setNewSkillBattleStats] = useState<NonNullable<Skill['battleStats']>>([]);
   const [newSkillStatKind, setNewSkillStatKind] = useState<NonNullable<Skill['battleStats']>[number]['kind']>('attack_power');
   const [newSkillStatValue, setNewSkillStatValue] = useState(15);
@@ -332,6 +333,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       battleCriticalChance: Math.max(0, Math.min(100, Number(newSkillCritChance) || 0)),
       battleCriticalMultiplier: Math.max(1, Number(newSkillCritMultiplier) || 1),
       repeatAttackChance: Math.max(0, Math.min(100, Number(newSkillRepeatAttackChance) || 0)),
+      maxRepeatAttacks: Math.max(1, Math.min(20, Number(newSkillMaxRepeatAttacks) || 1)),
       battleStats: newSkillBattleStats.length ? [...newSkillBattleStats] : undefined,
       battleEffects: newSkillExtraEffects.length ? [...newSkillExtraEffects] : undefined,
       upgradeCount: 0,
@@ -362,6 +364,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     setNewSkillCritChance(0);
     setNewSkillCritMultiplier(2);
     setNewSkillRepeatAttackChance(0);
+    setNewSkillMaxRepeatAttacks(1);
     setNewSkillBattleStats([]);
     setNewSkillExtraEffects([]);
     setShowAddSkillModal(false);
@@ -1124,6 +1127,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                 <label className="text-xs text-emerald-200">🔁 โอกาสตีซ้ำอีก 1 รอบ (%)
                   <input type="number" min={0} max={100} value={newSkillRepeatAttackChance} onChange={(e) => setNewSkillRepeatAttackChance(Number(e.target.value))} className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none" />
                   <span className="block mt-1 text-[10px] text-slate-500">0% = ไม่มีโอกาสตีซ้ำ</span>
+                </label>
+                <label className="block mt-2 text-xs text-emerald-200">🔢 ตีซ้ำได้สูงสุดกี่รอบ
+                  <input type="number" min={1} max={20} value={newSkillMaxRepeatAttacks} onChange={(e) => setNewSkillMaxRepeatAttacks(Number(e.target.value))} className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none" />
                 </label>
               </div>
 
