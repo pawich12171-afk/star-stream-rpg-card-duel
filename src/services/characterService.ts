@@ -2020,7 +2020,7 @@ function applyItemPassiveEffects(
   result: BattleRollResult,
   trigger: ItemPassiveEffect['trigger'],
 ) {
-  const passives = getEquippedItemPassives(attacker).filter(effect => effect.trigger === trigger);
+  const passives = [...(attacker.activeSkillPassives || []), ...getEquippedItemPassives(attacker)].filter(effect => effect.trigger === trigger);
   const ordered = [...passives.filter(effect => effect.kind === 'stack'), ...passives.filter(effect => effect.kind !== 'stack')];
   for (const passive of ordered) {
     const chance = passive.chance == null ? 100 : Math.max(0, Math.min(100, Number(passive.chance) || 0));
