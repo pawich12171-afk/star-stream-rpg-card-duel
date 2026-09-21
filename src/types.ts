@@ -224,6 +224,18 @@ export interface TransactionHistory {
   note?: string;
 }
 
+export interface GachaBanner {
+  id: string;
+  name: string;
+  pullCost: number;
+  tenPullCost: number;
+  enabled: boolean;
+  bannerTitle: string;
+  bannerDescription: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface GachaReward {
   id: string;
   name: string;
@@ -235,6 +247,7 @@ export interface GachaReward {
   itemData?: Item;
   skillData?: Skill;
   characteristic?: string;
+  bannerId?: string;
 }
 
 export interface GachaConfig {
