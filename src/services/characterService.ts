@@ -1987,6 +1987,17 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         result.message += ` • ใช้สกิล ${skillName} ทำให้ ${defender.name} ติดสตัน 1 เทิร์น`;
       }
       if (skill?.battleEffects?.length) applyBattleExtraEffects(current, defender, skill.battleEffects, result);
+      // Skill-specific critical chance is separate from the dice's critical face.
+      // This makes an Admin-created skill capable of critical hits regardless of the roll.
+      if (skill && result.damage > 0) {
+        const critChance = Math.max(0, Math.min(100, Number(skill.battleCriticalChance) || 0));
+        const critMultiplier = Math.max(1, Number(skill.battleCriticalMultiplier) || 1);
+        if (critChance > 0 && Math.random() * 100 < critChance) {
+          result.damage = Math.max(0, Math.round(result.damage * critMultiplier));
+          result.message += ` • 💥 CRITICAL! ${critChance}% ×${critMultiplier}`;
+          result.effect = 'critical';
+        }
+      }
       if (skill && skillProfile.cooldownTurns > 0) {
         current.skillCooldowns = { ...(current.skillCooldowns || {}), [skill.id]: skillProfile.cooldownTurns };
         result.cooldownRemaining = skillProfile.cooldownTurns;
