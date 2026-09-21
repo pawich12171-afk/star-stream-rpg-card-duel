@@ -1720,6 +1720,51 @@ export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect
   return { effect, power, cooldownTurns };
 }
 
+function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleCombatant, effects: NonNullable<Skill['battleEffects']>, result: BattleRollResult) {
+  for (const effect of effects || []) {
+    const chance = effect.chance == null ? 100 : Math.max(0, Math.min(100, Number(effect.chance) || 0));
+    if (Math.random() * 100 >= chance) continue;
+    const target = effect.target === 'self' ? attacker : defender;
+    const value = Math.max(0, Number(effect.value) || 0);
+    const duration = Math.max(1, Math.round(Number(effect.duration) || 1));
+    const label = effect.label || effect.kind;
+    if (effect.kind === 'damage_percent') {
+      result.damage += Math.max(0, Math.round(result.damage * value / 100));
+      result.message += ` • ${label} +${value}% ดาเมจ`;
+    } else if (effect.kind === 'heal_percent') {
+      result.heal += Math.max(0, Math.round(target.maxHp * value / 100));
+      result.message += ` • ${label} ฟื้น HP ${value}%`;
+    } else if (effect.kind === 'reduce_max_hp_percent') {
+      const reduced = Math.max(1, Math.round(target.maxHp * (1 - Math.min(100, value) / 100)));
+      const lost = Math.max(0, target.maxHp - reduced);
+      target.maxHp = reduced;
+      target.hp = Math.min(target.hp, target.maxHp);
+      result.message += ` • ${label} ลด MAX HP ${value}%${lost > 0 ? ` (-${lost})` : ''}`;
+    } else if (effect.kind === 'reduce_defense_percent') {
+      const currentDefense = Math.max(0, Number(target.defenseValue) || 0);
+      target.defenseValue = Math.max(0, Math.round(currentDefense * (1 - Math.min(100, value) / 100)));
+      target.defenseTurns = Math.max(target.defenseTurns || 0, duration);
+      result.message += ` • ${label} ลดป้องกัน ${value}%`;
+    } else if (effect.kind === 'shield') {
+      target.defenseValue = Math.max(target.defenseValue || 0, Math.round(value));
+      target.defenseTurns = Math.max(target.defenseTurns || 0, duration);
+      result.message += ` • ${label} ป้องกัน ${Math.round(value)}`;
+    } else if (effect.kind === 'reflect') {
+      target.reflectPercent = Math.max(target.reflectPercent || 0, Math.min(100, value));
+      target.reflectTurns = Math.max(target.reflectTurns || 0, duration);
+      result.message += ` • ${label} สะท้อน ${value}%`;
+    } else {
+      const mode = 'nerf' as const;
+      const existing = target.adminStatusEffects || [];
+      const kind = effect.kind === 'freeze' ? 'stun' : effect.kind;
+      const status = { id: `battle-effect-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, kind: kind as AdminStatusEffect['kind'], name: label, mode, power: value, duration, remaining: duration, appliedAt: Date.now(), source: 'admin' as const, description: label };
+      target.adminStatusEffects = [...existing, status];
+      if (effect.kind === 'freeze' || effect.kind === 'stun') target.stunnedTurns = Math.max(target.stunnedTurns || 0, duration);
+      result.message += ` • ${label} ${duration} เทิร์น`;
+    }
+  }
+}
+
 function getActiveAdminStatusEffects(unit: BattleCombatant): AdminStatusEffect[] {
   return (unit.adminStatusEffects || []).filter(effect => effect.remaining > 0);
 }
@@ -1880,11 +1925,13 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
         result.message += ` • ใช้สกิล ${skillName} ทำให้ ${defender.name} ติดสตัน 1 เทิร์น`;
       }
+      if (skill?.battleEffects?.length) applyBattleExtraEffects(current, defender, skill.battleEffects, result);
       if (skill && skillProfile.cooldownTurns > 0) {
         current.skillCooldowns = { ...(current.skillCooldowns || {}), [skill.id]: skillProfile.cooldownTurns };
         result.cooldownRemaining = skillProfile.cooldownTurns;
       }
     }
+    if (result.face.extraEffects?.length) applyBattleExtraEffects(current, defender, result.face.extraEffects, result);
     if (result.face.effect === "defense") {
       current.defenseValue = Math.max(current.defenseValue || 0, Math.max(0, Math.round(result.face.value || 0)));
       current.defenseTurns = 1;
