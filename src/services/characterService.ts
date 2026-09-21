@@ -8,9 +8,9 @@ import {
   onSnapshot,
   runTransaction,
   deleteDoc,
-  writeBatch,
-  db,
-} from "./fileDatabase";
+  writeBatch
+} from "firebase/firestore";
+import { db } from "../firebase";
 import { 
   CharacterProfile, 
   Item, 
