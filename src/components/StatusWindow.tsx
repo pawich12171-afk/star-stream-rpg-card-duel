@@ -421,13 +421,14 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         statusBuffs: tempBuffs,
         characteristics: [...tempCharacteristics],
       };
-      const saved = onPersistStatus
-        ? await onPersistStatus(character.id, patch)
-        : await commitCharacterUpdate({
-            ...base,
-            ...patch,
-            stats: { ...base.stats, ...patch.stats },
-          });
+      // Always persist through the main character update path so the
+      // status edit is merged with the latest profile and written to the
+      // same database document as every other character change.
+      const saved = await commitCharacterUpdate({
+        ...base,
+        ...patch,
+        stats: { ...base.stats, ...patch.stats },
+      });
       if (saved) setShowStatEditModal(false);
     } finally {
       setIsSavingStats(false);
