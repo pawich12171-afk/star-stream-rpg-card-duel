@@ -174,13 +174,37 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       const netCoinChange = totalCoinReward - cost;
       const updatedCoins = Math.max(0, currentCharacter.coins + netCoinChange);
 
-      const existingInventory = [...(currentCharacter.inventory || [])];
+      // Merge legacy duplicate records first, then add the new rewards.
+      const inventoryMap = new Map<string, InventoryItem>();
+      (currentCharacter.inventory || []).forEach((raw, index) => {
+        const item = {
+          ...raw,
+          instanceId: raw.instanceId || `legacy-stack-${raw.id}-${index}`,
+          quantity: Math.max(1, Number(raw.quantity) || 1),
+          equippedQuantity: raw.category === 'equipment'
+            ? Math.max(0, Number(raw.equippedQuantity) || (raw.isEquipped ? 1 : 0))
+            : raw.equippedQuantity,
+        };
+        const existing = inventoryMap.get(String(item.id));
+        if (!existing) {
+          inventoryMap.set(String(item.id), item);
+        } else {
+          const oldEquipped = Math.max(0, Number(existing.equippedQuantity) || (existing.isEquipped ? 1 : 0));
+          const addEquipped = item.category === 'equipment'
+            ? Math.max(0, Number(item.equippedQuantity) || (item.isEquipped ? 1 : 0))
+            : 0;
+          existing.quantity = (Number(existing.quantity) || 1) + item.quantity;
+          if (existing.category === 'equipment') {
+            existing.equippedQuantity = Math.min(existing.quantity, oldEquipped + addEquipped);
+            existing.isEquipped = existing.equippedQuantity > 0;
+          }
+        }
+      });
+      const existingInventory = Array.from(inventoryMap.values());
       newItemsToAdd.forEach(newItem => {
-        // Stack every gacha item, including equipment. equippedQuantity tracks
-        // how many copies from the stack are currently equipped.
         const existingIdx = existingInventory.findIndex(inv => inv.id === newItem.id);
         if (existingIdx >= 0) {
-          existingInventory[existingIdx].quantity += 1;
+          existingInventory[existingIdx].quantity = (Number(existingInventory[existingIdx].quantity) || 0) + 1;
         } else {
           existingInventory.push(newItem);
         }
