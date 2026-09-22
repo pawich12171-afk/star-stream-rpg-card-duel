@@ -824,7 +824,130 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         </div>
       )}
 
-      {activeTab === 'market' && (<div className="space-y-4"><div className="rounded-3xl border border-violet-500/20 bg-slate-900/80 p-5"><h2 className="text-base font-black text-white">🏪 ตลาดผู้เล่น (Player Market)</h2><p className="text-xs text-slate-400 mt-1">ผู้เล่นนำของจากกระเป๋ามาขายให้ผู้เล่นคนอื่นได้ ราคาเป็น Coins</p></div>{marketplaceListings.length===0?<div className="text-center py-16 bg-slate-900/60 rounded-3xl border border-slate-800 text-slate-500">ยังไม่มีไอเทมประกาศขาย</div>:<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{marketplaceListings.map(listing=><div key={listing.id} className="bg-slate-900/90 rounded-3xl p-5 border border-violet-500/20 shadow-xl space-y-4"><div className="flex items-center gap-3"><div className="w-11 h-11 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center">{renderItemIcon(listing.item.icon,listing.item.category,listing.item.effectType,"w-5 h-5")}</div><div><div className="font-black text-white text-sm">{listing.item.name}</div><div className="text-[10px] text-violet-300">ผู้ขาย: {listing.sellerName}</div></div></div><p className="text-xs text-slate-300">{listing.item.description}</p><div className="flex items-center justify-between pt-3 border-t border-slate-800"><span className="text-amber-300 font-black">🪙 {Number(listing.price).toLocaleString()} Coins</span>{listing.sellerId===character.id?<button type="button" onClick={async()=>{if(!confirm('ยกเลิกประกาศขายและนำของกลับกระเป๋าใช่หรือไม่?'))return;try{await onCancelMarketplaceListing?.(listing.id)}catch(e){alert(e instanceof Error?e.message:'ยกเลิกไม่สำเร็จ')}}} className="px-3 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold cursor-pointer">ยกเลิกขาย</button>:<button type="button" disabled={marketBuyingId===listing.id} onClick={async()=>{if(!confirm('ยืนยันซื้อไอเทมนี้ใช่หรือไม่?'))return;setMarketBuyingId(listing.id);try{await onBuyMarketplaceListing?.(listing.id)}finally{setMarketBuyingId(null)}}} className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-black cursor-pointer disabled:opacity-50">{marketBuyingId===listing.id?'กำลังซื้อ...':'ซื้อ'}</button>}</div></div>)}</div>}</div><div className="rounded-3xl border border-amber-500/20 bg-slate-900/80 p-5 mt-4"><h3 className="font-black text-white">🔨 การประมูล</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">{marketplaceAuctions.length===0?<div className="text-xs text-slate-500">ยังไม่มีรายการประมูล</div>:marketplaceAuctions.map(a=><div key={a.id} className="rounded-2xl border border-amber-500/20 bg-slate-950/60 p-4"><div className="font-black text-white">{a.item.name}</div><div className="text-[10px] text-slate-400">ผู้ขาย {a.sellerName} · เหลือ {Math.max(0,Math.ceil((a.endsAt-Date.now())/60000))} นาที</div><div className="mt-2 text-amber-300 font-black">เริ่ม {a.startingPrice.toLocaleString()} · บิดล่าสุด {a.currentBid?a.currentBid.toLocaleString():'ยังไม่มี'} Coins</div>{a.sellerId===character.id?<button type="button" onClick={()=>onFinalizeMarketplaceAuction?.(a.id)} className="mt-3 px-3 py-2 rounded-xl bg-slate-800 text-white text-xs font-bold">ปิดประมูล</button>:<div className="flex gap-2 mt-3"><input type="number" min={Math.max(a.startingPrice,a.currentBid+1)} value={bidValues[a.id]||''} onChange={e=>setBidValues(v=>({...v,[a.id]:e.target.value}))} className="flex-1 rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-xs text-white" placeholder="ราคาเสนอ"/><button type="button" onClick={async()=>{try{await onPlaceMarketplaceBid?.(a.id,Number(bidValues[a.id]));setBidValues(v=>({...v,[a.id]:''}));alert('เสนอราคาแล้ว')}catch(e){alert(e instanceof Error?e.message:'เสนอราคาไม่สำเร็จ')}}} className="px-3 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-black">เสนอ</button></div>}</div>)}</div></div>)}
+      {activeTab === 'market' && (
+        <div className="space-y-4">
+          <div className="rounded-3xl border border-violet-500/20 bg-slate-900/80 p-5">
+            <h2 className="text-base font-black text-white">🏪 ตลาดผู้เล่น (Player Market)</h2>
+            <p className="mt-1 text-xs text-slate-400">ผู้เล่นนำของจากกระเป๋ามาขายให้ผู้เล่นคนอื่นได้ ราคาเป็น Coins</p>
+          </div>
+
+          {marketplaceListings.length === 0 ? (
+            <div className="rounded-3xl border border-slate-800 bg-slate-900/60 py-16 text-center text-slate-500">
+              ยังไม่มีไอเทมประกาศขาย
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {marketplaceListings.map(listing => (
+                <div key={listing.id} className="space-y-4 rounded-3xl border border-violet-500/20 bg-slate-900/90 p-5 shadow-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-800 bg-slate-950">
+                      {renderItemIcon(listing.item.icon, listing.item.category, listing.item.effectType, "w-5 h-5")}
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-white">{listing.item.name}</div>
+                      <div className="text-[10px] text-violet-300">ผู้ขาย: {listing.sellerName}</div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-300">{listing.item.description}</p>
+                  <div className="flex items-center justify-between border-t border-slate-800 pt-3">
+                    <span className="font-black text-amber-300">🪙 {Number(listing.price).toLocaleString()} Coins</span>
+                    {listing.sellerId === character.id ? (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm('ยกเลิกประกาศขายและนำของกลับกระเป๋าใช่หรือไม่?')) return;
+                          try {
+                            await onCancelMarketplaceListing?.(listing.id);
+                          } catch (e) {
+                            alert(e instanceof Error ? e.message : 'ยกเลิกไม่สำเร็จ');
+                          }
+                        }}
+                        className="cursor-pointer rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-slate-200"
+                      >
+                        ยกเลิกขาย
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={marketBuyingId === listing.id}
+                        onClick={async () => {
+                          if (!confirm('ยืนยันซื้อไอเทมนี้ใช่หรือไม่?')) return;
+                          setMarketBuyingId(listing.id);
+                          try {
+                            await onBuyMarketplaceListing?.(listing.id);
+                          } finally {
+                            setMarketBuyingId(null);
+                          }
+                        }}
+                        className="cursor-pointer rounded-xl bg-violet-600 px-4 py-2 text-xs font-black text-white hover:bg-violet-500 disabled:opacity-50"
+                      >
+                        {marketBuyingId === listing.id ? 'กำลังซื้อ...' : 'ซื้อ'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-4 rounded-3xl border border-amber-500/20 bg-slate-900/80 p-5">
+            <h3 className="font-black text-white">🔨 การประมูล</h3>
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+              {marketplaceAuctions.length === 0 ? (
+                <div className="text-xs text-slate-500">ยังไม่มีรายการประมูล</div>
+              ) : (
+                marketplaceAuctions.map(auction => (
+                  <div key={auction.id} className="rounded-2xl border border-amber-500/20 bg-slate-950/60 p-4">
+                    <div className="font-black text-white">{auction.item.name}</div>
+                    <div className="text-[10px] text-slate-400">
+                      ผู้ขาย {auction.sellerName} · เหลือ {Math.max(0, Math.ceil((auction.endsAt - Date.now()) / 60000))} นาที
+                    </div>
+                    <div className="mt-2 font-black text-amber-300">
+                      เริ่ม {Number(auction.startingPrice).toLocaleString()} · บิดล่าสุด {auction.currentBid ? Number(auction.currentBid).toLocaleString() : 'ยังไม่มี'} Coins
+                    </div>
+
+                    {auction.sellerId === character.id ? (
+                      <button
+                        type="button"
+                        onClick={() => void onFinalizeMarketplaceAuction?.(auction.id)}
+                        className="mt-3 rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-white"
+                      >
+                        ปิดประมูล
+                      </button>
+                    ) : (
+                      <div className="mt-3 flex gap-2">
+                        <input
+                          type="number"
+                          min={Math.max(Number(auction.startingPrice), Number(auction.currentBid) + 1)}
+                          value={bidValues[auction.id] || ''}
+                          onChange={e => setBidValues(value => ({ ...value, [auction.id]: e.target.value }))}
+                          className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white"
+                          placeholder="ราคาเสนอ"
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await onPlaceMarketplaceBid?.(auction.id, Number(bidValues[auction.id]));
+                              setBidValues(value => ({ ...value, [auction.id]: '' }));
+                              alert('เสนอราคาแล้ว');
+                            } catch (e) {
+                              alert(e instanceof Error ? e.message : 'เสนอราคาไม่สำเร็จ');
+                            }
+                          }}
+                          className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-black text-slate-950"
+                        >
+                          เสนอ
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* INVENTORY VIEW */}
       {activeTab === 'inventory' && (
