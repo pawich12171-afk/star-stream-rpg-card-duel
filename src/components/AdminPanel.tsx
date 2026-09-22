@@ -297,6 +297,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newBannerDesc, setNewBannerDesc] = useState('ตู้กาชาพิเศษ');
   const [newBannerPullCost, setNewBannerPullCost] = useState(500);
   const [newBannerTenCost, setNewBannerTenCost] = useState(4500);
+  const [newBannerMultiPullCounts, setNewBannerMultiPullCounts] = useState('20,30,50');
   const [newBannerEnabled, setNewBannerEnabled] = useState(true);
   const selectedBanner = safeGachaBanners.find(b => b.id === selectedBannerId);
 
@@ -314,11 +315,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editBannerDesc, setEditBannerDesc] = useState('');
   const [editBannerPullCost, setEditBannerPullCost] = useState(500);
   const [editBannerTenCost, setEditBannerTenCost] = useState(4500);
+  const [editBannerMultiPullCounts, setEditBannerMultiPullCounts] = useState('20,30,50');
   const [editBannerEnabled, setEditBannerEnabled] = useState(true);
   useEffect(() => {
     if (!selectedBanner) return;
     setEditBannerName(selectedBanner.name); setEditBannerTitle(selectedBanner.bannerTitle); setEditBannerDesc(selectedBanner.bannerDescription);
-    setEditBannerPullCost(selectedBanner.pullCost); setEditBannerTenCost(selectedBanner.tenPullCost); setEditBannerEnabled(selectedBanner.enabled);
+    setEditBannerPullCost(selectedBanner.pullCost); setEditBannerTenCost(selectedBanner.tenPullCost); setEditBannerMultiPullCounts((selectedBanner.multiPullCounts || [20, 30, 50]).join(',')); setEditBannerEnabled(selectedBanner.enabled);
   }, [selectedBannerId, safeGachaBanners]);
 
   // New Gacha Reward Form
@@ -503,6 +505,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const parseMultiPullCounts = (value: string): number[] => Array.from(new Set(value.split(',').map(v => Math.floor(Number(v.trim()))).filter(v => Number.isFinite(v) && v > 10 && v <= 1000))).sort((a, b) => a - b);
   const handleUpdateGachaBanner = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBanner) return;
@@ -514,6 +517,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         bannerDescription: editBannerDesc.trim() || selectedBanner.bannerDescription,
         pullCost: Math.max(10, Number(editBannerPullCost) || 10),
         tenPullCost: Math.max(100, Number(editBannerTenCost) || 100),
+        multiPullCounts: parseMultiPullCounts(editBannerMultiPullCounts),
         enabled: editBannerEnabled,
         updatedAt: Date.now(),
       });
@@ -529,6 +533,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       name: newBannerName.trim(),
       pullCost: Math.max(10, Number(newBannerPullCost) || 10),
       tenPullCost: Math.max(100, Number(newBannerTenCost) || 100),
+      multiPullCounts: parseMultiPullCounts(newBannerMultiPullCounts),
       enabled: newBannerEnabled,
       bannerTitle: newBannerTitle.trim() || newBannerName.trim(),
       bannerDescription: newBannerDesc.trim() || 'ตู้กาชาพิเศษ',
