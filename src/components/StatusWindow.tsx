@@ -928,7 +928,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                       </button>
                     </div>
                     <button
-                      onClick={() => handleDeleteSkill(skill.id)
+                      type="button"
+                      onClick={() => handleDeleteSkill(skill.id)}
                       className="p-2 rounded-xl bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
