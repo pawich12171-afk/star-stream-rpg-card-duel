@@ -206,6 +206,11 @@ export default function App() {
     } catch (e) {}
   };
 
+  const handleSendChatMessage = async (message: string): Promise<void> => {
+    if (!currentUser) throw new Error('ไม่พบตัวละครผู้เล่น');
+    await sendChatMessage(currentUser, message);
+  };
+
   // Handlers
   const handleUpdateCharacter = async (updated: CharacterProfile): Promise<boolean> => {
     const previous = charactersRef.current.find(character => character.id === updated.id);
