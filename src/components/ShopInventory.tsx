@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CharacterProfile, Item, InventoryItem, GachaRarity, ItemPassiveEffect, MarketplaceListing, MarketplaceAuction } from '../types';
 import { 
   ShoppingBag, 
@@ -421,7 +421,17 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
           ? Math.max(0, Number(raw.equippedQuantity) || (raw.isEquipped ? 1 : 0))
           : raw.equippedQuantity,
       };
-      const key = String(item.id);
+      // Stack by the actual item identity shown to the player.
+      // Older shop/gacha data can contain different IDs for the same item,
+      // so ID alone is not enough to repair legacy inventory.
+      const key = [
+        String(item.name || '').trim().toLocaleLowerCase(),
+        String(item.category || ''),
+        String(item.effectType || ''),
+        String(item.targetStat || ''),
+        String(item.effectValue ?? ''),
+        String(item.hpBonus ?? ''),
+      ].join('|');
       const existing = map.get(key);
       if (!existing) {
         map.set(key, item);
@@ -442,6 +452,23 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
 
   const getInventoryKey = (item: InventoryItem, index: number) => item.instanceId || `legacy-${item.id}-${index}`;
   const stackedInventory = stackInventory(character.inventory || []);
+
+  // Persist the repaired stack once so legacy duplicate records are permanently merged.
+  useEffect(() => {
+    const original = character.inventory || [];
+    const signature = (items: InventoryItem[]) => items.map(item => [
+      item.id, item.name, item.category, item.effectType, item.targetStat, item.effectValue,
+      item.hpBonus, item.quantity, item.equippedQuantity, item.isEquipped
+    ].join('~')).sort().join('||');
+    if (signature(original) !== signature(stackedInventory)) {
+      void onUpdateCharacter({
+        ...character,
+        inventory: stackedInventory,
+        lastUpdated: Date.now() + 1,
+      });
+    }
+  }, [character.id, character.inventory, stackedInventory]);
+
   const filteredInventory = stackedInventory.filter(item => {
     const query = inventorySearch.trim().toLocaleLowerCase();
     if (!query) return true;
@@ -571,10 +598,10 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const handleToggleEquip = (invItem: InventoryItem) => {
     const total = Math.max(1, Number(invItem.quantity) || 1);
     const current = getEquippedQuantity(invItem);
-    const aryaTotal = (character.inventory || [])
+    const aryaTotal = stackedInventory
       .filter(item => isAryaEquipment(item))
       .reduce((sum, item) => sum + getEquippedQuantity(item), 0);
-    const generalTotal = (character.inventory || [])
+    const generalTotal = stackedInventory
       .filter(item => item.category === 'equipment' && !isAryaEquipment(item))
       .reduce((sum, item) => sum + getEquippedQuantity(item), 0);
     const slots = isAryaEquipment(invItem)
@@ -592,8 +619,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       return;
     }
 
-    const updatedInventory = (character.inventory || []).map(item =>
-      item.instanceId === invItem.instanceId
+    const updatedInventory = stackedInventory.map(item =>
+      item.id === invItem.id && item.name === invItem.name
         ? { ...item, equippedQuantity: selected, isEquipped: selected > 0 }
         : item
     );
@@ -1014,7 +1041,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                   <Package className="w-4 h-4 text-cyan-400" />
                   กระเป๋าสมบัติ (Inventory)
                   <span className="px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono">
-                    {(character.inventory || []).reduce((total, item) => total + Math.max(1, Number(item.quantity) || 1), 0)} ชิ้น
+                    {stackedInventory.reduce((total, item) => total + Math.max(1, Number(item.quantity) || 1), 0)} ชิ้น
                   </span>
                 </h2>
                 <p className="text-[10px] text-slate-500 mt-1">ของเยอะก็จัดเป็นการ์ดให้ดูง่าย • อุปกรณ์สวมใส่ทั่วไปสูงสุด 20 ชิ้น • ดาบ Arya สูงสุด 1 ชิ้น</p>
@@ -1045,7 +1072,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
             </div>
           </div>
 
-          {(!character.inventory || character.inventory.length === 0) ? (
+          {stackedInventory.length === 0 ? (
             <div className="text-center py-16 bg-slate-900/60 rounded-3xl border border-slate-800">
               <Package className="w-12 h-12 text-slate-600 mx-auto mb-2" />
               <p className="text-slate-400 text-sm font-medium">ยังไม่มีไอเทมใดๆ ในกระเป๋า</p>
