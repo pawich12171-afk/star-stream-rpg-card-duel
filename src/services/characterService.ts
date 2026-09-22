@@ -2320,9 +2320,20 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       result.skillEffect = skillProfile.effect;
       result.skillPower = skillProfile.power;
       if (skillProfile.effect === "damage") {
-        const skillDamage = Math.max(0, Math.round(skillProfile.power * getAdminOutgoingDamageMultiplier(current)));
+        const scaling = skill?.damageScaling || 'fixed';
+        const scalingStat = scaling === 'strength' ? current.stats.strength
+          : scaling === 'durability' ? current.stats.durability
+          : scaling === 'agility' ? current.stats.agility
+          : scaling === 'magic' ? current.stats.magic
+          : skillProfile.power;
+        const scalingMultiplier = Math.max(0, Number(skill?.damageScalingMultiplier) || 1);
+        const skillDamage = Math.max(0, Math.round(
+          (scaling === 'fixed' ? skillProfile.power : scalingStat * scalingMultiplier)
+          * getAdminOutgoingDamageMultiplier(current)
+        ));
         result.damage += skillDamage;
-        result.message += ` • ใช้สกิล ${skillName} เพิ่มดาเมจ ${skillDamage}`;
+        const scalingLabel = scaling === 'fixed' ? 'คงที่' : `ตาม ${scaling.toUpperCase()} × ${scalingMultiplier}`;
+        result.message += ` • ใช้สกิล ${skillName} เพิ่มดาเมจ ${skillDamage} [${scalingLabel}]`;
       } else if (skillProfile.effect === "heal") {
         const healPercent = getSkillStat(skill, 'heal_percent');
         const bonusHeal = healPercent > 0 ? Math.round(current.maxHp * healPercent / 100) : 0;
