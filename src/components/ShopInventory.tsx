@@ -124,6 +124,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [editingPrice, setEditingPrice] = useState('');
+  const [selectedInventoryKeys, setSelectedInventoryKeys] = useState<string[]>([]);
 
   // Serialize purchases so rapid clicks cannot calculate from the same stale character.
   const characterRef = useRef(character);
@@ -373,6 +374,19 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       console.error('Failed to update shop item price:', error);
       alert('แก้ราคาไม่สำเร็จ กรุณาลองใหม่');
     }
+  };
+
+  const getInventoryKey = (item: InventoryItem, index: number) => item.instanceId || `legacy-${item.id}-${index}`;
+
+  const toggleInventorySelection = (key: string) => setSelectedInventoryKeys(current => current.includes(key) ? current.filter(k => k !== key) : [...current, key]);
+  const clearInventorySelection = () => setSelectedInventoryKeys([]);
+  const deleteSelectedInventory = async () => {
+    if (!selectedInventoryKeys.length) return;
+    if (!confirm(`ต้องการลบไอเทมที่เลือก ${selectedInventoryKeys.length} รายการออกจากกระเป๋าใช่หรือไม่?`)) return;
+    const selected = new Set(selectedInventoryKeys);
+    const remaining = (character.inventory || []).filter((item, index) => !selected.has(getInventoryKey(item, index)));
+    try { await onUpdateCharacter({ ...character, inventory: remaining, lastUpdated: Date.now() + 1 }); clearInventorySelection(); }
+    catch (error) { console.error('Failed to delete selected inventory:', error); alert('ลบไอเทมไม่สำเร็จ กรุณาลองใหม่'); }
   };
 
   // Use Item handler
@@ -791,6 +805,11 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                   </span>
                 </h2>
                 <p className="text-[10px] text-slate-500 mt-1">ของเยอะก็จัดเป็นการ์ดให้ดูง่าย • อุปกรณ์สวมใส่ทั่วไปสูงสุด 20 ชิ้น • ดาบ Arya สูงสุด 1 ชิ้น</p>
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <button type="button" onClick={() => setSelectedInventoryKeys((character.inventory || []).map((item,index) => getInventoryKey(item,index)))} className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold cursor-pointer">เลือกทั้งหมด</button>
+                  <button type="button" onClick={clearInventorySelection} disabled={!selectedInventoryKeys.length} className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-400 text-[10px] font-bold cursor-pointer disabled:opacity-40">ยกเลิกเลือก</button>
+                  <button type="button" onClick={() => void deleteSelectedInventory()} disabled={!selectedInventoryKeys.length} className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-black cursor-pointer disabled:opacity-40 flex items-center gap-1.5"><Trash2 className="w-3 h-3"/>ลบที่เลือก ({selectedInventoryKeys.length})</button>
+                </div>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-mono">
                 <span className="px-2.5 py-1.5 rounded-xl bg-violet-950/50 border border-violet-500/30 text-violet-300">⚔️ ทั่วไป {((character.inventory || []).filter(i => i.category === 'equipment' && i.isEquipped && !/arya/i.test(i.name))).length}/20</span>
@@ -855,9 +874,10 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                               </span>
                             )}
                           </div>
-                          <h3 className="text-sm font-bold text-white mt-1 leading-snug truncate">
-                            {invItem.name}
-                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <input type="checkbox" checked={selectedInventoryKeys.includes(inventoryKey)} onChange={() => toggleInventorySelection(inventoryKey)} onClick={e => e.stopPropagation()} className="accent-rose-500 cursor-pointer" aria-label={`เลือก ${invItem.name}`} />
+                            <h3 className="text-sm font-bold text-white leading-snug truncate">{invItem.name}</h3>
+                          </div>
                         </div>
                       </div>
 
