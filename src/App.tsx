@@ -519,7 +519,7 @@ export default function App() {
             id="nav-tab-card"
             onClick={() => setActiveTab('games')}
              className={`star-nav-tab px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-              activeTab === 'card_game'
+              activeTab === 'games'
                  ? 'is-active text-white shadow-lg'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
