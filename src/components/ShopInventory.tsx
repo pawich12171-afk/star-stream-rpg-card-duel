@@ -938,6 +938,14 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                             🍀 ตั้งค่าโชค
                           </button>
                         )}
+                        {isAdmin && item.category === 'consumable' && onAddShopItem && (
+                          <button type="button" onClick={() => {
+                            setEditingBattleItem(item);
+                            setEditGachaRateMultiplier(Math.max(1, Number(item.gachaRateMultiplier) || 1));
+                          }} className="px-3 py-1.5 rounded-lg bg-purple-500/15 border border-purple-500/40 text-purple-300 hover:bg-purple-500/25 text-[11px] font-bold cursor-pointer">
+                            🎰 ตั้งค่าเรทกาชา
+                          </button>
+                        )}
                         {isAdmin && onAddShopItem && (
                           <button
                             type="button"
