@@ -1676,6 +1676,10 @@ export const DEFAULT_BATTLE_CONFIG: BattleConfig = {
     ],
   },
   updatedAt: Date.now(),
+  victoryImageUrl: "",
+  victoryVideoUrl: "",
+  victoryTitle: "VICTORY",
+  victoryMessage: "ผู้ชนะการต่อสู้",
 };
 
 let localBattleConfig: BattleConfig = readLocalValue("starstream_battle_config", DEFAULT_BATTLE_CONFIG);
