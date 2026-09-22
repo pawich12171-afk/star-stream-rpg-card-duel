@@ -52,6 +52,11 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   const tenPullCost = activeBanner?.tenPullCost ?? 4500;
   const multiPullCounts = Array.from(new Set((activeBanner?.multiPullCounts || [20, 30, 50]).map(Number).filter(count => Number.isFinite(count) && count > 10))).sort((a, b) => a - b);
   const getPullCost = (count: number) => count === 1 ? pullCost : count === 10 ? tenPullCost : Math.max(0, Math.round(pullCost * count));
+  const [selectedMultiPullCount, setSelectedMultiPullCount] = useState<number>(multiPullCounts[0] || 20);
+
+  useEffect(() => {
+    if (!multiPullCounts.includes(selectedMultiPullCount)) setSelectedMultiPullCount(multiPullCounts[0] || 20);
+  }, [activeBanner?.id, multiPullCounts.join(','), selectedMultiPullCount]);
 
   // Helper to pick a random reward based on rate %
   const pickRandomReward = (rewardsList: GachaReward[]): GachaReward => {
@@ -344,22 +349,34 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             </span>
           </button>
           {multiPullCounts.length > 0 && (
-            <div className="w-full sm:w-auto flex items-center gap-2 rounded-2xl border border-purple-500/40 bg-slate-900/80 px-3 py-2">
-              <label htmlFor="gacha-multi-count" className="text-xs font-bold text-purple-200 whitespace-nowrap">สุ่มเพิ่ม</label>
-              <select
-                id="gacha-multi-count"
-                value={multiPullCounts[0] || ''}
-                onChange={(e) => handlePull(Number(e.target.value))}
-                disabled={isPulling || !activeBanner}
-                className="rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 text-sm font-black text-white outline-none cursor-pointer disabled:opacity-50"
-                aria-label="เลือกจำนวนครั้งสำหรับการสุ่มกาชาเพิ่มเติม"
-              >
-                <option value="" disabled>เลือกจำนวน</option>
-                {multiPullCounts.map(count => {
-                  const cost = getPullCost(count);
-                  return <option key={count} value={count}>{count} ครั้ง — {cost.toLocaleString()} C</option>;
-                })}
-              </select>
+            <div className="w-full mt-1 rounded-2xl border-2 border-purple-500/50 bg-purple-950/40 p-4 shadow-[0_0_24px_rgba(168,85,247,0.18)]">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-black text-white">✨ สุ่มจำนวนมากกว่า 10 ครั้ง</div>
+                    <div className="text-[11px] text-purple-200/80 mt-0.5">ตั้งค่าได้จาก Admin เช่น 20 / 30 / 50 ครั้ง</div>
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2 py-1 rounded-lg">Multi Pull</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {multiPullCounts.map(count => {
+                    const cost = getPullCost(count);
+                    const selected = selectedMultiPullCount === count;
+                    return (
+                      <button key={count} type="button" onClick={() => setSelectedMultiPullCount(count)} disabled={isPulling || !activeBanner}
+                        className={`min-w-[110px] flex-1 sm:flex-none px-4 py-3 rounded-xl border-2 transition-all cursor-pointer ${selected ? 'border-purple-300 bg-purple-500/25 shadow-lg shadow-purple-500/20' : 'border-slate-700 bg-slate-900/80 hover:border-purple-400/60'} disabled:opacity-50`}>
+                        <span className="block text-base font-black text-white">{count} ครั้ง</span>
+                        <span className={`block text-[11px] font-bold mt-1 ${character.coins >= cost ? 'text-amber-300' : 'text-red-300'}`}>{cost.toLocaleString()} C</span>
+                      </button>
+                    );
+                  })}
+                  <button type="button" id="btn-gacha-multi-pull" onClick={() => handlePull(selectedMultiPullCount)}
+                    disabled={isPulling || !activeBanner || character.coins < getPullCost(selectedMultiPullCount)}
+                    className="min-w-[130px] flex-1 sm:flex-none px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-black text-sm shadow-xl transition-all cursor-pointer disabled:opacity-50">
+                    <Sparkles className="w-4 h-4 inline-block mr-1" />สุ่ม {selectedMultiPullCount} ครั้ง
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
