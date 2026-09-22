@@ -96,16 +96,162 @@ async function handleDocument(req, res, collection, id) {
 async function handleTransaction(req, res) {
   const operations = Array.isArray(req.body?.operations) ? req.body.operations : [];
   if (!operations.length) return json(res, 200, { ok: true });
-  const base = env('SUPABASE_URL');
-  const key = env('SUPABASE_SERVICE_ROLE_KEY');
-  const rpc = await fetch(base + '/rest/v1/rpc/apply_star_stream_ops', {
-    method: 'POST',
-    headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ops: operations }),
-  });
-  const body = await rpc.text();
-  if (!rpc.ok) throw new Error(`Supabase ${rpc.status}: ${body || 'transaction failed'}`);
+
+  // Keep the compatibility API working even when the optional SQL RPC migration
+  // has not been installed in Supabase. Each operation uses the same service-role
+  // REST connection as the document API.
+  for (const op of operations) {
+    const collection = op?.collection || '';
+    const id = op?.id || '';
+    if (!validCollection(collection) || !validId(id)) {
+      throw new Error('Invalid transaction document reference');
+    }
+
+    const filter = `collection=eq.${encodeURIComponent(collection)}&id=eq.${encodeURIComponent(id)}`;
+
+    if (op.op === 'delete') {
+      await supabase(`star_stream_documents?${filter}`, {
+        method: 'DELETE',
+        headers: { Prefer: 'return=minimal' },
+      });
+      continue;
+    }
+
+    if (op.op === 'set') {
+      await supabase('star_stream_documents', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify({
+          collection,
+          id,
+          data: op.data || {},
+          updated_at: Date.now(),
+        }),
+      });
+      continue;
+    }
+
+    if (op.op === 'update') {
+      const current = await supabase(`star_stream_documents?select=data&${filter}`);
+      if (!current?.length) throw new Error(`Document not found: ${collection}.${id}`);
+      await supabase(`star_stream_documents?${filter}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          data: { ...(current[0].data || {}), ...(op.data || {}) },
+          updated_at: Date.now(),
+        }),
+      });
+      continue;
+    }
+
+    throw new Error(`Unsupported transaction operation: ${op.op}`);
+  }
+
   return json(res, 200, { ok: true });
+}
+
+async function createBattleRoomWithFeeDirect(body) {
+  const playerId = String(body.playerId || '');
+  const fee = Math.max(0, Math.floor(Number(body.fee) || 0));
+  const room = body.room;
+
+  if (!validId(playerId)) throw new Error('Invalid player id');
+  if (!room?.id || !validId(String(room.id))) throw new Error('Invalid battle room id');
+
+  const filter = `collection=eq.characters&id=eq.${encodeURIComponent(playerId)}`;
+  const rows = await supabase(`star_stream_documents?select=data&${filter}`);
+  if (!rows?.length) throw new Error('Player not found');
+
+  const currentData = rows[0].data || {};
+  const currentCoins = Math.max(0, Math.floor(Number(currentData.coins) || 0));
+  if (currentCoins < fee) throw new Error(`Coins ไม่พอ ต้องใช้ ${fee} Coins`);
+
+  // The coins condition makes concurrent requests fail instead of charging twice.
+  const nextData = {
+    ...currentData,
+    coins: currentCoins - fee,
+    lastUpdated: Math.max(Date.now(), Number(currentData.lastUpdated) || 0) + 1,
+  };
+
+  const updateFilter =
+    `collection=eq.characters&id=eq.${encodeURIComponent(playerId)}&data->>coins=eq.${currentCoins}`;
+  const updated = await supabase(`star_stream_documents?${updateFilter}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({ data: nextData, updated_at: Date.now() }),
+  });
+
+  if (!updated?.length) {
+    throw new Error('Battle entry changed while joining. Please try again.');
+  }
+
+  await supabase('star_stream_documents', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({
+      collection: 'battle_rooms',
+      id: String(room.id),
+      data: room,
+      updated_at: Date.now(),
+    }),
+  });
+}
+
+async function claimBattleRewardDirect(body) {
+  const roomId = String(body.roomId || '');
+  const playerId = String(body.playerId || '');
+  const reward = Math.max(0, Math.floor(Number(body.reward) || 0));
+
+  if (!validId(roomId) || !validId(playerId)) throw new Error('Invalid reward reference');
+
+  const roomFilter = `collection=eq.battle_rooms&id=eq.${encodeURIComponent(roomId)}`;
+  const rooms = await supabase(`star_stream_documents?select=data&${roomFilter}`);
+  const roomData = rooms?.[0]?.data || {};
+
+  if (
+    roomData.status !== 'completed' ||
+    roomData.mode !== 'pve' ||
+    roomData.winnerTeam !== 'a' ||
+    roomData.rewardClaimedBy
+  ) {
+    return false;
+  }
+
+  const claimData = {
+    ...roomData,
+    rewardClaimedBy: playerId,
+    updatedAt: Date.now(),
+  };
+
+  const claimed = await supabase(`star_stream_documents?${roomFilter}&data->>rewardClaimedBy=is.null`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({ data: claimData, updated_at: Date.now() }),
+  });
+
+  if (!claimed?.length) return false;
+
+  const charFilter = `collection=eq.characters&id=eq.${encodeURIComponent(playerId)}`;
+  const chars = await supabase(`star_stream_documents?select=data&${charFilter}`);
+  if (!chars?.length) throw new Error('Player not found');
+
+  const charData = chars[0].data || {};
+  const coins = Math.max(0, Math.floor(Number(charData.coins) || 0));
+  await supabase(`star_stream_documents?${charFilter}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      data: {
+        ...charData,
+        coins: coins + reward,
+        lastUpdated: Math.max(Date.now(), Number(charData.lastUpdated) || 0) + 1,
+      },
+      updated_at: Date.now(),
+    }),
+  });
+
+  return true;
 }
 
 export default async function handler(req, res) {
@@ -116,38 +262,12 @@ export default async function handler(req, res) {
       return await handleTransaction(req, res);
     }
     if (req.method === 'POST' && url.searchParams.get('action') === 'create_battle_room_with_fee') {
-      const body = req.body || {};
-      const base = env('SUPABASE_URL');
-      const key = env('SUPABASE_SERVICE_ROLE_KEY');
-      const rpc = await fetch(base + '/rest/v1/rpc/create_battle_room_with_fee', {
-        method: 'POST',
-        headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          p_player_id: body.playerId,
-          p_fee: Math.max(0, Math.floor(Number(body.fee) || 0)),
-          p_room: body.room,
-        }),
-      });
-      const bodyText = await rpc.text();
-      if (!rpc.ok) throw new Error(`Supabase ${rpc.status}: ${bodyText || 'battle entry failed'}`);
+      await createBattleRoomWithFeeDirect(req.body || {});
       return json(res, 200, { ok: true });
     }
     if (req.method === 'POST' && url.searchParams.get('action') === 'claim_battle_reward') {
-      const body = req.body || {};
-      const base = env('SUPABASE_URL');
-      const key = env('SUPABASE_SERVICE_ROLE_KEY');
-      const rpc = await fetch(base + '/rest/v1/rpc/claim_battle_reward', {
-        method: 'POST',
-        headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          p_room_id: body.roomId,
-          p_player_id: body.playerId,
-          p_reward: Math.max(0, Math.floor(Number(body.reward) || 0)),
-        }),
-      });
-      const bodyText = await rpc.text();
-      if (!rpc.ok) throw new Error(`Supabase ${rpc.status}: ${bodyText || 'battle reward failed'}`);
-      return json(res, 200, { ok: true, paid: bodyText === 'true' || bodyText === '"true"' });
+      const paid = await claimBattleRewardDirect(req.body || {});
+      return json(res, 200, { ok: true, paid });
     }
     const collection = url.searchParams.get('collection') || '';
     const id = url.searchParams.get('id') || '';
