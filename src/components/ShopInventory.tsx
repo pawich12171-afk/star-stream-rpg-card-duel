@@ -319,7 +319,22 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         // so React cannot reuse one card for another item after a purchase.
         instanceId: invItem.instanceId || `legacy-${invItem.id}-${index}`,
       })));
-      const existingIndex = currentInventory.findIndex(i => i.id === item.id);
+      const purchaseKey = [
+        String(item.name || '').trim().toLocaleLowerCase(),
+        String(item.category || ''),
+        String(item.effectType || ''),
+        String(item.targetStat || ''),
+        String(item.effectValue ?? ''),
+        String(item.hpBonus ?? ''),
+      ].join('|');
+      const existingIndex = currentInventory.findIndex(i => [
+        String(i.name || '').trim().toLocaleLowerCase(),
+        String(i.category || ''),
+        String(i.effectType || ''),
+        String(i.targetStat || ''),
+        String(i.effectValue ?? ''),
+        String(i.hpBonus ?? ''),
+      ].join('|') === purchaseKey);
       const updatedInventory: InventoryItem[] = [...currentInventory];
 
       if (existingIndex > -1) {
