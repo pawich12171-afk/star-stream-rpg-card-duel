@@ -2374,13 +2374,15 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
   const inventory = (character.inventory || [])
     .map(inv => inv.instanceId === itemInstanceId ? { ...inv, quantity: Math.max(0, inv.quantity - 1) } : inv)
     .filter(inv => inv.quantity > 0);
+
   let hp = character.hp;
   let maxHp = character.maxHp;
   const stats = { ...character.stats };
-
-  if (item.effectType === 'heal_hp') hp = Math.min(maxHp, hp + Math.max(0, Number(item.effectValue) || 0));
-  else if (item.effectType === 'buff_stat' && item.targetStat) stats[item.targetStat] = (stats[item.targetStat] || 0) + Math.max(0, Number(item.effectValue) || 0);
-  else if (item.effectType === 'boost_max_hp') {
+  if (item.effectType === 'heal_hp') {
+    hp = Math.min(maxHp, hp + Math.max(0, Number(item.effectValue) || 0));
+  } else if (item.effectType === 'buff_stat' && item.targetStat) {
+    stats[item.targetStat] = (stats[item.targetStat] || 0) + Math.max(0, Number(item.effectValue) || 0);
+  } else if (item.effectType === 'boost_max_hp') {
     const bonus = Math.max(0, Number(item.effectValue) || 0);
     maxHp += bonus;
     hp = Math.min(maxHp, hp + bonus);
@@ -2388,28 +2390,32 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
 
   await updateCharacterFields(playerId, { inventory, hp, maxHp, stats, lastUpdated: Date.now() });
 
-  const nextRoom = {
+  const nextRoom: BattleRoom = {
     ...room,
-    teamA: room.teamA.map(unit => unit.id === actor.id ? { ...unit, hp: Math.min(maxHp, hp), maxHp, stats } : unit),
+    teamA: room.teamA.map(unit => unit.id === actor.id ? { ...unit, hp: Math.min(maxHp, hp), maxHp, stats } : { ...unit }),
     teamB: room.teamB.map(unit => ({ ...unit })),
     battleItemUses: currentUses + 1,
     battleItemWindowStartTurn: currentWindowStart,
-    round: Math.max(1, Number(room.round || 1) + 1),
+    log: [{
+      id: 'battle-log-item-' + Date.now(),
+      timestamp: Date.now(),
+      actorName: actor.name,
+      message: `🧪 ${actor.name} ใช้ไอเทม "${item.name}" · โควตาไอเทม ${currentUses + 1}/2 ในช่วง 35 เทิร์น`,
+    }, ...(room.log || [])],
     updatedAt: Date.now(),
   };
-  nextRoom.log = [{
-    id: 'battle-log-item-' + Date.now(),
-    timestamp: Date.now(),
-    actorName: actor.name,
-    message: `🧪 ${actor.name} ใช้ไอเทม "${item.name}" · โควตาไอเทม ${currentUses + 1}/2 ใน 35 เทิร์น`,
-  }, ...(room.log || [])];
 
-  const nextActor = [...nextRoom.teamA, ...nextRoom.teamB].find(unit => unit.id !== actor.id && unit.hp > 0);
-  if (nextActor) nextRoom.turnActorId = nextActor.id;
+  const nextActor = getNextBattleActor(nextRoom, actor.id);
+  nextRoom.turnActorId = nextActor?.id || actor.id;
+  if (nextActor?.team === 'a' && actor.team === 'b') {
+    nextRoom.round = (room.round || 1) + 1;
+  } else {
+    nextRoom.round = room.round || 1;
+  }
+
   await updateBattleRoom(nextRoom);
   return nextRoom;
 }
-
 function getBattleCombatants(room: BattleRoom): BattleCombatant[] {
   return [...room.teamA, ...room.teamB];
 }
