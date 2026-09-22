@@ -31,6 +31,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   const [filterRarity, setFilterRarity] = useState<string>('all');
   const [selectedMultiPullCount, setSelectedMultiPullCount] = useState<number>(20);
   const [detailLimit, setDetailLimit] = useState<number>(0);
+  const [activeGachaRateMultiplier, setActiveGachaRateMultiplier] = useState<number>(Math.max(1, Number(character.pendingGachaRateMultiplier) || 1));
   const configuredBanners = Array.isArray(gachaBanners) ? gachaBanners : [];
   const availableBanners = configuredBanners.filter(b => b.enabled);
   const [selectedBannerId, setSelectedBannerId] = useState<string>(availableBanners[0]?.id || 'main');
@@ -42,6 +43,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
 
   useEffect(() => {
     characterRef.current = character;
+    setActiveGachaRateMultiplier(Math.max(1, Number(character.pendingGachaRateMultiplier) || 1));
   }, [character]);
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   const multiPullCost = getPullCost(activeMultiPullCount);
 
   // Helper to pick a random reward based on rate %
-  const pickRandomReward = (rewardsList: GachaReward[]): GachaReward => {
+  const pickRandomReward = (rewardsList: GachaReward[], rateMultiplier = 1): GachaReward => {
     if (rewardsList.length === 0) {
       return {
         id: 'fallback',
@@ -81,11 +83,18 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         coinAmount: 100,
       };
     }
-    const totalWeight = rewardsList.reduce((sum, reward) => sum + Math.max(0, Number(reward.rate) || 0), 0);
+    const totalWeight = rewardsList.reduce((sum, reward) => {
+      const baseWeight = Math.max(0, Number(reward.rate) || 0);
+      return sum + baseWeight * (rateMultiplier > 1 && reward.rarity !== 'common' ? rateMultiplier : 1);
+    }, 0);
     if (totalWeight <= 0) return rewardsList[rewardsList.length - 1];
     let randomNum = Math.random() * totalWeight;
     for (const reward of rewardsList) {
-      const weight = Math.max(0, Number(reward.rate) || 0);
+      const baseWeight = Math.max(0, Number(reward.rate) || 0);
+      // Gacha boost increases the relative rate of Rare+ rewards while leaving
+      // Common as the baseline. Multiplying every reward equally would not
+      // actually change the probability distribution.
+      const weight = baseWeight * (rateMultiplier > 1 && reward.rarity !== 'common' ? rateMultiplier : 1);
       if (randomNum < weight) {
         return reward;
       }
@@ -94,7 +103,60 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     return rewardsList[rewardsList.length - 1];
   };
 
+  const gachaBoostItems = (character.inventory || []).filter(
+    item => item.category === 'consumable' && Number(item.gachaRateMultiplier) > 1
+  );
+
+  const handleUseGachaBoost = async (invItem: InventoryItem) => {
+    const multiplier = Math.max(1, Math.min(20, Number(invItem.gachaRateMultiplier) || 1));
+    if (multiplier <= 1) return;
+
+    const currentCharacter = characterRef.current;
+    const currentInventory = [...(currentCharacter.inventory || [])];
+    const itemIndex = currentInventory.findIndex(item =>
+      invItem.instanceId ? item.instanceId === invItem.instanceId : item.id === invItem.id
+    );
+    if (itemIndex < 0) {
+      alert('ไม่พบไอเทมเพิ่มเรทกาชาในกระเป๋า กรุณารีเฟรชแล้วลองใหม่');
+      return;
+    }
+
+    const currentItem = currentInventory[itemIndex];
+    const quantity = Math.max(1, Number(currentItem.quantity) || 1);
+    if (quantity > 1) currentInventory[itemIndex] = { ...currentItem, quantity: quantity - 1 };
+    else currentInventory.splice(itemIndex, 1);
+
+    const updatedCharacter: CharacterProfile = {
+      ...currentCharacter,
+      inventory: currentInventory,
+      pendingGachaRateMultiplier: multiplier,
+      notifications: [
+        {
+          id: `notif-gacha-boost-${Date.now()}`,
+          title: 'เปิดใช้โอสถเพิ่มเรทกาชา',
+          message: `ใช้ "${invItem.name}" ×1 แล้ว · เรท Rare ขึ้นไป ×${multiplier} สำหรับการกดสุ่มครั้งถัดไป (ไม่ว่าจะ 1 / 10 / 1,000 ครั้ง)`,
+          timestamp: Date.now(),
+          read: false,
+          type: 'gacha' as const,
+        },
+        ...(currentCharacter.notifications || []),
+      ],
+      lastUpdated: Math.max(Date.now(), Number(currentCharacter.lastUpdated || 0) + 1),
+    };
+
+    try {
+      const saved = await onUpdateCharacter(updatedCharacter);
+      if (saved === false) return;
+      characterRef.current = updatedCharacter;
+      setActiveGachaRateMultiplier(multiplier);
+    } catch (error) {
+      console.error('Failed to activate gacha boost:', error);
+      alert('ใช้ไอเทมเพิ่มเรทกาชาไม่สำเร็จ กรุณาลองใหม่');
+    }
+  };
+
   // Perform Gacha Pull
+  const handlePull = (count: number) => {  // Perform Gacha Pull
   const handlePull = (count: number) => {
     if (!activeBanner) {
       alert('ขณะนี้ไม่มีตู้กาชาที่เปิดใช้งาน');
@@ -106,6 +168,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     }
     const currentCharacter = characterRef.current;
     const cost = getPullCost(count);
+    const gachaRateMultiplier = Math.max(1, Number(currentCharacter.pendingGachaRateMultiplier) || Number(activeGachaRateMultiplier) || 1);
     if (currentCharacter.coins < cost) {
       alert(`เหรียญไม่เพียงพอ ต้องการ ${cost.toLocaleString()} C แต่คุณมี ${character.coins.toLocaleString()} C`);
       return;
@@ -127,7 +190,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       const newCharacteristicsToAdd: string[] = [];
 
       for (let i = 0; i < count; i++) {
-        const reward = pickRandomReward(activeRewards);
+        const reward = pickRandomReward(activeRewards, gachaRateMultiplier);
         results.push(reward);
 
         if (reward.type === 'coin' && reward.coinAmount) {
@@ -296,10 +359,12 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         skills: existingSkills,
         characteristics: existingCharacteristics,
         notifications: updatedNotifications,
+        pendingGachaRateMultiplier: undefined,
         lastUpdated: Math.max(Date.now(), Number(currentCharacter.lastUpdated || 0) + 1),
       };
 
       characterRef.current = updatedCharacter;
+      setActiveGachaRateMultiplier(1);
       onUpdateCharacter(updatedCharacter);
 
       setPullResults(results);
@@ -391,7 +456,40 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             </button>
           ))}
         </div>
-\n        {/* Summon Buttons Area */}
+\n        {/* Gacha Rate Boost Item */}
+        {gachaBoostItems.length > 0 && (
+          <div className="mt-5 rounded-2xl border-2 border-purple-500/40 bg-purple-950/25 p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-black text-purple-100">🎰 ไอเทมเพิ่มเรทกาชา</div>
+                <div className="text-[11px] text-purple-200/80 mt-1">
+                  กดใช้ก่อนสุ่มได้ 1 ขวดต่อ 1 คำสั่งสุ่ม • ใช้ได้ทั้ง 1 ครั้ง, 10 ครั้ง หรือ 1,000 ครั้ง
+                </div>
+                {activeGachaRateMultiplier > 1 && (
+                  <div className="mt-2 inline-flex rounded-xl bg-purple-500/20 border border-purple-400/50 px-3 py-1.5 text-xs font-black text-purple-200">
+                    ✨ เปิดใช้งานอยู่: เรท Rare ขึ้นไป ×{activeGachaRateMultiplier}
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 justify-end">
+                {gachaBoostItems.map(item => (
+                  <button
+                    key={item.instanceId || item.id}
+                    type="button"
+                    onClick={() => void handleUseGachaBoost(item)}
+                    disabled={isPulling || activeGachaRateMultiplier > 1}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white text-xs font-black shadow-lg disabled:opacity-50"
+                  >
+                    🎰 ใช้ {item.name} ×{Math.max(1, Number(item.quantity) || 1)}
+                    <span className="block text-[10px] text-purple-200">เรท ×{Number(item.gachaRateMultiplier).toLocaleString()}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Summon Buttons Area */}
         <div className="mt-8 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-center gap-4">
           <button
             id="btn-gacha-single"
