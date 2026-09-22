@@ -242,6 +242,8 @@ export interface CharacterProfile {
   adminStatusEffects?: AdminStatusEffect[];
   equippedPassives?: ItemPassiveEffect[];
   passiveStacks?: Record<string, number>;
+  /** Character Traits shown and activated for the battle UI. */
+  traits?: string[];
 }
 
 export interface TransactionHistory {
