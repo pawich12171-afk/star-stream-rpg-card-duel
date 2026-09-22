@@ -105,8 +105,8 @@ export interface InventoryItem extends Item {
   equippedQuantity?: number;
 }
 
-export interface MarketplaceListing { id: string; sellerId: string; sellerName: string; item: InventoryItem; price: number; createdAt: number; updatedAt: number; }
-export interface MarketplaceAuction { id: string; sellerId: string; sellerName: string; item: InventoryItem; startingPrice: number; currentBid: number; highestBidderId?: string; highestBidderName?: string; /** Coins ของผู้เสนอราคาสูงสุดถูกกันไว้แล้ว */ bidFundsReserved?: boolean; endsAt: number; createdAt: number; updatedAt: number; status: 'active' | 'completed' | 'cancelled'; }
+export interface MarketplaceListing { id: string; sellerId: string; sellerName: string; item: InventoryItem; price: number; quantity: number; createdAt: number; updatedAt: number; }
+export interface MarketplaceAuction { id: string; sellerId: string; sellerName: string; item: InventoryItem; quantity: number; startingPrice: number; currentBid: number; highestBidderId?: string; highestBidderName?: string; /** Coins ของผู้เสนอราคาสูงสุดถูกกันไว้แล้ว */ bidFundsReserved?: boolean; endsAt: number; createdAt: number; updatedAt: number; status: 'active' | 'completed' | 'cancelled'; }
 
 export interface ChatMessage { id: string; senderId: string; senderName: string; senderAvatar?: string; message: string; createdAt: number; }
 
