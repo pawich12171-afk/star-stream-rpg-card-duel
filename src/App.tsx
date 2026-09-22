@@ -40,6 +40,7 @@ import {
   placeMarketplaceBid,
   finalizeMarketplaceAuction,
   cancelMarketplaceListing,
+  cancelMarketplaceAuction,
   buyMarketplaceListing
 } from './services/characterService';
 import { StatusWindow } from './components/StatusWindow';
