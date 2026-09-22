@@ -247,6 +247,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         String(item.targetStat || ''),
         String(item.effectValue ?? ''),
         String(item.hpBonus ?? ''),
+        String(item.gachaRateMultiplier ?? ''),
       ].join('|');
 
       const inventoryMap = new Map<string, InventoryItem>();
