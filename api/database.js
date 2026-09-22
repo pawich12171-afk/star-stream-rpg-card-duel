@@ -115,6 +115,40 @@ export default async function handler(req, res) {
     if (req.method === 'POST' && url.searchParams.get('transaction') === '1') {
       return await handleTransaction(req, res);
     }
+    if (req.method === 'POST' && url.searchParams.get('action') === 'create_battle_room_with_fee') {
+      const body = req.body || {};
+      const base = env('SUPABASE_URL');
+      const key = env('SUPABASE_SERVICE_ROLE_KEY');
+      const rpc = await fetch(base + '/rest/v1/rpc/create_battle_room_with_fee', {
+        method: 'POST',
+        headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          p_player_id: body.playerId,
+          p_fee: Math.max(0, Math.floor(Number(body.fee) || 0)),
+          p_room: body.room,
+        }),
+      });
+      const bodyText = await rpc.text();
+      if (!rpc.ok) throw new Error(`Supabase ${rpc.status}: ${bodyText || 'battle entry failed'}`);
+      return json(res, 200, { ok: true });
+    }
+    if (req.method === 'POST' && url.searchParams.get('action') === 'claim_battle_reward') {
+      const body = req.body || {};
+      const base = env('SUPABASE_URL');
+      const key = env('SUPABASE_SERVICE_ROLE_KEY');
+      const rpc = await fetch(base + '/rest/v1/rpc/claim_battle_reward', {
+        method: 'POST',
+        headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          p_room_id: body.roomId,
+          p_player_id: body.playerId,
+          p_reward: Math.max(0, Math.floor(Number(body.reward) || 0)),
+        }),
+      });
+      const bodyText = await rpc.text();
+      if (!rpc.ok) throw new Error(`Supabase ${rpc.status}: ${bodyText || 'battle reward failed'}`);
+      return json(res, 200, { ok: true, paid: bodyText === 'true' || bodyText === '"true"' });
+    }
     const collection = url.searchParams.get('collection') || '';
     const id = url.searchParams.get('id') || '';
     return await handleDocument(req, res, collection, id);
