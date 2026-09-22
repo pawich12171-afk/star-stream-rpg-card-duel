@@ -90,6 +90,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [newCharacteristic, setNewCharacteristic] = useState('');
   const [isSavingStats, setIsSavingStats] = useState(false);
   const [transcendenceBatchCounts, setTranscendenceBatchCounts] = useState<Record<'strength' | 'durability' | 'agility' | 'magic', number>>({ strength: 1, durability: 1, agility: 1, magic: 1 });
+  const [skillBatchCounts, setSkillBatchCounts] = useState<Record<string, number>>({});
+  const [isUpgradingSkill, setIsUpgradingSkill] = useState(false);
   const latestCharacterRef = useRef<CharacterProfile>(character);
 
   useEffect(() => {
@@ -223,86 +225,47 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     }
   };
 
-  const handleUpgradeSkill = (skillId: string) => {
-    const targetSkill = character.skills.find(s => s.id === skillId);
+  const handleUpgradeSkill = async (skillId: string) => {
+    if (isUpgradingSkill || isSavingStats) return;
+    const base = latestCharacterRef.current;
+    const targetSkill = (base.skills || []).find(s => s.id === skillId);
     if (!targetSkill) return;
-
-    const cost = calculateSkillUpgradeCost(targetSkill);
-    if (character.coins < cost) {
-      alert(`เหรียญไม่เพียงพอ ต้องการ ${cost.toLocaleString()} Coins (คุณมี ${character.coins.toLocaleString()} Coins)`);
+    const requestedTimes = Math.max(1, Math.min(1000, Math.floor(Number(skillBatchCounts[skillId]) || 1)));
+    const startUpgradeCount = Math.max(0, Math.floor(Number(targetSkill.upgradeCount ?? (targetSkill.level - 1)) || 0));
+    let totalCost = 0;
+    for (let i = 0; i < requestedTimes; i += 1) totalCost += calculateSkillUpgradeCost({ ...targetSkill, upgradeCount: startUpgradeCount + i });
+    const currentCoins = Number(base.coins) || 0;
+    if (currentCoins < totalCost) {
+      alert(`เหรียญไม่เพียงพอ ต้องการ ${totalCost.toLocaleString()} Coins (คุณมี ${currentCoins.toLocaleString()} Coins)`);
       return;
     }
-
-    const oldHpBonus = getSkillHpBonus(targetSkill);
-    let triggeredAscension = false;
-    let ascensionMultiplier = 1;
-    let newLevelReached = 1;
-
-    const updatedSkills = character.skills.map(skill => {
-      if (skill.id === skillId) {
-        let newLevel = skill.level + 1;
-        let newMultiplier = skill.multiplier || 1;
-        const upgradeCount = (skill.upgradeCount ?? (skill.level - 1)) + 1;
-
-        if (newLevel > 10) {
-          newMultiplier = newMultiplier * 2;
-          newLevel = 1;
-          triggeredAscension = true;
-          ascensionMultiplier = newMultiplier;
-        }
-        newLevelReached = newLevel;
-
-        return {
-          ...skill,
-          level: newLevel,
-          multiplier: newMultiplier,
-          upgradeCount,
-        };
-      }
-      return skill;
-    });
-
-    const newCoins = character.coins - cost;
-    const targetUpdated = updatedSkills.find(s => s.id === skillId)!;
-    const newHpBonus = getSkillHpBonus(targetUpdated);
-    const hpDiff = newHpBonus - oldHpBonus;
-
-    if (triggeredAscension) {
-      confetti({
-        particleCount: 120,
-        spread: 80,
-        origin: { y: 0.5 }
-      });
+    let finalSkill = { ...targetSkill };
+    let ascensionCount = 0;
+    for (let i = 0; i < requestedTimes; i += 1) {
+      let level = Number(finalSkill.level || 1) + 1;
+      let multiplier = Number(finalSkill.multiplier || 1);
+      if (level > 10) { level = 1; multiplier *= 2; ascensionCount += 1; }
+      finalSkill = { ...finalSkill, level, multiplier, upgradeCount: startUpgradeCount + i + 1 };
     }
-
-    const hpDetails = hpDiff > 0
-      ? ` • บัฟเลือดเพิ่มขึ้น: +${oldHpBonus} ➔ +${newHpBonus} HP (+${hpDiff} HP)`
-      : (newHpBonus > 0 ? ` • มอบบัฟเลือด +${newHpBonus} HP` : '');
-
-    const notifMessage = triggeredAscension
-      ? `สกิล "${targetSkill.name}" จุติสวรรค์! ตัวคูณเพิ่มเป็น ${ascensionMultiplier}X ความสามารถเพิ่มขึ้นทวีคูณ และรีเซ็ตสู่รอบถัดไป Lv.1 (ใช้เหรียญ ${cost.toLocaleString()} C)`
-      : `อัปเกรดสกิล "${targetSkill.name}" สู่ Lv.${newLevelReached} สำเร็จ! ความสามารถ +10% (รวม +${(newLevelReached - 1) * 10}%)${hpDetails} (ใช้เหรียญ ${cost.toLocaleString()} Coins)`;
-
+    const oldHpBonus = getSkillHpBonus(targetSkill);
+    const newHpBonus = getSkillHpBonus(finalSkill);
+    const now = Date.now();
     const updatedChar: CharacterProfile = {
-      ...character,
-      coins: newCoins,
-      skills: updatedSkills,
-      notifications: [
-        {
-          id: `notif-skill-up-${Date.now()}`,
-          title: triggeredAscension ? 'สกิลจุติสวรรค์ (Ascension)!' : 'อัปเกรดสกิลสำเร็จ (+10% ความสามารถ)',
-          message: notifMessage,
-          timestamp: Date.now(),
-          read: false,
-          type: 'system',
-        },
-        ...(character.notifications || []),
-      ],
+      ...base,
+      coins: currentCoins - totalCost,
+      skills: (base.skills || []).map(skill => skill.id === skillId ? finalSkill : skill),
+      lastUpdated: Math.max(now, Number(base.lastUpdated || 0) + 1),
+      notifications: [{ id: `notif-skill-up-${now}-${startUpgradeCount + requestedTimes}`, title: ascensionCount ? 'สกิลจุติสวรรค์ (Ascension)!' : 'อัปเกรดสกิลสำเร็จ', message: `อัปเกรด "${targetSkill.name}" +${requestedTimes} ขั้น → Lv.${finalSkill.level} • ใช้ ${totalCost.toLocaleString()} Coins${ascensionCount ? ` • จุติ ${ascensionCount} ครั้ง → x${finalSkill.multiplier}` : ''}${newHpBonus > oldHpBonus ? ` • HP +${newHpBonus - oldHpBonus}` : ''}`, timestamp: now, read: false, type: 'system' }, ...(base.notifications || [])],
     };
-
-    onUpdateCharacter(syncCharacterHealth(updatedChar));
+    setIsUpgradingSkill(true);
+    latestCharacterRef.current = updatedChar;
+    if (ascensionCount) confetti({ particleCount: Math.min(200, 100 + ascensionCount * 20), spread: 80, origin: { y: 0.5 } });
+    try {
+      const saved = await onUpdateCharacter(syncCharacterHealth(updatedChar));
+      if (saved === false) { latestCharacterRef.current = base; alert('บันทึกการอัปเกรดสกิลไม่สำเร็จ กรุณาลองใหม่'); }
+    } catch { latestCharacterRef.current = base; alert('บันทึกการอัปเกรดสกิลไม่สำเร็จ กรุณาลองใหม่'); }
+    finally { setIsUpgradingSkill(false); }
   };
-
   const handleDeleteSkill = (skillId: string) => {
     if (!confirm('คุณต้องการลบสกิลนี้ใช่หรือไม่?')) return;
 
@@ -948,19 +911,22 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                     >
                       ✏️ แก้ไข
                     </button>
-                    <button
-                      id={`btn-upgrade-skill-${skill.id}`}
-                      onClick={() => handleUpgradeSkill(skill.id)}
-                      disabled={!canAfford}
-                      className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
-                        canAfford
-                          ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white'
-                          : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                      }`}
-                    >
-                      <ArrowUpCircle className="w-4 h-4" />
-                      {skill.level >= 10 ? 'จุติสวรรค์ (x2)' : `อัปเกรด (+10%) • ${upgradePreview.cost.toLocaleString()} C`}
-                    </button>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <input type="number" min={1} max={1000} value={skillBatchCounts[skill.id] || 1}
+                          onChange={(e) => setSkillBatchCounts(prev => ({ ...prev, [skill.id]: Math.max(1, Math.min(1000, Math.floor(Number(e.target.value) || 1))) }))}
+                          disabled={isUpgradingSkill}
+                          className="w-20 px-2 py-2 rounded-xl bg-slate-950 border border-cyan-500/30 text-white text-xs font-mono font-bold"
+                        />
+                        <span className="text-[10px] text-slate-500">ขั้น</span>
+                      </div>
+                      <button type="button" id={`btn-upgrade-skill-${skill.id}`} onClick={() => handleUpgradeSkill(skill.id)}
+                        disabled={!canAfford || isUpgradingSkill}
+                        className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${canAfford && !isUpgradingSkill ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
+                        <ArrowUpCircle className="w-4 h-4" />
+                        {skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`}
+                      </button>
+                    </div>on>
                     <button
                       onClick={() => handleDeleteSkill(skill.id)}
                       className="p-2 rounded-xl bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer"
