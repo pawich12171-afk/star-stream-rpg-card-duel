@@ -33,3 +33,115 @@ begin
   end loop;
 end;
 $$;
+
+
+-- Atomic PVE battle entry: deduct coins and create the room in one PostgreSQL transaction.
+create or replace function public.create_battle_room_with_fee(
+  p_player_id text,
+  p_fee bigint,
+  p_room jsonb
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare current_data jsonb;
+declare current_coins bigint;
+begin
+  select data into current_data
+  from public.star_stream_documents
+  where collection = 'characters' and id = p_player_id
+  for update;
+
+  if current_data is null then
+    raise exception 'Player not found';
+  end if;
+
+  current_coins := coalesce((current_data->>'coins')::bigint, 0);
+  if current_coins < greatest(0, p_fee) then
+    raise exception 'Coins ไม่พอ ต้องใช้ % Coins', p_fee;
+  end if;
+
+  update public.star_stream_documents
+  set data = current_data
+      || jsonb_build_object(
+        'coins', current_coins - greatest(0, p_fee),
+        'lastUpdated', greatest(
+          extract(epoch from clock_timestamp()) * 1000,
+          coalesce((current_data->>'lastUpdated')::bigint, 0) + 1
+        )
+      ),
+      updated_at = extract(epoch from clock_timestamp()) * 1000
+  where collection = 'characters' and id = p_player_id;
+
+  insert into public.star_stream_documents(collection, id, data, updated_at)
+  values ('battle_rooms', p_room->>'id', p_room, extract(epoch from clock_timestamp()) * 1000)
+  on conflict (collection, id) do update
+    set data = excluded.data, updated_at = excluded.updated_at;
+end;
+$$;
+
+-- Atomic reward claim: only the first caller can claim a completed PVE room.
+create or replace function public.claim_battle_reward(
+  p_room_id text,
+  p_player_id text,
+  p_reward bigint
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare room_data jsonb;
+declare char_data jsonb;
+declare current_coins bigint;
+begin
+  select data into room_data
+  from public.star_stream_documents
+  where collection = 'battle_rooms' and id = p_room_id
+  for update;
+
+  if room_data is null
+     or room_data->>'status' <> 'completed'
+     or room_data->>'mode' <> 'pve'
+     or room_data->>'winnerTeam' <> 'a'
+     or nullif(room_data->>'rewardClaimedBy', '') is not null then
+    return false;
+  end if;
+
+  select data into char_data
+  from public.star_stream_documents
+  where collection = 'characters' and id = p_player_id
+  for update;
+
+  if char_data is null then
+    raise exception 'Player not found';
+  end if;
+
+  current_coins := coalesce((char_data->>'coins')::bigint, 0);
+
+  update public.star_stream_documents
+  set data = char_data
+      || jsonb_build_object(
+        'coins', current_coins + greatest(0, p_reward),
+        'lastUpdated', greatest(
+          extract(epoch from clock_timestamp()) * 1000,
+          coalesce((char_data->>'lastUpdated')::bigint, 0) + 1
+        )
+      ),
+      updated_at = extract(epoch from clock_timestamp()) * 1000
+  where collection = 'characters' and id = p_player_id;
+
+  update public.star_stream_documents
+  set data = room_data
+      || jsonb_build_object(
+        'rewardClaimedBy', p_player_id,
+        'updatedAt', extract(epoch from clock_timestamp()) * 1000
+      ),
+      updated_at = extract(epoch from clock_timestamp()) * 1000
+  where collection = 'battle_rooms' and id = p_room_id;
+
+  return true;
+end;
+$$;
