@@ -1,3 +1,4 @@
+// Vercel build sync: force fresh main build after JSX repair.
 import React, { useEffect, useRef, useState } from 'react';
 // Build trigger: StatusWindow JSX fix is present on main.
 import { CharacterProfile, Skill, ORVSkillRank } from '../types';
