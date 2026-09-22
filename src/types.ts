@@ -102,6 +102,7 @@ export interface InventoryItem extends Item {
   quantity: number;
   instanceId: string;
   isEquipped?: boolean;
+  equippedQuantity?: number;
 }
 
 export interface MarketplaceListing { id: string; sellerId: string; sellerName: string; item: InventoryItem; price: number; createdAt: number; updatedAt: number; }
