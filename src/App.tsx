@@ -35,7 +35,6 @@ import {
 } from './services/characterService';
 import { StatusWindow } from './components/StatusWindow';
 import { ShopInventory } from './components/ShopInventory';
-import { CardGame } from './components/CardGame';
 import { GameCenter } from './components/GameCenter';
 import { GachaSystem } from './components/GachaSystem';
 import { Leaderboard } from './components/Leaderboard';
@@ -67,7 +66,7 @@ import {
 import confetti from './utils/confetti';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'card_game' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin'>('status');
+  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin'>('status');
 
   // Real-time State
   const [characters, setCharacters] = useState<CharacterProfile[]>(() => [...INITIAL_CHARACTERS]);
