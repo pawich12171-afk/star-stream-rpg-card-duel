@@ -364,20 +364,24 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
                 <div className="text-[11px] text-purple-200/80 mt-0.5">ผู้ดูแลระบบตั้งจำนวนครั้งได้หลายค่า และค่าใช้จ่าย = ค่าสุ่ม 1 ครั้ง × จำนวนครั้ง</div>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
-                {availableMultiPullCounts.map(count => (
-                  <button
-                    key={count}
-                    type="button"
-                    onClick={() => setSelectedMultiPullCount(count)}
-                    disabled={isPulling}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-black transition-all cursor-pointer disabled:opacity-50 ${activeMultiPullCount === count ? 'border-fuchsia-300 bg-fuchsia-500/30 text-white shadow' : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-fuchsia-400/60'}`}
-                  >
-                    {count.toLocaleString()} ครั้ง
-                  </button>
-                ))}
+                {availableMultiPullCounts.map(count => {
+                  const cost = getPullCost(count);
+                  return (
+                    <button
+                      key={count}
+                      type="button"
+                      onClick={() => handlePull(count)}
+                      disabled={isPulling || !activeBanner || character.coins < cost}
+                      className="px-4 py-2 rounded-xl border border-fuchsia-400/60 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white text-xs font-black shadow-lg transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      ✨ สุ่ม {count.toLocaleString()} ครั้ง
+                      <span className="block text-[10px] text-amber-200 mt-0.5">{cost.toLocaleString()} C</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            <button type="button" id="btn-gacha-multi-pull" onClick={() => handlePull(configuredMultiPullCount)}
+            <button type="button" id="btn-gacha-multi-pull" onClick={() => handlePull(activeMultiPullCount)}
               disabled={isPulling || !activeBanner || character.coins < multiPullCost}
               className="mt-3 w-full px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-black text-sm shadow-xl transition-all cursor-pointer disabled:opacity-50">
               <Sparkles className="w-4 h-4 inline-block mr-1" />เลือกสุ่ม {activeMultiPullCount.toLocaleString()} ครั้ง ({multiPullCost.toLocaleString()} C)
