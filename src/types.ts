@@ -104,6 +104,8 @@ export interface InventoryItem extends Item {
   isEquipped?: boolean;
 }
 
+export interface MarketplaceListing { id: string; sellerId: string; sellerName: string; item: InventoryItem; price: number; createdAt: number; updatedAt: number; }
+
 export type QuestKind = 'progress' | 'question' | 'proof';
 export type QuestReviewStatus = 'none' | 'pending' | 'approved' | 'rejected';
 
