@@ -506,7 +506,7 @@ export async function buyMarketplaceListing(listingId: string, buyerId: string, 
 const ITEM_TRANSFER_COLLECTION = "item_transfers";
 const MARKETPLACE_AUCTIONS_COLLECTION = "marketplace_auctions";
 
-export async function transferInventoryItem(senderId: string, recipientId: string, itemInstanceId: string): Promise<void> {
+export async function transferInventoryItem(senderId: string, recipientId: string, itemInstanceId: string, requestedQuantity: number = 1): Promise<void> {
   if (senderId === recipientId) throw new Error("ไม่สามารถโอนให้ตัวเองได้");
   const sr = doc(db, CHARACTERS_COLLECTION, senderId), rr = doc(db, CHARACTERS_COLLECTION, recipientId);
   await runTransaction(db, async tx => {
@@ -518,10 +518,20 @@ export async function transferInventoryItem(senderId: string, recipientId: strin
     const idx = inv.findIndex(x => x.instanceId === itemInstanceId);
     if (idx < 0) throw new Error("ไม่พบไอเทมชิ้นนี้");
     if (inv[idx].isEquipped) throw new Error("ต้องถอดอุปกรณ์ก่อนโอน");
-    const item = { ...inv[idx], quantity: 1, isEquipped: false };
-    if ((inv[idx].quantity || 1) > 1) inv[idx] = { ...inv[idx], quantity: inv[idx].quantity - 1 };
+    const available = Math.max(1, Number(inv[idx].quantity) || 1);
+    const quantity = Math.min(available, Math.max(1, Math.floor(Number(requestedQuantity) || 1)));
+    const item = { ...inv[idx], quantity, isEquipped: false, equippedQuantity: 0 };
+    if (available > quantity) inv[idx] = { ...inv[idx], quantity: available - quantity };
     else inv.splice(idx, 1);
-    const receiverInv = [...(receiver.inventory || []), { ...item, instanceId: `gift-${Date.now()}-${Math.random().toString(36).slice(2,7)}` }];
+    const transferKey = (x: InventoryItem) => [String(x.name || '').trim().toLocaleLowerCase(), String(x.category || ''), String(x.effectType || ''), String(x.targetStat || ''), String(x.effectValue ?? ''), String(x.hpBonus ?? '')].join('|');
+    const receiverInv = [...(receiver.inventory || [])];
+    const mergeIdx = receiverInv.findIndex(x => transferKey(x) === transferKey(item));
+    if (mergeIdx >= 0) {
+      const existing = receiverInv[mergeIdx];
+      receiverInv[mergeIdx] = { ...existing, quantity: (Number(existing.quantity) || 0) + quantity };
+    } else {
+      receiverInv.push({ ...item, instanceId: `gift-${Date.now()}-${Math.random().toString(36).slice(2,7)}` });
+    }
     const now = Date.now();
     tx.update(sr, sanitizeForFirestore({ ...sender, inventory: inv, lastUpdated: now, powerScore: calculatePowerScore({ ...sender, inventory: inv }) }));
     tx.update(rr, sanitizeForFirestore({ ...receiver, inventory: receiverInv, lastUpdated: now, powerScore: calculatePowerScore({ ...receiver, inventory: receiverInv }) }));
