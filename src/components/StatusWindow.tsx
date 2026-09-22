@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+// Build trigger: StatusWindow JSX fix is present on main.
 import { CharacterProfile, Skill, ORVSkillRank } from '../types';
 import { 
   Sparkles, 
