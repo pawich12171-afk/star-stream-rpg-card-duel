@@ -485,20 +485,21 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     alert(`ใช้งานสำเร็จ! ${effectMessage}`);
   };
 
-  // Toggle Equip Equipment: Arya swords have their own 1-slot limit; all other equipment uses a shared 20-slot limit.
+  // Toggle Equip Equipment: Araya/Arya swords have their own 1-slot limit; all other equipment uses a shared 20-slot limit.
+  const isAryaEquipment = (item: InventoryItem) => item.category === 'equipment' && /araya|arya/i.test(String(item.name || ''));
   const handleToggleEquip = (invItem: InventoryItem) => {
     const isEquipping = !invItem.isEquipped;
     if (isEquipping) {
       const inventory = character.inventory || [];
-      const isAryaSword = /arya/i.test(invItem.name) && invItem.category === 'equipment';
+      const isAryaSword = isAryaEquipment(invItem);
       if (isAryaSword) {
-        const alreadyArya = inventory.some(item => item.category === 'equipment' && item.isEquipped && /arya/i.test(item.name) && item.instanceId !== invItem.instanceId);
+        const alreadyArya = inventory.some(item => isAryaEquipment(item) && item.isEquipped && item.instanceId !== invItem.instanceId);
         if (alreadyArya) {
           alert('ดาบ Arya สวมใส่ได้เพียง 1 ชิ้นเท่านั้น');
           return;
         }
       } else {
-        const otherEquippedCount = inventory.filter(item => item.category === 'equipment' && item.isEquipped && !(/arya/i.test(item.name))).length;
+        const otherEquippedCount = inventory.filter(item => item.category === 'equipment' && item.isEquipped && !isAryaEquipment(item)).length;
         if (otherEquippedCount >= 20) {
           alert('ช่องสวมใส่ไอเทมทั่วไปเต็มแล้ว (สูงสุด 20 ชิ้น)');
           return;
@@ -812,8 +813,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                 </div>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-mono">
-                <span className="px-2.5 py-1.5 rounded-xl bg-violet-950/50 border border-violet-500/30 text-violet-300">⚔️ ทั่วไป {((character.inventory || []).filter(i => i.category === 'equipment' && i.isEquipped && !/arya/i.test(i.name))).length}/20</span>
-                <span className="px-2.5 py-1.5 rounded-xl bg-amber-950/50 border border-amber-500/30 text-amber-300">🗡️ Arya {((character.inventory || []).filter(i => i.category === 'equipment' && i.isEquipped && /arya/i.test(i.name))).length}/1</span>
+                <span className="px-2.5 py-1.5 rounded-xl bg-violet-950/50 border border-violet-500/30 text-violet-300">⚔️ ทั่วไป {((character.inventory || []).filter(i => i.category === 'equipment' && i.isEquipped && !isAryaEquipment(i))).length}/20</span>
+                <span className="px-2.5 py-1.5 rounded-xl bg-amber-950/50 border border-amber-500/30 text-amber-300">🗡️ Arya {((character.inventory || []).filter(i => isAryaEquipment(i) && i.isEquipped)).length}/1</span>
               </div>
             </div>
           </div>
