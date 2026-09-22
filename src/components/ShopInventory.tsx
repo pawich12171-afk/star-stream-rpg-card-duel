@@ -174,6 +174,9 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const [newItemRarity, setNewItemRarity] = useState<GachaRarity>('rare');
   const [newItemEffectType, setNewItemEffectType] = useState<'heal_hp' | 'boost_max_hp' | 'buff_stat' | 'enhance_skill' | 'custom'>('heal_hp');
   const [newItemEffectVal, setNewItemEffectVal] = useState(10);
+  const [newItemHealPercent, setNewItemHealPercent] = useState(0);
+  const [newItemBattleDamagePercent, setNewItemBattleDamagePercent] = useState(0);
+  const [newItemBattleDamageDuration, setNewItemBattleDamageDuration] = useState(1);
   const [newItemHpBonus, setNewItemHpBonus] = useState(10);
   const [newItemStat, setNewItemStat] = useState<'strength' | 'durability' | 'agility' | 'magic'>('strength');
   const [newItemSkillTarget, setNewItemSkillTarget] = useState('');
@@ -287,6 +290,9 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     setNewItemPrice(preset.price);
     setNewItemEffectType(preset.effectType);
     setNewItemEffectVal(preset.effectVal);
+    setNewItemHealPercent(0);
+    setNewItemBattleDamagePercent(0);
+    setNewItemBattleDamageDuration(1);
     setNewItemHpBonus(preset.hpBonus || preset.effectVal);
     setNewItemIcon(preset.icon);
     setNewItemDesc(preset.desc);
@@ -684,6 +690,9 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       icon: newItemIcon,
       effectType: newItemEffectType,
       effectValue: newItemEffectVal,
+      healPercent: newItemEffectType === 'heal_hp' ? Math.max(0, Math.min(100, newItemHealPercent)) : undefined,
+      battleDamagePercent: newItemCategory === 'consumable' ? Math.max(0, Math.min(1000, newItemBattleDamagePercent)) : undefined,
+      battleDamageDuration: newItemCategory === 'consumable' && newItemBattleDamagePercent > 0 ? Math.max(1, Math.floor(newItemBattleDamageDuration)) : undefined,
       hpBonus: newItemEffectType === 'heal_hp' || newItemEffectType === 'boost_max_hp' || newItemCategory === 'equipment' ? (newItemHpBonus || newItemEffectVal) : undefined,
       targetStat: newItemEffectType === 'buff_stat' ? newItemStat : undefined,
       skillEnhanceTarget: newItemEffectType === 'enhance_skill' ? newItemSkillTarget : undefined,
@@ -1520,6 +1529,17 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                         ? 'เมื่อผู้เล่นดื่มโอสถนี้ จะเพิ่มหลอดเลือด Max HP สูงสุดอย่างถาวรทันที'
                         : 'เมื่อผู้เล่นดื่มโอสถนี้ จะฟื้นฟูพลังชีวิตปัจจุบันตามจำนวนที่กำหนด'}
                     </p>
+                  </div>
+                )}
+
+                {newItemCategory === 'consumable' && (
+                  <div className="rounded-2xl border border-rose-500/30 bg-slate-950/70 p-4 space-y-4">
+                    <div className="text-sm font-black text-white">🧪 เอฟเฟกต์เมื่อกดใช้ไอเทม</div>
+                    {newItemEffectType === 'heal_hp' && <div><label className="text-rose-300 font-bold block mb-1">💗 ฟื้นฟูเป็นเปอร์เซ็นต์ของ Max HP</label><div className="flex gap-2"><input type="number" min="0" max="100" value={newItemHealPercent} onChange={e=>setNewItemHealPercent(Number(e.target.value))} className="flex-1 rounded-xl bg-slate-900 border border-rose-700/60 px-3 py-2 text-white font-black"/><span className="px-3 py-2 rounded-xl bg-rose-950 text-rose-300 font-black">%</span></div><p className="text-[10px] text-slate-400 mt-1">เช่น 20% = ฟื้น 20% ของ Max HP</p></div>}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div><label className="text-orange-300 font-bold block mb-1">⚔️ เพิ่มดาเมจระหว่างต่อสู้ (%)</label><input type="number" min="0" max="1000" value={newItemBattleDamagePercent} onChange={e=>setNewItemBattleDamagePercent(Number(e.target.value))} className="w-full rounded-xl bg-slate-900 border border-orange-700/60 px-3 py-2 text-white font-black"/><p className="text-[10px] text-slate-400 mt-1">เช่น 25 = ดาเมจโจมตี +25%</p></div>
+                      <div><label className="text-amber-300 font-bold block mb-1">⏱️ ระยะเวลา (ต่อเทิร์น)</label><input type="number" min="1" max="100" value={newItemBattleDamageDuration} onChange={e=>setNewItemBattleDamageDuration(Number(e.target.value))} className="w-full rounded-xl bg-slate-900 border border-amber-700/60 px-3 py-2 text-white font-black" disabled={newItemBattleDamagePercent<=0}/><p className="text-[10px] text-slate-400 mt-1">เช่น 3 = บัฟอยู่ 3 เทิร์น</p></div>
+                    </div>
                   </div>
                 )}
 
