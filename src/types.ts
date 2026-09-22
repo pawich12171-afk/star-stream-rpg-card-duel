@@ -105,6 +105,8 @@ export interface Item {
   battlePassiveChanceMultiplier?: number;
   /** ระยะเวลาบัฟโชค (จำนวนเทิร์น) */
   battleLuckDuration?: number;
+  /** ตัวคูณเรทกาชาเมื่อกดใช้ไอเทมก่อนสุ่ม เช่น 2 = เพิ่มน้ำหนักรางวัลระดับ Rare ขึ้นไป 2 เท่า */
+  gachaRateMultiplier?: number;
   hpBonus?: number;
   targetStat?: keyof CharacterStats;
   skillEnhanceTarget?: string;
@@ -260,6 +262,8 @@ export interface CharacterProfile {
   passiveStacks?: Record<string, number>;
   /** Character Traits shown and activated for the battle UI. */
   traits?: string[];
+  /** ตัวคูณเรทกาชาที่เปิดใช้ไว้ รอการสุ่มครั้งถัดไป (ใช้ได้ 1 ขวดต่อ 1 คำสั่งสุ่ม) */
+  pendingGachaRateMultiplier?: number;
 }
 
 export interface TransactionHistory {
