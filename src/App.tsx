@@ -35,8 +35,11 @@ import {
   subscribeToMarketplace,
   createMarketplaceListing,
   cancelMarketplaceListing,
-  buyMarketplaceListing
+  buyMarketplaceListing,
+  subscribeToChat,
+  sendChatMessage
 } from './services/characterService';
+import { ChatPanel } from './components/ChatPanel';
 import { StatusWindow } from './components/StatusWindow';
 import { ShopInventory } from './components/ShopInventory';
 import { GameCenter } from './components/GameCenter';
@@ -65,12 +68,13 @@ import {
   Radio,
   Activity,
   ScrollText,
-  Swords
+  Swords,
+  MessageCircle
 } from 'lucide-react';
 import confetti from './utils/confetti';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin'>('status');
+  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'chat' | 'admin'>('status');
 
   // Real-time State
   const [characters, setCharacters] = useState<CharacterProfile[]>(() => [...INITIAL_CHARACTERS]);
@@ -87,6 +91,7 @@ export default function App() {
   });
   const [duelRooms, setDuelRooms] = useState<CardDuelRoom[]>(() => []);
   const [marketplaceListings, setMarketplaceListings] = useState<import('./types').MarketplaceListing[]>(() => []);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => []);
   const [isRealtimeLinked, setIsRealtimeLinked] = useState(false);
   const charactersRef = useRef<CharacterProfile[]>([]);
 
@@ -156,6 +161,7 @@ export default function App() {
         setDuelRooms(rooms);
       }));
       cleanups.push(subscribeToMarketplace((listings) => setMarketplaceListings(listings)));
+      cleanups.push(subscribeToChat((messages) => setChatMessages(messages)));
     };
 
     void initializeRealtimeData();
@@ -560,6 +566,16 @@ export default function App() {
           >
             <Gift className="w-4 h-4" />
             สุ่มกาชาดวงดาว (Gacha)
+          </button>
+
+          <button
+            id="nav-tab-chat"
+            onClick={() => setActiveTab('chat')}
+            className={`star-nav-tab px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'chat' ? 'is-active text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}`}
+          >
+            <MessageCircle className="w-4 h-4" />
+            แชทผู้เล่น
+            {chatMessages.length > 0 && <span className="px-1.5 py-0.5 rounded-full bg-cyan-950 text-cyan-300 text-[10px]">{chatMessages.length}</span>}
           </button>
 
           <button
