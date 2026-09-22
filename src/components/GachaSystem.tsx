@@ -406,7 +406,22 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       )}
 
       {/* Results Section */}
-      {pullResults && (
+      {pullResults && (() => {
+        const summary = pullResults.reduce<Record<string, { name: string; type: GachaReward['type']; count: number; coinAmount: number }>>((acc, reward) => {
+          const key = reward.type === 'coin'
+            ? `coin:${reward.coinAmount ?? 0}`
+            : `${reward.type}:${reward.id}:${reward.name}`;
+          if (!acc[key]) {
+            acc[key] = { name: reward.type === 'coin' ? `${reward.name}` : reward.name, type: reward.type, count: 0, coinAmount: 0 };
+          }
+          acc[key].count += 1;
+          acc[key].coinAmount += reward.coinAmount ?? 0;
+          return acc;
+        }, {});
+        const summaryItems = Object.values(summary);
+        const totalCoinsWon = pullResults.reduce((sum, reward) => sum + (reward.coinAmount ?? 0), 0);
+
+        return (
         <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 shadow-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <h3 className="text-base font-extrabold text-white flex items-center gap-2">
@@ -419,6 +434,28 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             >
               ปิดหน้าต่างผลลัพธ์
             </button>
+          </div>
+
+          <div className="rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-4">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="text-sm font-black text-cyan-200">📦 สรุปของที่ได้รับ</div>
+              <div className="text-xs font-bold text-white">รวม {pullResults.length} ชิ้น</div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {summaryItems.map((item) => (
+                <div key={item.type + item.name} className="rounded-xl bg-slate-800/80 border border-slate-700 px-3 py-2">
+                  <div className="text-xs font-black text-white">{item.name}</div>
+                  <div className="text-[11px] text-emerald-300 mt-0.5">
+                    × {item.count}{item.type === 'coin' && item.coinAmount > 0 ? ` = ${item.coinAmount.toLocaleString()} C` : ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {totalCoinsWon > 0 && (
+              <div className="mt-3 text-xs font-bold text-amber-300">
+                🪙 ได้เหรียญรวม {totalCoinsWon.toLocaleString()} C
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -464,7 +501,8 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             ))}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Rewards Pool Rate Table */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 space-y-4">
