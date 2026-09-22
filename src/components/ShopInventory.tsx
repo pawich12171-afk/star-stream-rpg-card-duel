@@ -1559,7 +1559,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                         <div>
                           <label className="text-emerald-300 font-bold block mb-1">🍀 ตัวคูณโชค (เท่า)</label>
                           <input type="number" min="1" max="20" step="0.1" value={newItemBattleLuckMultiplier} onChange={e=>setNewItemBattleLuckMultiplier(Number(e.target.value))} className="w-full rounded-xl bg-slate-900 border border-emerald-700/60 px-3 py-2 text-white font-black"/>
-                          <p className="text-[10px] text-slate-400 mt-1">เช่น 2 = โอกาส Passive/Effect/Crit/Tตีซ้ำ ถูกคูณ 2 เท่า</p>
+                          <p className="text-[10px] text-slate-400 mt-1">เช่น 2 = โอกาส Passive/Effect/Crit/ตีซ้ำ ถูกคูณ 2 เท่า</p>
                         </div>
                         <div>
                           <label className="text-cyan-300 font-bold block mb-1">⏱️ ระยะเวลาโชค (เทิร์น)</label>
