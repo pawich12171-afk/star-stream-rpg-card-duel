@@ -2468,9 +2468,8 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
   const actor = [...room.teamA, ...room.teamB].find(unit => unit.id === room.turnActorId);
   if (!actor || actor.type !== 'player' || actor.sourceId !== playerId) throw new Error('ยังไม่ใช่เทิร์นของผู้เล่นนี้');
 
-  const currentWindowStart = Math.floor(Math.max(0, Number(room.round || 1) - 1) / 35) * 35;
-  const currentUses = Number(room.battleItemWindowStartTurn) === currentWindowStart ? Number(room.battleItemUses || 0) : 0;
-  if (currentUses >= 2) throw new Error('ช่วง 35 เทิร์นนี้ใช้ไอเทมครบ 2 ครั้งแล้ว');
+  const currentUses = Math.max(0, Number(room.battleItemUses) || 0);
+  if (currentUses >= 2) throw new Error('เกมนี้ใช้ไอเทมครบ 2 ครั้งแล้ว');
 
   const character = localCharacters.find(item => item.id === playerId);
   if (!character) throw new Error('ไม่พบตัวละครผู้ใช้');
@@ -2502,12 +2501,11 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     teamA: room.teamA.map(unit => unit.id === actor.id ? { ...unit, hp: Math.min(maxHp, hp), maxHp, stats } : { ...unit }),
     teamB: room.teamB.map(unit => ({ ...unit })),
     battleItemUses: currentUses + 1,
-    battleItemWindowStartTurn: currentWindowStart,
     log: [{
       id: 'battle-log-item-' + Date.now(),
       timestamp: Date.now(),
       actorName: actor.name,
-      message: `🧪 ${actor.name} ใช้ไอเทม "${item.name}" · โควตาไอเทม ${currentUses + 1}/2 ในช่วง 35 เทิร์น`,
+      message: `🧪 ${actor.name} ใช้ไอเทม "${item.name}" · โควตาไอเทม ${currentUses + 1}/2 ครั้งในเกมนี้`,
     }, ...(room.log || [])],
     updatedAt: Date.now(),
   };
