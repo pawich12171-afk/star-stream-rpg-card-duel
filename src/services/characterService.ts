@@ -2327,6 +2327,17 @@ function getEquippedItemPassives(unit: BattleCombatant): ItemPassiveEffect[] {
   return (unit.equippedPassives || []).filter(effect => effect && effect.id && effect.kind);
 }
 
+function getBattleLuckMultiplier(unit: BattleCombatant): number {
+  if (!unit.itemLuckTurns || unit.itemLuckTurns <= 0) return 1;
+  return Math.max(1, Math.min(20, Number(unit.itemLuckMultiplier) || 1));
+}
+
+function getBattleChance(unit: BattleCombatant, baseChance: number): number {
+  const luck = getBattleLuckMultiplier(unit);
+  const explicitMultiplier = Math.max(1, Math.min(20, Number(unit.itemPassiveChanceMultiplier) || 1));
+  return Math.min(100, Math.max(0, Number(baseChance) || 0) * luck * explicitMultiplier);
+}
+
 function applyItemPassiveEffects(
   attacker: BattleCombatant,
   defender: BattleCombatant,
@@ -2336,7 +2347,8 @@ function applyItemPassiveEffects(
   const passives = [...(attacker.activeSkillPassives || []), ...getEquippedItemPassives(attacker)].filter(effect => effect.trigger === trigger);
   const ordered = [...passives.filter(effect => effect.kind === 'stack'), ...passives.filter(effect => effect.kind !== 'stack')];
   for (const passive of ordered) {
-    const chance = passive.chance == null ? 100 : Math.max(0, Math.min(100, Number(passive.chance) || 0));
+    const baseChance = passive.chance == null ? 100 : Math.max(0, Math.min(100, Number(passive.chance) || 0));
+    const chance = getBattleChance(attacker, baseChance);
     const passiveRoll = Math.random() * 100;
     const chanceLabel = Number.isInteger(chance) ? String(chance) : String(Number(chance.toFixed(2)));
     if (passiveRoll >= chance) {
@@ -2436,7 +2448,8 @@ export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect
 
 function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleCombatant, effects: NonNullable<Skill['battleEffects']>, result: BattleRollResult) {
   for (const effect of effects || []) {
-    const chance = effect.chance == null ? 100 : Math.max(0, Math.min(100, Number(effect.chance) || 0));
+    const baseChance = effect.chance == null ? 100 : Math.max(0, Math.min(100, Number(effect.chance) || 0));
+    const chance = getBattleChance(attacker, baseChance);
     if (Math.random() * 100 >= chance) continue;
     const target = effect.target === 'self' ? attacker : defender;
     const value = Math.max(0, Number(effect.value) || 0);
@@ -2536,6 +2549,15 @@ function advanceAdminStatusEffects(unit: BattleCombatant) {
     unit.itemDamageTurns = Math.max(0, unit.itemDamageTurns - 1);
     if (unit.itemDamageTurns === 0) unit.itemDamagePercent = 0;
   }
+  if (unit.itemLuckTurns && unit.itemLuckTurns > 0) {
+    unit.itemLuckTurns = Math.max(0, unit.itemLuckTurns - 1);
+    if (unit.itemLuckTurns === 0) {
+      unit.itemLuckMultiplier = 1;
+      unit.itemCriticalChancePercent = 0;
+      unit.itemRepeatAttackChancePercent = 0;
+      unit.itemPassiveChanceMultiplier = 1;
+    }
+  }
   if (!unit.adminStatusEffects) return;
   unit.adminStatusEffects = unit.adminStatusEffects
     .map(effect => ({ ...effect, remaining: Math.max(0, effect.remaining - 1) }))
@@ -2605,14 +2627,20 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
 
   const nextRoom: BattleRoom = {
     ...room,
-    teamA: room.teamA.map(unit => unit.id === actor.id ? { ...unit, hp: Math.min(maxHp, hp), maxHp, stats, itemDamagePercent: Math.min(1000, Math.max(0, Number(item.battleDamagePercent) || 0)), itemDamageTurns: Math.max(0, Math.floor(Number(item.battleDamageDuration) || 0)) } : { ...unit }),
+    teamA: room.teamA.map(unit => unit.id === actor.id ? { ...unit, hp: Math.min(maxHp, hp), maxHp, stats, itemDamagePercent: Math.min(1000, Math.max(0, Number(item.battleDamagePercent) || 0)),
+        itemDamageTurns: Math.max(0, Math.floor(Number(item.battleDamageDuration) || 0)),
+        itemLuckMultiplier: Math.max(1, Math.min(20, Number(item.battleLuckMultiplier) || 1)),
+        itemLuckTurns: Math.max(0, Math.floor(Number(item.battleLuckDuration) || 0)),
+        itemCriticalChancePercent: Math.max(0, Math.min(100, Number(item.battleCriticalChancePercent) || 0)),
+        itemRepeatAttackChancePercent: Math.max(0, Math.min(100, Number(item.battleRepeatAttackChancePercent) || 0)),
+        itemPassiveChanceMultiplier: Math.max(1, Math.min(20, Number(item.battlePassiveChanceMultiplier) || 1)) } : { ...unit }),
     teamB: room.teamB.map(unit => ({ ...unit })),
     battleItemUses: currentUses + 1,
     log: [{
       id: 'battle-log-item-' + Date.now(),
       timestamp: Date.now(),
       actorName: actor.name,
-      message: `🧪 ${actor.name} ใช้ไอเทม "${item.name}"${item.healPercent ? ` · ฟื้น ${item.healPercent}% Max HP` : ''}${item.battleDamagePercent ? ` · ดาเมจ +${item.battleDamagePercent}% ${item.battleDamageDuration || 0} เทิร์น` : ''} · โควตาไอเทม ${currentUses + 1}/2 ครั้งในเกมนี้`,
+      message: `🧪 ${actor.name} ใช้ไอเทม "${item.name}"${item.healPercent ? ` · ฟื้น ${item.healPercent}% Max HP` : ''}${item.battleDamagePercent ? ` · ดาเมจ +${item.battleDamagePercent}% ${item.battleDamageDuration || 0} เทิร์น` : ''}${item.battleLuckMultiplier && item.battleLuckMultiplier > 1 ? ` · 🍀 โชค ×${item.battleLuckMultiplier} ${item.battleLuckDuration || 0} เทิร์น` : ''}${item.battleCriticalChancePercent ? ` · 💥 คริ +${item.battleCriticalChancePercent}%` : ''}${item.battleRepeatAttackChancePercent ? ` · 🔁 ตีซ้ำ +${item.battleRepeatAttackChancePercent}%` : ''} · โควตาไอเทม ${currentUses + 1}/2 ครั้งในเกมนี้`,
     }, ...(room.log || [])],
     updatedAt: Date.now(),
   };
@@ -2768,7 +2796,12 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         const passiveCritChance = [...(current.activeSkillPassives || []), ...getEquippedItemPassives(current)]
           .filter(effect => effect.kind === 'critical_chance')
           .reduce((sum, effect) => sum + Math.max(0, Number(effect.value) || 0), 0);
-        const critChance = Math.max(0, Math.min(100, (Number(skill.battleCriticalChance) || getSkillStat(skill, 'critical_chance_percent')) + passiveCritChance));
+        const baseCritChance = Math.max(0, (Number(skill.battleCriticalChance) || getSkillStat(skill, 'critical_chance_percent')) + passiveCritChance);
+        const critChance = Math.min(100,
+          baseCritChance * getBattleLuckMultiplier(current)
+          * Math.max(1, Number(current.itemPassiveChanceMultiplier) || 1)
+          + Math.max(0, Number(current.itemCriticalChancePercent) || 0)
+        );
         const critMultiplier = Math.max(1, Number(skill.battleCriticalMultiplier) || getSkillStat(skill, 'critical_multiplier') || 1);
         if (critChance > 0 && Math.random() * 100 < critChance) {
           result.damage = Math.max(0, Math.round(result.damage * critMultiplier));
@@ -2780,7 +2813,12 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         const passiveRepeatChance = [...(current.activeSkillPassives || []), ...getEquippedItemPassives(current)]
           .filter(effect => effect.kind === 'repeat_attack_chance')
           .reduce((sum, effect) => sum + Math.max(0, Number(effect.value) || 0), 0);
-        const repeatChance = Math.max(0, Math.min(100, (Number(skill.repeatAttackChance) || 0) + passiveRepeatChance));
+        const baseRepeatChance = Math.max(0, (Number(skill.repeatAttackChance) || 0) + passiveRepeatChance);
+        const repeatChance = Math.min(100,
+          baseRepeatChance * getBattleLuckMultiplier(current)
+          * Math.max(1, Number(current.itemPassiveChanceMultiplier) || 1)
+          + Math.max(0, Number(current.itemRepeatAttackChancePercent) || 0)
+        );
         const maxRepeats = Math.max(1, Math.min(20, Number(skill.maxRepeatAttacks) || 1));
         let repeatsDone = 0;
         if (result.damage > 0 && repeatChance > 0) {
@@ -2817,7 +2855,12 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       const passiveCritChance = [...(current.activeSkillPassives || []), ...getEquippedItemPassives(current)]
         .filter(effect => effect.kind === 'critical_chance')
         .reduce((sum, effect) => sum + Math.max(0, Number(effect.value) || 0), 0);
-      if (passiveCritChance > 0 && Math.random() * 100 < Math.min(100, passiveCritChance)) {
+      const critChance = Math.min(100,
+        passiveCritChance * getBattleLuckMultiplier(current)
+        * Math.max(1, Number(current.itemPassiveChanceMultiplier) || 1)
+        + Math.max(0, Number(current.itemCriticalChancePercent) || 0)
+      );
+      if (critChance > 0 && Math.random() * 100 < critChance) {
         result.damage = Math.max(0, Math.round(result.damage * 2));
         result.message += ` • 💥 Passive CRITICAL! ${passiveCritChance}% ×2`;
         result.effect = 'critical';
@@ -2827,7 +2870,11 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       const passiveRepeatChance = [...(current.activeSkillPassives || []), ...getEquippedItemPassives(current)]
         .filter(effect => effect.kind === 'repeat_attack_chance')
         .reduce((sum, effect) => sum + Math.max(0, Number(effect.value) || 0), 0);
-      const repeatChance = Math.max(0, Math.min(100, passiveRepeatChance));
+      const repeatChance = Math.min(100,
+        passiveRepeatChance * getBattleLuckMultiplier(current)
+        * Math.max(1, Number(current.itemPassiveChanceMultiplier) || 1)
+        + Math.max(0, Number(current.itemRepeatAttackChancePercent) || 0)
+      );
       let repeatsDone = 0;
       const maxRepeats = 20;
       if (result.damage > 0 && repeatChance > 0) {
