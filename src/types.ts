@@ -345,6 +345,10 @@ export interface BattleConfig {
   faces: BattleDiceFace[];
   bossDice: BattleDiceConfig;
   updatedAt: number;
+  victoryImageUrl?: string;
+  victoryVideoUrl?: string;
+  victoryTitle?: string;
+  victoryMessage?: string;
 }
 
 export interface BattleBot {
