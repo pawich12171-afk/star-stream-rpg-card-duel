@@ -6,8 +6,7 @@ import {
   GachaBanner,
   GachaConfig, 
   CardDuelRoom,
-  Quest,
-  ChatMessage
+  Quest
 } from './types';
 import { INITIAL_CHARACTERS } from './initialData';
 import { 
@@ -41,11 +40,8 @@ import {
   placeMarketplaceBid,
   finalizeMarketplaceAuction,
   cancelMarketplaceListing,
-  buyMarketplaceListing,
-  subscribeToChat,
-  sendChatMessage
+  buyMarketplaceListing
 } from './services/characterService';
-import { ChatPanel } from './components/ChatPanel';
 import { StatusWindow } from './components/StatusWindow';
 import { ShopInventory } from './components/ShopInventory';
 import { GameCenter } from './components/GameCenter';
@@ -74,14 +70,13 @@ import {
   Radio,
   Activity,
   ScrollText,
-  Swords,
-  MessageCircle
+  Swords
 } from 'lucide-react';
 import confetti from './utils/confetti';
 
 export default function App() {
   // Deployment sync checkpoint: keep main/Vercel source aligned.
-  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'chat' | 'admin'>('status');
+  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin'>('status');
 
   // Real-time State
   const [characters, setCharacters] = useState<CharacterProfile[]>(() => [...INITIAL_CHARACTERS]);
@@ -99,7 +94,6 @@ export default function App() {
   const [duelRooms, setDuelRooms] = useState<CardDuelRoom[]>(() => []);
   const [marketplaceListings, setMarketplaceListings] = useState<import('./types').MarketplaceListing[]>(() => []);
   const [marketplaceAuctions, setMarketplaceAuctions] = useState<import('./types').MarketplaceAuction[]>(() => []);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => []);
   const [isRealtimeLinked, setIsRealtimeLinked] = useState(false);
   const charactersRef = useRef<CharacterProfile[]>([]);
 
@@ -170,7 +164,6 @@ export default function App() {
       }));
       cleanups.push(subscribeToMarketplace((listings) => setMarketplaceListings(listings)));
       cleanups.push(subscribeToMarketplaceAuctions((auctions) => setMarketplaceAuctions(auctions)));
-      cleanups.push(subscribeToChat((messages) => setChatMessages(messages)));
     };
 
     void initializeRealtimeData();
@@ -204,11 +197,6 @@ export default function App() {
     try {
       localStorage.setItem('starstream_current_user_id', charId);
     } catch (e) {}
-  };
-
-  const handleSendChatMessage = async (message: string): Promise<void> => {
-    if (!currentUser) throw new Error('ไม่พบตัวละครผู้เล่น');
-    await sendChatMessage(currentUser, message);
   };
 
   // Handlers
@@ -517,15 +505,6 @@ export default function App() {
       <nav className="star-nav bg-slate-900/60 border-b border-slate-800 px-4 md:px-8 py-2 overflow-x-auto scrollbar-none">
         <div className="max-w-7xl mx-auto flex items-center gap-2">
           <button
-            id="nav-tab-chat"
-            onClick={() => setActiveTab('chat')}
-            className={`star-nav-tab px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'chat' ? 'is-active text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}`}
-          >
-            <MessageCircle className="w-4 h-4" />
-            แชทผู้เล่น
-            {chatMessages.length > 0 && <span className="px-1.5 py-0.5 rounded-full bg-cyan-950 text-cyan-300 text-[10px]">{chatMessages.length}</span>}
-          </button>
-          <button
             id="nav-tab-status"
             onClick={() => setActiveTab('status')}
              className={`star-nav-tab px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
@@ -727,14 +706,6 @@ export default function App() {
             gachaConfig={gachaConfig}
             gachaBanners={gachaBanners}
             onUpdateCharacter={handleUpdateCharacter}
-          />
-        )}
-
-        {activeTab === 'chat' && (
-          <ChatPanel
-            currentUser={currentUser}
-            messages={chatMessages}
-            onSendMessage={handleSendChatMessage}
           />
         )}
 
