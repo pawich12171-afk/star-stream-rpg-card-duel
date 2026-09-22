@@ -264,76 +264,107 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
     }));
   };
 
+  const getSkillId = (skill: Skill) => skill.id || skill.name || ('skill-' + (skill.name || 'unknown'));
+
   const takeTurn = async (room: BattleRoom, skill?: Skill) => {
-    // Use the freshest subscribed room so skill clicks cannot resolve against a stale turn.
-    room = rooms.find(item => item.id === room.id) || room;
-    const actor = [...room.teamA, ...room.teamB].find(unit => unit.id === room.turnActorId);
-    if (!actor || actor.type !== 'player' || actor.sourceId !== currentUser.id) return;
-
-    // Always resolve the skill from the actor's latest character snapshot.
-    // Gacha skills are stored in CharacterProfile.skills, so this prevents a
-    // stale/partial selected object from making the skill appear unusable.
-    let resolvedSkill = skill;
-    if (skill) {
-      const actorCharacter = allCharacters.find(character => character.id === actor.sourceId);
-      const latestSkill = actorCharacter?.skills?.find(item => item.id === skill.id || item.name === skill.name);
-      if (!latestSkill) {
-        alert('ไม่พบสกิลนี้ในตัวละครแล้ว กรุณาเลือกสกิลใหม่');
-        setSelectedSkillId('');
+    try {
+      room = rooms.find(item => item.id === room.id) || room;
+      const actor = [...room.teamA, ...room.teamB].find(unit => unit.id === room.turnActorId);
+      if (!actor || actor.type !== 'player' || actor.sourceId !== currentUser.id) {
+        alert('ยังไม่ใช่เทิร์นของคุณ');
         return;
       }
-      resolvedSkill = {
-        ...latestSkill,
-        id: latestSkill.id || latestSkill.name || ('skill-' + latestSkill.name),
-        battleEffect: latestSkill.battleEffect || 'damage',
-        battlePower: Math.max(1, Number(latestSkill.battlePower) || 5),
-        cooldownTurns: Math.max(0, Number(latestSkill.cooldownTurns) || 0),
-        maxRepeatAttacks: Math.max(1, Number(latestSkill.maxRepeatAttacks) || 1),
-      };
-      const cooldown = actor.skillCooldowns?.[resolvedSkill.id] || 0;
-      if (cooldown > 0) {
-        alert(`สกิล "${resolvedSkill.name}" ยังติดคูลดาวน์อีก ${cooldown} เทิร์น`);
-        return;
-      }
-    }
 
-    const resolved = resolveBattleTurn(room, config, resolvedSkill);
-    if (resolved.result || resolved.room.status !== room.status || resolved.room.turnActorId !== room.turnActorId) {
-      await updateBattleRoom(resolved.room);
-      try { await persistBattleHp(resolved.room); } catch (error) { console.warn('ไม่สามารถบันทึก HP หลังเทิร์นได้', error); }
-
-      // Continue PVE immediately from the same Supabase-backed local room.
-      // This avoids waiting for the 1.5s polling cycle before the bot can act.
-      if (resolved.room.mode === 'pve') {
-        let botRoom = resolved.room;
-        for (let step = 0; step < 6 && botRoom.status === 'active'; step += 1) {
-          const botActor = [...botRoom.teamA, ...botRoom.teamB].find(unit => unit.id === botRoom.turnActorId);
-          if (!botActor || botActor.type !== 'bot') break;
-          await new Promise(resolve => window.setTimeout(resolve, 500));
-          // Do NOT replace botRoom with the React polling snapshot here.
-          // The polling snapshot can still contain the previous player turn for up to 1.5s,
-          // which was the reason the bot could show "BOT TURN" but never attack.
-          const botActorNow = [...botRoom.teamA, ...botRoom.teamB].find(unit => unit.id === botRoom.turnActorId);
-          if (!botActorNow || botActorNow.type !== 'bot') break;
-          const botResolved = resolveBattleTurn(botRoom, config);
-          if (!botResolved.result && botResolved.room.turnActorId === botRoom.turnActorId && botResolved.room.status === botRoom.status) {
-            console.warn('[PVE BOT] resolver returned no action', {
-              roomId: botRoom.id,
-              turnActorId: botRoom.turnActorId,
-              actor: botActorNow.name,
-              mode: botRoom.mode,
-            });
-            break;
-          }
-          botRoom = botResolved.room;
-          await updateBattleRoom(botRoom);
-          try { await persistBattleHp(botRoom); } catch (error) { console.warn('ไม่สามารถบันทึก HP หลังบอทเดินได้', error); }
+      let resolvedSkill = skill;
+      if (skill) {
+        const actorCharacter = allCharacters.find(character => character.id === actor.sourceId);
+        const latestSkill = actorCharacter?.skills?.find(item =>
+          (skill.id && item.id === skill.id) || item.name === skill.name
+        );
+        if (!latestSkill) {
+          alert('ไม่พบสกิลนี้ในตัวละครแล้ว กรุณาเลือกสกิลใหม่');
+          setSelectedSkillId('');
+          return;
         }
+
+        const skillId = getSkillId(latestSkill);
+        const cooldown = Number(actor.skillCooldowns?.[skillId] || actor.skillCooldowns?.[latestSkill.id || ''] || 0);
+        if (cooldown > 0) {
+          alert(`สกิล "${latestSkill.name}" ยังติดคูลดาวน์อีก ${cooldown} เทิร์น`);
+          return;
+        }
+
+        resolvedSkill = {
+          ...latestSkill,
+          id: skillId,
+          battleEffect: latestSkill.battleEffect || 'damage',
+          battlePower: Math.max(1, Number(latestSkill.battlePower) || 5),
+          cooldownTurns: Math.max(0, Number(latestSkill.cooldownTurns) || 0),
+          maxRepeatAttacks: Math.max(1, Number(latestSkill.maxRepeatAttacks) || 1),
+        };
       }
+
+      const resolved = resolveBattleTurn(room, config, resolvedSkill);
+
+      // A valid turn must always move the actor. Persist it first.
+      if (resolved.result || resolved.room.status !== room.status || resolved.room.turnActorId !== room.turnActorId) {
+        await updateBattleRoom(resolved.room);
+        try { await persistBattleHp(resolved.room); } catch (error) {
+          console.warn('ไม่สามารถบันทึก HP หลังเทิร์นได้', error);
+        }
+
+        // PVE: immediately run every bot turn from the freshly resolved room.
+        if (resolved.room.mode === 'pve') {
+          let botRoom = resolved.room;
+
+          for (let step = 0; step < 9 && botRoom.status === 'active'; step += 1) {
+            const botActor = [...botRoom.teamA, ...botRoom.teamB]
+              .find(unit => unit.id === botRoom.turnActorId);
+
+            if (!botActor || botActor.type !== 'bot') break;
+
+            await new Promise(resolve => window.setTimeout(resolve, 350));
+
+            // IMPORTANT: use botRoom, not React's polling snapshot.
+            const botNow = [...botRoom.teamA, ...botRoom.teamB]
+              .find(unit => unit.id === botRoom.turnActorId);
+
+            if (!botNow || botNow.type !== 'bot') break;
+
+            const botResolved = resolveBattleTurn(botRoom, config);
+
+            if (!botResolved.result &&
+                botResolved.room.turnActorId === botRoom.turnActorId &&
+                botResolved.room.status === botRoom.status) {
+              console.error('[PVE BOT] BOT TURN STUCK', {
+                roomId: botRoom.id,
+                actorId: botRoom.turnActorId,
+                actorName: botNow.name,
+                actorType: botNow.type,
+                team: botNow.team,
+                hp: botNow.hp,
+              });
+              break;
+            }
+
+            botRoom = botResolved.room;
+            await updateBattleRoom(botRoom);
+            try { await persistBattleHp(botRoom); } catch (error) {
+              console.warn('ไม่สามารถบันทึก HP หลังบอทเดินได้', error);
+            }
+          }
+        }
+      } else {
+        console.warn('[BATTLE] turn was rejected without state change', {
+          roomId: room.id,
+          actorId: room.turnActorId,
+          skill: resolvedSkill?.name || 'normal attack',
+          status: resolved.room.status,
+        });
       }
     } catch (error) {
-      console.error('Battle skill turn failed', error);
-      alert('ใช้สกิลไม่สำเร็จ: ' + (error instanceof Error ? error.message : 'เกิดข้อผิดพลาด'));
+      console.error('Battle turn failed', error);
+      alert('การโจมตีไม่สำเร็จ: ' + (error instanceof Error ? error.message : 'เกิดข้อผิดพลาด'));
     }
   };
 
