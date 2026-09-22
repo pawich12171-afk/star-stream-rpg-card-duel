@@ -34,7 +34,17 @@ const buttonClass = 'rounded-xl px-3 py-2 text-xs font-black transition-all';
 function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): BattleCombatant {
   const equippedPassives = (character.inventory || [])
     .filter(item => item.isEquipped && item.passiveEffects?.length)
-    .flatMap(item => (item.passiveEffects || []).map(effect => ({ ...effect })));
+    .flatMap(item => {
+      const copies = Math.max(1, Number(item.equippedQuantity) || 1);
+      return Array.from({ length: copies }, (_, copyIndex) =>
+        (item.passiveEffects || []).map(effect => ({
+          ...effect,
+          id: copies > 1 ? `${effect.id}:equip:${copyIndex + 1}` : effect.id,
+          stackKey: effect.stackKey || `item:${item.id}:${effect.id}`,
+          name: copies > 1 ? `${effect.name} ×${copies}` : effect.name,
+        }))
+      ).flat();
+    });
   // Skill passives are true "ติดตัว": every skill the character owns is active
   // for the whole battle, just like an equipped item's passive.
   const skillPassives = (character.skills || [])
@@ -63,6 +73,7 @@ function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): Batt
     equippedPassives,
     activeSkillPassives: skillPassives,
     passiveStacks: {},
+    traits: [...(character.characteristics || [])],
   };
 }
 
@@ -234,7 +245,19 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
     const room: BattleRoom = {
       id: 'battle-' + now, mode, status: 'active', createdBy: currentUser.id, createdByName: currentUser.displayName,
       teamA, teamB, turnActorId: teamA[0].id, round: 1,
-      log: [{ id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pve' ? `เริ่มการต่อสู้ — หักค่าเข้า ${BATTLE_ENTRY_FEE.toLocaleString()} Coins · ชนะรับ ${victoryReward.toLocaleString()} Coins` : 'เริ่มการต่อสู้ — เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' }],
+      log: [
+        ...teamA.flatMap(unit => [
+          ...(unit.traits || []).length ? [{ id: `battle-trait-${unit.id}-${now}`, timestamp: now, actorName: unit.name, message: `🧬 TRAIT: ${unit.traits!.join(' · ')}` }] : [],
+          ...(unit.activeSkillPassives || []).map(passive => ({ id: `battle-skill-passive-${unit.id}-${passive.id}-${now}`, timestamp: now, actorName: unit.name, message: `🌸 SKILL PASSIVE พร้อมทำงาน: ${passive.name} · ${passive.description || passive.kind}` })),
+          ...(unit.equippedPassives || []).map(passive => ({ id: `battle-item-passive-${unit.id}-${passive.id}-${now}`, timestamp: now, actorName: unit.name, message: `⚙️ ITEM PASSIVE พร้อมทำงาน: ${passive.name} · ${passive.description || passive.kind}` })),
+        ]),
+        ...teamB.flatMap(unit => [
+          ...(unit.traits || []).length ? [{ id: `battle-trait-${unit.id}-${now}`, timestamp: now, actorName: unit.name, message: `🧬 TRAIT: ${unit.traits!.join(' · ')}` }] : [],
+          ...(unit.activeSkillPassives || []).map(passive => ({ id: `battle-skill-passive-${unit.id}-${passive.id}-${now}`, timestamp: now, actorName: unit.name, message: `🌸 SKILL PASSIVE พร้อมทำงาน: ${passive.name} · ${passive.description || passive.kind}` })),
+          ...(unit.equippedPassives || []).map(passive => ({ id: `battle-item-passive-${unit.id}-${passive.id}-${now}`, timestamp: now, actorName: unit.name, message: `⚙️ ITEM PASSIVE พร้อมทำงาน: ${passive.name} · ${passive.description || passive.kind}` })),
+        ]),
+        { id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pve' ? `เริ่มการต่อสู้ — หักค่าเข้า ${BATTLE_ENTRY_FEE.toLocaleString()} Coins · ชนะรับ ${victoryReward.toLocaleString()} Coins` : 'เริ่มการต่อสู้ — Passive/TRAIT พร้อมทำงาน · เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' },
+      ],
       entryFeeCoins: mode === 'pve' ? BATTLE_ENTRY_FEE : 0, victoryRewardCoins: victoryReward, createdAt: now, updatedAt: now
     };
       await (mode === 'pve' ? createBattleRoomWithEntryFee(room, currentUser.id, BATTLE_ENTRY_FEE) : createBattleRoom(room));
