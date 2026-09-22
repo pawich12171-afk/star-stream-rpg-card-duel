@@ -879,6 +879,11 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                           โบนัส Max HP +{item.hpBonus} หน่วยเมื่อสวมใส่
                         </span>
                       )}
+                      {item.category === 'consumable' && Number(item.gachaRateMultiplier) > 1 && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-950/70 border border-purple-500/50 text-purple-300 text-[11px] font-black">
+                          🎰 เรทกาชา ×{Number(item.gachaRateMultiplier)}
+                        </span>
+                      )}
                       {item.targetStat && item.effectValue && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-cyan-950/70 border border-cyan-500/40 text-cyan-300 text-[11px] font-semibold">
                           +{item.effectValue} {item.targetStat.toUpperCase()}
@@ -920,7 +925,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                           <span>{item.price.toLocaleString()}</span>
                           <span className="text-[10px] text-slate-400 font-normal">Coins</span>
                         </div>
-                        {isAdmin && item.category === 'consumable' && onAddShopItem && (
+                        {isAdmin && item.category === 'consumable' && (
                           <button
                             type="button"
                             onClick={() => {
@@ -937,7 +942,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                             🍀 ตั้งค่าโชค
                           </button>
                         )}
-                        {isAdmin && item.category === 'consumable' && onAddShopItem && (
+                        {isAdmin && item.category === 'consumable' && (
                           <button type="button" onClick={() => {
                             setEditingBattleItem(item);
                             setEditGachaRateMultiplier(Math.max(1, Number(item.gachaRateMultiplier) || 1));
@@ -1918,6 +1923,11 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-950/80 border border-blue-500/60 text-blue-300 text-[11px] font-bold">
                                   <Shield className="w-3.5 h-3.5 text-blue-400" />
                                   โบนัส Max HP +{newItemHpBonus} หน่วยเมื่อสวมใส่
+                                </span>
+                              )}
+                              {newItemCategory === 'consumable' && newItemGachaRateMultiplier > 1 && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-950/80 border border-purple-500/60 text-purple-300 text-[11px] font-black">
+                                  🎰 เรทกาชา ×{newItemGachaRateMultiplier}
                                 </span>
                               )}
                               {newItemEffectType === 'buff_stat' && (
