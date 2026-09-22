@@ -2235,9 +2235,20 @@ function getBattleCombatants(room: BattleRoom): BattleCombatant[] {
 }
 function getNextBattleActor(room: BattleRoom, actorId: string): BattleCombatant | undefined {
   const all = getBattleCombatants(room);
-  const start = Math.max(0, all.findIndex(item => item.id === actorId));
-  for (let step = 1; step <= all.length; step += 1) {
-    const candidate = all[(start + step) % all.length];
+  const current = all.find(item => item.id === actorId);
+  if (!current) return all.find(item => item.hp > 0);
+
+  // PVE/team battles alternate sides instead of forcing every member of one
+  // team to act before the monster gets a turn.
+  const enemyTeam = current.team === 'a' ? room.teamB : room.teamA;
+  const enemy = enemyTeam.find(item => item.hp > 0);
+  if (enemy) return enemy;
+
+  // If the opposing side is empty, continue with the next living ally.
+  const allyTeam = current.team === 'a' ? room.teamA : room.teamB;
+  const currentIndex = Math.max(0, allyTeam.findIndex(item => item.id === actorId));
+  for (let step = 1; step <= allyTeam.length; step += 1) {
+    const candidate = allyTeam[(currentIndex + step) % allyTeam.length];
     if (candidate && candidate.hp > 0) return candidate;
   }
   return undefined;
