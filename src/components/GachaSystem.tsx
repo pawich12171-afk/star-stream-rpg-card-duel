@@ -176,14 +176,9 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
 
       const existingInventory = [...(currentCharacter.inventory || [])];
       newItemsToAdd.forEach(newItem => {
-        // Stack all non-equipment gacha items. Equipment stays as separate instances
-        // so the player can choose exactly which copy to equip/unequip.
-        const isStackable = newItem.category !== 'equipment';
-        const existingIdx = isStackable
-          ? existingInventory.findIndex(
-              inv => inv.id === newItem.id && !inv.isEquipped && inv.category !== 'equipment'
-            )
-          : -1;
+        // Stack every gacha item, including equipment. equippedQuantity tracks
+        // how many copies from the stack are currently equipped.
+        const existingIdx = existingInventory.findIndex(inv => inv.id === newItem.id);
         if (existingIdx >= 0) {
           existingInventory[existingIdx].quantity += 1;
         } else {
