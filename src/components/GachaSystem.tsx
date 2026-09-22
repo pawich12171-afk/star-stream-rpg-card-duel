@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CharacterProfile, GachaReward, GachaConfig, GachaBanner, Skill, InventoryItem } from '../types';
+import { CharacterProfile, GachaReward, GachaConfig, GachaBanner, Skill, InventoryItem, Item } from '../types';
 import { 
   Sparkles, 
   Coins, 
@@ -156,7 +156,6 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   };
 
   // Perform Gacha Pull
-  const handlePull = (count: number) => {  // Perform Gacha Pull
   const handlePull = (count: number) => {
     if (!activeBanner) {
       alert('ขณะนี้ไม่มีตู้กาชาที่เปิดใช้งาน');
