@@ -2290,16 +2290,14 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       faces: config.faces,
     };
     const cooldowns = { ...(current.skillCooldowns || {}) };
-    Object.keys(cooldowns).forEach(skillId => {
-      cooldowns[skillId] = Math.max(0, (cooldowns[skillId] || 0) - 1);
-      if (cooldowns[skillId] === 0) delete cooldowns[skillId];
-    });
-    current.skillCooldowns = cooldowns;
     const skillProfile = skill ? getBattleSkillProfile(skill) : null;
     const skillName = skill?.name || "สกิล";
-    if (skill && skillProfile && (current.skillCooldowns[skill.id] || 0) > 0) {
+    // Check cooldown BEFORE consuming this actor's turn. A skill with 1 turn
+    // remaining must wait; cooldown is reduced after the actor successfully acts.
+    if (skill && skillProfile && (cooldowns[skill.id] || 0) > 0) {
       return { room, result: null };
     }
+    current.skillCooldowns = cooldowns;
     const skillAccuracy = Math.max(0, Math.min(100, getSkillStat(skill, 'accuracy_percent')));
     if (skill && skillAccuracy > 0 && Math.random() * 100 >= skillAccuracy) {
       result = { roll: 0, face: diceConfig.faces[0], damage: 0, heal: 0, message: `${current.name} ใช้สกิล ${skill.name} แต่พลาดเป้าหมาย (แม่นยำ ${skillAccuracy}%)` };
@@ -2374,6 +2372,16 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         const cooldown = Math.max(0, Math.min(99, Math.round(configuredCooldown - speed / 10)));
         if (cooldown > 0) current.skillCooldowns = { ...(current.skillCooldowns || {}), [skill.id]: cooldown };
         result.cooldownRemaining = cooldown;
+      }
+      // Cooldowns belong to the actor's own turns, not every global turn.
+      // Decrement existing cooldowns only after this actor has completed an action.
+      Object.keys(current.skillCooldowns || {}).forEach(skillId => {
+        if (skillId !== skill?.id) {
+          const nextCooldown = Math.max(0, (current.skillCooldowns?.[skillId] || 0) - 1);
+          if (nextCooldown > 0) current.skillCooldowns![skillId] = nextCooldown;
+          else delete current.skillCooldowns![skillId];
+        }
+      });
       }
     }
     if (!skill && result.damage > 0) {
