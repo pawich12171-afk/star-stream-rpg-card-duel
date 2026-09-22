@@ -2378,7 +2378,6 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         current.skillCooldowns = advancedCooldowns;
         result.cooldownRemaining = cooldown;
       }
-      }
     }
     if (!skill && result.damage > 0) {
       const passiveCritChance = [...(current.activeSkillPassives || []), ...getEquippedItemPassives(current)]
