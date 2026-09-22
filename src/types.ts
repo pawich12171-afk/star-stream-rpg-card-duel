@@ -105,7 +105,7 @@ export interface InventoryItem extends Item {
 }
 
 export interface MarketplaceListing { id: string; sellerId: string; sellerName: string; item: InventoryItem; price: number; createdAt: number; updatedAt: number; }
-export interface MarketplaceAuction { id: string; sellerId: string; sellerName: string; item: InventoryItem; startingPrice: number; currentBid: number; highestBidderId?: string; highestBidderName?: string; endsAt: number; createdAt: number; updatedAt: number; status: 'active' | 'completed' | 'cancelled'; }
+export interface MarketplaceAuction { id: string; sellerId: string; sellerName: string; item: InventoryItem; startingPrice: number; currentBid: number; highestBidderId?: string; highestBidderName?: string; /** Coins ของผู้เสนอราคาสูงสุดถูกกันไว้แล้ว */ bidFundsReserved?: boolean; endsAt: number; createdAt: number; updatedAt: number; status: 'active' | 'completed' | 'cancelled'; }
 
 export interface ChatMessage { id: string; senderId: string; senderName: string; senderAvatar?: string; message: string; createdAt: number; }
 
@@ -430,10 +430,8 @@ export interface BattleRoom {
   entryFeeCoins?: number;
   victoryRewardCoins?: number;
   rewardClaimedBy?: string;
-  /** จำนวนการใช้ไอเทมในช่วง 35 เทิร์นปัจจุบัน */
+  /** จำนวนครั้งที่ผู้เล่นใช้ไอเทมระหว่างการต่อสู้ครั้งนี้ */
   battleItemUses?: number;
-  /** หมายเลขเทิร์นที่เริ่มนับโควตาไอเทม 35 เทิร์นล่าสุด */
-  battleItemWindowStartTurn?: number;
   createdAt: number;
   updatedAt: number;
 }
