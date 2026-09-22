@@ -162,7 +162,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const [editBattleCriticalChancePercent, setEditBattleCriticalChancePercent] = useState(0);
   const [editBattleRepeatAttackChancePercent, setEditBattleRepeatAttackChancePercent] = useState(0);
   const [editBattlePassiveChanceMultiplier, setEditBattlePassiveChanceMultiplier] = useState(1);
-  const [selectedInventoryKeys, setSelectedInventoryKeys] = useState<string[]>([]);
+  const [editGachaRateMultiplier, setEditGachaRateMultiplier] = useState(1);
+  const [selectedInventoryKeys, setSelectedInventoryKeys = useState<string[]>([]);
   const [inventorySearch, setInventorySearch] = useState('');
 
   // Serialize purchases so rapid clicks cannot calculate from the same stale character.
@@ -188,6 +189,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const [newItemBattleCriticalChancePercent, setNewItemBattleCriticalChancePercent] = useState(0);
   const [newItemBattleRepeatAttackChancePercent, setNewItemBattleRepeatAttackChancePercent] = useState(0);
   const [newItemBattlePassiveChanceMultiplier, setNewItemBattlePassiveChanceMultiplier] = useState(1);
+  const [newItemGachaRateMultiplier, setNewItemGachaRateMultiplier] = useState(1);
   const [newItemHpBonus, setNewItemHpBonus] = useState(10);
   const [newItemStat, setNewItemStat] = useState<'strength' | 'durability' | 'agility' | 'magic'>('strength');
   const [newItemSkillTarget, setNewItemSkillTarget] = useState('');
@@ -304,6 +306,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     setNewItemHealPercent(0);
     setNewItemBattleDamagePercent(0);
     setNewItemBattleDamageDuration(1);
+    setNewItemGachaRateMultiplier(1);
     setNewItemHpBonus(preset.hpBonus || preset.effectVal);
     setNewItemIcon(preset.icon);
     setNewItemDesc(preset.desc);
@@ -709,6 +712,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       battleCriticalChancePercent: newItemCategory === 'consumable' && newItemBattleCriticalChancePercent > 0 ? Math.max(0, Math.min(100, newItemBattleCriticalChancePercent)) : undefined,
       battleRepeatAttackChancePercent: newItemCategory === 'consumable' && newItemBattleRepeatAttackChancePercent > 0 ? Math.max(0, Math.min(100, newItemBattleRepeatAttackChancePercent)) : undefined,
       battlePassiveChanceMultiplier: newItemCategory === 'consumable' && newItemBattlePassiveChanceMultiplier > 1 ? Math.max(1, Math.min(20, newItemBattlePassiveChanceMultiplier)) : undefined,
+      gachaRateMultiplier: newItemCategory === 'consumable' && newItemGachaRateMultiplier > 1 ? Math.max(1, Math.min(20, newItemGachaRateMultiplier)) : undefined,
       hpBonus: newItemEffectType === 'heal_hp' || newItemEffectType === 'boost_max_hp' || newItemCategory === 'equipment' ? (newItemHpBonus || newItemEffectVal) : undefined,
       targetStat: newItemEffectType === 'buff_stat' ? newItemStat : undefined,
       skillEnhanceTarget: newItemEffectType === 'enhance_skill' ? newItemSkillTarget : undefined,
@@ -924,6 +928,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                               setEditBattleCriticalChancePercent(Math.max(0, Number(item.battleCriticalChancePercent) || 0));
                               setEditBattleRepeatAttackChancePercent(Math.max(0, Number(item.battleRepeatAttackChancePercent) || 0));
                               setEditBattlePassiveChanceMultiplier(Number(item.battlePassiveChanceMultiplier) || 1);
+                              setEditGachaRateMultiplier(Number(item.gachaRateMultiplier) || 1);
                             }}
                             className="px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25 text-[11px] font-bold cursor-pointer"
                           >
@@ -1244,6 +1249,11 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                             +{invItem.effectValue} {invItem.targetStat.toUpperCase()}
                           </span>
                         )}
+                        {invItem.category === 'consumable' && Number(invItem.gachaRateMultiplier) > 1 && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-950/70 border border-purple-500/50 text-purple-300 text-[11px] font-bold">
+                            🎰 เพิ่มเรทกาชา ×{Number(invItem.gachaRateMultiplier)}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -1346,6 +1356,10 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
               <label className="block text-xs font-bold text-amber-300">✨ ตัวคูณโอกาส Passive / Effect (เท่า)
                 <input type="number" min="1" max="20" step="0.1" value={editBattlePassiveChanceMultiplier} onChange={e=>setEditBattlePassiveChanceMultiplier(Number(e.target.value))} className="mt-1 w-full rounded-xl bg-slate-950 border border-amber-700/60 px-3 py-2.5 text-white font-black" />
               </label>
+              <label className="block text-xs font-bold text-purple-300">🎰 ตัวคูณเรทกาชา (เท่า)
+                <input type="number" min="1" max="20" step="0.1" value={editGachaRateMultiplier} onChange={e=>setEditGachaRateMultiplier(Number(e.target.value))} className="mt-1 w-full rounded-xl bg-slate-950 border border-purple-700/60 px-3 py-2.5 text-white font-black" />
+                <p className="text-[10px] text-slate-400 mt-1">เมื่อใช้ก่อนสุ่ม จะเพิ่มน้ำหนักรางวัล Rare ขึ้นไป และใช้เพียง 1 ขวดต่อ 1 คำสั่งสุ่ม</p>
+              </label>
               <div className="rounded-xl bg-slate-950 border border-slate-800 p-3 text-[10px] text-slate-400 leading-5">
                 ค่าเหล่านี้จะถูกบันทึกลงไอเทมเดิมทันที ไม่ต้องลบหรือสร้างไอเทมใหม่
               </div>
@@ -1360,6 +1374,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                     battleCriticalChancePercent: editBattleCriticalChancePercent > 0 ? Math.max(0, Math.min(100, editBattleCriticalChancePercent)) : undefined,
                     battleRepeatAttackChancePercent: editBattleRepeatAttackChancePercent > 0 ? Math.max(0, Math.min(100, editBattleRepeatAttackChancePercent)) : undefined,
                     battlePassiveChanceMultiplier: editBattlePassiveChanceMultiplier > 1 ? Math.max(1, Math.min(20, editBattlePassiveChanceMultiplier)) : undefined,
+                    gachaRateMultiplier: editGachaRateMultiplier > 1 ? Math.max(1, Math.min(20, editGachaRateMultiplier)) : undefined,
                   };
                   try {
                     await onAddShopItem(updated);
@@ -1668,6 +1683,11 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                         <label className="text-amber-300 font-bold block mb-1">✨ ตัวคูณโอกาส Passive / Effect (เท่า)</label>
                         <input type="number" min="1" max="20" step="0.1" value={newItemBattlePassiveChanceMultiplier} onChange={e=>setNewItemBattlePassiveChanceMultiplier(Number(e.target.value))} className="w-full rounded-xl bg-slate-900 border border-amber-700/60 px-3 py-2 text-white font-black"/>
                         <p className="text-[10px] text-slate-400 mt-1">เช่น 2 = Passive และ Effect ที่มีโอกาส 10% จะกลายเป็น 20% (ก่อนชนเพดาน 100%)</p>
+                      </div>
+                      <div className="mt-3 rounded-2xl border border-purple-500/30 bg-purple-950/10 p-3">
+                        <label className="text-purple-300 font-bold block mb-1">🎰 ตัวคูณเรทกาชา (เท่า)</label>
+                        <input type="number" min="1" max="20" step="0.1" value={newItemGachaRateMultiplier} onChange={e=>setNewItemGachaRateMultiplier(Number(e.target.value))} className="w-full rounded-xl bg-slate-900 border border-purple-700/60 px-3 py-2 text-white font-black"/>
+                        <p className="text-[10px] text-slate-400 mt-1">เมื่อกดใช้ก่อนสุ่ม จะเพิ่มน้ำหนักรางวัลระดับ Rare ขึ้นไปตามตัวคูณ และใช้ 1 ขวดต่อการกดสุ่ม 1/10/หลายพันครั้ง</p>
                       </div>
                     </div>
                   </div>
