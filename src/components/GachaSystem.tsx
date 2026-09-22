@@ -215,7 +215,6 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         }
       });
 
-      const existingInventory = Array.from(inventoryMap.values());
       newItemsToAdd.forEach(newItem => {
         const key = getItemStackKey(newItem);
         const existing = inventoryMap.get(key);
@@ -237,6 +236,10 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
           inventoryMap.set(key, stackedNewItem);
         }
       });
+
+      // IMPORTANT: rebuild AFTER adding rewards, otherwise newly obtained items
+      // inserted into inventoryMap would not appear in the saved inventory.
+      const existingInventory = Array.from(inventoryMap.values());
 
       const existingSkills = [...(currentCharacter.skills || [])];
       newSkillsToAdd.forEach(newSkill => {
