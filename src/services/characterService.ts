@@ -2276,9 +2276,10 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
     const cooldowns = { ...(current.skillCooldowns || {}) };
     const skillProfile = skill ? getBattleSkillProfile(skill) : null;
     const skillName = skill?.name || "สกิล";
+    const skillId = skill ? (skill.id || skill.name || ("skill-" + skillName)) : "";
     // Check cooldown BEFORE consuming this actor's turn. A skill with 1 turn
     // remaining must wait; cooldown is reduced after the actor successfully acts.
-    if (skill && skillProfile && (cooldowns[skill.id] || 0) > 0) {
+    if (skill && skillProfile && (cooldowns[skillId] || 0) > 0) {
       return { room, result: null };
     }
     current.skillCooldowns = cooldowns;
@@ -2362,7 +2363,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
           const nextCooldown = Math.max(0, Number(value || 0) - 1);
           if (nextCooldown > 0) advancedCooldowns[skillId] = nextCooldown;
         });
-        if (cooldown > 0) advancedCooldowns[skill.id] = cooldown;
+        if (cooldown > 0) advancedCooldowns[skillId] = cooldown;
         current.skillCooldowns = advancedCooldowns;
         result.cooldownRemaining = cooldown;
       }
