@@ -929,8 +929,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                         {skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`}
                       </button>
                     </div>
-                    <button
-                      type="button"
+                    <button type="button"
                       onClick={() => handleDeleteSkill(skill.id)}
                       className="p-2 rounded-xl bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer"
                     >
