@@ -177,6 +177,11 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const [newItemHealPercent, setNewItemHealPercent] = useState(0);
   const [newItemBattleDamagePercent, setNewItemBattleDamagePercent] = useState(0);
   const [newItemBattleDamageDuration, setNewItemBattleDamageDuration] = useState(1);
+  const [newItemBattleLuckMultiplier, setNewItemBattleLuckMultiplier] = useState(1);
+  const [newItemBattleLuckDuration, setNewItemBattleLuckDuration] = useState(1);
+  const [newItemBattleCriticalChancePercent, setNewItemBattleCriticalChancePercent] = useState(0);
+  const [newItemBattleRepeatAttackChancePercent, setNewItemBattleRepeatAttackChancePercent] = useState(0);
+  const [newItemBattlePassiveChanceMultiplier, setNewItemBattlePassiveChanceMultiplier] = useState(1);
   const [newItemHpBonus, setNewItemHpBonus] = useState(10);
   const [newItemStat, setNewItemStat] = useState<'strength' | 'durability' | 'agility' | 'magic'>('strength');
   const [newItemSkillTarget, setNewItemSkillTarget] = useState('');
@@ -693,6 +698,11 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       healPercent: newItemEffectType === 'heal_hp' ? Math.max(0, Math.min(100, newItemHealPercent)) : undefined,
       battleDamagePercent: newItemCategory === 'consumable' ? Math.max(0, Math.min(1000, newItemBattleDamagePercent)) : undefined,
       battleDamageDuration: newItemCategory === 'consumable' && newItemBattleDamagePercent > 0 ? Math.max(1, Math.floor(newItemBattleDamageDuration)) : undefined,
+      battleLuckMultiplier: newItemCategory === 'consumable' && newItemBattleLuckMultiplier > 1 ? Math.max(1, Math.min(20, newItemBattleLuckMultiplier)) : undefined,
+      battleLuckDuration: newItemCategory === 'consumable' && newItemBattleLuckMultiplier > 1 ? Math.max(1, Math.floor(newItemBattleLuckDuration)) : undefined,
+      battleCriticalChancePercent: newItemCategory === 'consumable' && newItemBattleCriticalChancePercent > 0 ? Math.max(0, Math.min(100, newItemBattleCriticalChancePercent)) : undefined,
+      battleRepeatAttackChancePercent: newItemCategory === 'consumable' && newItemBattleRepeatAttackChancePercent > 0 ? Math.max(0, Math.min(100, newItemBattleRepeatAttackChancePercent)) : undefined,
+      battlePassiveChanceMultiplier: newItemCategory === 'consumable' && newItemBattlePassiveChanceMultiplier > 1 ? Math.max(1, Math.min(20, newItemBattlePassiveChanceMultiplier)) : undefined,
       hpBonus: newItemEffectType === 'heal_hp' || newItemEffectType === 'boost_max_hp' || newItemCategory === 'equipment' ? (newItemHpBonus || newItemEffectVal) : undefined,
       targetStat: newItemEffectType === 'buff_stat' ? newItemStat : undefined,
       skillEnhanceTarget: newItemEffectType === 'enhance_skill' ? newItemSkillTarget : undefined,
@@ -1539,6 +1549,39 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div><label className="text-orange-300 font-bold block mb-1">⚔️ เพิ่มดาเมจระหว่างต่อสู้ (%)</label><input type="number" min="0" max="1000" value={newItemBattleDamagePercent} onChange={e=>setNewItemBattleDamagePercent(Number(e.target.value))} className="w-full rounded-xl bg-slate-900 border border-orange-700/60 px-3 py-2 text-white font-black"/><p className="text-[10px] text-slate-400 mt-1">เช่น 25 = ดาเมจโจมตี +25%</p></div>
                       <div><label className="text-amber-300 font-bold block mb-1">⏱️ ระยะเวลา (ต่อเทิร์น)</label><input type="number" min="1" max="100" value={newItemBattleDamageDuration} onChange={e=>setNewItemBattleDamageDuration(Number(e.target.value))} className="w-full rounded-xl bg-slate-900 border border-amber-700/60 px-3 py-2 text-white font-black" disabled={newItemBattleDamagePercent<=0}/><p className="text-[10px] text-slate-400 mt-1">เช่น 3 = บัฟอยู่ 3 เทิร์น</p></div>
+                    </div>
+                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/10 p-3 space-y-3">
+                      <div>
+                        <div className="text-sm font-black text-emerald-100">🍀 โชคระหว่างการต่อสู้</div>
+                        <p className="text-[10px] text-slate-400 mt-1">เพิ่มโอกาสให้ Passive และ Effect ทำงาน รวมถึงโอกาสคริติคอล/ตีซ้ำ</p>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-emerald-300 font-bold block mb-1">🍀 ตัวคูณโชค (เท่า)</label>
+                          <input type="number" min="1" max="20" step="0.1" value={newItemBattleLuckMultiplier} onChange={e=>setNewItemBattleLuckMultiplier(Number(e.target.value))} className="w-full rounded-xl bg-slate-900 border border-emerald-700/60 px-3 py-2 text-white font-black"/>
+                          <p className="text-[10px] text-slate-400 mt-1">เช่น 2 = โอกาส Passive/Effect/Crit/Tตีซ้ำ ถูกคูณ 2 เท่า</p>
+                        </div>
+                        <div>
+                          <label className="text-cyan-300 font-bold block mb-1">⏱️ ระยะเวลาโชค (เทิร์น)</label>
+                          <input type="number" min="1" max="100" value={newItemBattleLuckDuration} onChange={e=>setNewItemBattleLuckDuration(Number(e.target.value))} disabled={newItemBattleLuckMultiplier<=1} className="w-full rounded-xl bg-slate-900 border border-cyan-700/60 px-3 py-2 text-white font-black"/>
+                          <p className="text-[10px] text-slate-400 mt-1">โชคจะหมดเมื่อครบจำนวนเทิร์นที่ตั้งไว้</p>
+                        </div>
+                        <div>
+                          <label className="text-fuchsia-300 font-bold block mb-1">💥 โบนัสโอกาสคริ (%)</label>
+                          <input type="number" min="0" max="100" step="0.1" value={newItemBattleCriticalChancePercent} onChange={e=>setNewItemBattleCriticalChancePercent(Number(e.target.value))} className="w-full rounded-xl bg-slate-900 border border-fuchsia-700/60 px-3 py-2 text-white font-black"/>
+                          <p className="text-[10px] text-slate-400 mt-1">บวกเพิ่มจากโอกาสคริเดิม</p>
+                        </div>
+                        <div>
+                          <label className="text-violet-300 font-bold block mb-1">🔁 โบนัสโอกาสตีซ้ำ (%)</label>
+                          <input type="number" min="0" max="100" step="0.1" value={newItemBattleRepeatAttackChancePercent} onChange={e=>setNewItemBattleRepeatAttackChancePercent(Number(e.target.value))} className="w-full rounded-xl bg-slate-900 border border-violet-700/60 px-3 py-2 text-white font-black"/>
+                          <p className="text-[10px] text-slate-400 mt-1">บวกเพิ่มจากโอกาสตีซ้ำเดิม</p>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-amber-300 font-bold block mb-1">✨ ตัวคูณโอกาส Passive / Effect (เท่า)</label>
+                        <input type="number" min="1" max="20" step="0.1" value={newItemBattlePassiveChanceMultiplier} onChange={e=>setNewItemBattlePassiveChanceMultiplier(Number(e.target.value))} className="w-full rounded-xl bg-slate-900 border border-amber-700/60 px-3 py-2 text-white font-black"/>
+                        <p className="text-[10px] text-slate-400 mt-1">เช่น 2 = Passive และ Effect ที่มีโอกาส 10% จะกลายเป็น 20% (ก่อนชนเพดาน 100%)</p>
+                      </div>
                     </div>
                   </div>
                 )}
