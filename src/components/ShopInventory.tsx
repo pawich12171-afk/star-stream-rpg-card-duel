@@ -471,9 +471,26 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     alert(`ใช้งานสำเร็จ! ${effectMessage}`);
   };
 
-  // Toggle Equip Equipment
+  // Toggle Equip Equipment: Arya swords have their own 1-slot limit; all other equipment uses a shared 20-slot limit.
   const handleToggleEquip = (invItem: InventoryItem) => {
     const isEquipping = !invItem.isEquipped;
+    if (isEquipping) {
+      const inventory = character.inventory || [];
+      const isAryaSword = /arya/i.test(invItem.name) && invItem.category === 'equipment';
+      if (isAryaSword) {
+        const alreadyArya = inventory.some(item => item.category === 'equipment' && item.isEquipped && /arya/i.test(item.name) && item.instanceId !== invItem.instanceId);
+        if (alreadyArya) {
+          alert('ดาบ Arya สวมใส่ได้เพียง 1 ชิ้นเท่านั้น');
+          return;
+        }
+      } else {
+        const otherEquippedCount = inventory.filter(item => item.category === 'equipment' && item.isEquipped && !(/arya/i.test(item.name))).length;
+        if (otherEquippedCount >= 20) {
+          alert('ช่องสวมใส่ไอเทมทั่วไปเต็มแล้ว (สูงสุด 20 ชิ้น)');
+          return;
+        }
+      }
+    }
     const updatedInventory = (character.inventory || []).map(item => {
       if (item.instanceId === invItem.instanceId) {
         return { ...item, isEquipped: isEquipping };
@@ -763,11 +780,23 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       {/* INVENTORY VIEW */}
       {activeTab === 'inventory' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Package className="w-4 h-4 text-cyan-400" />
-              ไอเทมในกระเป๋าของคุณ ({(character.inventory || []).reduce((total, item) => total + Math.max(1, Number(item.quantity) || 1), 0)} ชิ้น)
-            </h2>
+          <div className="rounded-3xl border border-cyan-500/20 bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/50 p-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-black text-white flex items-center gap-2">
+                  <Package className="w-4 h-4 text-cyan-400" />
+                  กระเป๋าสมบัติ (Inventory)
+                  <span className="px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono">
+                    {(character.inventory || []).reduce((total, item) => total + Math.max(1, Number(item.quantity) || 1), 0)} ชิ้น
+                  </span>
+                </h2>
+                <p className="text-[10px] text-slate-500 mt-1">ของเยอะก็จัดเป็นการ์ดให้ดูง่าย • อุปกรณ์สวมใส่ทั่วไปสูงสุด 20 ชิ้น • ดาบ Arya สูงสุด 1 ชิ้น</p>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-mono">
+                <span className="px-2.5 py-1.5 rounded-xl bg-violet-950/50 border border-violet-500/30 text-violet-300">⚔️ ทั่วไป {((character.inventory || []).filter(i => i.category === 'equipment' && i.isEquipped && !/arya/i.test(i.name))).length}/20</span>
+                <span className="px-2.5 py-1.5 rounded-xl bg-amber-950/50 border border-amber-500/30 text-amber-300">🗡️ Arya {((character.inventory || []).filter(i => i.category === 'equipment' && i.isEquipped && /arya/i.test(i.name))).length}/1</span>
+              </div>
+            </div>
           </div>
 
           {(!character.inventory || character.inventory.length === 0) ? (
@@ -782,7 +811,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[72vh] overflow-y-auto pr-1 scrollbar-thin">
               {character.inventory.map((invItem, index) => {
                 const inventoryKey = invItem.instanceId || `legacy-${invItem.id}-${index}`;
                 const rarityInfo = getRarityBadge(invItem.rarity);
@@ -871,6 +900,23 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                           : 'พร้อมใช้งาน'}
                       </span>
                       <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          id={`btn-delete-inventory-${inventoryKey}`}
+                          onClick={() => {
+                            const qty = Math.max(1, Number(invItem.quantity) || 1);
+                            const message = qty > 1 ? `ต้องการลบ ${invItem.name} ทั้งหมด x${qty} ใช่หรือไม่?` : `ต้องการลบ ${invItem.name} ออกจากกระเป๋าใช่หรือไม่?`;
+                            if (!confirm(message)) return;
+                            const remaining = (character.inventory || []).filter(item =>
+                              invItem.instanceId ? item.instanceId !== invItem.instanceId : item.id !== invItem.id
+                            );
+                            void onUpdateCharacter({ ...character, inventory: remaining, lastUpdated: Date.now() + 1 });
+                          }}
+                          className="p-2 rounded-xl bg-slate-800 hover:bg-rose-950/80 text-slate-500 hover:text-rose-300 border border-slate-700 hover:border-rose-700/60 cursor-pointer transition-all"
+                          title="ลบออกจากกระเป๋า"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                         {invItem.category === 'equipment' ? (
                           <button
                             id={`btn-equip-${inventoryKey}`}
