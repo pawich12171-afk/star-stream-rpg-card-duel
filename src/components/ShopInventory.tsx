@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { CharacterProfile, Item, InventoryItem, GachaRarity, ItemPassiveEffect } from '../types';
+import { CharacterProfile, Item, InventoryItem, GachaRarity, ItemPassiveEffect, MarketplaceListing } from '../types';
 import { 
   ShoppingBag, 
   Package, 
@@ -32,6 +32,10 @@ interface ShopInventoryProps {
   onAddShopItem?: (item: Item) => void | Promise<void>;
   onDeleteShopItem?: (itemId: string) => void;
   isAdmin: boolean;
+  marketplaceListings?: MarketplaceListing[];
+  onCreateMarketplaceListing?: (item: InventoryItem, price: number) => Promise<void>;
+  onCancelMarketplaceListing?: (listingId: string) => Promise<void>;
+  onBuyMarketplaceListing?: (listingId: string) => Promise<boolean>;
 }
 
 // Helper functions for items
@@ -118,8 +122,15 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   onAddShopItem,
   onDeleteShopItem,
   isAdmin,
+  marketplaceListings = [],
+  onCreateMarketplaceListing,
+  onCancelMarketplaceListing,
+  onBuyMarketplaceListing,
 }) => {
-  const [activeTab, setActiveTab] = useState<'shop' | 'inventory'>('shop');
+  const [activeTab, setActiveTab] = useState<'shop' | 'inventory' | 'market'>('shop');
+  const [marketSellItem, setMarketSellItem] = useState<InventoryItem | null>(null);
+  const [marketSellPrice, setMarketSellPrice] = useState('');
+  const [marketBuyingId, setMarketBuyingId] = useState<string | null>(null);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
@@ -590,6 +601,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
             <ShoppingBag className="w-4 h-4" />
             ร้านค้าดวงดาว (Shop)
           </button>
+          <button type="button" id="tab-market" onClick={() => setActiveTab('market')} className={`px-5 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'market' ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}><Coins className="w-4 h-4" /> ตลาดผู้เล่น <span className="px-2 py-0.5 rounded-full bg-slate-950 text-violet-300 text-[10px]">{marketplaceListings.length}</span></button>
           <button
             id="tab-inventory"
             onClick={() => setActiveTab('inventory')}
@@ -792,6 +804,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         </div>
       )}
 
+      {activeTab === 'market' && (<div className="space-y-4"><div className="rounded-3xl border border-violet-500/20 bg-slate-900/80 p-5"><h2 className="text-base font-black text-white">🏪 ตลาดผู้เล่น (Player Market)</h2><p className="text-xs text-slate-400 mt-1">ผู้เล่นนำของจากกระเป๋ามาขายให้ผู้เล่นคนอื่นได้ ราคาเป็น Coins</p></div>{marketplaceListings.length===0?<div className="text-center py-16 bg-slate-900/60 rounded-3xl border border-slate-800 text-slate-500">ยังไม่มีไอเทมประกาศขาย</div>:<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{marketplaceListings.map(listing=><div key={listing.id} className="bg-slate-900/90 rounded-3xl p-5 border border-violet-500/20 shadow-xl space-y-4"><div className="flex items-center gap-3"><div className="w-11 h-11 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center">{renderItemIcon(listing.item.icon,listing.item.category,listing.item.effectType,"w-5 h-5")}</div><div><div className="font-black text-white text-sm">{listing.item.name}</div><div className="text-[10px] text-violet-300">ผู้ขาย: {listing.sellerName}</div></div></div><p className="text-xs text-slate-300">{listing.item.description}</p><div className="flex items-center justify-between pt-3 border-t border-slate-800"><span className="text-amber-300 font-black">🪙 {Number(listing.price).toLocaleString()} Coins</span>{listing.sellerId===character.id?<button type="button" onClick={async()=>{if(!confirm('ยกเลิกประกาศขายและนำของกลับกระเป๋าใช่หรือไม่?'))return;try{await onCancelMarketplaceListing?.(listing.id)}catch(e){alert(e instanceof Error?e.message:'ยกเลิกไม่สำเร็จ')}}} className="px-3 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold cursor-pointer">ยกเลิกขาย</button>:<button type="button" disabled={marketBuyingId===listing.id} onClick={async()=>{if(!confirm('ยืนยันซื้อไอเทมนี้ใช่หรือไม่?'))return;setMarketBuyingId(listing.id);try{await onBuyMarketplaceListing?.(listing.id)}finally{setMarketBuyingId(null)}}} className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-black cursor-pointer disabled:opacity-50">{marketBuyingId===listing.id?'กำลังซื้อ...':'ซื้อ'}</button>}</div></div>)}</div>}</div>)}
+
       {/* INVENTORY VIEW */}
       {activeTab === 'inventory' && (
         <div className="space-y-4">
@@ -938,6 +952,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
+                        <button type="button" onClick={() => { setMarketSellItem(invItem); setMarketSellPrice(''); }} className="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 border border-violet-500/30 cursor-pointer">🏪 ขาย</button>
                         {invItem.category === 'equipment' ? (
                           <button
                             id={`btn-equip-${inventoryKey}`}
@@ -970,6 +985,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         </div>
       )}
 
+      {marketSellItem && (<div className="fixed inset-0 z-[80] bg-black/70 flex items-center justify-center p-4"><div className="w-full max-w-md rounded-3xl bg-slate-900 border border-violet-500/30 p-6"><h3 className="text-lg font-black text-white">🏪 ตั้งราคาขาย</h3><p className="text-sm text-slate-300 mt-2">{marketSellItem.name}</p><input type="number" min="1" value={marketSellPrice} onChange={e=>setMarketSellPrice(e.target.value)} className="w-full mt-5 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-amber-300 font-black" placeholder="ราคา Coins"/><div className="flex justify-end gap-2 mt-5"><button type="button" onClick={()=>setMarketSellItem(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">ยกเลิก</button><button type="button" onClick={async()=>{const p=Math.floor(Number(marketSellPrice));if(!Number.isFinite(p)||p<=0){alert('ราคาต้องมากกว่า 0 Coins');return;}try{await onCreateMarketplaceListing?.(marketSellItem,p);setMarketSellItem(null);alert('ประกาศขายสำเร็จ')}catch(e){alert(e instanceof Error?e.message:'ประกาศขายไม่สำเร็จ')}}} className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-black">ยืนยันขาย</button></div></div></div>)}
       {/* ADMIN MODAL: Add New Shop Item (Redesigned & Prettier) */}
       {showAddItemModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
