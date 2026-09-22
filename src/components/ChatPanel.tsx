@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import { MessageCircle, Send, Users } from 'lucide-react';
 import { CharacterProfile, ChatMessage } from '../types';
 
@@ -24,7 +24,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ currentUser, messages, onS
     finally { setSending(false); }
   };
 
-  return <div className="space-y-4">
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {\n    event.preventDefault();\n    void send();\n  };\n\n  return <div className="space-y-4">
     <div className="rounded-3xl border border-cyan-500/20 bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/50 p-5 shadow-xl">
       <div className="flex items-center justify-between gap-3">
         <div>
