@@ -29,6 +29,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   const [isPulling, setIsPulling] = useState(false);
   const [pullResults, setPullResults] = useState<GachaReward[] | null>(null);
   const [filterRarity, setFilterRarity] = useState<string>('all');
+  const [selectedMultiPullCount, setSelectedMultiPullCount] = useState<number>(20);
   const configuredBanners = Array.isArray(gachaBanners) ? gachaBanners : [];
   const availableBanners = configuredBanners.filter(b => b.enabled);
   const [selectedBannerId, setSelectedBannerId] = useState<string>(availableBanners[0]?.id || 'main');
@@ -43,6 +44,10 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   }, [character]);
 
   useEffect(() => {
+    setSelectedMultiPullCount(prev => availableMultiPullCounts.includes(prev) ? prev : availableMultiPullCounts[0]);
+  }, [activeBanner?.id, activeBanner?.multiPullCounts, activeBanner?.multiPullCount]);
+
+  useEffect(() => {
     if (!availableBanners.some(b => b.id === selectedBannerId)) {
       setSelectedBannerId(availableBanners[0]?.id || 'main');
     }
@@ -50,9 +55,17 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
 
   const pullCost = activeBanner?.pullCost ?? 500;
   const tenPullCost = activeBanner?.tenPullCost ?? 4500;
-  const configuredMultiPullCount = Number(activeBanner?.multiPullCount) > 10 ? Math.floor(Number(activeBanner?.multiPullCount)) : 20;
+  const configuredMultiPullCounts = Array.from(new Set(
+    (activeBanner?.multiPullCounts || [activeBanner?.multiPullCount || 20])
+      .map(value => Math.floor(Number(value)))
+      .filter(value => Number.isFinite(value) && value > 10 && value <= 1000)
+  )).sort((a, b) => a - b);
+  const availableMultiPullCounts = configuredMultiPullCounts.length > 0 ? configuredMultiPullCounts : [20];
+  const activeMultiPullCount = availableMultiPullCounts.includes(selectedMultiPullCount)
+    ? selectedMultiPullCount
+    : availableMultiPullCounts[0];
   const getPullCost = (count: number) => count === 1 ? pullCost : count === 10 ? tenPullCost : Math.max(0, Math.round(pullCost * count));
-  const multiPullCost = getPullCost(configuredMultiPullCount);
+  const multiPullCost = getPullCost(activeMultiPullCount);
 
   // Helper to pick a random reward based on rate %
   const pickRandomReward = (rewardsList: GachaReward[]): GachaReward => {
@@ -347,18 +360,27 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
           <div className="w-full mt-1 rounded-2xl border-2 border-purple-500/50 bg-purple-950/40 p-4 shadow-[0_0_24px_rgba(168,85,247,0.18)]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-black text-white">✨ เลือกสุ่ม</div>
-                <div className="text-[11px] text-purple-200/80 mt-0.5">ผู้ดูแลระบบตั้งจำนวนครั้งได้ และค่าใช้จ่ายจะคูณตามจำนวนครั้ง</div>
+                <div className="text-sm font-black text-white">✨ เลือกจำนวนสุ่มเพิ่มเติม</div>
+                <div className="text-[11px] text-purple-200/80 mt-0.5">ผู้ดูแลระบบตั้งจำนวนครั้งได้หลายค่า และค่าใช้จ่าย = ค่าสุ่ม 1 ครั้ง × จำนวนครั้ง</div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-black text-white">{configuredMultiPullCount} ครั้ง</span>
-                <span className="text-sm font-black text-amber-300">{multiPullCost.toLocaleString()} C</span>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {availableMultiPullCounts.map(count => (
+                  <button
+                    key={count}
+                    type="button"
+                    onClick={() => setSelectedMultiPullCount(count)}
+                    disabled={isPulling}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-black transition-all cursor-pointer disabled:opacity-50 ${activeMultiPullCount === count ? 'border-fuchsia-300 bg-fuchsia-500/30 text-white shadow' : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-fuchsia-400/60'}`}
+                  >
+                    {count.toLocaleString()} ครั้ง
+                  </button>
+                ))}
               </div>
             </div>
             <button type="button" id="btn-gacha-multi-pull" onClick={() => handlePull(configuredMultiPullCount)}
               disabled={isPulling || !activeBanner || character.coins < multiPullCost}
               className="mt-3 w-full px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-black text-sm shadow-xl transition-all cursor-pointer disabled:opacity-50">
-              <Sparkles className="w-4 h-4 inline-block mr-1" />เลือกสุ่ม {configuredMultiPullCount} ครั้ง ({multiPullCost.toLocaleString()} C)
+              <Sparkles className="w-4 h-4 inline-block mr-1" />เลือกสุ่ม {activeMultiPullCount.toLocaleString()} ครั้ง ({multiPullCost.toLocaleString()} C)
             </button>
           </div>
         </div>
