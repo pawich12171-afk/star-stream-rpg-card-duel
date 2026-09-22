@@ -566,6 +566,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         tenPullCost: Math.max(100, Number(tenPullCostInput) || 100),
         bannerTitle: bannerTitleInput.trim() || mainBanner.name,
         bannerDescription: bannerDescInput.trim() || 'ตู้กาชาพิเศษ',
+        multiPullCounts: parseMultiPullCounts(editBannerMultiPullCounts),
         enabled: gachaEnabledInput,
         updatedAt: Date.now(),
       });
@@ -1825,6 +1826,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <input value={newBannerName} onChange={e=>setNewBannerName(e.target.value)} placeholder="ชื่อตู้" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs md:col-span-2" />
               <input type="number" min={10} value={newBannerPullCost} onChange={e=>setNewBannerPullCost(Number(e.target.value))} placeholder="1 ครั้ง" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
               <input type="number" min={100} value={newBannerTenCost} onChange={e=>setNewBannerTenCost(Number(e.target.value))} placeholder="10 ครั้ง" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
+              <input value={newBannerMultiPullCounts} onChange={e=>setNewBannerMultiPullCounts(e.target.value)} placeholder="สุ่มเพิ่ม เช่น 20,30,50" className="px-2 py-2 rounded-xl bg-purple-950/50 border border-purple-500/50 text-purple-100 text-xs md:col-span-2" />
               <input value={newBannerTitle} onChange={e=>setNewBannerTitle(e.target.value)} placeholder="หัวข้อ" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
               <button type="submit" className="px-3 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-black text-xs"><Plus className="w-3 h-3 inline mr-1"/>สร้างตู้</button>
               <input value={newBannerDesc} onChange={e=>setNewBannerDesc(e.target.value)} placeholder="คำอธิบาย" className="col-span-2 md:col-span-5 px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
@@ -1845,6 +1847,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <input value={editBannerTitle} onChange={e => setEditBannerTitle(e.target.value)} placeholder="หัวข้อบนหน้าสุ่ม" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
                   <input type="number" min={10} value={editBannerPullCost} onChange={e => setEditBannerPullCost(Number(e.target.value))} placeholder="ราคา 1 ครั้ง" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
                   <input type="number" min={100} value={editBannerTenCost} onChange={e => setEditBannerTenCost(Number(e.target.value))} placeholder="ราคา 10 ครั้ง" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
+                  <div className="md:col-span-2 rounded-xl border-2 border-purple-500/40 bg-purple-950/30 p-3">
+                    <label className="text-xs font-black text-purple-200 block mb-1">✨ จำนวนสุ่มเพิ่มเติม (มากกว่า 10 ครั้ง)</label>
+                    <input value={editBannerMultiPullCounts} onChange={e => setEditBannerMultiPullCounts(e.target.value)} placeholder="เช่น 20,30,50" className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-purple-500/40 text-white text-xs font-mono" />
+                    <p className="text-[10px] text-purple-200/70 mt-1">ใส่หลายจำนวนคั่นด้วย , เช่น 20,30,50 แล้วกด “บันทึกตู้ที่เลือก”</p>
+                  </div>
                   <textarea value={editBannerDesc} onChange={e => setEditBannerDesc(e.target.value)} placeholder="คำอธิบายตู้" className="md:col-span-2 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs min-h-16" />
                 </div>
                 <div className="flex items-center justify-between gap-3">
