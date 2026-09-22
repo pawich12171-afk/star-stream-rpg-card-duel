@@ -896,7 +896,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
               {marketplaceAuctions.length === 0 ? (
                 <div className="text-xs text-slate-500">ยังไม่มีรายการประมูล</div>
               ) : (
-                marketplaceAuctions.map(auction => (
+                marketplaceAuctions.map((auction) => {
+                  return (
                   <div key={auction.id} className="rounded-2xl border border-amber-500/20 bg-slate-950/60 p-4">
                     <div className="font-black text-white">{auction.item.name}</div>
                     <div className="text-[10px] text-slate-400">
@@ -942,7 +943,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                       </div>
                     )}
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
