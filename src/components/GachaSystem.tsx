@@ -371,7 +371,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
                       key={count}
                       type="button"
                       onClick={() => handlePull(count)}
-                      disabled={isPulling || !activeBanner || character.coins < cost}
+                      disabled={isPulling || !activeBanner}
                       className="px-4 py-2 rounded-xl border border-fuchsia-400/60 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white text-xs font-black shadow-lg transition-all cursor-pointer disabled:opacity-50"
                     >
                       ✨ สุ่ม {count.toLocaleString()} ครั้ง
@@ -382,7 +382,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
               </div>
             </div>
             <button type="button" id="btn-gacha-multi-pull" onClick={() => handlePull(activeMultiPullCount)}
-              disabled={isPulling || !activeBanner || character.coins < multiPullCost}
+              disabled={isPulling || !activeBanner}
               className="mt-3 w-full px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-black text-sm shadow-xl transition-all cursor-pointer disabled:opacity-50">
               <Sparkles className="w-4 h-4 inline-block mr-1" />เลือกสุ่ม {activeMultiPullCount.toLocaleString()} ครั้ง ({multiPullCost.toLocaleString()} C)
             </button>
