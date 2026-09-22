@@ -46,6 +46,7 @@ const GACHA_REWARDS_COLLECTION = "gacha_rewards";
 const GACHA_CONFIG_COLLECTION = "gacha_config";
 const GACHA_BANNERS_COLLECTION = "gacha_banners";
 const CARD_DUEL_ROOMS_COLLECTION = "card_duel_rooms";
+const MARKETPLACE_LISTINGS_COLLECTION = "marketplace_listings";
 
 // Cross-tab broadcast channel for instant local reactivity
 const broadcast = typeof window !== 'undefined' && 'BroadcastChannel' in window 
@@ -367,6 +368,90 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
     callback(localCharacters);
     return () => {};
   }
+}
+
+
+// Player-to-player marketplace
+export function subscribeToMarketplace(callback: (listings: import("../types").MarketplaceListing[]) => void) {
+  try {
+    const q = collection(db, MARKETPLACE_LISTINGS_COLLECTION);
+    const unsub = onSnapshot(q, (snapshot: any) => {
+      const list: import("../types").MarketplaceListing[] = [];
+      snapshot.forEach((d: any) => list.push({ ...d.data(), id: d.id } as import("../types").MarketplaceListing));
+      list.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+      callback(list);
+    }, () => callback([]));
+    return unsub;
+  } catch { callback([]); return () => {}; }
+}
+
+export async function createMarketplaceListing(sellerId: string, item: InventoryItem, price: number): Promise<void> {
+  const normalizedPrice = Math.max(1, Math.floor(Number(price)));
+  const listingId = `listing-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  const sellerRef = doc(db, CHARACTERS_COLLECTION, sellerId);
+  const listingRef = doc(db, MARKETPLACE_LISTINGS_COLLECTION, listingId);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(sellerRef);
+    if (!snap.exists()) throw new Error("ไม่พบตัวละครผู้ขาย");
+    const seller = { ...snap.data(), id: snap.id } as CharacterProfile;
+    const inventory = [...(seller.inventory || [])];
+    const idx = inventory.findIndex(x => x.instanceId === item.instanceId);
+    if (idx < 0) throw new Error("ไม่พบไอเทมชิ้นนี้ในกระเป๋า");
+    if (inventory[idx].isEquipped) throw new Error("ต้องถอดอุปกรณ์ก่อนนำไปขาย");
+    const owned = inventory.splice(idx, 1)[0];
+    const now = Date.now();
+    const listing: import("../types").MarketplaceListing = { id: listingId, sellerId, sellerName: seller.displayName, item: { ...owned, quantity: 1, isEquipped: false }, price: normalizedPrice, createdAt: now, updatedAt: now };
+    const updated = { ...seller, inventory, lastUpdated: now };
+    tx.update(sellerRef, sanitizeForFirestore({ ...updated, powerScore: calculatePowerScore(updated) }));
+    tx.set(listingRef, sanitizeForFirestore(listing));
+  });
+}
+
+export async function cancelMarketplaceListing(listingId: string, sellerId: string): Promise<void> {
+  const lr = doc(db, MARKETPLACE_LISTINGS_COLLECTION, listingId);
+  const sr = doc(db, CHARACTERS_COLLECTION, sellerId);
+  await runTransaction(db, async (tx) => {
+    const ls = await tx.get(lr), ss = await tx.get(sr);
+    if (!ls.exists() || !ss.exists()) throw new Error("ไม่พบประกาศขาย");
+    const listing = { ...ls.data(), id: ls.id } as import("../types").MarketplaceListing;
+    if (listing.sellerId !== sellerId) throw new Error("ไม่มีสิทธิ์ยกเลิกประกาศนี้");
+    const seller = { ...ss.data(), id: ss.id } as CharacterProfile;
+    const inventory = [...(seller.inventory || []), { ...listing.item, instanceId: listing.item.instanceId || `returned-${Date.now()}` }];
+    const updated = { ...seller, inventory, lastUpdated: Date.now() };
+    tx.update(sr, sanitizeForFirestore({ ...updated, powerScore: calculatePowerScore(updated) }));
+    tx.delete(lr);
+  });
+}
+
+export async function buyMarketplaceListing(listingId: string, buyerId: string): Promise<{ success: boolean; message: string }> {
+  const lr = doc(db, MARKETPLACE_LISTINGS_COLLECTION, listingId);
+  const br = doc(db, CHARACTERS_COLLECTION, buyerId);
+  let message = "";
+  try {
+    await runTransaction(db, async (tx) => {
+      const ls = await tx.get(lr), bs = await tx.get(br);
+      if (!ls.exists() || !bs.exists()) throw new Error("ประกาศขายนี้ไม่มีอยู่แล้ว");
+      const listing = { ...ls.data(), id: ls.id } as import("../types").MarketplaceListing;
+      if (listing.sellerId === buyerId) throw new Error("ไม่สามารถซื้อไอเทมของตัวเองได้");
+      const buyer = { ...bs.data(), id: bs.id } as CharacterProfile;
+      const price = Math.max(1, Math.floor(Number(listing.price) || 0));
+      const coins = Math.floor(Number(buyer.coins) || 0);
+      if (coins < price) throw new Error(`Coins ไม่พอ ต้องใช้ ${price.toLocaleString()} Coins`);
+      const sr = doc(db, CHARACTERS_COLLECTION, listing.sellerId);
+      const ss = await tx.get(sr);
+      if (!ss.exists()) throw new Error("ไม่พบผู้ขาย");
+      const seller = { ...ss.data(), id: ss.id } as CharacterProfile;
+      const now = Date.now();
+      const inventory = [...(buyer.inventory || []), { ...listing.item, instanceId: `market-${now}-${Math.random().toString(36).slice(2,7)}`, quantity: 1, isEquipped: false }];
+      const updatedBuyer = { ...buyer, coins: coins - price, inventory, lastUpdated: now };
+      const updatedSeller = { ...seller, coins: Math.floor(Number(seller.coins) || 0) + price, lastUpdated: now };
+      tx.update(br, sanitizeForFirestore({ ...updatedBuyer, powerScore: calculatePowerScore(updatedBuyer) }));
+      tx.update(sr, sanitizeForFirestore({ ...updatedSeller, powerScore: calculatePowerScore(updatedSeller) }));
+      tx.delete(lr);
+      message = `ซื้อ "${listing.item.name}" สำเร็จในราคา ${price.toLocaleString()} Coins`;
+    });
+    return { success: true, message };
+  } catch (e) { return { success: false, message: e instanceof Error ? e.message : "ซื้อขายไม่สำเร็จ" }; }
 }
 
 // Subscribe to Shop items
