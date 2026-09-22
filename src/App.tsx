@@ -80,6 +80,7 @@ import {
 import confetti from './utils/confetti';
 
 export default function App() {
+  // Deployment sync checkpoint: keep main/Vercel source aligned.
   const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'chat' | 'admin'>('status');
 
   // Real-time State
