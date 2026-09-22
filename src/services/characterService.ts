@@ -47,6 +47,7 @@ const GACHA_CONFIG_COLLECTION = "gacha_config";
 const GACHA_BANNERS_COLLECTION = "gacha_banners";
 const CARD_DUEL_ROOMS_COLLECTION = "card_duel_rooms";
 const MARKETPLACE_LISTINGS_COLLECTION = "marketplace_listings";
+const CHAT_MESSAGES_COLLECTION = "chat_messages";
 
 // Cross-tab broadcast channel for instant local reactivity
 const broadcast = typeof window !== 'undefined' && 'BroadcastChannel' in window 
@@ -370,6 +371,35 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
   }
 }
 
+
+// Global player chat
+export function subscribeToChat(callback: (messages: import("../types").ChatMessage[]) => void) {
+  try {
+    const q = collection(db, CHAT_MESSAGES_COLLECTION);
+    const unsub = onSnapshot(q, (snapshot: any) => {
+      const list: import("../types").ChatMessage[] = [];
+      snapshot.forEach((d: any) => list.push({ ...d.data(), id: d.id } as import("../types").ChatMessage));
+      list.sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+      callback(list.slice(-100));
+    }, () => callback([]));
+    return unsub;
+  } catch { callback([]); return () => {}; }
+}
+
+export async function sendChatMessage(sender: CharacterProfile, message: string): Promise<void> {
+  const text = String(message || '').trim().slice(0, 300);
+  if (!text) throw new Error('ข้อความว่าง');
+  const now = Date.now();
+  const chatMessage: import("../types").ChatMessage = {
+    id: `chat-${now}-${Math.random().toString(36).slice(2, 8)}`,
+    senderId: sender.id,
+    senderName: sender.displayName,
+    senderAvatar: sender.avatarUrl,
+    message: text,
+    createdAt: now,
+  };
+  await setDoc(doc(db, CHAT_MESSAGES_COLLECTION, chatMessage.id), sanitizeForFirestore(chatMessage));
+}
 
 // Player-to-player marketplace
 export function subscribeToMarketplace(callback: (listings: import("../types").MarketplaceListing[]) => void) {
