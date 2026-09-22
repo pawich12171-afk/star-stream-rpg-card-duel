@@ -50,7 +50,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
 
   const pullCost = activeBanner?.pullCost ?? 500;
   const tenPullCost = activeBanner?.tenPullCost ?? 4500;
-  const multiPullCounts = Array.from(new Set((activeBanner?.multiPullCounts || []).map(Number).filter(count => Number.isFinite(count) && count > 10))).sort((a, b) => a - b);
+  const multiPullCounts = Array.from(new Set((activeBanner?.multiPullCounts || [20, 30, 50]).map(Number).filter(count => Number.isFinite(count) && count > 10))).sort((a, b) => a - b);
   const getPullCost = (count: number) => count === 1 ? pullCost : count === 10 ? tenPullCost : Math.max(0, Math.round(pullCost * count));
 
   // Helper to pick a random reward based on rate %
