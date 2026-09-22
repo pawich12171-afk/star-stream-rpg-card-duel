@@ -287,6 +287,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Gacha Config State
   const [pullCostInput, setPullCostInput] = useState<number>(gachaConfig.pullCost || 500);
   const [tenPullCostInput, setTenPullCostInput] = useState<number>(gachaConfig.tenPullCost || 4500);
+  const [multiPullCountInput, setMultiPullCountInput] = useState<number>(gachaConfig.multiPullCount || 20);
   const [multiPullCountsInput, setMultiPullCountsInput] = useState<string>((gachaConfig.multiPullCounts || [20, 30, 50]).join(','));
   const [bannerTitleInput, setBannerTitleInput] = useState<string>(gachaConfig.bannerTitle || 'หีบสมบัติจักรวาลแห่งดวงดาว');
   const [bannerDescInput, setBannerDescInput] = useState<string>(gachaConfig.bannerDescription || 'สุ่มรับเหรียญรางวัลมหาศาล สกิลพิเศษระดับตำนาน และไอเทมสเตตัสหายาก');
@@ -299,6 +300,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newBannerPullCost, setNewBannerPullCost] = useState(500);
   const [newBannerTenCost, setNewBannerTenCost] = useState(4500);
   const [newBannerMultiPullCounts, setNewBannerMultiPullCounts] = useState('20,30,50');
+  const [newBannerMultiPullCount, setNewBannerMultiPullCount] = useState(20);
   const [newBannerEnabled, setNewBannerEnabled] = useState(true);
   const selectedBanner = safeGachaBanners.find(b => b.id === selectedBannerId);
 
@@ -317,11 +319,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editBannerPullCost, setEditBannerPullCost] = useState(500);
   const [editBannerTenCost, setEditBannerTenCost] = useState(4500);
   const [editBannerMultiPullCounts, setEditBannerMultiPullCounts] = useState('20,30,50');
+  const [editBannerMultiPullCount, setEditBannerMultiPullCount] = useState(20);
   const [editBannerEnabled, setEditBannerEnabled] = useState(true);
   useEffect(() => {
     if (!selectedBanner) return;
     setEditBannerName(selectedBanner.name); setEditBannerTitle(selectedBanner.bannerTitle); setEditBannerDesc(selectedBanner.bannerDescription);
-    setEditBannerPullCost(selectedBanner.pullCost); setEditBannerTenCost(selectedBanner.tenPullCost); setEditBannerMultiPullCounts((selectedBanner.multiPullCounts || [20, 30, 50]).join(',')); setEditBannerEnabled(selectedBanner.enabled);
+    setEditBannerPullCost(selectedBanner.pullCost); setEditBannerTenCost(selectedBanner.tenPullCost); setEditBannerMultiPullCounts((selectedBanner.multiPullCounts || [20, 30, 50]).join(',')); setEditBannerMultiPullCount(selectedBanner.multiPullCount || 20); setEditBannerEnabled(selectedBanner.enabled);
   }, [selectedBannerId, safeGachaBanners]);
 
   // New Gacha Reward Form
@@ -519,6 +522,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         pullCost: Math.max(10, Number(editBannerPullCost) || 10),
         tenPullCost: Math.max(100, Number(editBannerTenCost) || 100),
         multiPullCounts: parseMultiPullCounts(editBannerMultiPullCounts),
+        multiPullCount: Math.max(11, Math.floor(Number(editBannerMultiPullCount) || 20)),
         enabled: editBannerEnabled,
         updatedAt: Date.now(),
       });
@@ -535,6 +539,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       pullCost: Math.max(10, Number(newBannerPullCost) || 10),
       tenPullCost: Math.max(100, Number(newBannerTenCost) || 100),
       multiPullCounts: parseMultiPullCounts(newBannerMultiPullCounts),
+        multiPullCount: Math.max(11, Math.floor(Number(newBannerMultiPullCount) || 20)),
       enabled: newBannerEnabled,
       bannerTitle: newBannerTitle.trim() || newBannerName.trim(),
       bannerDescription: newBannerDesc.trim() || 'ตู้กาชาพิเศษ',
@@ -568,6 +573,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         bannerTitle: bannerTitleInput.trim() || mainBanner.name,
         bannerDescription: bannerDescInput.trim() || 'ตู้กาชาพิเศษ',
         multiPullCounts: parseMultiPullCounts(multiPullCountsInput),
+      multiPullCount: Math.max(11, Math.floor(Number(multiPullCountInput) || 20)),
         enabled: gachaEnabledInput,
         updatedAt: Date.now(),
       });
@@ -1827,6 +1833,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <input value={newBannerName} onChange={e=>setNewBannerName(e.target.value)} placeholder="ชื่อตู้" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs md:col-span-2" />
               <input type="number" min={10} value={newBannerPullCost} onChange={e=>setNewBannerPullCost(Number(e.target.value))} placeholder="1 ครั้ง" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
               <input type="number" min={100} value={newBannerTenCost} onChange={e=>setNewBannerTenCost(Number(e.target.value))} placeholder="10 ครั้ง" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
+              <input type="number" min={11} value={newBannerMultiPullCount} onChange={e=>setNewBannerMultiPullCount(Number(e.target.value))} placeholder="เลือกสุ่ม เช่น 20" className="px-2 py-2 rounded-xl bg-purple-950/50 border border-purple-500/50 text-purple-100 text-xs" />
               <input value={newBannerMultiPullCounts} onChange={e=>setNewBannerMultiPullCounts(e.target.value)} placeholder="สุ่มเพิ่ม เช่น 20,30,50" className="px-2 py-2 rounded-xl bg-purple-950/50 border border-purple-500/50 text-purple-100 text-xs md:col-span-2" />
               <input value={newBannerTitle} onChange={e=>setNewBannerTitle(e.target.value)} placeholder="หัวข้อ" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
               <button type="submit" className="px-3 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-black text-xs"><Plus className="w-3 h-3 inline mr-1"/>สร้างตู้</button>
@@ -1850,7 +1857,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <input type="number" min={100} value={editBannerTenCost} onChange={e => setEditBannerTenCost(Number(e.target.value))} placeholder="ราคา 10 ครั้ง" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
                   <div className="md:col-span-2 rounded-xl border-2 border-purple-500/40 bg-purple-950/30 p-3">
                     <label className="text-xs font-black text-purple-200 block mb-1">✨ จำนวนสุ่มเพิ่มเติม (มากกว่า 10 ครั้ง)</label>
-                    <input value={editBannerMultiPullCounts} onChange={e => setEditBannerMultiPullCounts(e.target.value)} placeholder="เช่น 20,30,50" className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-purple-500/40 text-white text-xs font-mono" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input type="number" min={11} value={editBannerMultiPullCount} onChange={e => setEditBannerMultiPullCount(Number(e.target.value))} placeholder="เลือกสุ่ม เช่น 20" className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-purple-500/40 text-white text-xs font-mono" />
+                      <input value={editBannerMultiPullCounts} onChange={e => setEditBannerMultiPullCounts(e.target.value)} placeholder="ตัวเลือกอื่น เช่น 20,30,50" className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-purple-500/40 text-white text-xs font-mono" />
+                    </div>
                     <p className="text-[10px] text-purple-200/70 mt-1">ใส่หลายจำนวนคั่นด้วย , เช่น 20,30,50 แล้วกด “บันทึกตู้ที่เลือก”</p>
                   </div>
                   <textarea value={editBannerDesc} onChange={e => setEditBannerDesc(e.target.value)} placeholder="คำอธิบายตู้" className="md:col-span-2 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs min-h-16" />
@@ -1907,9 +1917,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                   <p className="text-[10px] text-purple-200/80">กำหนดปุ่มสุ่มจำนวนมากสำหรับผู้เล่น เช่น 20, 30, 50 ครั้ง</p>
                   <input
+                    type="number"
+                    min={11}
+                    value={multiPullCountInput}
+                    onChange={(e) => setMultiPullCountInput(Number(e.target.value))}
+                    placeholder="เช่น 20"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border-2 border-purple-500/50 text-white text-sm font-mono font-bold outline-none focus:border-purple-300"
+                  />
+                  <p className="text-[10px] text-purple-300">เลือกจำนวนสุ่มหลัก เช่น 20 ครั้ง — ค่าใช้จ่าย = ค่าสุ่ม 1 ครั้ง × จำนวนครั้ง</p>
+                  <input
                     type="text"
-                    value={editBannerMultiPullCounts}
-                    onChange={(e) => setEditBannerMultiPullCounts(e.target.value)}
+                    value={multiPullCountsInput}
+                    onChange={(e) => setMultiPullCountsInput(e.target.value)}
                     placeholder="20,30,50"
                     className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border-2 border-purple-500/50 text-white text-sm font-mono font-bold outline-none focus:border-purple-300"
                   />
