@@ -2365,12 +2365,19 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         const repeatChance = Math.max(0, Math.min(100, (Number(skill.repeatAttackChance) || 0) + passiveRepeatChance));
         const maxRepeats = Math.max(1, Math.min(20, Number(skill.maxRepeatAttacks) || 1));
         let repeatsDone = 0;
-        while (result.damage > 0 && repeatsDone < maxRepeats && repeatChance > 0 && Math.random() * 100 < repeatChance) {
-          const repeat = rollBattleAttack(current, defender, diceConfig);
-          result.damage += repeat.damage;
-          result.heal += repeat.heal;
-          repeatsDone += 1;
-          result.message += ` • 🔁 ตีซ้ำรอบที่ ${repeatsDone} (${repeatChance}%) +${repeat.damage} ดาเมจ`;
+        if (result.damage > 0 && repeatChance > 0) {
+          let repeatRoll = Math.random() * 100;
+          while (repeatsDone < maxRepeats && repeatRoll < repeatChance) {
+            const repeat = rollBattleAttack(current, defender, diceConfig);
+            result.damage += repeat.damage;
+            result.heal += repeat.heal;
+            repeatsDone += 1;
+            result.message += ` • 🔁 ตีซ้ำรอบที่ ${repeatsDone} (${repeatChance}%) +${repeat.damage} ดาเมจ`;
+            if (repeatsDone < maxRepeats) repeatRoll = Math.random() * 100;
+          }
+          if (repeatsDone === 0) {
+            result.message += ` • ❌ Passive ${skillName} ล้มเหลว: โอกาส ${repeatChance}% ไม่ออก`;
+          }
         }
         const configuredCooldown = getSkillStat(skill, 'cooldown_turns') || skillProfile.cooldownTurns;
         const speed = Math.max(0, getSkillStat(skill, 'speed'));
@@ -2405,12 +2412,19 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       const repeatChance = Math.max(0, Math.min(100, passiveRepeatChance));
       let repeatsDone = 0;
       const maxRepeats = 20;
-      while (result.damage > 0 && repeatsDone < maxRepeats && repeatChance > 0 && Math.random() * 100 < repeatChance) {
-        const repeat = rollBattleAttack(current, defender, diceConfig);
-        result.damage += repeat.damage;
-        result.heal += repeat.heal;
-        repeatsDone += 1;
-        result.message += ` • 🔁 ไอเทมติดตัวตีซ้ำรอบที่ ${repeatsDone} (${repeatChance}%) +${repeat.damage} ดาเมจ`;
+      if (result.damage > 0 && repeatChance > 0) {
+        let repeatRoll = Math.random() * 100;
+        while (repeatsDone < maxRepeats && repeatRoll < repeatChance) {
+          const repeat = rollBattleAttack(current, defender, diceConfig);
+          result.damage += repeat.damage;
+          result.heal += repeat.heal;
+          repeatsDone += 1;
+          result.message += ` • 🔁 ไอเทมติดตัวตีซ้ำรอบที่ ${repeatsDone} (${repeatChance}%) +${repeat.damage} ดาเมจ`;
+          if (repeatsDone < maxRepeats) repeatRoll = Math.random() * 100;
+        }
+        if (repeatsDone === 0) {
+          result.message += ` • ❌ Passive ตีซ้ำ ล้มเหลว: โอกาส ${repeatChance}% ไม่ออก`;
+        }
       }
     }
     applyItemPassiveEffects(current, defender, result, 'attack');
