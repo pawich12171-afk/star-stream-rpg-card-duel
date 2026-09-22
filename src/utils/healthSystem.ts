@@ -45,21 +45,22 @@ export function getSkillHpBonus(skill: { name?: string; level: number; multiplie
 
 export function calculateCharacterHealth(character: CharacterProfile): HealthBreakdown {
   const itemsList: HealthBreakdown['itemsList'] = [{ name: 'พลังชีวิตพื้นฐาน (Base HP)', bonus: BASE_HP, source: 'base' }];
-  const equipped = character.inventory?.filter(i => i.isEquipped) || [];
+  const equipped = character.inventory?.filter(i => i.isEquipped || (Number(i.equippedQuantity) || 0) > 0) || [];
   let equipStrengthBonus = 0, equipDurabilityBonus = 0, equipHpBonus = 0;
   equipped.forEach(item => {
+    const equippedCopies = Math.max(1, Number(item.equippedQuantity) || (item.isEquipped ? 1 : 0));
     if (item.effectType === 'buff_stat') {
-      if (item.targetStat === 'strength' && item.effectValue) equipStrengthBonus += item.effectValue;
-      if (item.targetStat === 'durability' && item.effectValue) equipDurabilityBonus += item.effectValue;
+      if (item.targetStat === 'strength' && item.effectValue) equipStrengthBonus += item.effectValue * equippedCopies;
+      if (item.targetStat === 'durability' && item.effectValue) equipDurabilityBonus += item.effectValue * equippedCopies;
     }
     const explicitHp = item.hpBonus || 0;
     if (explicitHp > 0) {
-      equipHpBonus += explicitHp;
-      itemsList.push({ name: `อุปกรณ์สวมใส่: ${item.name} (+${explicitHp} Max HP)`, bonus: explicitHp, source: 'item' });
+      equipHpBonus += explicitHp * equippedCopies;
+      itemsList.push({ name: `อุปกรณ์สวมใส่: ${item.name} ×${equippedCopies} (+${explicitHp * equippedCopies} Max HP)`, bonus: explicitHp * equippedCopies, source: 'item' });
     } else if (item.effectType === 'heal_hp' || item.name.includes('โอสถ') || item.name.includes('พลังชีวิต') || item.name.includes('Elixir') || item.name.includes('เกราะ') || item.name.includes('เสื้อคลุม') || item.name.includes('สนับมือ') || item.name.includes('สร้อย') || item.name.includes('แหวน') || item.name.includes('โลหิต') || item.name.includes('บัว') || item.name.includes('มังกร')) {
       const bonus = item.effectValue && item.effectValue <= 20 ? Math.min(10, Math.round(item.effectValue / 2) || item.effectValue) : 4;
-      equipHpBonus += bonus;
-      itemsList.push({ name: `อุปกรณ์สวมใส่: ${item.name}`, bonus, source: 'item' });
+      equipHpBonus += bonus * equippedCopies;
+      itemsList.push({ name: `อุปกรณ์สวมใส่: ${item.name} ×${equippedCopies}`, bonus: bonus * equippedCopies, source: 'item' });
     }
   });
 
