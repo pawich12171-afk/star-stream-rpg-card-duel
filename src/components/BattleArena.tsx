@@ -301,9 +301,24 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
       await updateBattleRoom(resolved.room);
       try { await persistBattleHp(resolved.room); } catch (error) { console.warn('ไม่สามารถบันทึก HP หลังเทิร์นได้', error); }
 
-      // PVE bot turns are handled by the single bot-turn effect below.
-      // Do not also resolve bots here: doing both creates duplicate turns/races
-      // when the Supabase-backed polling listener reports the optimistic room.
+      // Continue PVE immediately from the same Supabase-backed local room.
+      // This avoids waiting for the 1.5s polling cycle before the bot can act.
+      if (resolved.room.mode === 'pve') {
+        let botRoom = resolved.room;
+        for (let step = 0; step < 6 && botRoom.status === 'active'; step += 1) {
+          const botActor = [...botRoom.teamA, ...botRoom.teamB].find(unit => unit.id === botRoom.turnActorId);
+          if (!botActor || botActor.type !== 'bot') break;
+          await new Promise(resolve => window.setTimeout(resolve, 500));
+          const latestRoom = rooms.find(item => item.id === botRoom.id) || botRoom;
+          const latestActor = [...latestRoom.teamA, ...latestRoom.teamB].find(unit => unit.id === latestRoom.turnActorId);
+          if (!latestActor || latestActor.type !== 'bot') break;
+          const botResolved = resolveBattleTurn(latestRoom, config);
+          if (!botResolved.result && botResolved.room.turnActorId === latestRoom.turnActorId && botResolved.room.status === latestRoom.status) break;
+          botRoom = botResolved.room;
+          await updateBattleRoom(botRoom);
+          try { await persistBattleHp(botRoom); } catch (error) { console.warn('ไม่สามารถบันทึก HP หลังบอทเดินได้', error); }
+        }
+      }
     }
   };
 
@@ -316,30 +331,6 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
     return room.status === 'active' && room.mode === 'pve' && actor?.type === 'bot' && room.createdBy === currentUser.id;
   };
 
-  // Supabase-backed room polling can take a moment, so resolve the bot from the
-  // latest local room once per turn. A per-room lock prevents duplicate bot moves.
-  const botTurnLockRef = useRef<string | null>(null);
-  useEffect(() => {
-    const botRoom = rooms.find(item => canBotAct(item) && item.status === 'active');
-    if (!botRoom || botTurnLockRef.current === botRoom.id) return;
-    botTurnLockRef.current = botRoom.id;
-    const timer = window.setTimeout(async () => {
-      try {
-        const latestRoom = rooms.find(item => item.id === botRoom.id);
-        if (!latestRoom || !canBotAct(latestRoom) || latestRoom.turnActorId !== botRoom.turnActorId) return;
-        const resolved = resolveBattleTurn(latestRoom, config);
-        if (resolved.result || resolved.room.status !== latestRoom.status || resolved.room.turnActorId !== latestRoom.turnActorId) {
-          await updateBattleRoom(resolved.room);
-          try { await persistBattleHp(resolved.room); } catch (error) { console.warn('ไม่สามารถบันทึก HP หลังบอทเดินได้', error); }
-        }
-      } catch (error) {
-        console.error('BOT battle turn failed', error);
-      } finally {
-        botTurnLockRef.current = null;
-      }
-    }, 650);
-    return () => window.clearTimeout(timer);
-  }, [rooms, config, currentUser.id]);
   const patchNormalDice = (patch: Partial<BattleDiceConfig>) => setConfig(prev => ({ ...prev, ...patch }));
   const patchBossDice = (patch: Partial<BattleDiceConfig>) => setConfig(prev => ({ ...prev, bossDice: { ...(prev.bossDice || DEFAULT_BATTLE_CONFIG.bossDice), ...patch } }));
   const changeSides = (dice: BattleDiceConfig, nextSides: number, patch: (value: Partial<BattleDiceConfig>) => void) => {
