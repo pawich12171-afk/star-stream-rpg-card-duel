@@ -666,7 +666,7 @@ export default function App() {
             onCancelMarketplaceListing={(listingId) => cancelMarketplaceListing(listingId, currentUser.id)}
             onBuyMarketplaceListing={async (listingId, quantity) => { const result = await buyMarketplaceListing(listingId, currentUser.id, quantity); if (!result.success) alert(result.message); return result.success; }}
             allCharacters={characters}
-            onTransferItem={(recipientId, itemInstanceId) => transferInventoryItem(currentUser.id, recipientId, itemInstanceId)}
+            onTransferItem={(recipientId, itemInstanceId, quantity) => transferInventoryItem(currentUser.id, recipientId, itemInstanceId, quantity)}
             marketplaceAuctions={marketplaceAuctions}
             onCreateMarketplaceAuction={(item, price, durationMs, quantity) => createMarketplaceAuction(currentUser.id, item, price, durationMs, quantity)}
             onPlaceMarketplaceBid={(auctionId, bid) => placeMarketplaceBid(auctionId, currentUser.id, bid)}
