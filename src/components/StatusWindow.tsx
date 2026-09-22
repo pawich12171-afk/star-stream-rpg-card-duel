@@ -926,9 +926,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                         <ArrowUpCircle className="w-4 h-4" />
                         {skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`}
                       </button>
-                    </div>on>
+                    </div>
                     <button
-                      onClick={() => handleDeleteSkill(skill.id)}
+                      onClick={() => handleDeleteSkill(skill.id)
                       className="p-2 rounded-xl bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
