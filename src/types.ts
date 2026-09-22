@@ -106,6 +106,8 @@ export interface InventoryItem extends Item {
 
 export interface MarketplaceListing { id: string; sellerId: string; sellerName: string; item: InventoryItem; price: number; createdAt: number; updatedAt: number; }
 
+export interface ChatMessage { id: string; senderId: string; senderName: string; senderAvatar?: string; message: string; createdAt: number; }
+
 export type QuestKind = 'progress' | 'question' | 'proof';
 export type QuestReviewStatus = 'none' | 'pending' | 'approved' | 'rejected';
 
