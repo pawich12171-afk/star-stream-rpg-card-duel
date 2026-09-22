@@ -715,6 +715,14 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'chat' && (
+          <ChatPanel
+            currentUser={currentUser}
+            messages={chatMessages}
+            onSendMessage={handleSendChatMessage}
+          />
+        )}
+
         {activeTab === 'rankings' && (
           <Leaderboard
             characters={characters}
