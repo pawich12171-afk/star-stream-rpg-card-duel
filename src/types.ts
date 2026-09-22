@@ -376,6 +376,8 @@ export interface BattleBot {
   name: string;
   description: string;
   avatarUrl: string;
+  /** Uploaded image data URI or regular URL. */
+  avatarFileName?: string;
   isBoss: boolean;
   stats: CharacterStats;
   hp: number;
