@@ -2370,18 +2370,18 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         const configuredCooldown = getSkillStat(skill, 'cooldown_turns') || skillProfile.cooldownTurns;
         const speed = Math.max(0, getSkillStat(skill, 'speed'));
         const cooldown = Math.max(0, Math.min(99, Math.round(configuredCooldown - speed / 10)));
-        if (cooldown > 0) current.skillCooldowns = { ...(current.skillCooldowns || {}), [skill.id]: cooldown };
+
+        // Cooldowns are measured in this actor's own completed turns.
+        // First advance old cooldowns, then apply the newly used skill's CD.
+        const advancedCooldowns: Record<string, number> = {};
+        Object.entries(current.skillCooldowns || {}).forEach(([skillId, value]) => {
+          const nextCooldown = Math.max(0, Number(value || 0) - 1);
+          if (nextCooldown > 0) advancedCooldowns[skillId] = nextCooldown;
+        });
+        if (cooldown > 0) advancedCooldowns[skill.id] = cooldown;
+        current.skillCooldowns = advancedCooldowns;
         result.cooldownRemaining = cooldown;
       }
-      // Cooldowns belong to the actor's own turns, not every global turn.
-      // Decrement existing cooldowns only after this actor has completed an action.
-      Object.keys(current.skillCooldowns || {}).forEach(skillId => {
-        if (skillId !== skill?.id) {
-          const nextCooldown = Math.max(0, (current.skillCooldowns?.[skillId] || 0) - 1);
-          if (nextCooldown > 0) current.skillCooldowns![skillId] = nextCooldown;
-          else delete current.skillCooldowns![skillId];
-        }
-      });
       }
     }
     if (!skill && result.damage > 0) {
