@@ -2287,7 +2287,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
     const cooldowns = { ...(current.skillCooldowns || {}) };
     const skillProfile = skill ? getBattleSkillProfile(skill) : null;
     const skillName = skill?.name || "สกิล";
-    const skillId = skill ? (skill.id || skill.name || ("skill-" + skillName)) : "";
+    const skillId = skill ? String(skill.id ?? skill.name ?? ("skill-" + skillName)).trim() : "";
     // Check cooldown BEFORE consuming this actor's turn. A skill with 1 turn
     // remaining must wait; cooldown is reduced after the actor successfully acts.
     if (skill && skillProfile && (cooldowns[skillId] || 0) > 0) {
