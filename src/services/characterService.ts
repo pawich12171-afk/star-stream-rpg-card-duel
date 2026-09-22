@@ -1913,19 +1913,13 @@ export async function createBattleRoomWithEntryFee(room: BattleRoom, playerId: s
   const next = { ...room, id, entryFeeCoins: fee, createdAt: room.createdAt || Date.now(), updatedAt: Date.now() };
   if (fee > 0) {
     await enqueueCharacterWrite(playerId, async () => {
-      await runTransaction(db, async transaction => {
-        const charRef = doc(db, CHARACTERS_COLLECTION, playerId);
-        const snap = await transaction.get(charRef);
-        if (!snap.exists()) throw new Error("ไม่พบตัวละครผู้เข้าต่อสู้");
-        const character = { ...snap.data(), id: snap.id } as CharacterProfile;
-        const coins = Number(character.coins) || 0;
-        if (coins < fee) throw new Error(`Coins ไม่พอ ต้องใช้ ${fee.toLocaleString()} Coins`);
-        transaction.update(charRef, sanitizeForFirestore({
-          coins: coins - fee,
-          lastUpdated: Date.now(),
-        }));
-        transaction.set(doc(db, BATTLE_ROOMS_COLLECTION, id), sanitizeForFirestore(next));
+      const response = await fetch('/api/database?action=create_battle_room_with_fee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId, fee, room: sanitizeForFirestore(next) }),
       });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.error || 'ไม่สามารถหักค่าเข้าสู้และสร้างห้องได้');
     });
   } else {
     await setDoc(doc(db, BATTLE_ROOMS_COLLECTION, id), sanitizeForFirestore(next));
@@ -1940,32 +1934,22 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
   if (room.mode !== "pve" || room.status !== "completed" || room.winnerTeam !== "a") return 0;
   const reward = Math.max(0, Math.floor(Number(room.victoryRewardCoins) || 0));
   if (reward <= 0) return 0;
-  const roomRef = doc(db, BATTLE_ROOMS_COLLECTION, room.id);
-  const charRef = doc(db, CHARACTERS_COLLECTION, playerId);
-  let paid = 0;
-  await enqueueCharacterWrite(playerId, async () => {
-    await runTransaction(db, async transaction => {
-      const roomSnap = await transaction.get(roomRef);
-      const charSnap = await transaction.get(charRef);
-      if (!roomSnap.exists() || !charSnap.exists()) return;
-      const freshRoom = roomSnap.data() as BattleRoom;
-      if (freshRoom.rewardClaimedBy) return;
-      const character = { ...charSnap.data(), id: charSnap.id } as CharacterProfile;
-      transaction.update(charRef, sanitizeForFirestore({
-        coins: (Number(character.coins) || 0) + reward,
-        lastUpdated: Date.now(),
-      }));
-      transaction.update(roomRef, sanitizeForFirestore({ rewardClaimedBy: playerId, updatedAt: Date.now() }));
-      paid = reward;
-    });
+
+  const response = await fetch('/api/database?action=claim_battle_reward', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roomId: room.id, playerId, reward }),
   });
-  if (paid > 0) {
-    const updatedRoom = { ...room, rewardClaimedBy: playerId, updatedAt: Date.now() };
-    localBattleRooms = [updatedRoom, ...localBattleRooms.filter(item => item.id !== room.id)];
-    saveBattleLocal();
-    notifyBattleRooms();
-  }
-  return paid;
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body?.error || 'ไม่สามารถรับรางวัลการต่อสู้ได้');
+  if (!body?.paid) return 0;
+
+  const updatedRoom = { ...room, rewardClaimedBy: playerId, updatedAt: Date.now() };
+  pendingBattleRooms.set(room.id, updatedRoom);
+  localBattleRooms = [updatedRoom, ...localBattleRooms.filter(item => item.id !== room.id)];
+  saveBattleLocal();
+  notifyBattleRooms();
+  return reward;
 }
 
 export async function updateBattleRoom(room: BattleRoom): Promise<void> {
