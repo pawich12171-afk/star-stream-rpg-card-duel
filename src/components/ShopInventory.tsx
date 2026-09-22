@@ -1586,6 +1586,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                   </div>
                 )}
 
+
                 {/* Equipment / Stat Settings */}
                 {newItemEffectType === 'buff_stat' && (
                   <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
