@@ -30,6 +30,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   const [pullResults, setPullResults] = useState<GachaReward[] | null>(null);
   const [filterRarity, setFilterRarity] = useState<string>('all');
   const [selectedMultiPullCount, setSelectedMultiPullCount] = useState<number>(20);
+  const [detailLimit, setDetailLimit] = useState<number>(0);
   const configuredBanners = Array.isArray(gachaBanners) ? gachaBanners : [];
   const availableBanners = configuredBanners.filter(b => b.enabled);
   const [selectedBannerId, setSelectedBannerId] = useState<string>(availableBanners[0]?.id || 'main');
@@ -116,6 +117,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
 
     setIsPulling(true);
     setPullResults(null);
+    setDetailLimit(0);
 
     setTimeout(() => {
       const results: GachaReward[] = [];
@@ -458,48 +460,79 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {pullResults.map((reward, idx) => (
-              <div
-                key={idx}
-                className={`p-3.5 rounded-2xl border flex flex-col justify-between space-y-2 transition-all ${
-                  reward.rarity === 'mythic'
-                    ? 'bg-gradient-to-b from-amber-950/70 to-slate-900 border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.5)]'
-                    : reward.rarity === 'legendary'
-                    ? 'bg-gradient-to-b from-amber-950/40 to-slate-900 border-amber-500/60 shadow'
-                    : reward.rarity === 'epic'
-                    ? 'bg-gradient-to-b from-purple-950/40 to-slate-900 border-purple-500/60 shadow'
-                    : 'bg-slate-850/80 border-slate-700'
-                }`}
-              >
+          {pullResults.length > 0 && (
+            <div className="rounded-2xl border border-slate-700 bg-slate-950/40 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <div className="flex items-center justify-between gap-1 mb-1.5">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full border uppercase ${getRarityBadge(reward.rarity)}`}>
-                      {reward.rarity}
-                    </span>
-                    <span className="text-[10px] font-mono text-slate-400">
-                      {reward.type === 'coin' ? 'เหรียญ' : reward.type === 'skill' ? 'สกิล' : reward.type === 'characteristic' ? 'คุณลักษณะ' : 'ไอเทม'}
-                    </span>
+                  <div className="text-sm font-black text-white">📋 รายละเอียดผลสุ่ม</div>
+                  <div className="text-[11px] text-slate-400">
+                    แสดงทีละชุดเพื่อไม่ให้การสุ่ม 1,000 ครั้งทำให้หน้าเว็บหนัก
                   </div>
-                  <h4 className="text-xs font-bold text-white leading-tight">
-                    {reward.name}
-                  </h4>
-                  <p className="text-[11px] text-slate-300 mt-1 leading-relaxed line-clamp-2">
-                    {reward.description}
-                  </p>
-                  {reward.type === 'characteristic' && reward.characteristic && (
-                    <p className="text-[11px] text-cyan-300 mt-1 font-semibold">
-                      + {reward.characteristic}
-                    </p>
-                  )}
                 </div>
-                <div className="pt-2 border-t border-slate-800 text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" />
-                  เพิ่มเข้าสู่ตัวละครแล้ว
+                <div className="text-xs text-slate-400">
+                  แสดง {Math.min(detailLimit, pullResults.length).toLocaleString()} / {pullResults.length.toLocaleString()} รายการ
                 </div>
               </div>
-            ))}
-          </div>
+              {detailLimit > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-4">
+                  {pullResults.slice(0, detailLimit).map((reward, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3.5 rounded-2xl border flex flex-col justify-between space-y-2 transition-all ${
+                        reward.rarity === 'mythic'
+                          ? 'bg-gradient-to-b from-amber-950/70 to-slate-900 border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.5)]'
+                          : reward.rarity === 'legendary'
+                          ? 'bg-gradient-to-b from-amber-950/40 to-slate-900 border-amber-500/60 shadow'
+                          : reward.rarity === 'epic'
+                          ? 'bg-gradient-to-b from-purple-950/40 to-slate-900 border-purple-500/60 shadow'
+                          : 'bg-slate-850/80 border-slate-700'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-1 mb-1.5">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full border uppercase ${getRarityBadge(reward.rarity)}`}>
+                            {reward.rarity}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            {reward.type === 'coin' ? 'เหรียญ' : reward.type === 'skill' ? 'สกิล' : reward.type === 'characteristic' ? 'คุณลักษณะ' : 'ไอเทม'}
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-white leading-tight">{reward.name}</h4>
+                        <p className="text-[11px] text-slate-300 mt-1 leading-relaxed line-clamp-2">{reward.description}</p>
+                        {reward.type === 'characteristic' && reward.characteristic && (
+                          <p className="text-[11px] text-cyan-300 mt-1 font-semibold">+ {reward.characteristic}</p>
+                        )}
+                      </div>
+                      <div className="pt-2 border-t border-slate-800 text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        เพิ่มเข้าสู่ตัวละครแล้ว
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2 mt-4">
+                {detailLimit < pullResults.length && (
+                  <button
+                    type="button"
+                    onClick={() => setDetailLimit(prev => Math.min(prev + 100, pullResults.length))}
+                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black cursor-pointer"
+                  >
+                    แสดงเพิ่ม 100 รายการ
+                  </button>
+                )}
+                {detailLimit > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setDetailLimit(0)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold cursor-pointer"
+                  >
+                    ซ่อนรายละเอียด
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
         );
       })()}
