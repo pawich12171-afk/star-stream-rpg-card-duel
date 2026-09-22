@@ -2299,6 +2299,11 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       return { room, result: null };
     }
     current.skillCooldowns = cooldowns;
+    // Skill-specific stats must be read from battleStats before applying the skill effect.
+    // Without these local values, defense skills such as Zero Echo could throw
+    // "defensePower is not defined" when the shield is created.
+    const defensePower = getSkillStat(skill, 'defense_power');
+    const healPercent = getSkillStat(skill, 'heal_percent');
     const skillAccuracy = Math.max(0, Math.min(100, getSkillStat(skill, 'accuracy_percent')));
     if (skill && skillAccuracy > 0 && Math.random() * 100 >= skillAccuracy) {
       result = { roll: 0, face: diceConfig.faces[0], damage: 0, heal: 0, message: `${current.name} ใช้สกิล ${skill.name} แต่พลาดเป้าหมาย (แม่นยำ ${skillAccuracy}%)` };
