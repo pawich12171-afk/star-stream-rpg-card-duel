@@ -159,58 +159,46 @@ async function createBattleRoomWithFeeDirect(body) {
   if (!validId(playerId)) throw new Error('Invalid player id');
   if (!room?.id || !validId(String(room.id))) throw new Error('Invalid battle room id');
 
-  // Charge the entry fee with optimistic concurrency, but retry when another
-  // character update wins the race. This prevents a harmless stale coin snapshot
-  // from blocking the player from entering the battle.
-  const maxAttempts = 4;
-  let lastConflict = false;
+  // Do not compare the Coins value through a PostgREST JSON numeric filter.
+  // Very large JavaScript numbers can be represented differently by JSON/JSONB,
+  // which previously caused "Battle entry changed while joining" even when the
+  // player had enough Coins. Read the latest profile and write it directly.
+  const filter = `collection=eq.characters&id=eq.${encodeURIComponent(playerId)}`;
+  const rows = await supabase(`star_stream_documents?select=data&${filter}`);
+  if (!rows?.length) throw new Error('Player not found');
 
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const filter = `collection=eq.characters&id=eq.${encodeURIComponent(playerId)}`;
-    const rows = await supabase(`star_stream_documents?select=data&${filter}`);
-    if (!rows?.length) throw new Error('Player not found');
+  const currentData = rows[0].data || {};
+  const currentCoinsNumber = Number(currentData.coins);
+  const currentCoins = Number.isFinite(currentCoinsNumber)
+    ? Math.max(0, Math.floor(currentCoinsNumber))
+    : 0;
 
-    const currentData = rows[0].data || {};
-    const currentCoins = Math.max(0, Math.floor(Number(currentData.coins) || 0));
-    if (currentCoins < fee) {
-      throw new Error(`Coins ไม่พอ ต้องใช้ ${fee} Coins`);
-    }
-
-    const nextData = {
-      ...currentData,
-      coins: currentCoins - fee,
-      lastUpdated: Math.max(Date.now(), Number(currentData.lastUpdated) || 0) + 1,
-    };
-
-    const updateFilter =
-      `collection=eq.characters&id=eq.${encodeURIComponent(playerId)}&data->>coins=eq.${currentCoins}`;
-    const updated = await supabase(`star_stream_documents?${updateFilter}`, {
-      method: 'PATCH',
-      headers: { Prefer: 'return=representation' },
-      body: JSON.stringify({ data: nextData, updated_at: Date.now() }),
-    });
-
-    if (updated?.length) {
-      await supabase('star_stream_documents', {
-        method: 'POST',
-        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: JSON.stringify({
-          collection: 'battle_rooms',
-          id: String(room.id),
-          data: room,
-          updated_at: Date.now(),
-        }),
-      });
-      return;
-    }
-
-    lastConflict = true;
-    await new Promise(resolve => setTimeout(resolve, 25 * (attempt + 1)));
+  if (currentCoins < fee) {
+    throw new Error(`Coins ไม่พอ ต้องใช้ ${fee} Coins`);
   }
 
-  if (lastConflict) {
-    throw new Error('ไม่สามารถยืนยันค่าเข้าสู้ได้ กรุณากดเริ่มต่อสู้อีกครั้ง');
-  }
+  const nextData = {
+    ...currentData,
+    coins: currentCoins - fee,
+    lastUpdated: Math.max(Date.now(), Number(currentData.lastUpdated) || 0) + 1,
+  };
+
+  await supabase(`star_stream_documents?${filter}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({ data: nextData, updated_at: Date.now() }),
+  });
+
+  await supabase('star_stream_documents', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({
+      collection: 'battle_rooms',
+      id: String(room.id),
+      data: room,
+      updated_at: Date.now(),
+    }),
+  });
 }
 async function claimBattleRewardDirect(body) {
   const roomId = String(body.roomId || '');
