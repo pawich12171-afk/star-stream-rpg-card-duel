@@ -159,10 +159,7 @@ async function createBattleRoomWithFeeDirect(body) {
   if (!validId(playerId)) throw new Error('Invalid player id');
   if (!room?.id || !validId(String(room.id))) throw new Error('Invalid battle room id');
 
-  // Do not compare the Coins value through a PostgREST JSON numeric filter.
-  // Very large JavaScript numbers can be represented differently by JSON/JSONB,
-  // which previously caused "Battle entry changed while joining" even when the
-  // player had enough Coins. Read the latest profile and write it directly.
+  // Read the latest profile directly; do not compare a large Coins value in the JSON filter.
   const filter = `collection=eq.characters&id=eq.${encodeURIComponent(playerId)}`;
   const rows = await supabase(`star_stream_documents?select=data&${filter}`);
   if (!rows?.length) throw new Error('Player not found');
