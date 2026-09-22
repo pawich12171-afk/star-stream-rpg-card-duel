@@ -512,6 +512,7 @@ export const INITIAL_SHOP_ITEMS: Item[] = [
 export const INITIAL_GACHA_CONFIG: GachaConfig = {
   pullCost: 500,
   tenPullCost: 4500,
+  multiPullCounts: [20, 30, 50],
   enabled: true,
   bannerTitle: "หีบสมบัติจักรวาลแห่งดวงดาว (Constellation Star Box)",
   bannerDescription: "สุ่มรับเหรียญรางวัลมหาศาล สกิลพิเศษระดับตำนาน และไอเทมสเตตัสหายาก",
