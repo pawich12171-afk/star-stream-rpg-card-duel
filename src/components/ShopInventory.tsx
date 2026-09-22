@@ -353,6 +353,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         String(item.targetStat || ''),
         String(item.effectValue ?? ''),
         String(item.hpBonus ?? ''),
+        String(item.gachaRateMultiplier ?? ''),
       ].join('|');
       const existingIndex = currentInventory.findIndex(i => [
         String(i.name || '').trim().toLocaleLowerCase(),
@@ -361,6 +362,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         String(i.targetStat || ''),
         String(i.effectValue ?? ''),
         String(i.hpBonus ?? ''),
+        String(i.gachaRateMultiplier ?? ''),
       ].join('|') === purchaseKey);
       const updatedInventory: InventoryItem[] = [...currentInventory];
 
@@ -473,6 +475,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         String(item.targetStat || ''),
         String(item.effectValue ?? ''),
         String(item.hpBonus ?? ''),
+        String(item.gachaRateMultiplier ?? ''),
       ].join('|');
       const existing = map.get(key);
       if (!existing) {
@@ -500,7 +503,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     const original = character.inventory || [];
     const signature = (items: InventoryItem[]) => items.map(item => [
       item.id, item.name, item.category, item.effectType, item.targetStat, item.effectValue,
-      item.hpBonus, item.quantity, item.equippedQuantity, item.isEquipped
+      item.hpBonus, item.gachaRateMultiplier, item.quantity, item.equippedQuantity, item.isEquipped
     ].join('~')).sort().join('||');
     if (signature(original) !== signature(stackedInventory)) {
       void onUpdateCharacter({
