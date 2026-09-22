@@ -429,6 +429,10 @@ export interface BattleRoom {
   entryFeeCoins?: number;
   victoryRewardCoins?: number;
   rewardClaimedBy?: string;
+  /** จำนวนการใช้ไอเทมในช่วง 35 เทิร์นปัจจุบัน */
+  battleItemUses?: number;
+  /** หมายเลขเทิร์นที่เริ่มนับโควตาไอเทม 35 เทิร์นล่าสุด */
+  battleItemWindowStartTurn?: number;
   createdAt: number;
   updatedAt: number;
 }
