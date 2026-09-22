@@ -2017,8 +2017,14 @@ function applyItemPassiveEffects(
   const ordered = [...passives.filter(effect => effect.kind === 'stack'), ...passives.filter(effect => effect.kind !== 'stack')];
   for (const passive of ordered) {
     const chance = passive.chance == null ? 100 : Math.max(0, Math.min(100, Number(passive.chance) || 0));
-    if (Math.random() * 100 >= chance) continue;
+    const passiveRoll = Math.random() * 100;
+    const chanceLabel = Number.isInteger(chance) ? String(chance) : String(Number(chance.toFixed(2)));
+    if (passiveRoll >= chance) {
+      if (chance < 100) result.message += ` • ❌ Passive ${passive.name}: ล้มเหลว (${chanceLabel}% ไม่ออก)`;
+      continue;
+    }
     const value = Math.max(0, Number(passive.value) || 0);
+    if (chance < 100) result.message += ` • ✅ Passive ${passive.name}: ทำงาน (${chanceLabel}%)`;
     const maxStacks = Math.max(1, Math.min(999, Math.round(Number(passive.maxStacks) || 999)));
     const stackKey = passive.stackKey || passive.id;
     let stacks = Math.max(0, Number(attacker.passiveStacks?.[stackKey]) || 0);
