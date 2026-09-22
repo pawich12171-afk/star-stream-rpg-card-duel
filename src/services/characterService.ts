@@ -2302,8 +2302,6 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
     // Skill-specific stats must be read from battleStats before applying the skill effect.
     // Without these local values, defense skills such as Zero Echo could throw
     // "defensePower is not defined" when the shield is created.
-    const defensePower = getSkillStat(skill, 'defense_power');
-    const healPercent = getSkillStat(skill, 'heal_percent');
     const skillAccuracy = Math.max(0, Math.min(100, getSkillStat(skill, 'accuracy_percent')));
     if (skill && skillAccuracy > 0 && Math.random() * 100 >= skillAccuracy) {
       result = { roll: 0, face: diceConfig.faces[0], damage: 0, heal: 0, message: `${current.name} ใช้สกิล ${skill.name} แต่พลาดเป้าหมาย (แม่นยำ ${skillAccuracy}%)` };
@@ -2320,11 +2318,12 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         result.damage += skillDamage;
         result.message += ` • ใช้สกิล ${skillName} เพิ่มดาเมจ ${skillDamage}`;
       } else if (skillProfile.effect === "heal") {
+        const healPercent = getSkillStat(skill, 'heal_percent');
         const bonusHeal = healPercent > 0 ? Math.round(current.maxHp * healPercent / 100) : 0;
         result.heal += skillProfile.power + bonusHeal;
         result.message += ` • ใช้สกิล ${skillName} ฟื้นฟู ${skillProfile.power + bonusHeal}`;
       } else if (skillProfile.effect === "defense") {
-        current.defenseValue = skillProfile.power + defensePower;
+        current.defenseValue = Math.max(0, skillProfile.power + getSkillStat(skill, 'defense_power'));
         current.defenseTurns = 1;
         result.message += ` • ใช้สกิล ${skillName} ป้องกันดาเมจ ${skillProfile.power} ในเทิร์นถัดไป`;
       } else if (skillProfile.effect === "reflect") {
