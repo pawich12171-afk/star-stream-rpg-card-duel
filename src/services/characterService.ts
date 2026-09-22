@@ -2249,17 +2249,31 @@ function getNextBattleActor(room: BattleRoom, actorId: string): BattleCombatant 
   const current = all.find(item => item.id === actorId);
   if (!current) return all.find(item => item.hp > 0);
 
-  // PVE/team battles alternate sides instead of forcing every member of one
-  // team to act before the monster gets a turn.
-  const enemyTeam = current.team === 'a' ? room.teamB : room.teamA;
-  const enemy = enemyTeam.find(item => item.hp > 0);
-  if (enemy) return enemy;
+  // Turns alternate between teams, but each team also rotates through its
+  // living members. The old implementation always picked team[0] after an
+  // enemy turn, which made the same player attack repeatedly (A -> Boss ->
+  // A -> Boss). Use battle-log history to remember who on the target team
+  // acted most recently, then advance to the next living member.
+  const nextTeam = current.team === 'a' ? room.teamB : room.teamA;
+  const lastActorOnNextTeam = [...(room.log || [])]
+    .map(entry => nextTeam.find(unit => unit.name === entry.actorName))
+    .find(Boolean);
 
-  // If the opposing side is empty, continue with the next living ally.
-  const allyTeam = current.team === 'a' ? room.teamA : room.teamB;
-  const currentIndex = Math.max(0, allyTeam.findIndex(item => item.id === actorId));
-  for (let step = 1; step <= allyTeam.length; step += 1) {
-    const candidate = allyTeam[(currentIndex + step) % allyTeam.length];
+  const startIndex = lastActorOnNextTeam
+    ? nextTeam.findIndex(unit => unit.id === lastActorOnNextTeam.id)
+    : -1;
+
+  for (let step = 1; step <= nextTeam.length; step += 1) {
+    const candidate = nextTeam[(startIndex + step + nextTeam.length) % nextTeam.length];
+    if (candidate && candidate.hp > 0) return candidate;
+  }
+
+  // If the opposing side has no living member, continue on the current side
+  // after the actor who just finished.
+  const currentTeam = current.team === 'a' ? room.teamA : room.teamB;
+  const currentIndex = Math.max(0, currentTeam.findIndex(item => item.id === actorId));
+  for (let step = 1; step <= currentTeam.length; step += 1) {
+    const candidate = currentTeam[(currentIndex + step) % currentTeam.length];
     if (candidate && candidate.hp > 0) return candidate;
   }
   return undefined;
