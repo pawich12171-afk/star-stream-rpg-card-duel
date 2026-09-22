@@ -661,15 +661,16 @@ export default function App() {
             onAddShopItem={handleAddShopItem}
             onDeleteShopItem={handleDeleteShopItem}
             marketplaceListings={marketplaceListings}
-            onCreateMarketplaceListing={(item, price) => createMarketplaceListing(currentUser.id, item, price)}
+            onCreateMarketplaceListing={(item, price, quantity) => createMarketplaceListing(currentUser.id, item, price, quantity)}
             onCancelMarketplaceListing={(listingId) => cancelMarketplaceListing(listingId, currentUser.id)}
-            onBuyMarketplaceListing={async (listingId) => { const result = await buyMarketplaceListing(listingId, currentUser.id); if (!result.success) alert(result.message); return result.success; }}
+            onBuyMarketplaceListing={async (listingId, quantity) => { const result = await buyMarketplaceListing(listingId, currentUser.id, quantity); if (!result.success) alert(result.message); return result.success; }}
             allCharacters={characters}
             onTransferItem={(recipientId, itemInstanceId) => transferInventoryItem(currentUser.id, recipientId, itemInstanceId)}
             marketplaceAuctions={marketplaceAuctions}
-            onCreateMarketplaceAuction={(item, price, durationMs) => createMarketplaceAuction(currentUser.id, item, price, durationMs)}
+            onCreateMarketplaceAuction={(item, price, durationMs, quantity) => createMarketplaceAuction(currentUser.id, item, price, durationMs, quantity)}
             onPlaceMarketplaceBid={(auctionId, bid) => placeMarketplaceBid(auctionId, currentUser.id, bid)}
             onFinalizeMarketplaceAuction={(auctionId) => finalizeMarketplaceAuction(auctionId)}
+            onCancelMarketplaceAuction={(auctionId) => cancelMarketplaceAuction(auctionId, currentUser.id)}
             isAdmin={isAdminMode}
           />
         )}
