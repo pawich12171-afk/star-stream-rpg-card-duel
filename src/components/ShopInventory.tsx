@@ -156,6 +156,12 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [editingPrice, setEditingPrice] = useState('');
+  const [editingBattleItem, setEditingBattleItem] = useState<Item | null>(null);
+  const [editBattleLuckMultiplier, setEditBattleLuckMultiplier] = useState(1);
+  const [editBattleLuckDuration, setEditBattleLuckDuration] = useState(1);
+  const [editBattleCriticalChancePercent, setEditBattleCriticalChancePercent] = useState(0);
+  const [editBattleRepeatAttackChancePercent, setEditBattleRepeatAttackChancePercent] = useState(0);
+  const [editBattlePassiveChanceMultiplier, setEditBattlePassiveChanceMultiplier] = useState(1);
   const [selectedInventoryKeys, setSelectedInventoryKeys] = useState<string[]>([]);
   const [inventorySearch, setInventorySearch] = useState('');
 
@@ -908,6 +914,22 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                           <span>{item.price.toLocaleString()}</span>
                           <span className="text-[10px] text-slate-400 font-normal">Coins</span>
                         </div>
+                        {isAdmin && item.category === 'consumable' && onAddShopItem && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingBattleItem(item);
+                              setEditBattleLuckMultiplier(Number(item.battleLuckMultiplier) || 1);
+                              setEditBattleLuckDuration(Math.max(1, Math.floor(Number(item.battleLuckDuration) || 1)));
+                              setEditBattleCriticalChancePercent(Math.max(0, Number(item.battleCriticalChancePercent) || 0));
+                              setEditBattleRepeatAttackChancePercent(Math.max(0, Number(item.battleRepeatAttackChancePercent) || 0));
+                              setEditBattlePassiveChanceMultiplier(Number(item.battlePassiveChanceMultiplier) || 1);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25 text-[11px] font-bold cursor-pointer"
+                          >
+                            🍀 ตั้งค่าโชค
+                          </button>
+                        )}
                         {isAdmin && onAddShopItem && (
                           <button
                             type="button"
@@ -1289,6 +1311,71 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       {transferItem && (<div className="fixed inset-0 z-[85] bg-black/70 flex items-center justify-center p-4"><div className="w-full max-w-md rounded-3xl bg-slate-900 border border-cyan-500/30 p-6"><h3 className="text-lg font-black text-white">🎁 โอนไอเทมให้ผู้เล่น</h3><p className="text-sm text-slate-300 mt-2">{transferItem.name}</p><div className="mt-4 rounded-2xl border-2 border-cyan-400/50 bg-cyan-950/20 p-4"><div className="text-xs font-black text-cyan-200">📦 จำนวนที่ต้องการโอน</div><div className="text-[11px] text-slate-400 mt-1">มีทั้งหมด {Math.max(1, Number(transferItem.quantity)||1)} ชิ้น</div><div className="mt-3 flex items-center gap-2"><button type="button" onClick={()=>setTransferQuantity(String(Math.max(1,Math.floor(Number(transferQuantity)||1)-1)))} className="w-11 h-11 rounded-xl bg-slate-800 text-white text-xl font-black">−</button><input type="number" min="1" max={Math.max(1,Number(transferItem.quantity)||1)} value={transferQuantity} onChange={e=>setTransferQuantity(e.target.value)} className="flex-1 h-11 rounded-xl bg-slate-950 border border-cyan-500/40 text-center text-lg font-black text-white"/><button type="button" onClick={()=>setTransferQuantity(String(Math.min(Math.max(1,Number(transferItem.quantity)||1),Math.floor(Number(transferQuantity)||1)+1)))} className="w-11 h-11 rounded-xl bg-cyan-600 text-white text-xl font-black">+</button></div><div className="mt-2 grid grid-cols-3 gap-2"><button type="button" onClick={()=>setTransferQuantity('1')} className="rounded-lg bg-slate-800 border border-slate-700 py-2 text-xs font-black text-white">x1</button><button type="button" onClick={()=>setTransferQuantity(String(Math.min(5,Math.max(1,Number(transferItem.quantity)||1))))} className="rounded-lg bg-slate-800 border border-slate-700 py-2 text-xs font-black text-white">x5</button><button type="button" onClick={()=>setTransferQuantity(String(Math.max(1,Number(transferItem.quantity)||1)))} className="rounded-lg bg-cyan-500/10 border border-cyan-500/30 py-2 text-xs font-black text-cyan-200">xทั้งหมด</button></div></div><select value={transferTarget} onChange={e=>setTransferTarget(e.target.value)} className="w-full mt-4 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white"><option value="">เลือกผู้รับ...</option>{allCharacters.filter(x=>x.id!==character.id).map(x=><option key={x.id} value={x.id}>{x.displayName}</option>)}</select><div className="flex justify-end gap-2 mt-5"><button type="button" onClick={()=>{setTransferItem(null);setTransferQuantity('1')}} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">ยกเลิก</button><button type="button" disabled={!transferTarget} onClick={async()=>{try{const qty=Math.max(1,Math.min(Math.floor(Number(transferQuantity)||1),Math.max(1,Number(transferItem.quantity)||1)));await onTransferItem?.(transferTarget,transferItem.instanceId,qty);setTransferItem(null);setTransferQuantity('1');alert('โอนไอเทมสำเร็จ')}catch(e){alert(e instanceof Error?e.message:'โอนไม่สำเร็จ')}}} className="px-4 py-2 rounded-xl bg-cyan-600 text-white text-xs font-black disabled:opacity-40">ยืนยันโอน ×{Math.max(1,Math.min(Math.floor(Number(transferQuantity)||1),Math.max(1,Number(transferItem.quantity)||1)))}</button></div></div></div>)}
 {auctionItem && (<div className="fixed inset-0 z-[85] bg-black/70 flex items-center justify-center p-4"><div className="w-full max-w-md rounded-3xl bg-slate-900 border border-amber-500/30 p-6"><h3 className="text-lg font-black text-white">🔨 จัดประมูลไอเทม</h3><p className="text-sm text-slate-300 mt-2">{auctionItem.name}</p><div className="mt-4 rounded-2xl border-2 border-amber-400/50 bg-amber-950/20 p-4"><div className="text-xs font-black text-amber-200">📦 จำนวนที่ต้องการประมูล</div><div className="text-[11px] text-slate-400 mt-1">มีทั้งหมด {Math.max(1,Number(auctionItem.quantity)||1)} ชิ้น</div><div className="mt-3 flex items-center gap-2"><button type="button" onClick={()=>setAuctionQuantity(String(Math.max(1,Math.floor(Number(auctionQuantity)||1)-1)))} className="w-11 h-11 rounded-xl bg-slate-800 text-white text-xl font-black">−</button><input type="number" min="1" max={Math.max(1,Number(auctionItem.quantity)||1)} value={auctionQuantity} onChange={e=>setAuctionQuantity(e.target.value)} className="flex-1 h-11 rounded-xl bg-slate-950 border border-amber-500/40 text-center text-lg font-black text-white"/><button type="button" onClick={()=>setAuctionQuantity(String(Math.min(Math.max(1,Number(auctionItem.quantity)||1),Math.floor(Number(auctionQuantity)||1)+1)))} className="w-11 h-11 rounded-xl bg-amber-600 text-white text-xl font-black">+</button></div><div className="mt-2 grid grid-cols-3 gap-2"><button type="button" onClick={()=>setAuctionQuantity('1')} className="rounded-lg bg-slate-800 border border-slate-700 py-2 text-xs font-black text-white">x1</button><button type="button" onClick={()=>setAuctionQuantity(String(Math.min(5,Math.max(1,Number(auctionItem.quantity)||1))))} className="rounded-lg bg-slate-800 border border-slate-700 py-2 text-xs font-black text-white">x5</button><button type="button" onClick={()=>setAuctionQuantity(String(Math.max(1,Number(auctionItem.quantity)||1)))} className="rounded-lg bg-amber-500/10 border border-amber-500/30 py-2 text-xs font-black text-amber-200">xทั้งหมด</button></div></div><input type="number" min="1" value={auctionPrice} onChange={e=>setAuctionPrice(e.target.value)} className="w-full mt-4 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-amber-300" placeholder="ราคาเริ่มต้น Coins"/><select value={auctionDuration} onChange={e=>setAuctionDuration(e.target.value)} className="w-full mt-3 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white"><option value="1800000">30 นาที</option><option value="3600000">1 ชั่วโมง</option><option value="21600000">6 ชั่วโมง</option><option value="86400000">24 ชั่วโมง</option></select><div className="flex justify-end gap-2 mt-5"><button type="button" onClick={()=>setAuctionItem(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">ยกเลิก</button><button type="button" onClick={async()=>{if(marketActionLockRef.current)return;const p=Math.floor(Number(auctionPrice));if(!Number.isFinite(p)||p<=0){alert('ราคาเริ่มต้นต้องมากกว่า 0');return;}marketActionLockRef.current='auction';setMarketActionBusy('auction');try{await onCreateMarketplaceAuction?.(auctionItem,p,Number(auctionDuration),Math.max(1,Math.floor(Number(auctionQuantity)||1)));setAuctionItem(null);alert('เปิดประมูลสำเร็จ')}catch(e){alert(e instanceof Error?e.message:'เปิดประมูลไม่สำเร็จ')}finally{marketActionLockRef.current=null;setMarketActionBusy(null)}}} disabled={marketActionBusy!==null} className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50">{marketActionBusy==='auction'?'⏳ กำลังนำไอเทมเข้าประมูล...':'เริ่มประมูล'}</button></div></div></div>)}
 {marketSellItem && (<div className="fixed inset-0 z-[80] bg-black/70 flex items-center justify-center p-4"><div className="w-full max-w-md rounded-3xl bg-slate-900 border border-violet-500/30 p-6"><h3 className="text-lg font-black text-white">🏪 ตั้งราคาขาย</h3><p className="text-sm text-slate-300 mt-2">{marketSellItem.name}</p><div className="mt-4 rounded-2xl border-2 border-violet-400/50 bg-violet-950/20 p-4"><div className="text-xs font-black text-violet-200">📦 จำนวนที่ต้องการขาย</div><div className="text-[11px] text-slate-400 mt-1">มีทั้งหมด {Math.max(1,Number(marketSellItem.quantity)||1)} ชิ้น</div><div className="mt-3 flex items-center gap-2"><button type="button" onClick={()=>setMarketSellQuantity(String(Math.max(1,Math.floor(Number(marketSellQuantity)||1)-1)))} className="w-11 h-11 rounded-xl bg-slate-800 text-white text-xl font-black">−</button><input type="number" min="1" max={Math.max(1,Number(marketSellItem.quantity)||1)} value={marketSellQuantity} onChange={e=>setMarketSellQuantity(e.target.value)} className="flex-1 h-11 rounded-xl bg-slate-950 border border-violet-500/40 text-center text-lg font-black text-white"/><button type="button" onClick={()=>setMarketSellQuantity(String(Math.min(Math.max(1,Number(marketSellItem.quantity)||1),Math.floor(Number(marketSellQuantity)||1)+1)))} className="w-11 h-11 rounded-xl bg-violet-600 text-white text-xl font-black">+</button></div><div className="mt-2 grid grid-cols-3 gap-2"><button type="button" onClick={()=>setMarketSellQuantity('1')} className="rounded-lg bg-slate-800 border border-slate-700 py-2 text-xs font-black text-white">x1</button><button type="button" onClick={()=>setMarketSellQuantity(String(Math.min(5,Math.max(1,Number(marketSellItem.quantity)||1))))} className="rounded-lg bg-slate-800 border border-slate-700 py-2 text-xs font-black text-white">x5</button><button type="button" onClick={()=>setMarketSellQuantity(String(Math.max(1,Number(marketSellItem.quantity)||1)))} className="rounded-lg bg-violet-500/10 border border-violet-500/30 py-2 text-xs font-black text-violet-200">xทั้งหมด</button></div></div><input type="number" min="1" value={marketSellPrice} onChange={e=>setMarketSellPrice(e.target.value)} className="w-full mt-4 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-amber-300 font-black" placeholder="ราคา Coins ต่อชิ้น"/><div className="flex justify-end gap-2 mt-5"><button type="button" onClick={()=>setMarketSellItem(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">ยกเลิก</button><button type="button" onClick={async()=>{if(marketActionLockRef.current)return;const p=Math.floor(Number(marketSellPrice));if(!Number.isFinite(p)||p<=0){alert('ราคาต้องมากกว่า 0 Coins');return;}marketActionLockRef.current='listing';setMarketActionBusy('listing');try{await onCreateMarketplaceListing?.(marketSellItem,p,Math.max(1,Math.floor(Number(marketSellQuantity)||1)));setMarketSellItem(null);alert('ประกาศขายสำเร็จ')}catch(e){alert(e instanceof Error?e.message:'ประกาศขายไม่สำเร็จ')}finally{marketActionLockRef.current=null;setMarketActionBusy(null)}}} disabled={marketActionBusy!==null} className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-black disabled:cursor-not-allowed disabled:opacity-50">{marketActionBusy==='listing'?'⏳ กำลังวางขาย...':'ยืนยันขาย'}</button></div></div></div>)}
+      {editingBattleItem && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="w-full max-w-xl rounded-3xl bg-slate-900 border-2 border-emerald-500/40 shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                <div className="text-[10px] font-black tracking-widest text-emerald-400">BATTLE ITEM SETTINGS</div>
+                <h3 className="text-lg font-black text-white mt-1">🍀 ตั้งค่าโชคระหว่างการต่อสู้</h3>
+                <p className="text-xs text-slate-400 mt-1">{editingBattleItem.name}</p>
+              </div>
+              <button type="button" onClick={() => setEditingBattleItem(null)} className="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white">ปิด</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/15 p-4 space-y-3">
+                <div className="text-sm font-black text-emerald-100">🍀 โชคหลัก</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="text-xs font-bold text-emerald-300">ตัวคูณโชค (เท่า)
+                    <input type="number" min="1" max="20" step="0.1" value={editBattleLuckMultiplier} onChange={e=>setEditBattleLuckMultiplier(Number(e.target.value))} className="mt-1 w-full rounded-xl bg-slate-950 border border-emerald-700/60 px-3 py-2.5 text-white font-black" />
+                  </label>
+                  <label className="text-xs font-bold text-cyan-300">ระยะเวลาโชค (เทิร์น)
+                    <input type="number" min="1" max="100" value={editBattleLuckDuration} onChange={e=>setEditBattleLuckDuration(Number(e.target.value))} disabled={editBattleLuckMultiplier<=1} className="mt-1 w-full rounded-xl bg-slate-950 border border-cyan-700/60 px-3 py-2.5 text-white font-black disabled:opacity-40" />
+                  </label>
+                </div>
+                <p className="text-[10px] text-slate-400">เช่น ×2 เป็นการคูณโอกาส Passive/Effect/Crit/ตีซ้ำ 2 เท่า</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="text-xs font-bold text-fuchsia-300">💥 โบนัสโอกาสคริ (%)
+                  <input type="number" min="0" max="100" step="0.1" value={editBattleCriticalChancePercent} onChange={e=>setEditBattleCriticalChancePercent(Number(e.target.value))} className="mt-1 w-full rounded-xl bg-slate-950 border border-fuchsia-700/60 px-3 py-2.5 text-white font-black" />
+                </label>
+                <label className="text-xs font-bold text-violet-300">🔁 โบนัสโอกาสตีซ้ำ (%)
+                  <input type="number" min="0" max="100" step="0.1" value={editBattleRepeatAttackChancePercent} onChange={e=>setEditBattleRepeatAttackChancePercent(Number(e.target.value))} className="mt-1 w-full rounded-xl bg-slate-950 border border-violet-700/60 px-3 py-2.5 text-white font-black" />
+                </label>
+              </div>
+              <label className="block text-xs font-bold text-amber-300">✨ ตัวคูณโอกาส Passive / Effect (เท่า)
+                <input type="number" min="1" max="20" step="0.1" value={editBattlePassiveChanceMultiplier} onChange={e=>setEditBattlePassiveChanceMultiplier(Number(e.target.value))} className="mt-1 w-full rounded-xl bg-slate-950 border border-amber-700/60 px-3 py-2.5 text-white font-black" />
+              </label>
+              <div className="rounded-xl bg-slate-950 border border-slate-800 p-3 text-[10px] text-slate-400 leading-5">
+                ค่าเหล่านี้จะถูกบันทึกลงไอเทมเดิมทันที ไม่ต้องลบหรือสร้างไอเทมใหม่
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setEditingBattleItem(null)} className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold">ยกเลิก</button>
+                <button type="button" onClick={async () => {
+                  if (!onAddShopItem || !editingBattleItem) return;
+                  const updated = {
+                    ...editingBattleItem,
+                    battleLuckMultiplier: editBattleLuckMultiplier > 1 ? Math.max(1, Math.min(20, editBattleLuckMultiplier)) : undefined,
+                    battleLuckDuration: editBattleLuckMultiplier > 1 ? Math.max(1, Math.floor(editBattleLuckDuration)) : undefined,
+                    battleCriticalChancePercent: editBattleCriticalChancePercent > 0 ? Math.max(0, Math.min(100, editBattleCriticalChancePercent)) : undefined,
+                    battleRepeatAttackChancePercent: editBattleRepeatAttackChancePercent > 0 ? Math.max(0, Math.min(100, editBattleRepeatAttackChancePercent)) : undefined,
+                    battlePassiveChanceMultiplier: editBattlePassiveChanceMultiplier > 1 ? Math.max(1, Math.min(20, editBattlePassiveChanceMultiplier)) : undefined,
+                  };
+                  try {
+                    await onAddShopItem(updated);
+                    setEditingBattleItem(null);
+                    alert('บันทึกตั้งค่าโชคของไอเทมเรียบร้อยแล้ว');
+                  } catch (error) {
+                    console.error('Failed to update battle item settings:', error);
+                    alert('บันทึกตั้งค่าไม่สำเร็จ กรุณาลองใหม่');
+                  }
+                }} className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black">💾 บันทึกการตั้งค่า</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ADMIN MODAL: Add New Shop Item (Redesigned & Prettier) */}
       {showAddItemModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
