@@ -34,7 +34,12 @@ import {
   resetDatabaseToDefaults,
   seedInitialDataIfNeeded,
   subscribeToMarketplace,
+  subscribeToMarketplaceAuctions,
   createMarketplaceListing,
+  transferInventoryItem,
+  createMarketplaceAuction,
+  placeMarketplaceBid,
+  finalizeMarketplaceAuction,
   cancelMarketplaceListing,
   buyMarketplaceListing,
   subscribeToChat,
@@ -92,6 +97,7 @@ export default function App() {
   });
   const [duelRooms, setDuelRooms] = useState<CardDuelRoom[]>(() => []);
   const [marketplaceListings, setMarketplaceListings] = useState<import('./types').MarketplaceListing[]>(() => []);
+  const [marketplaceAuctions, setMarketplaceAuctions] = useState<import('./types').MarketplaceAuction[]>(() => []);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => []);
   const [isRealtimeLinked, setIsRealtimeLinked] = useState(false);
   const charactersRef = useRef<CharacterProfile[]>([]);
@@ -162,6 +168,7 @@ export default function App() {
         setDuelRooms(rooms);
       }));
       cleanups.push(subscribeToMarketplace((listings) => setMarketplaceListings(listings)));
+      cleanups.push(subscribeToMarketplaceAuctions((auctions) => setMarketplaceAuctions(auctions)));
       cleanups.push(subscribeToChat((messages) => setChatMessages(messages)));
     };
 
@@ -672,6 +679,12 @@ export default function App() {
             onCreateMarketplaceListing={(item, price) => createMarketplaceListing(currentUser.id, item, price)}
             onCancelMarketplaceListing={(listingId) => cancelMarketplaceListing(listingId, currentUser.id)}
             onBuyMarketplaceListing={async (listingId) => { const result = await buyMarketplaceListing(listingId, currentUser.id); if (!result.success) alert(result.message); return result.success; }}
+            allCharacters={characters}
+            onTransferItem={(recipientId, itemInstanceId) => transferInventoryItem(currentUser.id, recipientId, itemInstanceId)}
+            marketplaceAuctions={marketplaceAuctions}
+            onCreateMarketplaceAuction={(item, price, durationMs) => createMarketplaceAuction(currentUser.id, item, price, durationMs)}
+            onPlaceMarketplaceBid={(auctionId, bid) => placeMarketplaceBid(auctionId, currentUser.id, bid)}
+            onFinalizeMarketplaceAuction={(auctionId) => finalizeMarketplaceAuction(auctionId)}
             isAdmin={isAdminMode}
           />
         )}
