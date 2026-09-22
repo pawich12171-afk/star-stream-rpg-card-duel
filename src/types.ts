@@ -95,6 +95,14 @@ export interface Item {
   battleDamagePercent?: number;
   /** ระยะเวลาบัฟดาเมจ (จำนวนเทิร์น) */
   battleDamageDuration?: number;
+  /** ตัวคูณโชคระหว่างต่อสู้ เช่น 2 = โอกาส Passive/Effect/Crit เพิ่มเป็น 2 เท่า */
+  battleLuckMultiplier?: number;
+  /** โบนัสโอกาสคริติคอลจากไอเทม (%) */
+  battleCriticalChancePercent?: number;
+  /** โบนัสโอกาสตีซ้ำจากไอเทม (%) */
+  battleRepeatAttackChancePercent?: number;
+  /** ตัวคูณโอกาสทำงานของ Passive/Effect ระหว่างต่อสู้ */
+  battlePassiveChanceMultiplier?: number;
   hpBonus?: number;
   targetStat?: keyof CharacterStats;
   skillEnhanceTarget?: string;
@@ -420,6 +428,14 @@ export interface BattleCombatant {
   itemDamagePercent?: number;
   /** เทิร์นที่เหลือของโบนัสโจมตีจากไอเทม */
   itemDamageTurns?: number;
+  /** ตัวคูณโชคจากไอเทมระหว่างต่อสู้ */
+  itemLuckMultiplier?: number;
+  /** โบนัสโอกาสคริติคอลจากไอเทม (%) */
+  itemCriticalChancePercent?: number;
+  /** โบนัสโอกาสตีซ้ำจากไอเทม (%) */
+  itemRepeatAttackChancePercent?: number;
+  /** ตัวคูณโอกาสทำงานของ Passive/Effect จากไอเทม */
+  itemPassiveChanceMultiplier?: number;
 }
 
 export interface BattleLogEntry {
