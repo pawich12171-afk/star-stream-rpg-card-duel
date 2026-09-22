@@ -2356,6 +2356,60 @@ export function rollBattleAttack(attacker: BattleCombatant, defender: BattleComb
   return { roll, face, damage, heal, message };
 }
 
+export async function useBattleItem(room: BattleRoom, playerId: string, itemInstanceId: string): Promise<BattleRoom> {
+  if (room.status !== 'active') throw new Error('การต่อสู้จบแล้ว');
+  const actor = [...room.teamA, ...room.teamB].find(unit => unit.id === room.turnActorId);
+  if (!actor || actor.type !== 'player' || actor.sourceId !== playerId) throw new Error('ยังไม่ใช่เทิร์นของผู้เล่นนี้');
+
+  const currentWindowStart = Math.floor(Math.max(0, Number(room.round || 1) - 1) / 35) * 35;
+  const currentUses = Number(room.battleItemWindowStartTurn) === currentWindowStart ? Number(room.battleItemUses || 0) : 0;
+  if (currentUses >= 2) throw new Error('ช่วง 35 เทิร์นนี้ใช้ไอเทมครบ 2 ครั้งแล้ว');
+
+  const character = localCharacters.find(item => item.id === playerId);
+  if (!character) throw new Error('ไม่พบตัวละครผู้ใช้');
+  const item = (character.inventory || []).find(inv => inv.instanceId === itemInstanceId);
+  if (!item || item.quantity <= 0) throw new Error('ไม่พบไอเทมในกระเป๋า');
+  if (item.category !== 'consumable' || !item.usableByPlayers) throw new Error('ไอเทมนี้ใช้ระหว่างการต่อสู้ไม่ได้');
+
+  const inventory = (character.inventory || [])
+    .map(inv => inv.instanceId === itemInstanceId ? { ...inv, quantity: Math.max(0, inv.quantity - 1) } : inv)
+    .filter(inv => inv.quantity > 0);
+  let hp = character.hp;
+  let maxHp = character.maxHp;
+  const stats = { ...character.stats };
+
+  if (item.effectType === 'heal_hp') hp = Math.min(maxHp, hp + Math.max(0, Number(item.effectValue) || 0));
+  else if (item.effectType === 'buff_stat' && item.targetStat) stats[item.targetStat] = (stats[item.targetStat] || 0) + Math.max(0, Number(item.effectValue) || 0);
+  else if (item.effectType === 'boost_max_hp') {
+    const bonus = Math.max(0, Number(item.effectValue) || 0);
+    maxHp += bonus;
+    hp = Math.min(maxHp, hp + bonus);
+  }
+
+  await updateCharacterFields(playerId, { inventory, hp, maxHp, stats, lastUpdated: Date.now() });
+
+  const nextRoom = {
+    ...room,
+    teamA: room.teamA.map(unit => unit.id === actor.id ? { ...unit, hp: Math.min(maxHp, hp), maxHp, stats } : unit),
+    teamB: room.teamB.map(unit => ({ ...unit })),
+    battleItemUses: currentUses + 1,
+    battleItemWindowStartTurn: currentWindowStart,
+    round: Math.max(1, Number(room.round || 1) + 1),
+    updatedAt: Date.now(),
+  };
+  nextRoom.log = [{
+    id: 'battle-log-item-' + Date.now(),
+    timestamp: Date.now(),
+    actorName: actor.name,
+    message: `🧪 ${actor.name} ใช้ไอเทม "${item.name}" · โควตาไอเทม ${currentUses + 1}/2 ใน 35 เทิร์น`,
+  }, ...(room.log || [])];
+
+  const nextActor = [...nextRoom.teamA, ...nextRoom.teamB].find(unit => unit.id !== actor.id && unit.hp > 0);
+  if (nextActor) nextRoom.turnActorId = nextActor.id;
+  await updateBattleRoom(nextRoom);
+  return nextRoom;
+}
+
 function getBattleCombatants(room: BattleRoom): BattleCombatant[] {
   return [...room.teamA, ...room.teamB];
 }
