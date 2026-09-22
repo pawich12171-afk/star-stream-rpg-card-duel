@@ -105,6 +105,7 @@ export interface InventoryItem extends Item {
 }
 
 export interface MarketplaceListing { id: string; sellerId: string; sellerName: string; item: InventoryItem; price: number; createdAt: number; updatedAt: number; }
+export interface MarketplaceAuction { id: string; sellerId: string; sellerName: string; item: InventoryItem; startingPrice: number; currentBid: number; highestBidderId?: string; highestBidderName?: string; endsAt: number; createdAt: number; updatedAt: number; status: 'active' | 'completed' | 'cancelled'; }
 
 export interface ChatMessage { id: string; senderId: string; senderName: string; senderAvatar?: string; message: string; createdAt: number; }
 
