@@ -50,6 +50,8 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
 
   const pullCost = activeBanner?.pullCost ?? 500;
   const tenPullCost = activeBanner?.tenPullCost ?? 4500;
+  const multiPullCounts = Array.from(new Set((activeBanner?.multiPullCounts || []).map(Number).filter(count => Number.isFinite(count) && count > 10))).sort((a, b) => a - b);
+  const getPullCost = (count: number) => count === 1 ? pullCost : count === 10 ? tenPullCost : Math.max(0, Math.round(pullCost * count));
 
   // Helper to pick a random reward based on rate %
   const pickRandomReward = (rewardsList: GachaReward[]): GachaReward => {
@@ -88,7 +90,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       return;
     }
     const currentCharacter = characterRef.current;
-    const cost = count === 1 ? pullCost : tenPullCost;
+    const cost = getPullCost(count);
     if (currentCharacter.coins < cost) {
       alert(`เหรียญไม่เพียงพอ ต้องการ ${cost.toLocaleString()} C แต่คุณมี ${character.coins.toLocaleString()} C`);
       return;
@@ -341,6 +343,25 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
               ประหยัด {((pullCost * 10) - tenPullCost).toLocaleString()} C
             </span>
           </button>
+          {multiPullCounts.length > 0 && (
+            <div className="w-full sm:w-auto flex items-center gap-2 rounded-2xl border border-purple-500/40 bg-slate-900/80 px-3 py-2">
+              <label htmlFor="gacha-multi-count" className="text-xs font-bold text-purple-200 whitespace-nowrap">สุ่มเพิ่ม</label>
+              <select
+                id="gacha-multi-count"
+                value={multiPullCounts[0] || ''}
+                onChange={(e) => handlePull(Number(e.target.value))}
+                disabled={isPulling || !activeBanner}
+                className="rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 text-sm font-black text-white outline-none cursor-pointer disabled:opacity-50"
+                aria-label="เลือกจำนวนครั้งสำหรับการสุ่มกาชาเพิ่มเติม"
+              >
+                <option value="" disabled>เลือกจำนวน</option>
+                {multiPullCounts.map(count => {
+                  const cost = getPullCost(count);
+                  return <option key={count} value={count}>{count} ครั้ง — {cost.toLocaleString()} C</option>;
+                })}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
