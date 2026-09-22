@@ -284,6 +284,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
       }
       resolvedSkill = {
         ...latestSkill,
+        id: latestSkill.id || latestSkill.name || ('skill-' + latestSkill.name),
         battleEffect: latestSkill.battleEffect || 'damage',
         battlePower: Math.max(1, Number(latestSkill.battlePower) || 5),
         cooldownTurns: Math.max(0, Number(latestSkill.cooldownTurns) || 0),
@@ -319,6 +320,10 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
           try { await persistBattleHp(botRoom); } catch (error) { console.warn('ไม่สามารถบันทึก HP หลังบอทเดินได้', error); }
         }
       }
+      }
+    } catch (error) {
+      console.error('Battle skill turn failed', error);
+      alert('ใช้สกิลไม่สำเร็จ: ' + (error instanceof Error ? error.message : 'เกิดข้อผิดพลาด'));
     }
   };
 
