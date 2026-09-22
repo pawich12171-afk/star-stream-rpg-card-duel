@@ -31,7 +31,11 @@ import {
   grantItemToPlayer as grantItemToPlayerInDB,
   removeItemFromPlayer as removeItemFromPlayerInDB,
   resetDatabaseToDefaults,
-  seedInitialDataIfNeeded
+  seedInitialDataIfNeeded,
+  subscribeToMarketplace,
+  createMarketplaceListing,
+  cancelMarketplaceListing,
+  buyMarketplaceListing
 } from './services/characterService';
 import { StatusWindow } from './components/StatusWindow';
 import { ShopInventory } from './components/ShopInventory';
@@ -82,6 +86,7 @@ export default function App() {
     bannerDescription: "โอกาสได้รับเหรียญรางวัลพิเศษ ไอเทมสเตตัส และสกิลระดับสวรรค์"
   });
   const [duelRooms, setDuelRooms] = useState<CardDuelRoom[]>(() => []);
+  const [marketplaceListings, setMarketplaceListings] = useState<import('./types').MarketplaceListing[]>(() => []);
   const [isRealtimeLinked, setIsRealtimeLinked] = useState(false);
   const charactersRef = useRef<CharacterProfile[]>([]);
 
@@ -150,6 +155,7 @@ export default function App() {
       cleanups.push(subscribeToDuelRooms((rooms) => {
         setDuelRooms(rooms);
       }));
+      cleanups.push(subscribeToMarketplace((listings) => setMarketplaceListings(listings)));
     };
 
     void initializeRealtimeData();
