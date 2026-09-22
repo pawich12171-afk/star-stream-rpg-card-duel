@@ -252,6 +252,8 @@ export interface GachaBanner {
   tenPullCost: number;
   /** จำนวนครั้งแบบหลายสุ่มที่ผู้เล่นเลือกได้ นอกเหนือจาก 1 และ 10 */
   multiPullCounts?: number[];
+  /** จำนวนสุ่มแบบเลือกค่าเดียวจากช่องตั้งค่า Admin */
+  multiPullCount?: number;
   enabled: boolean;
   bannerTitle: string;
   bannerDescription: string;
@@ -276,6 +278,8 @@ export interface GachaReward {
 export interface GachaConfig {
   pullCost: number;
   tenPullCost: number;
+  /** จำนวนครั้งสำหรับปุ่ม "เลือกสุ่ม" */
+  multiPullCount?: number;
   enabled: boolean;
   bannerTitle: string;
   bannerDescription: string;
