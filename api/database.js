@@ -97,9 +97,18 @@ async function handleTransaction(req, res) {
   const operations = Array.isArray(req.body?.operations) ? req.body.operations : [];
   if (!operations.length) return json(res, 200, { ok: true });
 
-  // Keep the compatibility API working even when the optional SQL RPC migration
-  // has not been installed in Supabase. Each operation uses the same service-role
-  // REST connection as the document API.
+  // Prefer the SQL RPC so multi-document writes are truly atomic.
+  // Fall back to the compatibility path only when the RPC migration is unavailable.
+  try {
+    await supabase('rpc/apply_star_stream_ops', {
+      method: 'POST',
+      body: JSON.stringify({ ops: operations }),
+    });
+    return json(res, 200, { ok: true });
+  } catch (rpcError) {
+    console.warn('[database] atomic transaction RPC unavailable, using compatibility fallback', rpcError?.message || rpcError);
+  }
+
   for (const op of operations) {
     const collection = op?.collection || '';
     const id = op?.id || '';
@@ -159,7 +168,21 @@ async function createBattleRoomWithFeeDirect(body) {
   if (!validId(playerId)) throw new Error('Invalid player id');
   if (!room?.id || !validId(String(room.id))) throw new Error('Invalid battle room id');
 
-  // Read the latest profile directly; do not compare a large Coins value in the JSON filter.
+  // Use the PostgreSQL row-locking function when the schema migration is installed.
+  try {
+    await supabase('rpc/create_battle_room_with_fee', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_player_id: playerId,
+        p_fee: fee,
+        p_room: room,
+      }),
+    });
+    return;
+  } catch (rpcError) {
+    console.warn('[database] atomic battle-entry RPC unavailable, using compatibility fallback', rpcError?.message || rpcError);
+  }
+
   const filter = `collection=eq.characters&id=eq.${encodeURIComponent(playerId)}`;
   const rows = await supabase(`star_stream_documents?select=data&${filter}`);
   if (!rows?.length) throw new Error('Player not found');
@@ -170,9 +193,7 @@ async function createBattleRoomWithFeeDirect(body) {
     ? Math.max(0, Math.floor(currentCoinsNumber))
     : 0;
 
-  if (currentCoins < fee) {
-    throw new Error(`Coins ไม่พอ ต้องใช้ ${fee} Coins`);
-  }
+  if (currentCoins < fee) throw new Error(`Coins ไม่พอ ต้องใช้ ${fee} Coins`);
 
   const nextData = {
     ...currentData,
@@ -203,6 +224,20 @@ async function claimBattleRewardDirect(body) {
   const reward = Math.max(0, Math.floor(Number(body.reward) || 0));
 
   if (!validId(roomId) || !validId(playerId)) throw new Error('Invalid reward reference');
+
+  try {
+    const result = await supabase('rpc/claim_battle_reward', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_room_id: roomId,
+        p_player_id: playerId,
+        p_reward: reward,
+      }),
+    });
+    return Array.isArray(result) ? result[0] === true : result === true;
+  } catch (rpcError) {
+    console.warn('[database] atomic reward RPC unavailable, using compatibility fallback', rpcError?.message || rpcError);
+  }
 
   const roomFilter = `collection=eq.battle_rooms&id=eq.${encodeURIComponent(roomId)}`;
   const rooms = await supabase(`star_stream_documents?select=data&${roomFilter}`);
