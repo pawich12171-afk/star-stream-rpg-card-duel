@@ -310,11 +310,21 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
           const botActor = [...botRoom.teamA, ...botRoom.teamB].find(unit => unit.id === botRoom.turnActorId);
           if (!botActor || botActor.type !== 'bot') break;
           await new Promise(resolve => window.setTimeout(resolve, 500));
-          const latestRoom = rooms.find(item => item.id === botRoom.id) || botRoom;
-          const latestActor = [...latestRoom.teamA, ...latestRoom.teamB].find(unit => unit.id === latestRoom.turnActorId);
-          if (!latestActor || latestActor.type !== 'bot') break;
-          const botResolved = resolveBattleTurn(latestRoom, config);
-          if (!botResolved.result && botResolved.room.turnActorId === latestRoom.turnActorId && botResolved.room.status === latestRoom.status) break;
+          // Do NOT replace botRoom with the React polling snapshot here.
+          // The polling snapshot can still contain the previous player turn for up to 1.5s,
+          // which was the reason the bot could show "BOT TURN" but never attack.
+          const botActorNow = [...botRoom.teamA, ...botRoom.teamB].find(unit => unit.id === botRoom.turnActorId);
+          if (!botActorNow || botActorNow.type !== 'bot') break;
+          const botResolved = resolveBattleTurn(botRoom, config);
+          if (!botResolved.result && botResolved.room.turnActorId === botRoom.turnActorId && botResolved.room.status === botRoom.status) {
+            console.warn('[PVE BOT] resolver returned no action', {
+              roomId: botRoom.id,
+              turnActorId: botRoom.turnActorId,
+              actor: botActorNow.name,
+              mode: botRoom.mode,
+            });
+            break;
+          }
           botRoom = botResolved.room;
           await updateBattleRoom(botRoom);
           try { await persistBattleHp(botRoom); } catch (error) { console.warn('ไม่สามารถบันทึก HP หลังบอทเดินได้', error); }
