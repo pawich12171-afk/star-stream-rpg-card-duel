@@ -103,6 +103,8 @@ export interface Item {
   battleRepeatAttackChancePercent?: number;
   /** ตัวคูณโอกาสทำงานของ Passive/Effect ระหว่างต่อสู้ */
   battlePassiveChanceMultiplier?: number;
+  /** ระยะเวลาบัฟโชค (จำนวนเทิร์น) */
+  battleLuckDuration?: number;
   hpBonus?: number;
   targetStat?: keyof CharacterStats;
   skillEnhanceTarget?: string;
@@ -436,6 +438,8 @@ export interface BattleCombatant {
   itemRepeatAttackChancePercent?: number;
   /** ตัวคูณโอกาสทำงานของ Passive/Effect จากไอเทม */
   itemPassiveChanceMultiplier?: number;
+  /** เทิร์นที่เหลือของบัฟโชคจากไอเทม */
+  itemLuckTurns?: number;
 }
 
 export interface BattleLogEntry {
