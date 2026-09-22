@@ -34,15 +34,16 @@ interface ShopInventoryProps {
   onDeleteShopItem?: (itemId: string) => void;
   isAdmin: boolean;
   marketplaceListings?: MarketplaceListing[];
-  onCreateMarketplaceListing?: (item: InventoryItem, price: number) => Promise<void>;
+  onCreateMarketplaceListing?: (item: InventoryItem, price: number, quantity: number) => Promise<void>;
   onCancelMarketplaceListing?: (listingId: string) => Promise<void>;
-  onBuyMarketplaceListing?: (listingId: string) => Promise<boolean>;
+  onBuyMarketplaceListing?: (listingId: string, quantity: number) => Promise<boolean>;
   allCharacters?: CharacterProfile[];
   onTransferItem?: (recipientId: string, itemInstanceId: string) => Promise<void>;
   marketplaceAuctions?: MarketplaceAuction[];
-  onCreateMarketplaceAuction?: (item: InventoryItem, startingPrice: number, durationMs: number) => Promise<void>;
+  onCreateMarketplaceAuction?: (item: InventoryItem, startingPrice: number, durationMs: number, quantity: number) => Promise<void>;
   onPlaceMarketplaceBid?: (auctionId: string, bid: number) => Promise<void>;
   onFinalizeMarketplaceAuction?: (auctionId: string) => Promise<void>;
+  onCancelMarketplaceAuction?: (auctionId: string) => Promise<void>;
 }
 
 // Helper functions for items
@@ -133,18 +134,21 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   onCreateMarketplaceListing,
   onCancelMarketplaceListing,
   onBuyMarketplaceListing,
-  allCharacters = [], onTransferItem, marketplaceAuctions = [], onCreateMarketplaceAuction, onPlaceMarketplaceBid, onFinalizeMarketplaceAuction,
+  allCharacters = [], onTransferItem, marketplaceAuctions = [], onCreateMarketplaceAuction, onPlaceMarketplaceBid, onFinalizeMarketplaceAuction, onCancelMarketplaceAuction,
 }) => {
   const [activeTab, setActiveTab] = useState<'shop' | 'inventory' | 'market'>('shop');
   const [marketSellItem, setMarketSellItem] = useState<InventoryItem | null>(null);
   const [marketSellPrice, setMarketSellPrice] = useState('');
+  const [marketSellQuantity, setMarketSellQuantity] = useState('1');
   const [transferItem, setTransferItem] = useState<InventoryItem | null>(null);
   const [transferTarget, setTransferTarget] = useState('');
   const [auctionItem, setAuctionItem] = useState<InventoryItem | null>(null);
   const [auctionPrice, setAuctionPrice] = useState('');
   const [auctionDuration, setAuctionDuration] = useState('3600000');
+  const [auctionQuantity, setAuctionQuantity] = useState('1');
   const [bidValues, setBidValues] = useState<Record<string,string>>({});
   const [marketBuyingId, setMarketBuyingId] = useState<string | null>(null);
+  const [marketBuyQuantity, setMarketBuyQuantity] = useState<Record<string,string>>({});
   const [marketActionBusy, setMarketActionBusy] = useState<'listing' | 'auction' | null>(null);
   const marketActionLockRef = useRef<'listing' | 'auction' | null>(null);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
@@ -947,8 +951,14 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                   </div>
                   <p className="text-xs text-slate-300">{listing.item.description}</p>
                   <div className="flex items-center justify-between border-t border-slate-800 pt-3">
-                    <span className="font-black text-amber-300">🪙 {Number(listing.price).toLocaleString()} Coins</span>
-                    {listing.sellerId === character.id ? (
+                    <div>
+  <span className="font-black text-amber-300">🪙 {Number(listing.price).toLocaleString()} Coins / ชิ้น</span>
+  <div className="text-[10px] text-slate-400 mt-1">คงเหลือ {Math.max(1, Number(listing.quantity) || Number(listing.item.quantity) || 1)} ชิ้น</div>
+</div>
+                    {listing.sellerId !== character.id && (
+  <input type="number" min="1" max={Math.max(1, Number(listing.quantity) || Number(listing.item.quantity) || 1)} value={marketBuyQuantity[listing.id] || '1'} onChange={e => setMarketBuyQuantity(v => ({ ...v, [listing.id]: e.target.value }))} className="w-16 rounded-xl border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white" aria-label="จำนวนที่ซื้อ" />
+)}
+{listing.sellerId === character.id ? (
                       <button
                         type="button"
                         onClick={async () => {
@@ -968,10 +978,13 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                         type="button"
                         disabled={marketBuyingId === listing.id}
                         onClick={async () => {
-                          if (!confirm('ยืนยันซื้อไอเทมนี้ใช่หรือไม่?')) return;
+                          const stock = Math.max(1, Number(listing.quantity) || Number(listing.item.quantity) || 1);
+                          const qty = Math.max(1, Math.min(stock, Math.floor(Number(marketBuyQuantity[listing.id]) || 1)));
+                          if (!confirm(`ยืนยันซื้อ ${listing.item.name} x${qty} ใช่หรือไม่?`)) return;
                           setMarketBuyingId(listing.id);
                           try {
-                            await onBuyMarketplaceListing?.(listing.id);
+                            const ok = await onBuyMarketplaceListing?.(listing.id, qty);
+                            if (ok) setMarketBuyQuantity(value => ({ ...value, [listing.id]: '' }));
                           } finally {
                             setMarketBuyingId(null);
                           }
@@ -1007,10 +1020,10 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                     {auction.sellerId === character.id ? (
                       <button
                         type="button"
-                        onClick={() => void onFinalizeMarketplaceAuction?.(auction.id)}
+                        onClick={() => void onCancelMarketplaceAuction?.(auction.id)}
                         className="mt-3 rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-white"
                       >
-                        ปิดประมูล
+                        ยกเลิกประมูล / คืนของ
                       </button>
                     ) : (
                       <div className="mt-3 flex gap-2">
@@ -1217,8 +1230,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                         <button type="button" onClick={() => { setTransferItem(invItem); setTransferTarget(''); }} className="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 cursor-pointer">🎁 โอน</button>
-                        <button type="button" onClick={() => { setAuctionItem(invItem); setAuctionPrice(''); setAuctionDuration('3600000'); }} className="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 cursor-pointer">🔨 ประมูล</button>
-                        <button type="button" onClick={() => { setMarketSellItem(invItem); setMarketSellPrice(''); }} className="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 border border-violet-500/30 cursor-pointer">🏪 ขาย</button>
+                        <button type="button" onClick={() => { setAuctionItem(invItem); setAuctionPrice(''); setAuctionDuration('3600000'); setAuctionQuantity('1'); }} className="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 cursor-pointer">🔨 ประมูล</button>
+                        <button type="button" onClick={() => { setMarketSellItem(invItem); setMarketSellPrice(''); setMarketSellQuantity('1'); }} className="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 border border-violet-500/30 cursor-pointer">🏪 ขาย</button>
                         {invItem.category === 'equipment' ? (
                           <button
                             id={`btn-equip-${inventoryKey}`}
@@ -1254,8 +1267,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       )}
 
       {transferItem && (<div className="fixed inset-0 z-[85] bg-black/70 flex items-center justify-center p-4"><div className="w-full max-w-md rounded-3xl bg-slate-900 border border-cyan-500/30 p-6"><h3 className="text-lg font-black text-white">🎁 โอนไอเทมให้ผู้เล่น</h3><p className="text-sm text-slate-300 mt-2">{transferItem.name}</p><select value={transferTarget} onChange={e=>setTransferTarget(e.target.value)} className="w-full mt-5 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white"><option value="">เลือกผู้รับ...</option>{allCharacters.filter(x=>x.id!==character.id).map(x=><option key={x.id} value={x.id}>{x.displayName}</option>)}</select><div className="flex justify-end gap-2 mt-5"><button type="button" onClick={()=>setTransferItem(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">ยกเลิก</button><button type="button" disabled={!transferTarget} onClick={async()=>{try{await onTransferItem?.(transferTarget,transferItem.instanceId);setTransferItem(null);alert('โอนไอเทมสำเร็จ')}catch(e){alert(e instanceof Error?e.message:'โอนไม่สำเร็จ')}}} className="px-4 py-2 rounded-xl bg-cyan-600 text-white text-xs font-black disabled:opacity-40">ยืนยันโอน</button></div></div></div>)}
-{auctionItem && (<div className="fixed inset-0 z-[85] bg-black/70 flex items-center justify-center p-4"><div className="w-full max-w-md rounded-3xl bg-slate-900 border border-amber-500/30 p-6"><h3 className="text-lg font-black text-white">🔨 จัดประมูลไอเทม</h3><p className="text-sm text-slate-300 mt-2">{auctionItem.name}</p><input type="number" min="1" value={auctionPrice} onChange={e=>setAuctionPrice(e.target.value)} className="w-full mt-4 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-amber-300" placeholder="ราคาเริ่มต้น Coins"/><select value={auctionDuration} onChange={e=>setAuctionDuration(e.target.value)} className="w-full mt-3 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white"><option value="1800000">30 นาที</option><option value="3600000">1 ชั่วโมง</option><option value="21600000">6 ชั่วโมง</option><option value="86400000">24 ชั่วโมง</option></select><div className="flex justify-end gap-2 mt-5"><button type="button" onClick={()=>setAuctionItem(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">ยกเลิก</button><button type="button" onClick={async()=>{if(marketActionLockRef.current)return;const p=Math.floor(Number(auctionPrice));if(!Number.isFinite(p)||p<=0){alert('ราคาเริ่มต้นต้องมากกว่า 0');return;}marketActionLockRef.current='auction';setMarketActionBusy('auction');try{await onCreateMarketplaceAuction?.(auctionItem,p,Number(auctionDuration));setAuctionItem(null);alert('เปิดประมูลสำเร็จ')}catch(e){alert(e instanceof Error?e.message:'เปิดประมูลไม่สำเร็จ')}finally{marketActionLockRef.current=null;setMarketActionBusy(null)}}} disabled={marketActionBusy!==null} className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50">{marketActionBusy==='auction'?'⏳ กำลังนำไอเทมเข้าประมูล...':'เริ่มประมูล'}</button></div></div></div>)}
-{marketSellItem && (<div className="fixed inset-0 z-[80] bg-black/70 flex items-center justify-center p-4"><div className="w-full max-w-md rounded-3xl bg-slate-900 border border-violet-500/30 p-6"><h3 className="text-lg font-black text-white">🏪 ตั้งราคาขาย</h3><p className="text-sm text-slate-300 mt-2">{marketSellItem.name}</p><input type="number" min="1" value={marketSellPrice} onChange={e=>setMarketSellPrice(e.target.value)} className="w-full mt-5 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-amber-300 font-black" placeholder="ราคา Coins"/><div className="flex justify-end gap-2 mt-5"><button type="button" onClick={()=>setMarketSellItem(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">ยกเลิก</button><button type="button" onClick={async()=>{if(marketActionLockRef.current)return;const p=Math.floor(Number(marketSellPrice));if(!Number.isFinite(p)||p<=0){alert('ราคาต้องมากกว่า 0 Coins');return;}marketActionLockRef.current='listing';setMarketActionBusy('listing');try{await onCreateMarketplaceListing?.(marketSellItem,p);setMarketSellItem(null);alert('ประกาศขายสำเร็จ')}catch(e){alert(e instanceof Error?e.message:'ประกาศขายไม่สำเร็จ')}finally{marketActionLockRef.current=null;setMarketActionBusy(null)}}} disabled={marketActionBusy!==null} className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-black disabled:cursor-not-allowed disabled:opacity-50">{marketActionBusy==='listing'?'⏳ กำลังวางขาย...':'ยืนยันขาย'}</button></div></div></div>)}
+{auctionItem && (<div className="fixed inset-0 z-[85] bg-black/70 flex items-center justify-center p-4"><div className="w-full max-w-md rounded-3xl bg-slate-900 border border-amber-500/30 p-6"><h3 className="text-lg font-black text-white">🔨 จัดประมูลไอเทม</h3><p className="text-sm text-slate-300 mt-2">{auctionItem.name}</p><input type="number" min="1" max={Math.max(1, Number(auctionItem?.quantity)||1)} value={auctionQuantity} onChange={e=>setAuctionQuantity(e.target.value)} className="w-full mt-4 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-amber-300" placeholder="จำนวนที่นำไปประมูล"/><input type="number" min="1" value={auctionPrice} onChange={e=>setAuctionPrice(e.target.value)} className="w-full mt-4 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-amber-300" placeholder="ราคาเริ่มต้น Coins"/><select value={auctionDuration} onChange={e=>setAuctionDuration(e.target.value)} className="w-full mt-3 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white"><option value="1800000">30 นาที</option><option value="3600000">1 ชั่วโมง</option><option value="21600000">6 ชั่วโมง</option><option value="86400000">24 ชั่วโมง</option></select><div className="flex justify-end gap-2 mt-5"><button type="button" onClick={()=>setAuctionItem(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">ยกเลิก</button><button type="button" onClick={async()=>{if(marketActionLockRef.current)return;const p=Math.floor(Number(auctionPrice));if(!Number.isFinite(p)||p<=0){alert('ราคาเริ่มต้นต้องมากกว่า 0');return;}marketActionLockRef.current='auction';setMarketActionBusy('auction');try{await onCreateMarketplaceAuction?.(auctionItem,p,Number(auctionDuration),Math.max(1,Math.floor(Number(auctionQuantity)||1)));setAuctionItem(null);alert('เปิดประมูลสำเร็จ')}catch(e){alert(e instanceof Error?e.message:'เปิดประมูลไม่สำเร็จ')}finally{marketActionLockRef.current=null;setMarketActionBusy(null)}}} disabled={marketActionBusy!==null} className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50">{marketActionBusy==='auction'?'⏳ กำลังนำไอเทมเข้าประมูล...':'เริ่มประมูล'}</button></div></div></div>)}
+{marketSellItem && (<div className="fixed inset-0 z-[80] bg-black/70 flex items-center justify-center p-4"><div className="w-full max-w-md rounded-3xl bg-slate-900 border border-violet-500/30 p-6"><h3 className="text-lg font-black text-white">🏪 ตั้งราคาขาย</h3><p className="text-sm text-slate-300 mt-2">{marketSellItem.name}</p><input type="number" min="1" max={Math.max(1, Number(marketSellItem?.quantity)||1)} value={marketSellQuantity} onChange={e=>setMarketSellQuantity(e.target.value)} className="w-full mt-5 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-violet-300" placeholder="จำนวนที่ต้องการขาย"/><input type="number" min="1" value={marketSellPrice} onChange={e=>setMarketSellPrice(e.target.value)} className="w-full mt-5 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-amber-300 font-black" placeholder="ราคา Coins"/><div className="flex justify-end gap-2 mt-5"><button type="button" onClick={()=>setMarketSellItem(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">ยกเลิก</button><button type="button" onClick={async()=>{if(marketActionLockRef.current)return;const p=Math.floor(Number(marketSellPrice));if(!Number.isFinite(p)||p<=0){alert('ราคาต้องมากกว่า 0 Coins');return;}marketActionLockRef.current='listing';setMarketActionBusy('listing');try{await onCreateMarketplaceListing?.(marketSellItem,p,Math.max(1,Math.floor(Number(marketSellQuantity)||1)));setMarketSellItem(null);alert('ประกาศขายสำเร็จ')}catch(e){alert(e instanceof Error?e.message:'ประกาศขายไม่สำเร็จ')}finally{marketActionLockRef.current=null;setMarketActionBusy(null)}}} disabled={marketActionBusy!==null} className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-black disabled:cursor-not-allowed disabled:opacity-50">{marketActionBusy==='listing'?'⏳ กำลังวางขาย...':'ยืนยันขาย'}</button></div></div></div>)}
       {/* ADMIN MODAL: Add New Shop Item (Redesigned & Prettier) */}
       {showAddItemModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
