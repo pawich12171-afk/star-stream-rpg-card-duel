@@ -89,6 +89,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [tempCharacteristics, setTempCharacteristics] = useState<string[]>(character.characteristics || []);
   const [newCharacteristic, setNewCharacteristic] = useState('');
   const [isSavingStats, setIsSavingStats] = useState(false);
+  const [transcendenceBatchCounts, setTranscendenceBatchCounts] = useState<Record<'strength' | 'durability' | 'agility' | 'magic', number>>({ strength: 1, durability: 1, agility: 1, magic: 1 });
   const latestCharacterRef = useRef<CharacterProfile>(character);
 
   useEffect(() => {
@@ -159,34 +160,37 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const nextStatUpgradeCost = Math.round(currentStatUpgradeCost * STAT_COMPOUND_RATE);
 
   const handleUpgradeTranscendenceStat = async (statName: 'strength' | 'durability' | 'agility' | 'magic') => {
+    if (isSavingStats) return;
     const base = latestCharacterRef.current;
     const allStats100 =
       Number(base.stats.strength) >= 100 &&
       Number(base.stats.durability) >= 100 &&
       Number(base.stats.agility) >= 100 &&
       Number(base.stats.magic) >= 100;
-    const upgradeTimes = Number(base.statUpgradeCount || 0);
-    const cost = calculateStatUpgradeCost(upgradeTimes);
-
     if (!allStats100) {
       alert('ต้องมีสเตตัสครบ 100 ทุกค่าก่อนจึงจะปลดล็อกการอัปเกรดทะลุขีดจำกัด!');
       return;
     }
-    if (Number(base.coins) < cost) {
-      alert(`เหรียญไม่เพียงพอ ต้องการ ${cost.toLocaleString()} Coins (คุณมี ${Number(base.coins).toLocaleString()} Coins)`);
+    const requestedTimes = Math.max(1, Math.min(1000, Math.floor(Number(transcendenceBatchCounts[statName]) || 1)));
+    const startUpgradeTimes = Math.max(0, Math.floor(Number(base.statUpgradeCount) || 0));
+    let totalCost = 0;
+    for (let i = 0; i < requestedTimes; i += 1) {
+      totalCost += calculateStatUpgradeCost(startUpgradeTimes + i);
+    }
+    const currentCoins = Number(base.coins) || 0;
+    if (currentCoins < totalCost) {
+      alert(`เหรียญไม่เพียงพอ ต้องการ ${totalCost.toLocaleString()} Coins (คุณมี ${currentCoins.toLocaleString()} Coins)`);
       return;
     }
-
     const now = Date.now();
-    const nextTimes = upgradeTimes + 1;
+    const nextTimes = startUpgradeTimes + requestedTimes;
     const newStats = {
       ...base.stats,
-      [statName]: Number(base.stats[statName] || 0) + 1,
+      [statName]: Number(base.stats[statName] || 0) + requestedTimes,
     };
-
     const updatedChar: CharacterProfile = {
       ...base,
-      coins: Number(base.coins) - cost,
+      coins: currentCoins - totalCost,
       stats: newStats,
       statUpgradeCount: nextTimes,
       lastUpdated: Math.max(now, Number(base.lastUpdated || 0) + 1),
@@ -194,7 +198,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         {
           id: `notif-stat-up-${now}-${nextTimes}`,
           title: 'อัปเกรดสเตตัสทะลุขีดจำกัดสำเร็จ!',
-          message: `เพิ่มค่า ${statName} +1 (ปัจจุบัน Lv.${newStats[statName]}) ใช้เหรียญ ${cost.toLocaleString()} Coins`,
+          message: `เพิ่มค่า ${statName} +${requestedTimes} (ปัจจุบัน Lv.${newStats[statName]}) ใช้เหรียญ ${totalCost.toLocaleString()} Coins`,
           timestamp: now,
           read: false,
           type: 'system',
@@ -202,11 +206,21 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         ...(base.notifications || []),
       ],
     };
-
+    setIsSavingStats(true);
     latestCharacterRef.current = updatedChar;
-    confetti({ particleCount: 70, spread: 60, origin: { y: 0.5 } });
-    const saved = await onUpdateCharacter(syncCharacterHealth(updatedChar));
-    if (saved === false) latestCharacterRef.current = base;
+    confetti({ particleCount: Math.min(180, 40 + requestedTimes), spread: 60, origin: { y: 0.5 } });
+    try {
+      const saved = await onUpdateCharacter(syncCharacterHealth(updatedChar));
+      if (saved === false) {
+        latestCharacterRef.current = base;
+        alert('บันทึกการอัปเกรดไม่สำเร็จ กรุณาลองใหม่');
+      }
+    } catch (error) {
+      latestCharacterRef.current = base;
+      alert('บันทึกการอัปเกรดไม่สำเร็จ กรุณาลองใหม่');
+    } finally {
+      setIsSavingStats(false);
+    }
   };
 
   const handleUpgradeSkill = (skillId: string) => {
@@ -639,19 +653,32 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                         Lv.{currentVal}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleUpgradeTranscendenceStat(statKey)}
-                      disabled={character.coins < currentStatUpgradeCost}
-                      className={`w-full py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md ${
-                        character.coins >= currentStatUpgradeCost
-                          ? 'bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black'
-                          : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                      }`}
-                    >
-                      <ArrowUpCircle className="w-3.5 h-3.5" />
-                      <span>อัปเกรด (+1)</span>
-                    </button>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-slate-400">
+                        จำนวนขั้นที่ต้องการอัป
+                        <input
+                          type="number"
+                          min={1}
+                          max={1000}
+                          value={transcendenceBatchCounts[statKey]}
+                          onChange={(e) => setTranscendenceBatchCounts(prev => ({
+                            ...prev,
+                            [statKey]: Math.max(1, Math.min(1000, Math.floor(Number(e.target.value) || 1))),
+                          }))}
+                          disabled={isSavingStats}
+                          className="mt-1 w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-amber-500/30 text-white font-mono font-bold outline-none focus:border-amber-400"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleUpgradeTranscendenceStat(statKey)}
+                        disabled={isSavingStats}
+                        className={`w-full py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md ${!isSavingStats ? 'bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}
+                      >
+                        <ArrowUpCircle className="w-3.5 h-3.5" />
+                        <span>อัปเกรด +{transcendenceBatchCounts[statKey]} ขั้น</span>
+                      </button>
+                    </div>
                   </div>
                 );
               })}
