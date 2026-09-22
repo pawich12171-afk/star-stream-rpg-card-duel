@@ -1066,8 +1066,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                 </div>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-mono">
-                <span className="px-2.5 py-1.5 rounded-xl bg-violet-950/50 border border-violet-500/30 text-violet-300">⚔️ ทั่วไป {((character.inventory || []).filter(i => i.category === 'equipment' && !isAryaEquipment(i)).reduce((sum, i) => sum + getEquippedQuantity(i), 0)}/20</span>
-                <span className="px-2.5 py-1.5 rounded-xl bg-amber-950/50 border border-amber-500/30 text-amber-300">🗡️ Arya {((character.inventory || []).filter(i => isAryaEquipment(i)).reduce((sum, i) => sum + getEquippedQuantity(i), 0)}/1</span>
+                <span className="px-2.5 py-1.5 rounded-xl bg-violet-950/50 border border-violet-500/30 text-violet-300">⚔️ ทั่วไป {stackedInventory.filter(i => i.category === 'equipment' && !isAryaEquipment(i)).reduce((sum, i) => sum + getEquippedQuantity(i), 0)}/20</span>
+                <span className="px-2.5 py-1.5 rounded-xl bg-amber-950/50 border border-amber-500/30 text-amber-300">🗡️ Arya {stackedInventory.filter(i => isAryaEquipment(i)).reduce((sum, i) => sum + getEquippedQuantity(i), 0)}/1</span>
               </div>
             </div>
           </div>
