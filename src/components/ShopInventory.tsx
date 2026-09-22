@@ -313,12 +313,12 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       }
 
       const newCoins = coins - price;
-      const currentInventory: InventoryItem[] = (currentCharacter.inventory || []).map((invItem, index) => ({
+      const currentInventory: InventoryItem[] = stackInventory((currentCharacter.inventory || []).map((invItem, index) => ({
         ...invItem,
         // Legacy inventory records may not have an instanceId. Give them a stable fallback
         // so React cannot reuse one card for another item after a purchase.
         instanceId: invItem.instanceId || `legacy-${invItem.id}-${index}`,
-      }));
+      })));
       const existingIndex = currentInventory.findIndex(i => i.id === item.id);
       const updatedInventory: InventoryItem[] = [...currentInventory];
 
@@ -408,8 +408,41 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     }
   };
 
+  // Normalize legacy duplicate records into one stack per item id.
+  // This also repairs inventories created before stacked equipment was introduced.
+  const stackInventory = (items: InventoryItem[]): InventoryItem[] => {
+    const map = new Map<string, InventoryItem>();
+    items.forEach((raw, index) => {
+      const item = {
+        ...raw,
+        instanceId: raw.instanceId || `legacy-stack-${raw.id}-${index}`,
+        quantity: Math.max(1, Number(raw.quantity) || 1),
+        equippedQuantity: raw.category === 'equipment'
+          ? Math.max(0, Number(raw.equippedQuantity) || (raw.isEquipped ? 1 : 0))
+          : raw.equippedQuantity,
+      };
+      const key = String(item.id);
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, item);
+        return;
+      }
+      const oldEquipped = Math.max(0, Number(existing.equippedQuantity) || (existing.isEquipped ? 1 : 0));
+      const addEquipped = item.category === 'equipment'
+        ? Math.max(0, Number(item.equippedQuantity) || (item.isEquipped ? 1 : 0))
+        : 0;
+      existing.quantity = Math.max(1, Number(existing.quantity) || 1) + item.quantity;
+      if (existing.category === 'equipment') {
+        existing.equippedQuantity = Math.min(existing.quantity, oldEquipped + addEquipped);
+        existing.isEquipped = existing.equippedQuantity > 0;
+      }
+    });
+    return Array.from(map.values());
+  };
+
   const getInventoryKey = (item: InventoryItem, index: number) => item.instanceId || `legacy-${item.id}-${index}`;
-  const filteredInventory = (character.inventory || []).filter(item => {
+  const stackedInventory = stackInventory(character.inventory || []);
+  const filteredInventory = stackedInventory.filter(item => {
     const query = inventorySearch.trim().toLocaleLowerCase();
     if (!query) return true;
     return String(item.name || '').toLocaleLowerCase().includes(query);
