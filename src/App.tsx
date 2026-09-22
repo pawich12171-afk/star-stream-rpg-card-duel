@@ -6,7 +6,8 @@ import {
   GachaBanner,
   GachaConfig, 
   CardDuelRoom,
-  Quest
+  Quest,
+  ChatMessage
 } from './types';
 import { INITIAL_CHARACTERS } from './initialData';
 import { 
