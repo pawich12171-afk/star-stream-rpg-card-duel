@@ -543,7 +543,8 @@ export async function createMarketplaceAuction(sellerId: string, item: Inventory
 }
 
 export async function placeMarketplaceBid(auctionId: string, bidderId: string, bid: number): Promise<void> {
-  const ar = doc(db, MARKETPLACE_AUCTIONS_COLLECTION, auctionId), br = doc(db, CHARACTERS_COLLECTION, bidderId);
+  const ar = doc(db, MARKETPLACE_AUCTIONS_COLLECTION, auctionId);
+  const br = doc(db, CHARACTERS_COLLECTION, bidderId);
   await runTransaction(db, async tx => {
     const as = await tx.get(ar), bs = await tx.get(br);
     if (!as.exists() || !bs.exists()) throw new Error("ไม่พบการประมูล");
@@ -554,9 +555,38 @@ export async function placeMarketplaceBid(auctionId: string, bidderId: string, b
     const amount = Math.floor(Number(bid));
     const minimum = Math.max(auction.startingPrice, auction.currentBid + 1);
     if (!Number.isFinite(amount) || amount < minimum) throw new Error(`ต้องเสนออย่างน้อย ${minimum.toLocaleString()} Coins`);
-    if (Number(buyer.coins) < amount) throw new Error("Coins ไม่พอ");
+
+    const previousBidderId = auction.highestBidderId;
+    const previousReserved = auction.bidFundsReserved ? Math.max(0, Number(auction.currentBid) || 0) : 0;
+    const buyerCoins = Math.max(0, Math.floor(Number(buyer.coins) || 0));
+    const additionalRequired = previousBidderId === bidderId ? Math.max(0, amount - previousReserved) : amount;
+    if (buyerCoins < additionalRequired) throw new Error("Coins ไม่พอสำหรับยอดเสนอใหม่");
+
     const now = Date.now();
-    const updated = { ...auction, currentBid: amount, highestBidderId: bidderId, highestBidderName: buyer.displayName, updatedAt: now };
+    if (previousBidderId && previousBidderId !== bidderId && previousReserved > 0) {
+      const previousRef = doc(db, CHARACTERS_COLLECTION, previousBidderId);
+      const previousSnap = await tx.get(previousRef);
+      if (previousSnap.exists()) {
+        const previous = { ...previousSnap.data(), id: previousSnap.id } as CharacterProfile;
+        const refunded = { ...previous, coins: Math.max(0, Number(previous.coins) || 0) + previousReserved, lastUpdated: now };
+        tx.update(previousRef, sanitizeForFirestore({ ...refunded, powerScore: calculatePowerScore(refunded) }));
+      }
+    }
+
+    const updatedBuyer = {
+      ...buyer,
+      coins: buyerCoins - additionalRequired,
+      lastUpdated: now,
+    };
+    const updated = {
+      ...auction,
+      currentBid: amount,
+      highestBidderId: bidderId,
+      highestBidderName: buyer.displayName,
+      bidFundsReserved: true,
+      updatedAt: now,
+    };
+    tx.update(br, sanitizeForFirestore({ ...updatedBuyer, powerScore: calculatePowerScore(updatedBuyer) }));
     tx.update(ar, sanitizeForFirestore(updated));
   });
 }
@@ -571,23 +601,38 @@ export async function finalizeMarketplaceAuction(auctionId: string): Promise<voi
     const sr = doc(db, CHARACTERS_COLLECTION, auction.sellerId);
     const ss = await tx.get(sr);
     if (!ss.exists()) throw new Error("ไม่พบผู้ขาย");
-    const seller = { ...ss.data(), id: ss.id } as CharacterProfile;
+    const seller = { ...ss.data(), id: ss.id };
+    const now = Date.now();
+
     if (!auction.highestBidderId) {
-      const inv = [...(seller.inventory || []), auction.item];
-      tx.update(sr, sanitizeForFirestore({ ...seller, inventory: inv, lastUpdated: Date.now(), powerScore: calculatePowerScore({ ...seller, inventory: inv }) }));
+      const sellerProfile = seller as CharacterProfile;
+      const inv = [...(sellerProfile.inventory || []), auction.item];
+      const updatedSeller = { ...sellerProfile, inventory: inv, lastUpdated: now };
+      tx.update(sr, sanitizeForFirestore({ ...updatedSeller, powerScore: calculatePowerScore(updatedSeller) }));
     } else {
       const br = doc(db, CHARACTERS_COLLECTION, auction.highestBidderId);
       const bs = await tx.get(br);
       if (!bs.exists()) throw new Error("ไม่พบผู้ชนะ");
       const buyer = { ...bs.data(), id: bs.id } as CharacterProfile;
-      if (Number(buyer.coins) < auction.currentBid) throw new Error("Coins ของผู้ชนะไม่พอแล้ว");
-      const buyerInv = [...(buyer.inventory || []), { ...auction.item, instanceId: `auction-${Date.now()}-${Math.random().toString(36).slice(2,7)}` }];
-      const updatedBuyer = { ...buyer, coins: Number(buyer.coins) - auction.currentBid, inventory: buyerInv, lastUpdated: Date.now() };
-      const updatedSeller = { ...seller, coins: Number(seller.coins) + auction.currentBid, lastUpdated: Date.now() };
+      const bid = Math.max(0, Math.floor(Number(auction.currentBid) || 0));
+      const reserved = auction.bidFundsReserved === true;
+
+      // New auctions reserve the current bid at bid time. Legacy auctions that
+      // predate this field are charged here only once.
+      if (!reserved && Number(buyer.coins) < bid) throw new Error("Coins ของผู้ชนะไม่พอแล้ว");
+      const buyerCoins = Math.max(0, Math.floor(Number(buyer.coins) || 0));
+      const updatedBuyer = {
+        ...buyer,
+        coins: reserved ? buyerCoins : buyerCoins - bid,
+        inventory: [...(buyer.inventory || []), { ...auction.item, instanceId: `auction-${Date.now()}-${Math.random().toString(36).slice(2,7)}` }],
+        lastUpdated: now,
+      };
+      const sellerProfile = seller as CharacterProfile;
+      const updatedSeller = { ...sellerProfile, coins: Math.max(0, Math.floor(Number(sellerProfile.coins) || 0)) + bid, lastUpdated: now };
       tx.update(br, sanitizeForFirestore({ ...updatedBuyer, powerScore: calculatePowerScore(updatedBuyer) }));
       tx.update(sr, sanitizeForFirestore({ ...updatedSeller, powerScore: calculatePowerScore(updatedSeller) }));
     }
-    tx.update(ar, sanitizeForFirestore({ ...auction, status: 'completed', updatedAt: Date.now() }));
+    tx.update(ar, sanitizeForFirestore({ ...auction, status: 'completed', bidFundsReserved: false, updatedAt: now }));
   });
 }
 
