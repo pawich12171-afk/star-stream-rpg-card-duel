@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Coins, Dices, CircleDot, Sparkles, Target, Trophy, RotateCcw, Gamepad2 } from 'lucide-react';
 import { CharacterProfile } from '../types';
+import { updateCharacterFields } from '../services/characterService';
 
 interface GameCenterProps {
   currentUser: CharacterProfile;
-  onUpdateCharacter: (updated: CharacterProfile) => void;
+  onUpdateCharacter?: (updated: CharacterProfile) => void;
 }
 
 type GameId = 'coin' | 'dice' | 'number' | 'wheel';
@@ -25,19 +26,32 @@ export const GameCenter: React.FC<GameCenterProps> = ({ currentUser, onUpdateCha
   const [message, setMessage] = useState('เลือกเกมและเดิมพันเพื่อเริ่มเล่น');
   const [busy, setBusy] = useState(false);
 
-  const settle = (won: boolean, text: string) => {
+  const settle = async (won: boolean, text: string) => {
     const safeBet = Math.max(1, Math.floor(bet));
     if (currentUser.coins < safeBet) {
       setMessage(`Coins ไม่พอ ต้องการ ${safeBet.toLocaleString()} แต่คุณมี ${currentUser.coins.toLocaleString()} Coins`);
       return false;
     }
-    onUpdateCharacter({
-      ...currentUser,
-      coins: Math.max(0, currentUser.coins + (won ? safeBet : -safeBet)),
-      lastUpdated: Date.now(),
-    });
-    setMessage(won ? `ชนะ! รับกำไร ${safeBet.toLocaleString()} Coins — ${text}` : `แพ้! เสียเดิมพัน ${safeBet.toLocaleString()} Coins — ${text}`);
-    return true;
+
+    // Persist the Coins delta through the same database service used by the
+    // rest of STAR STREAM. Do not build a new CharacterProfile from a stale
+    // component snapshot, because that can overwrite newer inventory/skills.
+    const delta = won ? safeBet : -safeBet;
+    try {
+      const updated = await updateCharacterFields(currentUser.id, {
+        coins: Math.max(0, Math.floor(Number(currentUser.coins) || 0) + delta),
+      });
+      setMessage(
+        won
+          ? `ชนะ! รับกำไร ${safeBet.toLocaleString()} Coins — ${text}`
+          : `แพ้! เสียเดิมพัน ${safeBet.toLocaleString()} Coins — ${text}`
+      );
+      onUpdateCharacter?.(updated);
+      return true;
+    } catch (error: any) {
+      setMessage(`บันทึก Coins ไม่สำเร็จ: ${error?.message || 'Database error'}`);
+      return false;
+    }
   };
 
   const play = () => {
@@ -53,22 +67,22 @@ export const GameCenter: React.FC<GameCenterProps> = ({ currentUser, onUpdateCha
 
     if (activeGame === 'coin') {
       const result = Math.random() < 0.5 ? 'หัว' : 'ก้อย';
-      settle(choice === result, `ระบบออก “${result}”`);
+      void settle(choice === result, `ระบบออก “${result}”`);
     } else if (activeGame === 'dice') {
       const player = 1 + Math.floor(Math.random() * 6);
       const dealer = 1 + Math.floor(Math.random() * 6);
       if (player === dealer) {
         setMessage(`เสมอ! คุณ ${player} แต้ม / Dealer ${dealer} แต้ม — ไม่เสียหรือได้ Coins`);
       } else {
-        settle(player > dealer, `คุณทอยได้ ${player} / Dealer ได้ ${dealer}`);
+        void settle(player > dealer, `คุณทอยได้ ${player} / Dealer ได้ ${dealer}`);
       }
     } else if (activeGame === 'number') {
       const result = 1 + Math.floor(Math.random() * 10);
-      settle(number === result, `ระบบสุ่มได้เลข ${result}`);
+      void settle(number === result, `ระบบสุ่มได้เลข ${result}`);
     } else {
       const slots = ['STAR', 'MOON', 'SUN', 'VOID'];
       const result = slots[Math.floor(Math.random() * slots.length)];
-      settle(wheelChoice === result, `วงล้อหยุดที่ ${result}`);
+      void settle(wheelChoice === result, `วงล้อหยุดที่ ${result}`);
     }
 
     window.setTimeout(() => setBusy(false), 450);
