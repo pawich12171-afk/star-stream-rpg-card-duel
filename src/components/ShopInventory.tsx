@@ -20,7 +20,8 @@ import {
   Check,
   Award,
   Crown,
-  Info
+  Info,
+  Search
 } from 'lucide-react';
 import confetti from '../utils/confetti';
 import { syncCharacterHealth } from '../utils/healthSystem';
@@ -136,6 +137,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [editingPrice, setEditingPrice] = useState('');
   const [selectedInventoryKeys, setSelectedInventoryKeys] = useState<string[]>([]);
+  const [inventorySearch, setInventorySearch] = useState('');
 
   // Serialize purchases so rapid clicks cannot calculate from the same stale character.
   const characterRef = useRef(character);
@@ -388,6 +390,11 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   };
 
   const getInventoryKey = (item: InventoryItem, index: number) => item.instanceId || `legacy-${item.id}-${index}`;
+  const filteredInventory = (character.inventory || []).filter(item => {
+    const query = inventorySearch.trim().toLocaleLowerCase();
+    if (!query) return true;
+    return String(item.name || '').toLocaleLowerCase().includes(query);
+  });
 
   const toggleInventorySelection = (key: string) => setSelectedInventoryKeys(current => current.includes(key) ? current.filter(k => k !== key) : [...current, key]);
   const clearInventorySelection = () => setSelectedInventoryKeys([]);
@@ -820,10 +827,24 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                   </span>
                 </h2>
                 <p className="text-[10px] text-slate-500 mt-1">ของเยอะก็จัดเป็นการ์ดให้ดูง่าย • อุปกรณ์สวมใส่ทั่วไปสูงสุด 20 ชิ้น • ดาบ Arya สูงสุด 1 ชิ้น</p>
-                <div className="flex flex-wrap items-center gap-2 mt-3">
-                  <button type="button" onClick={() => setSelectedInventoryKeys((character.inventory || []).map((item,index) => getInventoryKey(item,index)))} className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold cursor-pointer">เลือกทั้งหมด</button>
+                <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1 min-w-0">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-400 pointer-events-none" />
+                    <input
+                      type="search"
+                      value={inventorySearch}
+                      onChange={e => setInventorySearch(e.target.value)}
+                      placeholder="ค้นหาไอเทมด้วยชื่อ..."
+                      aria-label="ค้นหาไอเทมในกระเป๋า"
+                      className="w-full rounded-xl border border-cyan-500/20 bg-slate-950/80 pl-9 pr-9 py-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/30"
+                    />
+                    {inventorySearch && <button type="button" onClick={() => setInventorySearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 text-slate-500 hover:text-white cursor-pointer" aria-label="ล้างคำค้นหา">✕</button>}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={() => setSelectedInventoryKeys(filteredInventory.map((item,index) => getInventoryKey(item, (character.inventory || []).indexOf(item))))} className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold cursor-pointer">เลือกทั้งหมดที่ค้นพบ</button>
                   <button type="button" onClick={clearInventorySelection} disabled={!selectedInventoryKeys.length} className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-400 text-[10px] font-bold cursor-pointer disabled:opacity-40">ยกเลิกเลือก</button>
                   <button type="button" onClick={() => void deleteSelectedInventory()} disabled={!selectedInventoryKeys.length} className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-black cursor-pointer disabled:opacity-40 flex items-center gap-1.5"><Trash2 className="w-3 h-3"/>ลบที่เลือก ({selectedInventoryKeys.length})</button>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-mono">
@@ -845,8 +866,16 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
               </button>
             </div>
           ) : (
+            <>
+            {filteredInventory.length === 0 ? (
+              <div className="text-center py-16 bg-slate-900/60 rounded-3xl border border-slate-800">
+                <Search className="w-10 h-10 text-slate-600 mx-auto mb-2" />
+                <p className="text-slate-400 text-sm font-medium">ไม่พบไอเทมที่ชื่อ “{inventorySearch}”</p>
+                <button type="button" onClick={() => setInventorySearch('')} className="mt-3 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer">ล้างการค้นหา</button>
+              </div>
+            ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[72vh] overflow-y-auto pr-1 scrollbar-thin">
-              {character.inventory.map((invItem, index) => {
+              {filteredInventory.map((invItem, index) => {
                 const inventoryKey = invItem.instanceId || `legacy-${invItem.id}-${index}`;
                 const rarityInfo = getRarityBadge(invItem.rarity);
                 const isMaxHpBooster = invItem.effectType === 'boost_max_hp' || invItem.name.includes('ทองคำ') || invItem.name.includes('Max HP') || invItem.name.includes('หยาดโลหิต');
@@ -981,6 +1010,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                 );
               })}
             </div>
+            )}
+            </>
           )}
         </div>
       )}
