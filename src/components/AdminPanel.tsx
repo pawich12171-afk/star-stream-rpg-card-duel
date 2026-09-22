@@ -287,6 +287,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Gacha Config State
   const [pullCostInput, setPullCostInput] = useState<number>(gachaConfig.pullCost || 500);
   const [tenPullCostInput, setTenPullCostInput] = useState<number>(gachaConfig.tenPullCost || 4500);
+  const [multiPullCountsInput, setMultiPullCountsInput] = useState<string>((gachaConfig.multiPullCounts || [20, 30, 50]).join(','));
   const [bannerTitleInput, setBannerTitleInput] = useState<string>(gachaConfig.bannerTitle || 'หีบสมบัติจักรวาลแห่งดวงดาว');
   const [bannerDescInput, setBannerDescInput] = useState<string>(gachaConfig.bannerDescription || 'สุ่มรับเหรียญรางวัลมหาศาล สกิลพิเศษระดับตำนาน และไอเทมสเตตัสหายาก');
   const [gachaEnabledInput, setGachaEnabledInput] = useState<boolean>(gachaConfig.enabled !== false);
@@ -566,7 +567,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         tenPullCost: Math.max(100, Number(tenPullCostInput) || 100),
         bannerTitle: bannerTitleInput.trim() || mainBanner.name,
         bannerDescription: bannerDescInput.trim() || 'ตู้กาชาพิเศษ',
-        multiPullCounts: parseMultiPullCounts(editBannerMultiPullCounts),
+        multiPullCounts: parseMultiPullCounts(multiPullCountsInput),
         enabled: gachaEnabledInput,
         updatedAt: Date.now(),
       });
