@@ -300,6 +300,20 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
     if (resolved.result || resolved.room.status !== room.status || resolved.room.turnActorId !== room.turnActorId) {
       await updateBattleRoom(resolved.room);
       try { await persistBattleHp(resolved.room); } catch (error) { console.warn('ไม่สามารถบันทึก HP หลังเทิร์นได้', error); }
+
+      // In PVE, immediately continue through bot turns. This avoids waiting
+      // for a Firestore snapshot to arrive before the bot can respond.
+      let botRoom = resolved.room;
+      for (let step = 0; step < 6 && botRoom.status === 'active'; step += 1) {
+        const botActor = [...botRoom.teamA, ...botRoom.teamB].find(unit => unit.id === botRoom.turnActorId);
+        if (!botActor || botActor.type !== 'bot') break;
+        await new Promise(resolve => window.setTimeout(resolve, 500));
+        const botResolved = resolveBattleTurn(botRoom, config);
+        if (!botResolved.result && botResolved.room.turnActorId === botRoom.turnActorId && botResolved.room.status === botRoom.status) break;
+        botRoom = botResolved.room;
+        await updateBattleRoom(botRoom);
+        try { await persistBattleHp(botRoom); } catch (error) { console.warn('ไม่สามารถบันทึก HP หลังบอทเดินได้', error); }
+      }
     }
   };
 
@@ -315,7 +329,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   // บอทต้องเดินเองทันทีเมื่อถึงเทิร์น ไม่ปล่อยให้หน้าจอค้างที่ "บอทกำลังตัดสินใจ"
   const botTurnLockRef = useRef<string | null>(null);
   useEffect(() => {
-    const botRoom = myRooms.find(item => canBotAct(item));
+    const botRoom = rooms.find(item => canBotAct(item));
     if (!botRoom || botTurnLockRef.current === botRoom.id) return;
     botTurnLockRef.current = botRoom.id;
     const timer = window.setTimeout(async () => {
@@ -334,7 +348,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
       }
     }, 650);
     return () => window.clearTimeout(timer);
-  }, [rooms, myRooms, config]);
+  }, [rooms, config]);
   const patchNormalDice = (patch: Partial<BattleDiceConfig>) => setConfig(prev => ({ ...prev, ...patch }));
   const patchBossDice = (patch: Partial<BattleDiceConfig>) => setConfig(prev => ({ ...prev, bossDice: { ...(prev.bossDice || DEFAULT_BATTLE_CONFIG.bossDice), ...patch } }));
   const changeSides = (dice: BattleDiceConfig, nextSides: number, patch: (value: Partial<BattleDiceConfig>) => void) => {
