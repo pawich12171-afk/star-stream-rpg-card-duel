@@ -584,13 +584,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
                         {unit.defenseTurns ? <span className="text-[10px] text-sky-300">GUARD</span> : null}
                         {unit.reflectTurns ? <span className="text-[10px] text-rose-300">REFLECT</span> : null}
                         {unit.stunnedTurns ? <span className="text-[10px] text-amber-300">STUN</span> : null}
-                        {(unit.traits || []).length > 0 || (unit.activeSkillPassives || []).length > 0 || (unit.equippedPassives || []).length > 0 ? (
-                          <div className="mt-1 w-full space-y-1 text-[9px]">
-                            {(unit.traits || []).map((trait, index) => <div key={`trait-${index}`} className="text-amber-200">🧬 Trait: {trait}</div>)}
-                            {(unit.activeSkillPassives || []).map(passive => <div key={`skill-passive-${passive.id}`} className="text-fuchsia-200">🌸 Skill Passive: {passive.name}</div>)}
-                            {(unit.equippedPassives || []).map(passive => <div key={`item-passive-${passive.id}`} className="text-emerald-200">⚙️ Item Passive: {passive.name}</div>)}
-                          </div>
-                        ) : null}
+                        
                       </div>
                     ))}
                   </div>
