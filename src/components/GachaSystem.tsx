@@ -174,10 +174,21 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       const netCoinChange = totalCoinReward - cost;
       const updatedCoins = Math.max(0, currentCharacter.coins + netCoinChange);
 
-      // Merge legacy duplicate records first, then add the new rewards.
+      // Merge legacy records and every new reward using the SAME identity
+      // as the inventory/shop stacker. This is what makes equipment stack too,
+      // even when older shop/gacha records were created with different IDs.
+      const getItemStackKey = (item: Item | InventoryItem) => [
+        String(item.name || '').trim().toLocaleLowerCase(),
+        String(item.category || ''),
+        String(item.effectType || ''),
+        String(item.targetStat || ''),
+        String(item.effectValue ?? ''),
+        String(item.hpBonus ?? ''),
+      ].join('|');
+
       const inventoryMap = new Map<string, InventoryItem>();
       (currentCharacter.inventory || []).forEach((raw, index) => {
-        const item = {
+        const item: InventoryItem = {
           ...raw,
           instanceId: raw.instanceId || `legacy-stack-${raw.id}-${index}`,
           quantity: Math.max(1, Number(raw.quantity) || 1),
@@ -185,28 +196,45 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             ? Math.max(0, Number(raw.equippedQuantity) || (raw.isEquipped ? 1 : 0))
             : raw.equippedQuantity,
         };
-        const existing = inventoryMap.get(String(item.id));
+        const key = getItemStackKey(item);
+        const existing = inventoryMap.get(key);
         if (!existing) {
-          inventoryMap.set(String(item.id), item);
-        } else {
-          const oldEquipped = Math.max(0, Number(existing.equippedQuantity) || (existing.isEquipped ? 1 : 0));
-          const addEquipped = item.category === 'equipment'
-            ? Math.max(0, Number(item.equippedQuantity) || (item.isEquipped ? 1 : 0))
-            : 0;
-          existing.quantity = (Number(existing.quantity) || 1) + item.quantity;
-          if (existing.category === 'equipment') {
-            existing.equippedQuantity = Math.min(existing.quantity, oldEquipped + addEquipped);
-            existing.isEquipped = existing.equippedQuantity > 0;
-          }
+          inventoryMap.set(key, item);
+          return;
+        }
+
+        const oldEquipped = Math.max(0, Number(existing.equippedQuantity) || (existing.isEquipped ? 1 : 0));
+        const addEquipped = item.category === 'equipment'
+          ? Math.max(0, Number(item.equippedQuantity) || (item.isEquipped ? 1 : 0))
+          : 0;
+
+        existing.quantity = Math.max(1, Number(existing.quantity) || 1) + item.quantity;
+        if (existing.category === 'equipment') {
+          existing.equippedQuantity = Math.min(existing.quantity, oldEquipped + addEquipped);
+          existing.isEquipped = existing.equippedQuantity > 0;
         }
       });
+
       const existingInventory = Array.from(inventoryMap.values());
       newItemsToAdd.forEach(newItem => {
-        const existingIdx = existingInventory.findIndex(inv => inv.id === newItem.id);
-        if (existingIdx >= 0) {
-          existingInventory[existingIdx].quantity = (Number(existingInventory[existingIdx].quantity) || 0) + 1;
+        const key = getItemStackKey(newItem);
+        const existing = inventoryMap.get(key);
+
+        if (existing) {
+          const oldEquipped = Math.max(0, Number(existing.equippedQuantity) || (existing.isEquipped ? 1 : 0));
+          existing.quantity = Math.max(1, Number(existing.quantity) || 1) + 1;
+          if (existing.category === 'equipment') {
+            existing.equippedQuantity = Math.min(existing.quantity, oldEquipped);
+            existing.isEquipped = existing.equippedQuantity > 0;
+          }
         } else {
-          existingInventory.push(newItem);
+          const stackedNewItem: InventoryItem = {
+            ...newItem,
+            quantity: 1,
+            equippedQuantity: newItem.category === 'equipment' ? 0 : undefined,
+            isEquipped: false,
+          };
+          inventoryMap.set(key, stackedNewItem);
         }
       });
 
