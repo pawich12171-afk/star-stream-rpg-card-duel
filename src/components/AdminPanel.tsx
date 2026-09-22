@@ -1899,6 +1899,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
+                <div className="rounded-2xl border-2 border-purple-500/60 bg-purple-950/40 p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-purple-300" />
+                    <label className="text-sm font-black text-purple-100">จำนวนสุ่มเพิ่มเติม มากกว่า 10 ครั้ง</label>
+                  </div>
+                  <p className="text-[10px] text-purple-200/80">กำหนดปุ่มสุ่มจำนวนมากสำหรับผู้เล่น เช่น 20, 30, 50 ครั้ง</p>
+                  <input
+                    type="text"
+                    value={editBannerMultiPullCounts}
+                    onChange={(e) => setEditBannerMultiPullCounts(e.target.value)}
+                    placeholder="20,30,50"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border-2 border-purple-500/50 text-white text-sm font-mono font-bold outline-none focus:border-purple-300"
+                  />
+                  <p className="text-[10px] text-purple-300">ใส่ตัวเลขคั่นด้วยเครื่องหมาย , เช่น 20,30,50 แล้วกด “บันทึกการตั้งค่าตู้กาชา”</p>
+                </div>
+
                 <div>
                   <label className="text-xs text-slate-300 block mb-1">ชื่อแบนเนอร์กาชา</label>
                   <input
