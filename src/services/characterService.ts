@@ -484,6 +484,113 @@ export async function buyMarketplaceListing(listingId: string, buyerId: string):
   } catch (e) { return { success: false, message: e instanceof Error ? e.message : "ซื้อขายไม่สำเร็จ" }; }
 }
 
+
+const ITEM_TRANSFER_COLLECTION = "item_transfers";
+const MARKETPLACE_AUCTIONS_COLLECTION = "marketplace_auctions";
+
+export async function transferInventoryItem(senderId: string, recipientId: string, itemInstanceId: string): Promise<void> {
+  if (senderId === recipientId) throw new Error("ไม่สามารถโอนให้ตัวเองได้");
+  const sr = doc(db, CHARACTERS_COLLECTION, senderId), rr = doc(db, CHARACTERS_COLLECTION, recipientId);
+  await runTransaction(db, async tx => {
+    const ss = await tx.get(sr), rs = await tx.get(rr);
+    if (!ss.exists() || !rs.exists()) throw new Error("ไม่พบผู้เล่น");
+    const sender = { ...ss.data(), id: ss.id } as CharacterProfile;
+    const receiver = { ...rs.data(), id: rs.id } as CharacterProfile;
+    const inv = [...(sender.inventory || [])];
+    const idx = inv.findIndex(x => x.instanceId === itemInstanceId);
+    if (idx < 0) throw new Error("ไม่พบไอเทมชิ้นนี้");
+    if (inv[idx].isEquipped) throw new Error("ต้องถอดอุปกรณ์ก่อนโอน");
+    const item = { ...inv[idx], quantity: 1, isEquipped: false };
+    if ((inv[idx].quantity || 1) > 1) inv[idx] = { ...inv[idx], quantity: inv[idx].quantity - 1 };
+    else inv.splice(idx, 1);
+    const receiverInv = [...(receiver.inventory || []), { ...item, instanceId: `gift-${Date.now()}-${Math.random().toString(36).slice(2,7)}` }];
+    const now = Date.now();
+    tx.update(sr, sanitizeForFirestore({ ...sender, inventory: inv, lastUpdated: now, powerScore: calculatePowerScore({ ...sender, inventory: inv }) }));
+    tx.update(rr, sanitizeForFirestore({ ...receiver, inventory: receiverInv, lastUpdated: now, powerScore: calculatePowerScore({ ...receiver, inventory: receiverInv }) }));
+  });
+}
+
+export function subscribeToMarketplaceAuctions(callback: (auctions: import("../types").MarketplaceAuction[]) => void) {
+  try {
+    const q = collection(db, MARKETPLACE_AUCTIONS_COLLECTION);
+    return onSnapshot(q, (snapshot: any) => {
+      const list: import("../types").MarketplaceAuction[] = [];
+      snapshot.forEach((d: any) => list.push({ ...d.data(), id: d.id } as import("../types").MarketplaceAuction));
+      callback(list.filter(x => x.status === 'active').sort((a,b) => b.createdAt-a.createdAt));
+    }, () => callback([]));
+  } catch { callback([]); return () => {}; }
+}
+
+export async function createMarketplaceAuction(sellerId: string, item: InventoryItem, startingPrice: number, durationMs: number): Promise<void> {
+  const sr = doc(db, CHARACTERS_COLLECTION, sellerId);
+  const id = `auction-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  const ar = doc(db, MARKETPLACE_AUCTIONS_COLLECTION, id);
+  await runTransaction(db, async tx => {
+    const ss = await tx.get(sr);
+    if (!ss.exists()) throw new Error("ไม่พบผู้ขาย");
+    const seller = { ...ss.data(), id: ss.id } as CharacterProfile;
+    const inv = [...(seller.inventory || [])];
+    const idx = inv.findIndex(x => x.instanceId === item.instanceId);
+    if (idx < 0) throw new Error("ไม่พบไอเทม");
+    if (inv[idx].isEquipped) throw new Error("ต้องถอดอุปกรณ์ก่อนประมูล");
+    const owned = { ...inv[idx], quantity: 1, isEquipped: false };
+    if ((inv[idx].quantity || 1) > 1) inv[idx] = { ...inv[idx], quantity: inv[idx].quantity - 1 }; else inv.splice(idx,1);
+    const now = Date.now();
+    const auction: import("../types").MarketplaceAuction = { id, sellerId, sellerName: seller.displayName, item: owned, startingPrice: Math.max(1, Math.floor(startingPrice)), currentBid: 0, endsAt: now + Math.max(60000, durationMs), createdAt: now, updatedAt: now, status: 'active' };
+    tx.update(sr, sanitizeForFirestore({ ...seller, inventory: inv, lastUpdated: now, powerScore: calculatePowerScore({ ...seller, inventory: inv }) }));
+    tx.set(ar, sanitizeForFirestore(auction));
+  });
+}
+
+export async function placeMarketplaceBid(auctionId: string, bidderId: string, bid: number): Promise<void> {
+  const ar = doc(db, MARKETPLACE_AUCTIONS_COLLECTION, auctionId), br = doc(db, CHARACTERS_COLLECTION, bidderId);
+  await runTransaction(db, async tx => {
+    const as = await tx.get(ar), bs = await tx.get(br);
+    if (!as.exists() || !bs.exists()) throw new Error("ไม่พบการประมูล");
+    const auction = { ...as.data(), id: as.id } as import("../types").MarketplaceAuction;
+    if (auction.status !== 'active' || Date.now() >= auction.endsAt) throw new Error("การประมูลสิ้นสุดแล้ว");
+    if (auction.sellerId === bidderId) throw new Error("ผู้ขายไม่สามารถประมูลของตัวเอง");
+    const buyer = { ...bs.data(), id: bs.id } as CharacterProfile;
+    const amount = Math.floor(Number(bid));
+    const minimum = Math.max(auction.startingPrice, auction.currentBid + 1);
+    if (!Number.isFinite(amount) || amount < minimum) throw new Error(`ต้องเสนออย่างน้อย ${minimum.toLocaleString()} Coins`);
+    if (Number(buyer.coins) < amount) throw new Error("Coins ไม่พอ");
+    const now = Date.now();
+    const updated = { ...auction, currentBid: amount, highestBidderId: bidderId, highestBidderName: buyer.displayName, updatedAt: now };
+    tx.update(ar, sanitizeForFirestore(updated));
+  });
+}
+
+export async function finalizeMarketplaceAuction(auctionId: string): Promise<void> {
+  const ar = doc(db, MARKETPLACE_AUCTIONS_COLLECTION, auctionId);
+  await runTransaction(db, async tx => {
+    const as = await tx.get(ar);
+    if (!as.exists()) throw new Error("ไม่พบการประมูล");
+    const auction = { ...as.data(), id: as.id } as import("../types").MarketplaceAuction;
+    if (auction.status !== 'active' || Date.now() < auction.endsAt) throw new Error("ยังไม่ถึงเวลาปิดประมูล");
+    const sr = doc(db, CHARACTERS_COLLECTION, auction.sellerId);
+    const ss = await tx.get(sr);
+    if (!ss.exists()) throw new Error("ไม่พบผู้ขาย");
+    const seller = { ...ss.data(), id: ss.id } as CharacterProfile;
+    if (!auction.highestBidderId) {
+      const inv = [...(seller.inventory || []), auction.item];
+      tx.update(sr, sanitizeForFirestore({ ...seller, inventory: inv, lastUpdated: Date.now(), powerScore: calculatePowerScore({ ...seller, inventory: inv }) }));
+    } else {
+      const br = doc(db, CHARACTERS_COLLECTION, auction.highestBidderId);
+      const bs = await tx.get(br);
+      if (!bs.exists()) throw new Error("ไม่พบผู้ชนะ");
+      const buyer = { ...bs.data(), id: bs.id } as CharacterProfile;
+      if (Number(buyer.coins) < auction.currentBid) throw new Error("Coins ของผู้ชนะไม่พอแล้ว");
+      const buyerInv = [...(buyer.inventory || []), { ...auction.item, instanceId: `auction-${Date.now()}-${Math.random().toString(36).slice(2,7)}` }];
+      const updatedBuyer = { ...buyer, coins: Number(buyer.coins) - auction.currentBid, inventory: buyerInv, lastUpdated: Date.now() };
+      const updatedSeller = { ...seller, coins: Number(seller.coins) + auction.currentBid, lastUpdated: Date.now() };
+      tx.update(br, sanitizeForFirestore({ ...updatedBuyer, powerScore: calculatePowerScore(updatedBuyer) }));
+      tx.update(sr, sanitizeForFirestore({ ...updatedSeller, powerScore: calculatePowerScore(updatedSeller) }));
+    }
+    tx.update(ar, sanitizeForFirestore({ ...auction, status: 'completed', updatedAt: Date.now() }));
+  });
+}
+
 // Subscribe to Shop items
 export function subscribeToShop(callback: (items: Item[]) => void) {
   try {
