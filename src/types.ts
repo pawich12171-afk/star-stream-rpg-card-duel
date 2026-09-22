@@ -37,6 +37,10 @@ export interface Skill {
   upgradeCount?: number;
   battleEffect?: BattleSkillEffect;
   battlePower?: number;
+  /** วิธีคำนวณดาเมจ: คงที่ หรือผูกกับค่าสเตตัสของผู้โจมตี */
+  damageScaling?: 'fixed' | 'strength' | 'durability' | 'agility' | 'magic';
+  /** ตัวคูณของสเตตัส เช่น 1.5 = 150% ของค่า stat */
+  damageScalingMultiplier?: number;
   cooldownTurns?: number;
   battleCriticalChance?: number;
   battleCriticalMultiplier?: number;
