@@ -89,6 +89,12 @@ export interface Item {
   equipped?: boolean;
   effectType: 'heal_hp' | 'buff_stat' | 'enhance_skill' | 'custom' | 'boost_max_hp';
   effectValue?: number;
+  /** ฟื้น HP เป็นเปอร์เซ็นต์ของ Max HP เมื่อใช้ไอเทม */
+  healPercent?: number;
+  /** โบนัสความเสียหายระหว่างต่อสู้ (%) เมื่อใช้ไอเทม */
+  battleDamagePercent?: number;
+  /** ระยะเวลาบัฟดาเมจ (จำนวนเทิร์น) */
+  battleDamageDuration?: number;
   hpBonus?: number;
   targetStat?: keyof CharacterStats;
   skillEnhanceTarget?: string;
@@ -410,6 +416,10 @@ export interface BattleCombatant {
   equippedPassives?: ItemPassiveEffect[];
   activeSkillPassives?: ItemPassiveEffect[];
   passiveStacks?: Record<string, number>;
+  /** โบนัสโจมตีจากไอเทมที่ใช้ระหว่างต่อสู้ */
+  itemDamagePercent?: number;
+  /** เทิร์นที่เหลือของโบนัสโจมตีจากไอเทม */
+  itemDamageTurns?: number;
 }
 
 export interface BattleLogEntry {
