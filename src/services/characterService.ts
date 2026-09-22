@@ -415,8 +415,9 @@ export function subscribeToMarketplace(callback: (listings: import("../types").M
   } catch { callback([]); return () => {}; }
 }
 
-export async function createMarketplaceListing(sellerId: string, item: InventoryItem, price: number): Promise<void> {
+export async function createMarketplaceListing(sellerId: string, item: InventoryItem, price: number, quantity: number = 1): Promise<void> {
   const normalizedPrice = Math.max(1, Math.floor(Number(price)));
+  const requestedQty = Math.max(1, Math.floor(Number(quantity) || 1));
   const listingId = `listing-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
   const sellerRef = doc(db, CHARACTERS_COLLECTION, sellerId);
   const listingRef = doc(db, MARKETPLACE_LISTINGS_COLLECTION, listingId);
@@ -428,9 +429,14 @@ export async function createMarketplaceListing(sellerId: string, item: Inventory
     const idx = inventory.findIndex(x => x.instanceId === item.instanceId);
     if (idx < 0) throw new Error("ไม่พบไอเทมชิ้นนี้ในกระเป๋า");
     if (inventory[idx].isEquipped) throw new Error("ต้องถอดอุปกรณ์ก่อนนำไปขาย");
-    const owned = inventory.splice(idx, 1)[0];
+    const owned = inventory[idx];
+    const available = Math.max(1, Number(owned.quantity) || 1);
+    const qty = Math.min(requestedQty, available);
+    const soldItem = { ...owned, quantity: qty, isEquipped: false, equippedQuantity: 0 };
+    if (available > qty) inventory[idx] = { ...owned, quantity: available - qty };
+    else inventory.splice(idx, 1);
     const now = Date.now();
-    const listing: import("../types").MarketplaceListing = { id: listingId, sellerId, sellerName: seller.displayName, item: { ...owned, quantity: 1, isEquipped: false }, price: normalizedPrice, createdAt: now, updatedAt: now };
+    const listing: import("../types").MarketplaceListing = { id: listingId, sellerId, sellerName: seller.displayName, item: soldItem, price: normalizedPrice, quantity: qty, createdAt: now, updatedAt: now };
     const updated = { ...seller, inventory, lastUpdated: now };
     tx.update(sellerRef, sanitizeForFirestore({ ...updated, powerScore: calculatePowerScore(updated) }));
     tx.set(listingRef, sanitizeForFirestore(listing));
@@ -446,14 +452,18 @@ export async function cancelMarketplaceListing(listingId: string, sellerId: stri
     const listing = { ...ls.data(), id: ls.id } as import("../types").MarketplaceListing;
     if (listing.sellerId !== sellerId) throw new Error("ไม่มีสิทธิ์ยกเลิกประกาศนี้");
     const seller = { ...ss.data(), id: ss.id } as CharacterProfile;
-    const inventory = [...(seller.inventory || []), { ...listing.item, instanceId: listing.item.instanceId || `returned-${Date.now()}` }];
+    const returned = { ...listing.item, quantity: Math.max(1, Number(listing.quantity) || Number(listing.item.quantity) || 1), isEquipped: false, equippedQuantity: 0 };
+    const inventory = [...(seller.inventory || [])];
+    const mergeIdx = inventory.findIndex(x => x.name === returned.name && x.category === returned.category && x.effectType === returned.effectType && x.effectValue === returned.effectValue && x.targetStat === returned.targetStat);
+    if (mergeIdx >= 0) inventory[mergeIdx] = { ...inventory[mergeIdx], quantity: (Number(inventory[mergeIdx].quantity)||1) + returned.quantity };
+    else inventory.push({ ...returned, instanceId: returned.instanceId || `returned-${Date.now()}` });
     const updated = { ...seller, inventory, lastUpdated: Date.now() };
     tx.update(sr, sanitizeForFirestore({ ...updated, powerScore: calculatePowerScore(updated) }));
     tx.delete(lr);
   });
 }
 
-export async function buyMarketplaceListing(listingId: string, buyerId: string): Promise<{ success: boolean; message: string }> {
+export async function buyMarketplaceListing(listingId: string, buyerId: string, requestedQuantity: number = 1): Promise<{ success: boolean; message: string }> {
   const lr = doc(db, MARKETPLACE_LISTINGS_COLLECTION, listingId);
   const br = doc(db, CHARACTERS_COLLECTION, buyerId);
   let message = "";
@@ -464,26 +474,34 @@ export async function buyMarketplaceListing(listingId: string, buyerId: string):
       const listing = { ...ls.data(), id: ls.id } as import("../types").MarketplaceListing;
       if (listing.sellerId === buyerId) throw new Error("ไม่สามารถซื้อไอเทมของตัวเองได้");
       const buyer = { ...bs.data(), id: bs.id } as CharacterProfile;
-      const price = Math.max(1, Math.floor(Number(listing.price) || 0));
+      const stock = Math.max(1, Number(listing.quantity) || Number(listing.item.quantity) || 1);
+      const qty = Math.max(1, Math.min(Math.floor(Number(requestedQuantity) || 1), stock));
+      const unitPrice = Math.max(1, Math.floor(Number(listing.price) || 0));
+      const totalPrice = unitPrice * qty;
       const coins = Math.floor(Number(buyer.coins) || 0);
-      if (coins < price) throw new Error(`Coins ไม่พอ ต้องใช้ ${price.toLocaleString()} Coins`);
+      if (coins < totalPrice) throw new Error(`Coins ไม่พอ ต้องใช้ ${totalPrice.toLocaleString()} Coins`);
       const sr = doc(db, CHARACTERS_COLLECTION, listing.sellerId);
       const ss = await tx.get(sr);
       if (!ss.exists()) throw new Error("ไม่พบผู้ขาย");
       const seller = { ...ss.data(), id: ss.id } as CharacterProfile;
       const now = Date.now();
-      const inventory = [...(buyer.inventory || []), { ...listing.item, instanceId: `market-${now}-${Math.random().toString(36).slice(2,7)}`, quantity: 1, isEquipped: false }];
-      const updatedBuyer = { ...buyer, coins: coins - price, inventory, lastUpdated: now };
-      const updatedSeller = { ...seller, coins: Math.floor(Number(seller.coins) || 0) + price, lastUpdated: now };
+      const boughtItem = { ...listing.item, instanceId: `market-${now}-${Math.random().toString(36).slice(2,7)}`, quantity: qty, isEquipped: false, equippedQuantity: 0 };
+      const buyerInventory = [...(buyer.inventory || [])];
+      const mergeIdx = buyerInventory.findIndex(x => x.name === boughtItem.name && x.category === boughtItem.category && x.effectType === boughtItem.effectType && x.effectValue === boughtItem.effectValue && x.targetStat === boughtItem.targetStat);
+      if (mergeIdx >= 0) buyerInventory[mergeIdx] = { ...buyerInventory[mergeIdx], quantity: (Number(buyerInventory[mergeIdx].quantity)||1) + qty };
+      else buyerInventory.push(boughtItem);
+      const remaining = stock - qty;
+      const updatedBuyer = { ...buyer, coins: coins - totalPrice, inventory: buyerInventory, lastUpdated: now };
+      const updatedSeller = { ...seller, coins: Math.floor(Number(seller.coins) || 0) + totalPrice, lastUpdated: now };
       tx.update(br, sanitizeForFirestore({ ...updatedBuyer, powerScore: calculatePowerScore(updatedBuyer) }));
       tx.update(sr, sanitizeForFirestore({ ...updatedSeller, powerScore: calculatePowerScore(updatedSeller) }));
-      tx.delete(lr);
-      message = `ซื้อ "${listing.item.name}" สำเร็จในราคา ${price.toLocaleString()} Coins`;
+      if (remaining > 0) tx.update(lr, sanitizeForFirestore({ ...listing, quantity: remaining, item: { ...listing.item, quantity: remaining }, updatedAt: now }));
+      else tx.delete(lr);
+      message = `ซื้อ "${listing.item.name}" x${qty} สำเร็จในราคา ${totalPrice.toLocaleString()} Coins`;
     });
     return { success: true, message };
   } catch (e) { return { success: false, message: e instanceof Error ? e.message : "ซื้อขายไม่สำเร็จ" }; }
 }
-
 
 const ITEM_TRANSFER_COLLECTION = "item_transfers";
 const MARKETPLACE_AUCTIONS_COLLECTION = "marketplace_auctions";
@@ -521,7 +539,7 @@ export function subscribeToMarketplaceAuctions(callback: (auctions: import("../t
   } catch { callback([]); return () => {}; }
 }
 
-export async function createMarketplaceAuction(sellerId: string, item: InventoryItem, startingPrice: number, durationMs: number): Promise<void> {
+export async function createMarketplaceAuction(sellerId: string, item: InventoryItem, startingPrice: number, durationMs: number, quantity: number = 1): Promise<void> {
   const sr = doc(db, CHARACTERS_COLLECTION, sellerId);
   const id = `auction-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
   const ar = doc(db, MARKETPLACE_AUCTIONS_COLLECTION, id);
@@ -533,12 +551,37 @@ export async function createMarketplaceAuction(sellerId: string, item: Inventory
     const idx = inv.findIndex(x => x.instanceId === item.instanceId);
     if (idx < 0) throw new Error("ไม่พบไอเทม");
     if (inv[idx].isEquipped) throw new Error("ต้องถอดอุปกรณ์ก่อนประมูล");
-    const owned = { ...inv[idx], quantity: 1, isEquipped: false };
-    if ((inv[idx].quantity || 1) > 1) inv[idx] = { ...inv[idx], quantity: inv[idx].quantity - 1 }; else inv.splice(idx,1);
+    const available = Math.max(1, Number(inv[idx].quantity) || 1);
+    const qty = Math.min(Math.max(1, Math.floor(Number(quantity)||1)), available);
+    const owned = { ...inv[idx], quantity: qty, isEquipped: false, equippedQuantity: 0 };
+    if (available > qty) inv[idx] = { ...inv[idx], quantity: available - qty }; else inv.splice(idx,1);
     const now = Date.now();
-    const auction: import("../types").MarketplaceAuction = { id, sellerId, sellerName: seller.displayName, item: owned, startingPrice: Math.max(1, Math.floor(startingPrice)), currentBid: 0, endsAt: now + Math.max(60000, durationMs), createdAt: now, updatedAt: now, status: 'active' };
+    const auction: import("../types").MarketplaceAuction = { id, sellerId, sellerName: seller.displayName, item: owned, quantity: qty, startingPrice: Math.max(1, Math.floor(startingPrice)), currentBid: 0, endsAt: now + Math.max(60000, durationMs), createdAt: now, updatedAt: now, status: 'active' };
     tx.update(sr, sanitizeForFirestore({ ...seller, inventory: inv, lastUpdated: now, powerScore: calculatePowerScore({ ...seller, inventory: inv }) }));
     tx.set(ar, sanitizeForFirestore(auction));
+  });
+}
+
+export async function cancelMarketplaceAuction(auctionId: string, sellerId: string): Promise<void> {
+  const ar = doc(db, MARKETPLACE_AUCTIONS_COLLECTION, auctionId);
+  const sr = doc(db, CHARACTERS_COLLECTION, sellerId);
+  await runTransaction(db, async tx => {
+    const as = await tx.get(ar), ss = await tx.get(sr);
+    if (!as.exists() || !ss.exists()) throw new Error("ไม่พบการประมูล");
+    const auction = { ...as.data(), id: as.id } as import("../types").MarketplaceAuction;
+    if (auction.sellerId !== sellerId) throw new Error("ไม่มีสิทธิ์ยกเลิกการประมูล");
+    if (auction.status !== 'active') throw new Error("การประมูลนี้ปิดแล้ว");
+    if (auction.highestBidderId) throw new Error("มีผู้เสนอราคาแล้ว จึงยกเลิกไม่ได้");
+    const seller = { ...ss.data(), id: ss.id } as CharacterProfile;
+    const qty = Math.max(1, Number(auction.quantity) || Number(auction.item.quantity) || 1);
+    const returned = { ...auction.item, quantity: qty, isEquipped: false, equippedQuantity: 0 };
+    const inv = [...(seller.inventory || [])];
+    const mergeIdx = inv.findIndex(x => x.name === returned.name && x.category === returned.category && x.effectType === returned.effectType && x.effectValue === returned.effectValue && x.targetStat === returned.targetStat);
+    if (mergeIdx >= 0) inv[mergeIdx] = { ...inv[mergeIdx], quantity: (Number(inv[mergeIdx].quantity)||1) + qty };
+    else inv.push(returned);
+    const now = Date.now();
+    tx.update(sr, sanitizeForFirestore({ ...seller, inventory: inv, lastUpdated: now, powerScore: calculatePowerScore({ ...seller, inventory: inv }) }));
+    tx.update(ar, sanitizeForFirestore({ ...auction, status: 'cancelled', updatedAt: now }));
   });
 }
 
