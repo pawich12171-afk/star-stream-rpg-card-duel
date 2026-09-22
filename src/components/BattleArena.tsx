@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, Check, Crown, Dice5, Plus, Settings2, Shield, Skull, Swords, Target, Trash2, UsersRound, Zap } from 'lucide-react';
+import { Bot, Check, Crown, Dice5, Heart, Package, Plus, Settings2, Shield, Skull, Sparkles, Swords, Target, Trash2, UsersRound, Zap } from 'lucide-react';
 import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRoom, CharacterProfile, Skill } from '../types';
 import {
   DEFAULT_BATTLE_CONFIG,
@@ -158,6 +158,8 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   const [selectedOpponentId, setSelectedOpponentId] = useState('');
   const [selectedBotIds, setSelectedBotIds] = useState<string[]>([]);
   const [selectedSkillId, setSelectedSkillId] = useState('');
+  const [selectedBattleItemId, setSelectedBattleItemId] = useState('');
+  const [usingBattleItemId, setUsingBattleItemId] = useState('');
   const [showAdmin, setShowAdmin] = useState(isAdmin);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   // Lock room creation synchronously on the first click. This prevents rapid clicks
@@ -265,6 +267,127 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   };
 
   const getSkillId = (skill: Skill) => String(skill?.id ?? skill?.name ?? ('skill-' + (skill?.name || 'unknown'))).trim();
+
+  const getBattleItemLabel = (item: any) => {
+    if (item.effectType === 'heal_hp') return `💚 ฟื้น HP +${Math.round(Number(item.effectValue) || 0)}`;
+    if (item.effectType === 'buff_stat') return `✨ +${Math.round(Number(item.effectValue) || 0)} ${String(item.targetStat || 'STAT').toUpperCase()}`;
+    if (item.effectType === 'boost_max_hp') return `❤️‍🔥 เพิ่ม MAX HP +${Math.round(Number(item.effectValue) || 0)}`;
+    if (item.effectType === 'enhance_skill') return `⚡ ${item.skillEnhanceDesc || 'เสริมพลังสกิล'}`;
+    return '🧪 ใช้ไอเทม';
+  };
+
+  const useBattleItem = async (room: BattleRoom, item: any) => {
+    if (usingBattleItemId) return;
+    const actor = [...room.teamA, ...room.teamB].find(unit => unit.id === room.turnActorId);
+    if (!actor || actor.type !== 'player' || actor.sourceId !== currentUser.id) {
+      alert('ยังไม่ใช่เทิร์นของคุณ');
+      return;
+    }
+    if (room.status !== 'active') return;
+
+    const currentWindowStart = Math.floor(Math.max(0, Number(room.round || 1) - 1) / 35) * 35;
+    const currentUses = Number(room.battleItemUses || 0);
+    const windowStart = Number(room.battleItemWindowStartTurn);
+    const uses = windowStart === currentWindowStart ? currentUses : 0;
+    if (uses >= 2) {
+      alert('ช่วง 35 เทิร์นนี้ใช้ไอเทมครบ 2 ครั้งแล้ว');
+      return;
+    }
+
+    const actorCharacter = allCharacters.find(character => character.id === actor.sourceId);
+    if (!actorCharacter) return;
+    const inventoryItem = (actorCharacter.inventory || []).find(inv =>
+      inv.instanceId === item.instanceId && inv.quantity > 0
+    );
+    if (!inventoryItem) {
+      alert('ไม่พบไอเทมในกระเป๋าแล้ว');
+      return;
+    }
+    if (inventoryItem.category !== 'consumable' || !inventoryItem.usableByPlayers) {
+      alert('ไอเทมนี้ไม่สามารถใช้ระหว่างการต่อสู้ได้');
+      return;
+    }
+
+    setUsingBattleItemId(item.instanceId);
+    try {
+      const updatedInventory = (actorCharacter.inventory || [])
+        .map(inv => inv.instanceId === item.instanceId ? { ...inv, quantity: Math.max(0, inv.quantity - 1) } : inv)
+        .filter(inv => inv.quantity > 0);
+
+      let hp = actorCharacter.hp;
+      let maxHp = actorCharacter.maxHp;
+      let stats = { ...actorCharacter.stats };
+      if (inventoryItem.effectType === 'heal_hp') {
+        hp = Math.min(maxHp, hp + Math.max(0, Number(inventoryItem.effectValue) || 0));
+      } else if (inventoryItem.effectType === 'buff_stat' && inventoryItem.targetStat) {
+        const stat = inventoryItem.targetStat as keyof typeof stats;
+        stats[stat] = (stats[stat] || 0) + Math.max(0, Number(inventoryItem.effectValue) || 0);
+      } else if (inventoryItem.effectType === 'boost_max_hp') {
+        const bonus = Math.max(0, Number(inventoryItem.effectValue) || 0);
+        maxHp += bonus;
+        hp = Math.min(maxHp, hp + bonus);
+      }
+
+      await updateCharacterFields(actorCharacter.id, {
+        inventory: updatedInventory,
+        hp,
+        maxHp,
+        stats,
+        lastUpdated: Date.now(),
+      });
+
+      const nextRoom = {
+        ...room,
+        teamA: room.teamA.map(unit => unit.id === actor.id ? {
+          ...unit,
+          hp: Math.min(maxHp, hp),
+          maxHp,
+          stats,
+        } : unit),
+        teamB: room.teamB.map(unit => ({ ...unit })),
+        battleItemUses: uses + 1,
+        battleItemWindowStartTurn: currentWindowStart,
+        log: [{
+          id: 'battle-log-item-' + Date.now(),
+          timestamp: Date.now(),
+          actorName: actor.name,
+          message: `🧪 ${actor.name} ใช้ไอเทม "${inventoryItem.name}" — ${getBattleItemLabel(inventoryItem)} · โควตา ${uses + 1}/2 ใน 35 เทิร์น`,
+        }, ...(room.log || [])],
+        round: Math.max(1, Number(room.round || 1) + 1),
+        updatedAt: Date.now(),
+      };
+
+      // Using an item consumes the player's turn, then normal turn rotation continues.
+      const resolvedRoom = { ...nextRoom, turnActorId: actor.id };
+      const tempResolved = resolveBattleTurn({ ...resolvedRoom, log: [...nextRoom.log] }, config);
+      // Do not apply a second attack: only advance to the next actor after the item action.
+      const nextActor = [...nextRoom.teamA, ...nextRoom.teamB].find(unit => unit.id !== actor.id && unit.hp > 0);
+      if (nextActor) nextRoom.turnActorId = nextActor.id;
+
+      await updateBattleRoom(nextRoom);
+      await persistBattleHp(nextRoom);
+
+      if (nextRoom.mode === 'pve') {
+        let botRoom = nextRoom;
+        for (let step = 0; step < 9 && botRoom.status === 'active'; step += 1) {
+          const botActor = [...botRoom.teamA, ...botRoom.teamB].find(unit => unit.id === botRoom.turnActorId);
+          if (!botActor || botActor.type !== 'bot') break;
+          await new Promise(resolve => window.setTimeout(resolve, 350));
+          const botResolved = resolveBattleTurn(botRoom, config);
+          if (!botResolved.result && botResolved.room.turnActorId === botRoom.turnActorId && botResolved.room.status === botRoom.status) break;
+          botRoom = botResolved.room;
+          await updateBattleRoom(botRoom);
+          try { await persistBattleHp(botRoom); } catch {}
+        }
+      }
+      setSelectedBattleItemId('');
+    } catch (error) {
+      console.error('Battle item failed', error);
+      alert('ใช้ไอเทมไม่สำเร็จ: ' + (error instanceof Error ? error.message : 'เกิดข้อผิดพลาด'));
+    } finally {
+      setUsingBattleItemId('');
+    }
+  };
 
   const takeTurn = async (room: BattleRoom, skill?: Skill) => {
     try {
@@ -402,7 +525,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
 
     <section className={panelClass + ' p-5 md:p-6'}><div className="mb-5 flex items-center gap-2"><Target className="h-5 w-5 text-cyan-300" /><h3 className="text-lg font-black text-white">สร้างศึกใหม่</h3></div><div className="grid gap-6 xl:grid-cols-2"><div className="space-y-4"><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => setMode('pve')} className={buttonClass + ' ' + (mode === 'pve' ? 'bg-violet-500 text-white' : 'bg-slate-800 text-slate-400')}><Bot className="mr-1 inline h-4 w-4" />ตีบอท / บอส</button><button type="button" onClick={() => setMode('pvp')} className={buttonClass + ' ' + (mode === 'pvp' ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-400')}><UsersRound className="mr-1 inline h-4 w-4" />สู้ผู้เล่น</button></div><div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3"><div className="mb-2 text-xs font-bold text-slate-300">ทีมของคุณ <span className="text-slate-500">(เลือกได้สูงสุด 3 คน)</span></div><div className="space-y-2">{allCharacters.map(character => <label key={character.id} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/50 p-2 text-sm"><input type="checkbox" checked={selectedTeamIds.includes(character.id)} disabled={character.id === currentUser.id} onChange={() => toggleTeamMember(character.id)} /><img src={character.avatarUrl} alt="" className="h-7 w-7 rounded-lg object-cover" /><span className={character.id === currentUser.id ? 'font-bold text-white' : 'text-slate-300'}>{character.displayName}</span><span className="ml-auto text-[10px] text-slate-500">STR {character.stats.strength}</span></label>)}</div></div></div><div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/35 p-3"><div className="text-xs font-bold text-slate-300">ฝ่ายตรงข้าม</div>{mode === 'pvp' ? <select className={inputClass} value={selectedOpponentId} onChange={event => setSelectedOpponentId(event.target.value)}><option value="">เลือกผู้เล่น</option>{otherPlayers.map(character => <option key={character.id} value={character.id}>{character.displayName} · STR {character.stats.strength}</option>)}</select> : <div className="space-y-2">{activeBots.length === 0 && <div className="rounded-xl border border-dashed border-slate-700 p-4 text-center text-xs text-slate-500">ยังไม่มีบอท — ให้แอดมินสร้างก่อน</div>}{activeBots.map(bot => <label key={bot.id} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-2 text-sm"><input type="checkbox" checked={selectedBotIds.includes(bot.id)} onChange={() => toggleBot(bot.id)} /><img src={bot.avatarUrl} alt="" className="h-8 w-8 rounded-lg object-cover" /><span className="font-bold text-white">{bot.name}</span>{bot.isBoss ? <span className="ml-auto flex items-center gap-1 text-[10px] font-black text-amber-300"><Skull className="h-3 w-3" />BOSS</span> : <span className="ml-auto text-[10px] text-slate-500">HP {bot.maxHp}</span>}</label>)}<div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3"><div className="text-sm font-black text-amber-100">💰 ค่าเข้าสู้มอนสเตอร์ 5,000 Coins</div><div className="mt-1 text-[10px] text-amber-200/70">เริ่มต่อสู้จะหัก 5,000 Coins · มอนทั่วไปชนะรับ {BOT_VICTORY_REWARD.toLocaleString()} · BOSS ชนะรับ {BOSS_VICTORY_REWARD.toLocaleString()} Coins</div></div></div>}<button type="button" disabled={isCreatingRoom} onClick={() => void createRoom()} className={buttonClass + ' mt-2 w-full bg-emerald-500 text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50'}><Plus className="mr-1 inline h-4 w-4" />{isCreatingRoom ? '⏳ กำลังสร้างห้อง...' : mode === 'pve' ? 'เริ่มต่อสู้' : 'เปิดห้องรบ'}</button></div></div></section>
 
-    <section className="space-y-4"><div className="flex items-center justify-between"><h3 className="flex items-center gap-2 text-lg font-black text-white"><Shield className="h-5 w-5 text-emerald-300" />ห้องรบของคุณ</h3><span className="text-xs text-slate-500">{myRooms.length} ห้อง</span></div>{myRooms.length === 0 && <div className={panelClass + ' p-8 text-center text-sm text-slate-500'}>ยังไม่มีห้องรบ สร้างศึกแรกของคุณได้ด้านบน</div>}{myRooms.map(room => { const units = [...room.teamA, ...room.teamB]; const actor = units.find(unit => unit.id === room.turnActorId); const canAct = canPlayerAct(room); const botTurn = canBotAct(room); const actorCharacter = actor?.type === 'player' ? allCharacters.find(character => character.id === actor.sourceId) : undefined; const winner = room.winnerTeam ? (room.winnerTeam === 'a' ? 'ทีมคุณชนะ' : room.winnerTeam === 'b' ? 'ฝ่ายตรงข้ามชนะ' : 'เสมอ') : ''; const selectedSkill = actorCharacter?.skills.find(skill => getSkillId(skill) === selectedSkillId || skill.name === selectedSkillId); const selectedSkillCooldown = selectedSkill ? (actor?.skillCooldowns?.[selectedSkill.id] || 0) : 0; return <article key={room.id} className={panelClass + ' overflow-hidden'}><div className="border-b border-slate-800 bg-gradient-to-r from-slate-950/80 via-cyan-950/20 to-violet-950/20 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2"><span className={'rounded-full px-2 py-1 text-[10px] font-black ' + (room.mode === 'pve' ? 'bg-violet-500/20 text-violet-200' : 'bg-cyan-500/20 text-cyan-200')}>{room.mode === 'pve' ? 'PVE' : 'PVP'}</span><span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-400">รอบ {room.round}</span>{room.status === 'active' && <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-black text-amber-200"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-300" />กำลังต่อสู้</span>}{room.status === 'completed' && <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-black text-emerald-200">จบศึก: {winner}</span>}</div><div className="flex items-center gap-2">{room.status === 'active' && <span className="flex items-center gap-1.5 rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-1.5 text-xs font-black text-amber-100"><Zap className="h-3.5 w-3.5 text-amber-300" />เทิร์น: {actor?.name}</span>}{(isAdmin || room.createdBy === currentUser.id) && <button type="button" onClick={() => void deleteBattleRoom(room.id)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/15 hover:text-rose-300"><Trash2 className="h-4 w-4" /></button>}</div></div>{room.status === 'completed' && <div className="mt-3 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-emerald-100"><div className="flex items-center gap-2 text-sm font-black"><Crown className="h-4 w-4 text-amber-300" />{config.victoryTitle || 'VICTORY'} — {winner}</div><div className="mt-1 text-xs text-emerald-200/80">{config.victoryMessage || 'ผู้ชนะการต่อสู้'}</div><div className="mt-3 flex flex-wrap gap-2">{room.teamA.filter(u => u.hp > 0 && room.winnerTeam === 'a').map(u => <span key={u.id} className="rounded-full border border-emerald-300/20 bg-slate-950/30 px-3 py-1 text-xs font-bold">🏆 {u.name}</span>)}{room.teamB.filter(u => u.hp > 0 && room.winnerTeam === 'b').map(u => <span key={u.id} className="rounded-full border border-emerald-300/20 bg-slate-950/30 px-3 py-1 text-xs font-bold">🏆 {u.name}</span>)}</div>{config.victoryImageUrl && <img src={config.victoryImageUrl} alt="Victory" className="mt-4 max-h-80 w-full rounded-2xl border border-emerald-300/20 object-contain" />}{config.victoryVideoUrl && <video src={config.victoryVideoUrl} controls playsInline className="mt-4 max-h-96 w-full rounded-2xl border border-emerald-300/20 bg-black object-contain" />}</div>}</div><div className="grid gap-4 p-4 md:grid-cols-2">{(['a', 'b'] as const).map(team => <div key={team} className={`rounded-2xl border ${team === 'a' ? 'border-cyan-500/20 bg-cyan-950/10' : 'border-rose-500/20 bg-rose-950/10'} p-3`}><div className={`mb-3 text-xs font-black uppercase tracking-widest ${team === 'a' ? 'text-cyan-200' : 'text-rose-200'}`}>ทีม {team.toUpperCase()} · {team === 'a' ? 'ผู้ท้าศึก' : 'เป้าหมาย'}</div><div className="space-y-2">{(team === 'a' ? room.teamA : room.teamB).map(unit => <div key={unit.id} className={'flex items-center gap-2 rounded-xl border p-2 ' + (actor?.id === unit.id ? 'border-cyan-300/60 bg-cyan-400/10 animate-pulse' : 'border-transparent')}><img src={unit.avatarUrl} alt="" className="h-8 w-8 rounded-lg object-cover" /><div className="min-w-0 flex-1"><div className="flex justify-between gap-2 text-xs"><span className="truncate font-bold text-white">{unit.name}</span><span className="text-slate-400">{unit.hp}/{unit.maxHp}</span></div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-800"><div className={`h-full ${team === 'a' ? 'bg-cyan-400' : 'bg-rose-400'}`} style={{ width: healthPercent(unit) + '%' }} /></div></div>{unit.isBoss && <Crown className="h-3.5 w-3.5 text-amber-300" />}{unit.defenseTurns ? <span className="text-[10px] text-sky-300">GUARD</span> : null}{unit.reflectTurns ? <span className="text-[10px] text-rose-300">REFLECT</span> : null}{unit.stunnedTurns ? <span className="text-[10px] text-amber-300">STUN</span> : null}</div>)}</div></div>)}</div><div className="border-t border-slate-800 bg-slate-950/20 px-4 py-3 text-xs text-slate-300"><span className="mr-2 rounded-lg bg-slate-800 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-200">ล่าสุด</span>{room.log?.[0]?.message || 'ยังไม่มีการเคลื่อนไหว'}</div><div className="flex flex-wrap items-center gap-2 border-t border-slate-800 p-4">{canAct && <div className="w-full space-y-2"><div className="flex flex-wrap gap-2"><button type="button" onClick={() => { setSelectedSkillId(''); void takeTurn(room); }} className={buttonClass + ' flex items-center gap-2 bg-cyan-400 text-slate-950 hover:bg-cyan-300'}><Dice5 className="h-4 w-4" />โจมตีปกติ + ทอยเต๋า</button><div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+    <section className="space-y-4"><div className="flex items-center justify-between"><h3 className="flex items-center gap-2 text-lg font-black text-white"><Shield className="h-5 w-5 text-emerald-300" />ห้องรบของคุณ</h3><span className="text-xs text-slate-500">{myRooms.length} ห้อง</span></div>{myRooms.length === 0 && <div className={panelClass + ' p-8 text-center text-sm text-slate-500'}>ยังไม่มีห้องรบ สร้างศึกแรกของคุณได้ด้านบน</div>}{myRooms.map(room => { const units = [...room.teamA, ...room.teamB]; const actor = units.find(unit => unit.id === room.turnActorId); const canAct = canPlayerAct(room); const botTurn = canBotAct(room); const actorCharacter = actor?.type === 'player' ? allCharacters.find(character => character.id === actor.sourceId) : undefined; const winner = room.winnerTeam ? (room.winnerTeam === 'a' ? 'ทีมคุณชนะ' : room.winnerTeam === 'b' ? 'ฝ่ายตรงข้ามชนะ' : 'เสมอ') : ''; const selectedSkill = actorCharacter?.skills.find(skill => getSkillId(skill) === selectedSkillId || skill.name === selectedSkillId); const selectedSkillCooldown = selectedSkill ? (actor?.skillCooldowns?.[selectedSkill.id] || 0) : 0; return <article key={room.id} className={panelClass + ' overflow-hidden'}><div className="border-b border-slate-800 bg-gradient-to-r from-slate-950/80 via-cyan-950/20 to-violet-950/20 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2"><span className={'rounded-full px-2 py-1 text-[10px] font-black ' + (room.mode === 'pve' ? 'bg-violet-500/20 text-violet-200' : 'bg-cyan-500/20 text-cyan-200')}>{room.mode === 'pve' ? 'PVE' : 'PVP'}</span><span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-400">รอบ {room.round}</span>{room.status === 'active' && <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-black text-amber-200"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-300" />กำลังต่อสู้</span>}{room.status === 'completed' && <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-black text-emerald-200">จบศึก: {winner}</span>}</div><div className="flex items-center gap-2">{room.status === 'active' && <span className="flex items-center gap-1.5 rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-1.5 text-xs font-black text-amber-100"><Zap className="h-3.5 w-3.5 text-amber-300" />เทิร์น: {actor?.name}</span>}{(isAdmin || room.createdBy === currentUser.id) && <button type="button" onClick={() => void deleteBattleRoom(room.id)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/15 hover:text-rose-300"><Trash2 className="h-4 w-4" /></button>}</div></div>{room.status === 'completed' && <div className="mt-3 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-emerald-100"><div className="flex items-center gap-2 text-sm font-black"><Crown className="h-4 w-4 text-amber-300" />{config.victoryTitle || 'VICTORY'} — {winner}</div><div className="mt-1 text-xs text-emerald-200/80">{config.victoryMessage || 'ผู้ชนะการต่อสู้'}</div><div className="mt-3 flex flex-wrap gap-2">{room.teamA.filter(u => u.hp > 0 && room.winnerTeam === 'a').map(u => <span key={u.id} className="rounded-full border border-emerald-300/20 bg-slate-950/30 px-3 py-1 text-xs font-bold">🏆 {u.name}</span>)}{room.teamB.filter(u => u.hp > 0 && room.winnerTeam === 'b').map(u => <span key={u.id} className="rounded-full border border-emerald-300/20 bg-slate-950/30 px-3 py-1 text-xs font-bold">🏆 {u.name}</span>)}</div>{config.victoryImageUrl && <img src={config.victoryImageUrl} alt="Victory" className="mt-4 max-h-80 w-full rounded-2xl border border-emerald-300/20 object-contain" />}{config.victoryVideoUrl && <video src={config.victoryVideoUrl} controls playsInline className="mt-4 max-h-96 w-full rounded-2xl border border-emerald-300/20 bg-black object-contain" />}</div>}</div><div className="grid gap-4 p-4 md:grid-cols-2">{(['a', 'b'] as const).map(team => <div key={team} className={`rounded-2xl border ${team === 'a' ? 'border-cyan-500/20 bg-cyan-950/10' : 'border-rose-500/20 bg-rose-950/10'} p-3`}><div className={`mb-3 text-xs font-black uppercase tracking-widest ${team === 'a' ? 'text-cyan-200' : 'text-rose-200'}`}>ทีม {team.toUpperCase()} · {team === 'a' ? 'ผู้ท้าศึก' : 'เป้าหมาย'}</div><div className="space-y-2">{(team === 'a' ? room.teamA : room.teamB).map(unit => <div key={unit.id} className={'flex items-center gap-2 rounded-xl border p-2 ' + (actor?.id === unit.id ? 'border-cyan-300/60 bg-cyan-400/10 animate-pulse' : 'border-transparent')}><img src={unit.avatarUrl} alt="" className="h-8 w-8 rounded-lg object-cover" /><div className="min-w-0 flex-1"><div className="flex justify-between gap-2 text-xs"><span className="truncate font-bold text-white">{unit.name}</span><span className="text-slate-400">{unit.hp}/{unit.maxHp}</span></div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-800"><div className={`h-full ${team === 'a' ? 'bg-cyan-400' : 'bg-rose-400'}`} style={{ width: healthPercent(unit) + '%' }} /></div></div>{unit.isBoss && <Crown className="h-3.5 w-3.5 text-amber-300" />}{unit.defenseTurns ? <span className="text-[10px] text-sky-300">GUARD</span> : null}{unit.reflectTurns ? <span className="text-[10px] text-rose-300">REFLECT</span> : null}{unit.stunnedTurns ? <span className="text-[10px] text-amber-300">STUN</span> : null}</div>)}</div></div>)}</div><div className="border-t border-slate-800 bg-slate-950/20 px-4 py-3 text-xs text-slate-300"><span className="mr-2 rounded-lg bg-slate-800 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-200">ล่าสุด</span>{room.log?.[0]?.message || 'ยังไม่มีการเคลื่อนไหว'}</div><div className="flex flex-wrap items-center gap-2 border-t border-slate-800 p-4">{canAct && <div className="w-full space-y-2"><div className="mb-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-3"><div className="mb-2 flex items-center justify-between gap-2"><div className="flex items-center gap-2 text-xs font-black text-emerald-200"><Package className="h-4 w-4" />ไอเทมระหว่างต่อสู้</div><span className="rounded-full bg-slate-900 px-2 py-1 text-[10px] font-black text-emerald-200">{(Number(room.battleItemWindowStartTurn) === Math.floor(Math.max(0, Number(room.round || 1) - 1) / 35) * 35 ? Number(room.battleItemUses || 0) : 0)}/2 ครั้ง · ต่อ 35 เทิร์น</span></div><div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><select aria-label="เลือกไอเทมสำหรับใช้ระหว่างการต่อสู้" value={selectedBattleItemId} onChange={event => setSelectedBattleItemId(event.target.value)} className={inputClass + ' min-h-11'}><option value="">เลือกไอเทม...</option>{(actorCharacter?.inventory || []).filter(item => item.quantity > 0 && item.category === 'consumable' && item.usableByPlayers).map(item => <option key={item.instanceId} value={item.instanceId}>{item.icon || '🧪'} {item.name} ×{item.quantity} · {getBattleItemLabel(item)}</option>)}</select><button type="button" disabled={!selectedBattleItemId || usingBattleItemId !== '' || ((Number(room.battleItemWindowStartTurn) === Math.floor(Math.max(0, Number(room.round || 1) - 1) / 35) * 35 ? Number(room.battleItemUses || 0) : 0) >= 2)} onClick={() => { const item = (actorCharacter?.inventory || []).find(inv => inv.instanceId === selectedBattleItemId); if (item) void useBattleItem(room, item); }} className={buttonClass + ' min-h-11 bg-emerald-500 text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40'}><Heart className="mr-1 inline h-4 w-4" />{usingBattleItemId ? 'กำลังใช้...' : 'ใช้ไอเทม'}</button></div><div className="mt-2 text-[10px] text-slate-500">ใช้ได้เฉพาะไอเทม Consumable ที่เปิดให้ผู้เล่นใช้ · การใช้ไอเทมกิน 1 เทิร์น · จำกัด 2 ครั้งทุก 35 เทิร์น</div></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => { setSelectedSkillId(''); void takeTurn(room); }} className={buttonClass + ' flex items-center gap-2 bg-cyan-400 text-slate-950 hover:bg-cyan-300'}><Dice5 className="h-4 w-4" />โจมตีปกติ + ทอยเต๋า</button><div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                     <select
                       aria-label="เลือกสกิลสำหรับการต่อสู้"
                       value={selectedSkillId}
