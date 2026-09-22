@@ -319,13 +319,18 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         // so React cannot reuse one card for another item after a purchase.
         instanceId: invItem.instanceId || `legacy-${invItem.id}-${index}`,
       }));
-      const existingIndex = currentInventory.findIndex(i => i.id === item.id && !i.isEquipped);
+      const existingIndex = currentInventory.findIndex(i => i.id === item.id);
       const updatedInventory: InventoryItem[] = [...currentInventory];
 
-      if (existingIndex > -1 && item.category === 'consumable') {
+      if (existingIndex > -1) {
+        const old = updatedInventory[existingIndex];
+        const nextQuantity = (Number(old.quantity) || 0) + 1;
+        const oldEquipped = Math.max(0, Number(old.equippedQuantity) || (old.isEquipped ? 1 : 0));
         updatedInventory[existingIndex] = {
-          ...updatedInventory[existingIndex],
-          quantity: (Number(updatedInventory[existingIndex].quantity) || 0) + 1,
+          ...old,
+          quantity: nextQuantity,
+          equippedQuantity: old.category === 'equipment' ? Math.min(oldEquipped, nextQuantity) : old.equippedQuantity,
+          isEquipped: old.category === 'equipment' ? oldEquipped > 0 : old.isEquipped,
         };
       } else {
         updatedInventory.push({
@@ -333,6 +338,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
           instanceId: `inst-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           quantity: 1,
           isEquipped: false,
+          equippedQuantity: 0,
         });
       }
 
@@ -516,33 +522,48 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     alert(`ใช้งานสำเร็จ! ${effectMessage}`);
   };
 
-  // Toggle Equip Equipment: Araya/Arya swords have their own 1-slot limit; all other equipment uses a shared 20-slot limit.
+  // Stacked equipment: choose exactly how many copies to equip.
   const isAryaEquipment = (item: InventoryItem) => item.category === 'equipment' && /araya|arya/i.test(String(item.name || ''));
+
+  const getEquippedQuantity = (item: InventoryItem) => Math.max(
+    0,
+    Math.min(
+      Number(item.quantity) || 1,
+      Number.isFinite(Number(item.equippedQuantity))
+        ? Number(item.equippedQuantity)
+        : (item.isEquipped ? 1 : 0)
+    )
+  );
+
   const handleToggleEquip = (invItem: InventoryItem) => {
-    const isEquipping = !invItem.isEquipped;
-    if (isEquipping) {
-      const inventory = character.inventory || [];
-      const isAryaSword = isAryaEquipment(invItem);
-      if (isAryaSword) {
-        const alreadyArya = inventory.some(item => isAryaEquipment(item) && item.isEquipped && item.instanceId !== invItem.instanceId);
-        if (alreadyArya) {
-          alert('ดาบ Arya สวมใส่ได้เพียง 1 ชิ้นเท่านั้น');
-          return;
-        }
-      } else {
-        const otherEquippedCount = inventory.filter(item => item.category === 'equipment' && item.isEquipped && !isAryaEquipment(item)).length;
-        if (otherEquippedCount >= 20) {
-          alert('ช่องสวมใส่ไอเทมทั่วไปเต็มแล้ว (สูงสุด 20 ชิ้น)');
-          return;
-        }
-      }
+    const total = Math.max(1, Number(invItem.quantity) || 1);
+    const current = getEquippedQuantity(invItem);
+    const aryaTotal = (character.inventory || [])
+      .filter(item => isAryaEquipment(item))
+      .reduce((sum, item) => sum + getEquippedQuantity(item), 0);
+    const generalTotal = (character.inventory || [])
+      .filter(item => item.category === 'equipment' && !isAryaEquipment(item))
+      .reduce((sum, item) => sum + getEquippedQuantity(item), 0);
+    const slots = isAryaEquipment(invItem)
+      ? Math.max(0, 1 - aryaTotal + current)
+      : Math.max(0, 20 - generalTotal + current);
+    const max = Math.min(total, slots);
+    const answer = window.prompt(
+      `สวมใส่ "${invItem.name}" กี่อัน?\\nมีทั้งหมด ${total} อัน\\nปัจจุบันสวมใส่ ${current} อัน\\nเลือกได้ 0-${max} อัน`,
+      String(current)
+    );
+    if (answer === null) return;
+    const selected = Math.floor(Number(answer));
+    if (!Number.isFinite(selected) || selected < 0 || selected > max) {
+      alert(`จำนวนไม่ถูกต้อง กรุณาเลือก 0-${max} อัน`);
+      return;
     }
-    const updatedInventory = (character.inventory || []).map(item => {
-      if (item.instanceId === invItem.instanceId) {
-        return { ...item, isEquipped: isEquipping };
-      }
-      return item;
-    });
+
+    const updatedInventory = (character.inventory || []).map(item =>
+      item.instanceId === invItem.instanceId
+        ? { ...item, equippedQuantity: selected, isEquipped: selected > 0 }
+        : item
+    );
 
     let updatedChar: CharacterProfile = {
       ...character,
@@ -550,10 +571,10 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       notifications: [
         {
           id: `notif-equip-${Date.now()}`,
-          title: isEquipping ? "สวมใส่อุปกรณ์" : "ถอดอุปกรณ์",
-          message: isEquipping 
-            ? `คุณได้สวมใส่ "${invItem.name}"${invItem.hpBonus ? ` (+${invItem.hpBonus} Max HP)` : ''}` 
-            : `คุณได้ปลด "${invItem.name}" ออกจากตัว`,
+          title: selected > 0 ? "สวมใส่อุปกรณ์" : "ถอดอุปกรณ์",
+          message: selected > 0
+            ? `คุณได้สวมใส่ "${invItem.name}" จำนวน ${selected} อัน`
+            : `คุณได้ถอด "${invItem.name}" ออกทั้งหมด`,
           timestamp: Date.now(),
           read: false,
           type: "system",
@@ -562,7 +583,6 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       ],
     };
 
-    // Synchronize health so equipment HP bonus immediately takes effect
     updatedChar = syncCharacterHealth(updatedChar);
     onUpdateCharacter(updatedChar);
   };
@@ -986,8 +1006,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                 </div>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-mono">
-                <span className="px-2.5 py-1.5 rounded-xl bg-violet-950/50 border border-violet-500/30 text-violet-300">⚔️ ทั่วไป {((character.inventory || []).filter(i => i.category === 'equipment' && i.isEquipped && !isAryaEquipment(i))).length}/20</span>
-                <span className="px-2.5 py-1.5 rounded-xl bg-amber-950/50 border border-amber-500/30 text-amber-300">🗡️ Arya {((character.inventory || []).filter(i => isAryaEquipment(i) && i.isEquipped)).length}/1</span>
+                <span className="px-2.5 py-1.5 rounded-xl bg-violet-950/50 border border-violet-500/30 text-violet-300">⚔️ ทั่วไป {((character.inventory || []).filter(i => i.category === 'equipment' && !isAryaEquipment(i)).reduce((sum, i) => sum + getEquippedQuantity(i), 0)}/20</span>
+                <span className="px-2.5 py-1.5 rounded-xl bg-amber-950/50 border border-amber-500/30 text-amber-300">🗡️ Arya {((character.inventory || []).filter(i => isAryaEquipment(i)).reduce((sum, i) => sum + getEquippedQuantity(i), 0)}/1</span>
               </div>
             </div>
           </div>
@@ -1050,9 +1070,9 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                                 x{invItem.quantity}
                               </span>
                             )}
-                            {invItem.isEquipped && (
+                            {invItem.category === 'equipment' && getEquippedQuantity(invItem) > 0 && (
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.3)]">
-                                สวมใส่อยู่
+                                สวมใส่อยู่ ×{getEquippedQuantity(invItem)}
                               </span>
                             )}
                           </div>
@@ -1098,7 +1118,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                     <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
                       <span className="text-[11px] text-slate-400">
                         {invItem.category === 'equipment'
-                          ? (invItem.isEquipped ? 'ติดตั้งอยู่ · กำลังมอบพลัง' : 'ยังไม่ได้ใส่')
+                          ? (getEquippedQuantity(invItem) > 0 ? `สวมใส่ ${getEquippedQuantity(invItem)}/${Math.max(1, Number(invItem.quantity) || 1)} · กำลังมอบพลัง` : 'ยังไม่ได้ใส่')
                           : 'พร้อมใช้งาน'}
                       </span>
                       <div className="flex items-center gap-2">
@@ -1132,7 +1152,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                                 : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow shadow-cyan-900/40'
                             }`}
                           >
-                            {invItem.isEquipped ? 'ถอดออก' : 'สวมใส่'}
+                            {getEquippedQuantity(invItem) > 0 ? 'เลือกจำนวนที่สวมใส่' : 'สวมใส่'}
                           </button>
                         ) : (
                           <button
