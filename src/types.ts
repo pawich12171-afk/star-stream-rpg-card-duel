@@ -250,6 +250,8 @@ export interface GachaBanner {
   name: string;
   pullCost: number;
   tenPullCost: number;
+  /** จำนวนครั้งแบบหลายสุ่มที่ผู้เล่นเลือกได้ นอกเหนือจาก 1 และ 10 */
+  multiPullCounts?: number[];
   enabled: boolean;
   bannerTitle: string;
   bannerDescription: string;
