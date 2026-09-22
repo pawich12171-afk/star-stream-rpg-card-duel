@@ -651,6 +651,10 @@ export default function App() {
             onUpdateCharacter={handleUpdateCharacter}
             onAddShopItem={handleAddShopItem}
             onDeleteShopItem={handleDeleteShopItem}
+            marketplaceListings={marketplaceListings}
+            onCreateMarketplaceListing={(item, price) => createMarketplaceListing(currentUser.id, item, price)}
+            onCancelMarketplaceListing={(listingId) => cancelMarketplaceListing(listingId, currentUser.id)}
+            onBuyMarketplaceListing={async (listingId) => { const result = await buyMarketplaceListing(listingId, currentUser.id); if (!result.success) alert(result.message); return result.success; }}
             isAdmin={isAdminMode}
           />
         )}
