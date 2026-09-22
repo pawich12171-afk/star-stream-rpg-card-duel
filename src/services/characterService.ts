@@ -2484,11 +2484,13 @@ function getActiveAdminStatusEffects(unit: BattleCombatant): AdminStatusEffect[]
 }
 
 function getAdminOutgoingDamageMultiplier(unit: BattleCombatant): number {
+  const itemPercent = Math.min(1000, Math.max(0, Number(unit.itemDamagePercent) || 0));
+  const itemMultiplier = unit.itemDamageTurns && unit.itemDamageTurns > 0 ? 1 + itemPercent / 100 : 1;
   return getActiveAdminStatusEffects(unit).reduce((multiplier, effect) => {
     if (!['curse', 'weakness', 'slow'].includes(effect.kind)) return multiplier;
     const percent = Math.min(100, Math.max(0, Number(effect.power) || 0)) / 100;
     return multiplier * (effect.mode === 'buff' ? 1 + percent : 1 - percent);
-  }, 1);
+  }, itemMultiplier);
 }
 
 function getAdminIncomingDamageMultiplier(unit: BattleCombatant): number {
@@ -2530,6 +2532,10 @@ function tickAdminStatusEffects(unit: BattleCombatant): { message: string; skipT
 }
 
 function advanceAdminStatusEffects(unit: BattleCombatant) {
+  if (unit.itemDamageTurns && unit.itemDamageTurns > 0) {
+    unit.itemDamageTurns = Math.max(0, unit.itemDamageTurns - 1);
+    if (unit.itemDamageTurns === 0) unit.itemDamagePercent = 0;
+  }
   if (!unit.adminStatusEffects) return;
   unit.adminStatusEffects = unit.adminStatusEffects
     .map(effect => ({ ...effect, remaining: Math.max(0, effect.remaining - 1) }))
@@ -2583,7 +2589,10 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
   let maxHp = character.maxHp;
   const stats = { ...character.stats };
   if (item.effectType === 'heal_hp') {
-    hp = Math.min(maxHp, hp + Math.max(0, Number(item.effectValue) || 0));
+    const flatHeal = Math.max(0, Number(item.effectValue) || 0);
+    const percentHeal = Math.min(100, Math.max(0, Number(item.healPercent) || 0));
+    const percentAmount = Math.round(maxHp * percentHeal / 100);
+    hp = Math.min(maxHp, hp + flatHeal + percentAmount);
   } else if (item.effectType === 'buff_stat' && item.targetStat) {
     stats[item.targetStat] = (stats[item.targetStat] || 0) + Math.max(0, Number(item.effectValue) || 0);
   } else if (item.effectType === 'boost_max_hp') {
@@ -2596,14 +2605,14 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
 
   const nextRoom: BattleRoom = {
     ...room,
-    teamA: room.teamA.map(unit => unit.id === actor.id ? { ...unit, hp: Math.min(maxHp, hp), maxHp, stats } : { ...unit }),
+    teamA: room.teamA.map(unit => unit.id === actor.id ? { ...unit, hp: Math.min(maxHp, hp), maxHp, stats, itemDamagePercent: Math.min(1000, Math.max(0, Number(item.battleDamagePercent) || 0)), itemDamageTurns: Math.max(0, Math.floor(Number(item.battleDamageDuration) || 0)) } : { ...unit }),
     teamB: room.teamB.map(unit => ({ ...unit })),
     battleItemUses: currentUses + 1,
     log: [{
       id: 'battle-log-item-' + Date.now(),
       timestamp: Date.now(),
       actorName: actor.name,
-      message: `🧪 ${actor.name} ใช้ไอเทม "${item.name}" · โควตาไอเทม ${currentUses + 1}/2 ครั้งในเกมนี้`,
+      message: `🧪 ${actor.name} ใช้ไอเทม "${item.name}"${item.healPercent ? ` · ฟื้น ${item.healPercent}% Max HP` : ''}${item.battleDamagePercent ? ` · ดาเมจ +${item.battleDamagePercent}% ${item.battleDamageDuration || 0} เทิร์น` : ''} · โควตาไอเทม ${currentUses + 1}/2 ครั้งในเกมนี้`,
     }, ...(room.log || [])],
     updatedAt: Date.now(),
   };
