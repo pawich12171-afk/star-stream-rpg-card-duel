@@ -36,6 +36,7 @@ import {
 import { StatusWindow } from './components/StatusWindow';
 import { ShopInventory } from './components/ShopInventory';
 import { CardGame } from './components/CardGame';
+import { GameCenter } from './components/GameCenter';
 import { GachaSystem } from './components/GachaSystem';
 import { Leaderboard } from './components/Leaderboard';
 import { QuestNotification } from './components/QuestNotification';
@@ -66,7 +67,7 @@ import {
 import confetti from './utils/confetti';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'card_game' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin'>('status');
+  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'card_game' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin'>('status');
 
   // Real-time State
   const [characters, setCharacters] = useState<CharacterProfile[]>(() => [...INITIAL_CHARACTERS]);
@@ -517,7 +518,7 @@ export default function App() {
 
           <button
             id="nav-tab-card"
-            onClick={() => setActiveTab('card_game')}
+            onClick={() => setActiveTab('games')}
              className={`star-nav-tab px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'card_game'
                  ? 'is-active text-white shadow-lg'
@@ -525,7 +526,7 @@ export default function App() {
             }`}
           >
             <Gamepad2 className="w-4 h-4" />
-            ศึกดวลไพ่ 21 (Card Duel)
+            กิจกรรมเกม (Games)
             {waitingDuelRoomsCount > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px] animate-pulse flex items-center gap-1">
                 <Radio className="w-2.5 h-2.5" />
@@ -657,10 +658,9 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'card_game' && (
-          <CardGame
+        {activeTab === 'games' && (
+          <GameCenter
             currentUser={currentUser}
-            allCharacters={characters}
             onUpdateCharacter={handleUpdateCharacter}
           />
         )}
