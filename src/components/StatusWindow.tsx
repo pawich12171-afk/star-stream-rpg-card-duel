@@ -56,7 +56,6 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   isAdmin,
 }) => {
   const [showAddSkillModal, setShowAddSkillModal] = useState(false);
-  const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
   const [editingSkillDraft, setEditingSkillDraft] = useState<Skill | null>(null);
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillDesc, setNewSkillDesc] = useState('');
@@ -373,7 +372,6 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   };
 
   const openSkillEditor = (skill: Skill) => {
-    setEditingSkillId(skill.id);
     setEditingSkillDraft({ ...skill, battleStats: skill.battleStats ? [...skill.battleStats] : undefined, battleEffects: skill.battleEffects ? [...skill.battleEffects] : undefined, passiveEffects: skill.passiveEffects ? [...skill.passiveEffects] : undefined });
   };
 
@@ -383,7 +381,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       skill.id === editingSkillDraft.id ? { ...editingSkillDraft, name: editingSkillDraft.name.trim() || skill.name, description: editingSkillDraft.description.trim() || skill.description, battlePower: Math.max(0, Number(editingSkillDraft.battlePower) || 0), cooldownTurns: Math.max(0, Number(editingSkillDraft.cooldownTurns) || 0), battleCriticalChance: Math.max(0, Math.min(100, Number(editingSkillDraft.battleCriticalChance) || 0)), battleCriticalMultiplier: Math.max(1, Number(editingSkillDraft.battleCriticalMultiplier) || 1), repeatAttackChance: Math.max(0, Math.min(100, Number(editingSkillDraft.repeatAttackChance) || 0)), maxRepeatAttacks: Math.max(1, Math.min(20, Number(editingSkillDraft.maxRepeatAttacks) || 1)), damageScalingMultiplier: Math.max(0, Number(editingSkillDraft.damageScalingMultiplier) || 1) } : skill
     );
     const saved = await commitCharacterUpdate({ ...latestCharacterRef.current, skills: updatedSkills });
-    if (saved) { setEditingSkillId(null); setEditingSkillDraft(null); }
+    if (saved) { setEditingSkillDraft(null); }
   };
 
   const handleAddCharacteristic = () => {
@@ -955,7 +953,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
           <div className="bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-violet-500/40 rounded-3xl max-w-2xl w-full shadow-2xl my-4 max-h-[92vh] overflow-hidden">
             <div className="px-5 py-4 border-b border-violet-500/20 flex items-center justify-between">
               <div><div className="text-[10px] font-mono tracking-widest text-violet-300">SKILL EDITOR</div><h3 className="text-lg font-black text-white">✏️ แก้ไขสกิลที่สร้างไว้</h3></div>
-              <button type="button" onClick={() => { setEditingSkillId(null); setEditingSkillDraft(null); }} className="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 cursor-pointer">ปิด</button>
+              <button type="button" onClick={() => { setEditingSkillDraft(null); }} className="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 cursor-pointer">ปิด</button>
             </div>
             <div className="p-5 space-y-4 overflow-y-auto max-h-[78vh] text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -974,7 +972,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                 <label className="text-slate-400">ตัวคูณสเกล<input type="number" step="0.1" min="0" value={editingSkillDraft.damageScalingMultiplier ?? 1} onChange={e=>setEditingSkillDraft({...editingSkillDraft,damageScalingMultiplier:Number(e.target.value)})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"/></label>
                 <label className="text-slate-400">ตีซ้ำสูงสุด<input type="number" min="1" max="20" value={editingSkillDraft.maxRepeatAttacks ?? 1} onChange={e=>setEditingSkillDraft({...editingSkillDraft,maxRepeatAttacks:Number(e.target.value)})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"/></label>
               </div>
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800"><button type="button" onClick={()=>{setEditingSkillId(null);setEditingSkillDraft(null)}} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 cursor-pointer">ยกเลิก</button><button type="button" onClick={()=>void saveEditedSkill()} className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-black cursor-pointer">💾 บันทึกการแก้ไข</button></div>
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800"><button type="button" onClick={()=>{setEditingSkillDraft(null)}} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 cursor-pointer">ยกเลิก</button><button type="button" onClick={()=>void saveEditedSkill()} className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-black cursor-pointer">💾 บันทึกการแก้ไข</button></div>
             </div>
           </div>
         </div>
