@@ -32,6 +32,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   const [selectedMultiPullCount, setSelectedMultiPullCount] = useState<number>(20);
   const [detailLimit, setDetailLimit] = useState<number>(0);
   const [activeGachaRateMultiplier, setActiveGachaRateMultiplier] = useState<number>(Math.max(1, Number(character.pendingGachaRateMultiplier) || 1));
+  const [activeGachaRateMinRarity, setActiveGachaRateMinRarity] = useState<GachaReward['rarity']>(character.pendingGachaRateMinRarity || 'rare');
   const configuredBanners = Array.isArray(gachaBanners) ? gachaBanners : [];
   const availableBanners = configuredBanners.filter(b => b.enabled);
   const [selectedBannerId, setSelectedBannerId] = useState<string>(availableBanners[0]?.id || 'main');
@@ -44,6 +45,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   useEffect(() => {
     characterRef.current = character;
     setActiveGachaRateMultiplier(Math.max(1, Number(character.pendingGachaRateMultiplier) || 1));
+    setActiveGachaRateMinRarity(character.pendingGachaRateMinRarity || 'rare');
   }, [character]);
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   const multiPullCost = getPullCost(activeMultiPullCount);
 
   // Helper to pick a random reward based on rate %
-  const pickRandomReward = (rewardsList: GachaReward[], rateMultiplier = 1): GachaReward => {
+  const pickRandomReward = (rewardsList: GachaReward[], rateMultiplier = 1, minRarity: GachaReward['rarity'] = 'rare'): GachaReward => {
     if (rewardsList.length === 0) {
       return {
         id: 'fallback',
@@ -85,7 +87,9 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     }
     const totalWeight = rewardsList.reduce((sum, reward) => {
       const baseWeight = Math.max(0, Number(reward.rate) || 0);
-      return sum + baseWeight * (rateMultiplier > 1 && reward.rarity !== 'common' ? rateMultiplier : 1);
+      const rarityRank: Record<GachaReward['rarity'], number> = { common: 0, rare: 1, epic: 2, legendary: 3, mythic: 4 };
+      const boosted = rarityRank[reward.rarity] >= rarityRank[minRarity];
+      return sum + baseWeight * (rateMultiplier > 1 && boosted ? rateMultiplier : 1);
     }, 0);
     if (totalWeight <= 0) return rewardsList[rewardsList.length - 1];
     let randomNum = Math.random() * totalWeight;
@@ -94,7 +98,9 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       // Gacha boost increases the relative rate of Rare+ rewards while leaving
       // Common as the baseline. Multiplying every reward equally would not
       // actually change the probability distribution.
-      const weight = baseWeight * (rateMultiplier > 1 && reward.rarity !== 'common' ? rateMultiplier : 1);
+      const rarityRank: Record<GachaReward['rarity'], number> = { common: 0, rare: 1, epic: 2, legendary: 3, mythic: 4 };
+      const boosted = rarityRank[reward.rarity] >= rarityRank[minRarity];
+      const weight = baseWeight * (rateMultiplier > 1 && boosted ? rateMultiplier : 1);
       if (randomNum < weight) {
         return reward;
       }
@@ -130,6 +136,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       ...currentCharacter,
       inventory: currentInventory,
       pendingGachaRateMultiplier: multiplier,
+      pendingGachaRateMinRarity: invItem.gachaRateMinRarity || 'rare',
       notifications: [
         {
           id: `notif-gacha-boost-${Date.now()}`,
@@ -149,6 +156,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       if (saved === false) return;
       characterRef.current = updatedCharacter;
       setActiveGachaRateMultiplier(multiplier);
+      setActiveGachaRateMinRarity(invItem.gachaRateMinRarity || 'rare');
     } catch (error) {
       console.error('Failed to activate gacha boost:', error);
       alert('ใช้ไอเทมเพิ่มเรทกาชาไม่สำเร็จ กรุณาลองใหม่');
@@ -167,7 +175,8 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     }
     const currentCharacter = characterRef.current;
     const cost = getPullCost(count);
-    const gachaRateMultiplier = Math.max(1, Number(currentCharacter.pendingGachaRateMultiplier) || Number(activeGachaRateMultiplier) || 1);
+    const gachaRateMultiplier = Math.max(1, Math.min(1000, Number(currentCharacter.pendingGachaRateMultiplier) || Number(activeGachaRateMultiplier) || 1));
+    const gachaRateMinRarity = currentCharacter.pendingGachaRateMinRarity || activeGachaRateMinRarity || 'rare';
     if (currentCharacter.coins < cost) {
       alert(`เหรียญไม่เพียงพอ ต้องการ ${cost.toLocaleString()} C แต่คุณมี ${character.coins.toLocaleString()} C`);
       return;
@@ -189,7 +198,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       const newCharacteristicsToAdd: string[] = [];
 
       for (let i = 0; i < count; i++) {
-        const reward = pickRandomReward(activeRewards, gachaRateMultiplier);
+        const reward = pickRandomReward(activeRewards, gachaRateMultiplier, gachaRateMinRarity);
         results.push(reward);
 
         if (reward.type === 'coin' && reward.coinAmount) {
@@ -360,11 +369,13 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         characteristics: existingCharacteristics,
         notifications: updatedNotifications,
         pendingGachaRateMultiplier: undefined,
+        pendingGachaRateMinRarity: undefined,
         lastUpdated: Math.max(Date.now(), Number(currentCharacter.lastUpdated || 0) + 1),
       };
 
       characterRef.current = updatedCharacter;
       setActiveGachaRateMultiplier(1);
+      setActiveGachaRateMinRarity('rare');
       onUpdateCharacter(updatedCharacter);
 
       setPullResults(results);
@@ -468,7 +479,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
                 </div>
                 {activeGachaRateMultiplier > 1 && (
                   <div className="mt-2 inline-flex rounded-xl bg-purple-500/20 border border-purple-400/50 px-3 py-1.5 text-xs font-black text-purple-200">
-                    ✨ เปิดใช้งานอยู่: เรท Rare ขึ้นไป ×{activeGachaRateMultiplier}
+                    ✨ เปิดใช้งานอยู่: เรท {activeGachaRateMinRarity === 'common' ? 'Common' : activeGachaRateMinRarity === 'rare' ? 'Rare' : activeGachaRateMinRarity === 'epic' ? 'Epic' : activeGachaRateMinRarity === 'legendary' ? 'Legendary' : 'Mythic'} ขึ้นไป ×{activeGachaRateMultiplier}
                   </div>
                 )}
               </div>
