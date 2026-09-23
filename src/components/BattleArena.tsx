@@ -402,20 +402,33 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     }
     setUsingBattleItemId(requestedItemId);
     try {
+      // useBattleItem is the single source of truth for the bag: it reads the
+      // newest shared character, consumes the item, saves the new inventory and
+      // updates the battle room. Do NOT call persistBattleHp here afterwards,
+      // because that helper intentionally uses the parent component's older
+      // character snapshot and could race the inventory write.
       const nextRoom = await useBattleItem(room, currentUser.id, requestedItemId);
-      await persistBattleHp(nextRoom);
 
       if (nextRoom.mode === 'pve' || nextRoom.mode === 'random') {
         let botRoom = nextRoom;
-        for (let step = 0; step < 9 && botRoom.status === 'active'; step += 1) {
-          const botActor = [...botRoom.teamA, ...botRoom.teamB].find(unit => unit.id === botRoom.turnActorId);
-          if (!botActor || botActor.type !== 'bot') break;
-          await new Promise(resolve => window.setTimeout(resolve, 350));
-          const botResolved = resolveBattleTurn(botRoom, config, chooseBotSkill(botActor));
-          if (!botResolved.result && botResolved.room.turnActorId === botRoom.turnActorId && botResolved.room.status === botRoom.status) break;
-          botRoom = botResolved.room;
-          await updateBattleRoom(botRoom);
-          try { await persistBattleHp(botRoom); } catch {}
+        try {
+          for (let step = 0; step < 9 && botRoom.status === 'active'; step += 1) {
+            const botActor = [...botRoom.teamA, ...botRoom.teamB].find(unit => unit.id === botRoom.turnActorId);
+            if (!botActor || botActor.type !== 'bot') break;
+            await new Promise(resolve => window.setTimeout(resolve, 350));
+            const botResolved = resolveBattleTurn(botRoom, config, chooseBotSkill(botActor));
+            if (!botResolved.result && botResolved.room.turnActorId === botRoom.turnActorId && botResolved.room.status === botRoom.status) break;
+            botRoom = botResolved.room;
+            await updateBattleRoom(botRoom);
+            try { await persistBattleHp(botRoom); } catch (persistError) {
+              console.warn('Battle HP sync after item/bot turn failed:', persistError);
+            }
+          }
+        } catch (botError) {
+          // The item was already consumed successfully. A malformed bot turn
+          // must never make the whole battle page crash or undo the bag write.
+          console.error('Bot turn after item failed:', botError);
+          try { await updateBattleRoom(botRoom); } catch {}
         }
       }
       setSelectedBattleItemId('');
