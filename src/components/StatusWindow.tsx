@@ -1078,7 +1078,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                         <input type="number" min="0" max="100" step="0.1" value={Number(editingSkillDraft.battleStats?.find(s=>s.kind==='heal_percent')?.value ?? 0)} onChange={e=>{
                           const value=Math.max(0,Math.min(100,Number(e.target.value)||0));
                           const stats=[...(editingSkillDraft.battleStats||[])].filter(s=>s.kind!=='heal_percent');
-                          if(value>0) stats.push({kind:'heal_percent',value});
+                          if(value>0) stats.push({kind:'heal_percent',value,duration:Math.max(1,Math.min(99,Number(editingSkillDraft.battleEffectDuration)||1))});
                           setEditingSkillDraft({...editingSkillDraft,battleStats:stats});
                         }} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-white"/>
                       </label>
