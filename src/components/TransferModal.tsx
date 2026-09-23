@@ -1,3 +1,4 @@
+import { formatCoins } from '../utils/formatNumber';
 import React, { useState } from 'react';
 import { CharacterProfile } from '../types';
 import { 
@@ -46,7 +47,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
       return;
     }
     if (amount > sender.coins) {
-      alert(`เหรียญไม่เพียงพอ! คุณมี ${sender.coins.toLocaleString()} Coins แต่ระบุ ${amount.toLocaleString()} Coins`);
+      alert(`เหรียญไม่เพียงพอ! คุณมี ${formatCoins(sender.coins)} Coins แต่ระบุ ${formatCoins(amount)} Coins`);
       return;
     }
 
@@ -117,7 +118,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 <h4 className="text-xs font-black text-white truncate">{sender.displayName}</h4>
                 <div className="text-[11px] font-mono font-black text-amber-300 flex items-center gap-1 mt-0.5">
                   <Coins className="w-3 h-3 text-amber-400" />
-                  {sender.coins.toLocaleString()} C
+                  {formatCoins(sender.coins)} C
                 </div>
               </div>
             </div>
@@ -167,7 +168,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
               <option value="">-- แตะเพื่อเลือกผู้รับโอน --</option>
               {validRecipients.map(c => (
                 <option key={c.id} value={c.id}>
-                  {c.displayName} ({c.nickname || 'ผู้อวตาร'}) • {c.coins.toLocaleString()} C
+                  {c.displayName} ({c.nickname || 'ผู้อวตาร'}) • {formatCoins(c.coins)} C
                 </option>
               ))}
             </select>
@@ -178,7 +179,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-slate-300 font-bold">จำนวนเหรียญที่ต้องการโอน (Coins) *</label>
               <span className="text-[11px] font-mono text-amber-400">
-                เหลือหลังจากโอน: <strong>{Math.max(0, sender.coins - (amount || 0)).toLocaleString()} C</strong>
+                เหลือหลังจากโอน: <strong>{formatCoins(Math.max(0, sender.coins - (amount || 0)))} C</strong>
               </span>
             </div>
 
@@ -265,7 +266,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
               className="px-6 py-2.5 font-black text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 hover:from-amber-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.5)] cursor-pointer flex items-center gap-2"
             >
               <Send className="w-4 h-4 stroke-[2.5]" />
-              <span>ยืนยันการโอน {amount ? amount.toLocaleString() : 0} C</span>
+              <span>ยืนยันการโอน {amount ? formatCoins(amount) : 0} C</span>
             </button>
           </div>
         </form>
