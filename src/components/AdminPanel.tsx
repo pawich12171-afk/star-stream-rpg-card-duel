@@ -959,7 +959,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <Store className="w-4 h-4" />
           จัดการร้านค้า (เพิ่ม/ลบของ)
         </button>
-        <button onClick={() => setActiveTab('admin_items')} className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${activeTab === 'admin_items' ? 'bg-fuchsia-500 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'}`}><Package className="w-4 h-4 text-fuchsia-300" />สร้างไอเทมพิเศษ</button>
+        <button type="button" onClick={() => setActiveTab('admin_items')} className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${activeTab === 'admin_items' ? 'bg-fuchsia-500 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'}`}><Package className="w-4 h-4 text-fuchsia-300" />สร้างไอเทมพิเศษ</button>
         <button
           onClick={() => setActiveTab('inventory_spawner')}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
@@ -1608,7 +1608,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="space-y-5">
           <div className="rounded-3xl border border-fuchsia-500/30 bg-fuchsia-950/10 p-5">
             <div className="mb-4 flex items-center gap-3"><Package className="h-6 w-6 text-fuchsia-300" /><div><h3 className="text-lg font-black text-white">🎁 สร้างไอเทมพิเศษ</h3><p className="text-xs text-fuchsia-200/70">ไอเทมหมวดนี้อยู่ในระบบรางวัลเท่านั้น ไม่แสดงในร้านค้า</p></div></div>
-            <form onSubmit={handleCreateAdminOnlyItem} className="grid gap-3 sm:grid-cols-2">
+            <form onSubmit={(event) => { event.preventDefault(); void handleCreateAdminOnlyItem(event); }} className="grid gap-3 sm:grid-cols-2">
               <label className="text-xs text-slate-400">ชื่อไอเทม<input className={inputClass+' mt-1'} value={customItemName} onChange={e=>setCustomItemName(e.target.value)} placeholder="ชื่อไอเทม" /></label>
               <label className="text-xs text-slate-400">ความหายาก<select className={inputClass+' mt-1'} value={customItemRarity} onChange={e=>setCustomItemRarity(e.target.value as GachaRarity)}><option value="common">Common</option><option value="rare">Rare</option><option value="epic">Epic</option><option value="legendary">Legendary</option><option value="mythic">Mythic</option></select></label>
               <label className="text-xs text-slate-400">ประเภท<select className={inputClass+' mt-1'} value={customItemCategory} onChange={e=>setCustomItemCategory(e.target.value as 'consumable'|'equipment')}><option value="consumable">ของใช้</option><option value="equipment">อุปกรณ์</option></select></label>
