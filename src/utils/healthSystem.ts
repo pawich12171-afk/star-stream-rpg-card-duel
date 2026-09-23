@@ -53,7 +53,14 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
       if (item.targetStat === 'strength' && item.effectValue) equipStrengthBonus += item.effectValue * equippedCopies;
       if (item.targetStat === 'durability' && item.effectValue) equipDurabilityBonus += item.effectValue * equippedCopies;
     }
-    const explicitHp = item.hpBonus || 0;
+    // New admin-created equipment can grant direct stats without using buff_stat.
+    if (item.category === 'equipment') {
+      equipStrengthBonus += (Number(item.equipmentStrengthBonus) || 0) * equippedCopies;
+      equipDurabilityBonus += (Number(item.equipmentDurabilityBonus) || 0) * equippedCopies;
+    }
+    const explicitHp = (Number(item.equipmentMaxHpBonus) || 0) > 0
+      ? Number(item.equipmentMaxHpBonus) * equippedCopies
+      : (Number(item.hpBonus) || 0);
     if (explicitHp > 0) {
       equipHpBonus += explicitHp * equippedCopies;
       itemsList.push({ name: `อุปกรณ์สวมใส่: ${item.name} ×${equippedCopies} (+${explicitHp * equippedCopies} Max HP)`, bonus: explicitHp * equippedCopies, source: 'item' });
