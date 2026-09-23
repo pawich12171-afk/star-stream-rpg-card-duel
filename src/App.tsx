@@ -162,8 +162,17 @@ export default function App() {
     }
   }, [activeTab]);
 
-  // Admin Mode Toggle
-  const [isAdminMode, setIsAdminMode] = useState<boolean>(true);
+  // Admin ownership: Momi is the permanent owner. Other profiles can only use
+  // Admin Mode after Momi grants them the admin role.
+  const isMomiProfile = (character: CharacterProfile | undefined): boolean => {
+    if (!character) return false;
+    const id = String(character.id || '').trim().toLowerCase();
+    const username = String(character.username || '').trim().toLowerCase();
+    const displayName = String(character.displayName || '').trim().toLowerCase();
+    return id === 'momi' || username === 'momi' || displayName === 'โมมิ' || displayName.includes('(momi)');
+  };
+  const canUseAdminMode = isMomiProfile(currentUser) || currentUser.role === 'admin';
+  const [isAdminMode, setIsAdminMode] = useState<boolean>(() => false);
 
   // Modals
   const [isTransferOpen, setIsTransferOpen] = useState<boolean>(false);
@@ -596,25 +605,28 @@ export default function App() {
               <ChevronDown className="w-4 h-4 text-slate-400" />
             </button>
 
-            {/* Admin Mode Badge Toggle */}
-            <button
-              id="btn-toggle-admin-header"
-              onClick={() => {
-                const next = !isAdminMode;
-                setIsAdminMode(next);
-                if (next) setActiveTab('admin');
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow ${
-                isAdminMode
-                  ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.4)]'
-                  : 'bg-slate-800 hover:bg-slate-700 text-slate-400'
-              }`}
-              title="สลับโหมดผู้ดูแลระบบ (Admin Mode)"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">โหมดผู้ดูแล:</span>
-              <span>{isAdminMode ? 'ADMIN ON' : 'OFF'}</span>
-            </button>
+            {/* Admin Mode: only Momi or a profile granted admin role can see/use it. */}
+            {canUseAdminMode && (
+              <button
+                id="btn-toggle-admin-header"
+                onClick={() => {
+                  const next = !isAdminMode;
+                  setIsAdminMode(next);
+                  if (next) setActiveTab('admin');
+                  else if (activeTab === 'admin') setActiveTab('status');
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow ${
+                  isAdminMode
+                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.4)]'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-400'
+                }`}
+                title="สลับโหมดผู้ดูแลระบบ (Admin Mode)"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">โหมดผู้ดูแล:</span>
+                <span>{isAdminMode ? 'ADMIN ON' : 'OFF'}</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -798,7 +810,7 @@ export default function App() {
           <BattleArena
             currentUser={currentUser}
             allCharacters={characters}
-            isAdmin={isAdminMode || currentUser.role === 'admin'}
+            isAdmin={isAdminMode && canUseAdminMode}
           />
         )}
 
@@ -845,7 +857,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'admin' && (
+        {activeTab === 'admin' && canUseAdminMode && isAdminMode && (
           <AdminPanel
             characters={characters}
             shopItems={shopItems}
@@ -867,6 +879,10 @@ export default function App() {
             onUpdateGachaConfig={updateGachaConfigInDB}
             onDirectEditCharacter={handleUpdateCharacter}
             onDeleteCharacter={handleDeleteCharacter}
+            onToggleAdminRole={isMomiProfile(currentUser) ? (char) => {
+              if (isMomiProfile(char)) return;
+              void handleUpdateCharacter({ ...char, role: char.role === 'admin' ? 'player' : 'admin' });
+            } : undefined}
             onResetToDefaults={() => { void resetDatabaseToDefaults(); }}
           />
         )}
