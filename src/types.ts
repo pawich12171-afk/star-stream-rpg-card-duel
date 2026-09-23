@@ -387,6 +387,13 @@ export interface BattleDiceConfig {
   faces: BattleDiceFace[];
 }
 
+export interface BattleRandomReward {
+  id: string;
+  name: string;
+  coinAmount: number;
+  rate: number;
+}
+
 export interface BattleConfig {
   id: string;
   enabled: boolean;
@@ -394,6 +401,10 @@ export interface BattleConfig {
   strengthPerDamage: number;
   faces: BattleDiceFace[];
   bossDice: BattleDiceConfig;
+  /** ค่าเข้าโหมดสุ่มมอน/บอส */
+  randomBattleEntryFee?: number;
+  /** ตารางรางวัลสุ่มของโหมดสุ่มมอน/บอส */
+  randomBattleRewards?: BattleRandomReward[];
   updatedAt: number;
   victoryImageUrl?: string;
   victoryVideoUrl?: string;
@@ -486,6 +497,8 @@ export interface BattleRoom {
   winnerTeam?: 'a' | 'b' | 'draw';
   entryFeeCoins?: number;
   victoryRewardCoins?: number;
+  /** รางวัลที่สุ่มได้ตั้งแต่ตอนสร้างห้อง เพื่อให้ทุกคนเห็นผลเดียวกัน */
+  randomReward?: BattleRandomReward;
   rewardClaimedBy?: string;
   /** จำนวนครั้งที่ผู้เล่นใช้ไอเทมระหว่างการต่อสู้ครั้งนี้ */
   battleItemUses?: number;
