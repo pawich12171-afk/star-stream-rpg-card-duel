@@ -1,8 +1,22 @@
-import { StrictMode } from 'react';
+import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 
 const root = document.getElementById('root');
+
+
+class AppErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error) { console.error('Star Stream render runtime error:', error); }
+  render() {
+    if (this.state.error) {
+      showFatalError(this.state.error);
+      return null;
+    }
+    return this.props.children;
+  }
+}
 
 function showFatalError(error: unknown) {
   const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
@@ -27,7 +41,9 @@ import('./App.tsx')
     if (!root) throw new Error('ไม่พบ #root ใน index.html');
     createRoot(root).render(
       <StrictMode>
-        <App />
+        <AppErrorBoundary>
+          <App />
+        </AppErrorBoundary>
       </StrictMode>,
     );
   })
