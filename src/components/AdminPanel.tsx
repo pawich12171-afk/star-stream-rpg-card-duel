@@ -42,6 +42,7 @@ interface AdminPanelProps {
   onUpdateCharacterCoins: (characterId: string, deltaCoins: number) => void;
   onSetCharacterCoins: (characterId: string, newCoins: number) => void;
   onAddShopItem: (item: Item) => void | Promise<void>;
+  onUpdateShopItem: (item: Item) => void | Promise<void>;
   onDeleteShopItem: (itemId: string) => void;
   onUpdateGachaConfig: (config: GachaConfig) => void;
   onAddGachaReward: (reward: GachaReward) => void;
@@ -209,6 +210,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateCharacterCoins,
   onSetCharacterCoins,
   onAddShopItem,
+  onUpdateShopItem,
   onDeleteShopItem,
   onUpdateGachaConfig,
   onAddGachaReward,
@@ -268,7 +270,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [shopItemSkillTarget, setShopItemSkillTarget] = useState('');
   const [shopItemIcon, setShopItemIcon] = useState('HeartPulse');
   const [shopItemDesc, setShopItemDesc] = useState('');
-  const [shopItemAdminOnly, setShopItemAdminOnly] = useState(false);
+  const [shopItemAdminOnly, setShopItemAdminOnly] = useState(true);
+  const [shopItemInShop, setShopItemInShop] = useState(false);
+  const [shopItemRewardEligible, setShopItemRewardEligible] = useState(true);
+  const [shopItemStackable, setShopItemStackable] = useState(true);
   const [shopSearch, setShopSearch] = useState('');
 
   const [newRewardSelectedShopItemId, setNewRewardSelectedShopItemId] = useState(shopItems[0]?.id || '');
@@ -1727,11 +1732,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               e.preventDefault();
               if (!shopItemName.trim()) { alert('กรุณากรอกชื่อไอเทม'); return; }
               const existing = editingItemId ? shopItems.find(i => i.id === editingItemId) : undefined;
-              const item: Item = {...(existing || {}), id: editingItemId || `item-${Date.now()}`, name: shopItemName.trim(), price: Math.max(0, Number(shopItemPrice)||0), category: shopItemCategory, rarity: shopItemRarity, description: shopItemDesc.trim() || 'ไอเทม Star Stream', icon: shopItemIcon, effectType: shopItemEffectType, effectValue: Math.max(0, Number(shopItemEffectVal)||0), hpBonus: (shopItemEffectType==='heal_hp'||shopItemEffectType==='boost_max_hp'||shopItemCategory==='equipment') ? Math.max(0,Number(shopItemHpBonus)||0) : undefined, targetStat: shopItemEffectType==='buff_stat' ? shopItemTargetStat : undefined, skillEnhanceTarget: shopItemEffectType==='enhance_skill' ? shopItemSkillTarget : undefined, usableByPlayers:true, equipped:existing?.equipped||false, adminOnly:shopItemAdminOnly};
+              const item: Item = {...(existing || {}), id: editingItemId || `item-${Date.now()}`, name: shopItemName.trim(), price: Math.max(0, Number(shopItemPrice)||0), category: shopItemCategory, rarity: shopItemRarity, description: shopItemDesc.trim() || 'ไอเทม Star Stream', icon: shopItemIcon, effectType: shopItemEffectType, effectValue: Math.max(0, Number(shopItemEffectVal)||0), hpBonus: (shopItemEffectType==='heal_hp'||shopItemEffectType==='boost_max_hp'||shopItemCategory==='equipment') ? Math.max(0,Number(shopItemHpBonus)||0) : undefined, targetStat: shopItemEffectType==='buff_stat' ? shopItemTargetStat : undefined, skillEnhanceTarget: shopItemEffectType==='enhance_skill' ? shopItemSkillTarget : undefined, usableByPlayers:true, equipped:existing?.equipped||false, adminOnly:!shopItemInShop, inShop:shopItemInShop, rewardEligible:shopItemRewardEligible, stackable:shopItemStackable};
               try {
                 if (editingItemId) await onUpdateShopItem(item); else await onAddShopItem(item);
-                setEditingItemId(null); setShopItemName(''); setShopItemDesc(''); setShopItemAdminOnly(false);
-                alert(editingItemId ? 'แก้ไขไอเทมสำเร็จ' : 'สร้างไอเทมกลางสำเร็จ — ไม่เพิ่มเข้าร้านค้า');
+                setEditingItemId(null); setShopItemName(''); setShopItemDesc(''); setShopItemAdminOnly(true); setShopItemInShop(false); setShopItemRewardEligible(true); setShopItemStackable(true);
+                alert(editingItemId ? 'แก้ไขไอเทมสำเร็จ' : 'สร้างไอเทมกลางสำเร็จ — ยังไม่เพิ่มเข้าร้านค้า');
               } catch(error) { console.error(error); alert('บันทึกไอเทมไม่สำเร็จ'); }
             }} className="grid gap-3 sm:grid-cols-2">
               <label className="text-xs text-slate-400">ชื่อไอเทม<input className={inputClass+' mt-1'} value={shopItemName} onChange={e=>setShopItemName(e.target.value)} /></label>
@@ -1744,6 +1749,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <label className="text-xs text-slate-400">โบนัส HP<input className={inputClass+' mt-1'} type="number" value={shopItemHpBonus} onChange={e=>setShopItemHpBonus(Number(e.target.value))}/></label>
               <label className="text-xs text-slate-400">ไอคอน<select className={inputClass+' mt-1'} value={shopItemIcon} onChange={e=>setShopItemIcon(e.target.value)}>{AVAILABLE_SHOP_ICONS.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
               <label className="text-xs text-slate-400 sm:col-span-2">คำอธิบาย<textarea className={inputClass+' mt-1 min-h-20'} value={shopItemDesc} onChange={e=>setShopItemDesc(e.target.value)}/></label>
+              <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <label className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/40 p-3 text-xs text-slate-300"><input type="checkbox" checked={shopItemInShop} onChange={e=>{setShopItemInShop(e.target.checked);setShopItemAdminOnly(!e.target.checked)}} /> เพิ่มเข้าร้านค้า</label>
+                <label className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/40 p-3 text-xs text-slate-300"><input type="checkbox" checked={shopItemRewardEligible} onChange={e=>setShopItemRewardEligible(e.target.checked)} /> ใช้เป็นรางวัล</label>
+                <label className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/40 p-3 text-xs text-slate-300"><input type="checkbox" checked={shopItemStackable} onChange={e=>setShopItemStackable(e.target.checked)} /> Stack จำนวนได้</label>
+              </div>
               <div className="sm:col-span-2 rounded-xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-3 text-xs text-fuchsia-200">🔒 ไอเทมที่สร้างจาก “จัดการไอเทม” จะเป็นไอเทมกลางของระบบ และจะ <b>ไม่ถูกเพิ่มเข้าร้านค้าอัตโนมัติ</b> แต่ยังเชื่อมกับคลังผู้เล่นและระบบกาชาได้</div>
               <div className="sm:col-span-2 flex gap-2"><button type="submit" className="flex-1 rounded-xl bg-fuchsia-500 px-4 py-3 font-black text-slate-950">{editingItemId ? 'บันทึกการแก้ไขไอเทม' : '＋ สร้าง Item'}</button>{editingItemId && <button type="button" onClick={()=>{setEditingItemId(null);setShopItemName('');setShopItemDesc('');setShopItemAdminOnly(false);}} className="rounded-xl bg-slate-700 px-4 py-3 font-black text-white">ยกเลิก</button>}</div>
             </form>
@@ -1752,8 +1762,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="mb-3 flex items-center justify-between gap-3"><h4 className="text-sm font-black text-white">ไอเทมทั้งหมดในระบบ ({shopItems.length})</h4><input className={inputClass+' max-w-xs'} placeholder="ค้นหาไอเทม..." value={shopSearch} onChange={e=>setShopSearch(e.target.value)} /></div>
             <div className="grid gap-2">
               {shopItems.filter(i=>!shopSearch.trim()||i.name.toLowerCase().includes(shopSearch.toLowerCase())).map(item=><div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-3">
-                <div className="flex items-center gap-3">{renderAdminItemIcon(item.icon,item.category,item.effectType)}<div><div className="font-bold text-white">{item.name}</div><div className="text-[10px] text-slate-400">{getAdminRarityBadge(item.rarity).name} · {item.adminOnly?'ไม่แสดงในร้านค้า':'แสดงในร้านค้า'} · ราคา {item.price}</div></div></div>
-                <div className="flex gap-2"><button type="button" onClick={()=>{setEditingItemId(item.id);setShopItemName(item.name);setShopItemPrice(item.price);setShopItemCategory(item.category);setShopItemRarity(item.rarity as GachaRarity);setShopItemEffectType(item.effectType||'custom');setShopItemEffectVal(item.effectValue||0);setShopItemHpBonus(item.hpBonus||0);setShopItemTargetStat(item.targetStat||'strength');setShopItemSkillTarget(item.skillEnhanceTarget||'');setShopItemIcon(item.icon||'Package');setShopItemDesc(item.description||'');setShopItemAdminOnly(!!item.adminOnly);}} className="rounded-lg bg-cyan-950/50 px-3 py-1.5 text-xs font-black text-cyan-300">แก้ไข</button><button type="button" onClick={()=>{if(confirm(`ลบ "${item.name}" ออกจากระบบไอเทมหรือไม่?`)) onDeleteShopItem(item.id);}} className="rounded-lg bg-rose-950/40 px-3 py-1.5 text-xs font-black text-rose-300">ลบ</button></div>
+                <div className="flex items-center gap-3">{renderAdminItemIcon(item.icon,item.category,item.effectType)}<div><div className="font-bold text-white">{item.name}</div><div className="text-[10px] text-slate-400">{getAdminRarityBadge(item.rarity).name} · {item.inShop === false || item.adminOnly ? 'ไม่แสดงในร้านค้า' : 'แสดงในร้านค้า'} · {item.rewardEligible === false ? 'ไม่ใช้เป็นรางวัล' : 'ใช้เป็นรางวัล'} · Stack · ราคา {item.price}</div></div></div>
+                <div className="flex gap-2"><button type="button" onClick={()=>{setEditingItemId(item.id);setShopItemName(item.name);setShopItemPrice(item.price);setShopItemCategory(item.category);setShopItemRarity(item.rarity as GachaRarity);setShopItemEffectType(item.effectType||'custom');setShopItemEffectVal(item.effectValue||0);setShopItemHpBonus(item.hpBonus||0);setShopItemTargetStat(item.targetStat||'strength');setShopItemSkillTarget(item.skillEnhanceTarget||'');setShopItemIcon(item.icon||'Package');setShopItemDesc(item.description||'');setShopItemAdminOnly(!!item.adminOnly);setShopItemInShop(item.inShop ?? !item.adminOnly);setShopItemRewardEligible(item.rewardEligible ?? true);setShopItemStackable(item.stackable ?? true);}} className="rounded-lg bg-cyan-950/50 px-3 py-1.5 text-xs font-black text-cyan-300">แก้ไข</button><button type="button" onClick={()=>{if(confirm(`ลบ "${item.name}" ออกจากระบบไอเทมหรือไม่?`)) onDeleteShopItem(item.id);}} className="rounded-lg bg-rose-950/40 px-3 py-1.5 text-xs font-black text-rose-300">ลบ</button></div>
               </div>)}
             </div>
           </div>
@@ -1823,17 +1833,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 >
                   เลือกจากร้านค้า
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setSpawnerMode('custom')}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    spawnerMode === 'custom'
-                      ? 'bg-purple-600 text-white shadow'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  เสกไอเทมสร้างเอง
-                </button>
+
               </div>
 
               {spawnerMode === 'shop' ? (
