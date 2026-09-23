@@ -2524,6 +2524,9 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
 }
 
 export async function updateBattleRoom(room: BattleRoom): Promise<void> {
+  // A delete is authoritative. Do not allow an already queued/late battle update
+  // to recreate a room that the user has just deleted.
+  if (pendingBattleRoomDeletes.has(room.id)) return;
   const previous = localBattleRooms.find(item => item.id === room.id);
   const next = trimBattleRoom({
     ...room,
@@ -2535,9 +2538,12 @@ export async function updateBattleRoom(room: BattleRoom): Promise<void> {
   saveBattleLocal();
   notifyBattleRooms();
   try {
-    await enqueuePersistenceWrite(`battle-room:${next.id}`, () =>
-      setDoc(doc(db, BATTLE_ROOMS_COLLECTION, next.id), sanitizeForFirestore(next))
-    );
+    await enqueuePersistenceWrite(`battle-room:${next.id}`, async () => {
+      // The write may have been queued before deleteBattleRoom() was called.
+      // Re-check the tombstone immediately before touching Firestore.
+      if (pendingBattleRoomDeletes.has(next.id)) return;
+      await setDoc(doc(db, BATTLE_ROOMS_COLLECTION, next.id), sanitizeForFirestore(next));
+    });
   } catch (error) {
     pendingBattleRooms.delete(next.id);
     localBattleRooms = previous
@@ -2551,6 +2557,8 @@ export async function updateBattleRoom(room: BattleRoom): Promise<void> {
 
 export async function deleteBattleRoom(roomId: string): Promise<void> {
   const previous = localBattleRooms.find(room => room.id === roomId);
+  // Tombstone the room before changing any local state. Any queued update
+  // for the same room will now be ignored instead of recreating it.
   pendingBattleRoomDeletes.add(roomId);
   pendingBattleRooms.delete(roomId);
   localBattleRooms = localBattleRooms.filter(room => room.id !== roomId);
