@@ -1181,7 +1181,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
                 <div className="rounded-xl border border-violet-500/25 bg-violet-950/10 p-3 space-y-2">
                   <div className="text-[11px] font-black text-violet-200">🧬 ความสามารถพิเศษ + ข้อเสียของสกิล</div>
-                  <div className="text-[10px] text-slate-400">ตั้งระยะเวลาเอฟเฟกต์หลัก 1–10 เทิร์น และกำหนดข้อเสีย/Passive ที่ทำงานจริง</div>
+                  <div className="text-[10px] text-slate-400">ทุกความสามารถพิเศษเป็นตัวเลือก: ไม่เลือก/ไม่กดเพิ่ม = ไม่มีเอฟเฟกต์นั้น • ตั้งระยะเวลาเอฟเฟกต์หลัก 1–10 เทิร์น และกำหนดข้อเสีย/Passive ได้ตามต้องการ</div>
                   <div className="grid grid-cols-2 gap-2">
                     <label className="text-[10px] text-slate-400">ระยะเวลาเอฟเฟกต์
                       <input type="number" min={1} max={10} value={newSkillEffectDuration} onChange={e=>setNewSkillEffectDuration(Math.max(1,Math.min(10,Number(e.target.value)||1)))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"/>
