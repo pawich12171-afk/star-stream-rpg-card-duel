@@ -63,6 +63,24 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [editingSkillDrawbacksText, setEditingSkillDrawbacksText] = useState('[]');
   const [editingSkillEffectsText, setEditingSkillEffectsText] = useState('[]');
   const [editingSkillPassivesText, setEditingSkillPassivesText] = useState('[]');
+  const [editingSkillAdvancedMode, setEditingSkillAdvancedMode] = useState<'form' | 'json'>('form');
+  const [editDrawbackKind, setEditDrawbackKind] = useState<BattleExtraEffect['kind']>('bleeding');
+  const [editDrawbackValue, setEditDrawbackValue] = useState(10);
+  const [editDrawbackDuration, setEditDrawbackDuration] = useState(1);
+  const [editDrawbackChance, setEditDrawbackChance] = useState(100);
+  const [editEffectKind, setEditEffectKind] = useState<BattleExtraEffect['kind']>('poison');
+  const [editEffectValue, setEditEffectValue] = useState(10);
+  const [editEffectDuration, setEditEffectDuration] = useState(1);
+  const [editEffectChance, setEditEffectChance] = useState(100);
+  const [editEffectTarget, setEditEffectTarget] = useState<'self' | 'enemy'>('enemy');
+  const [editPassiveName, setEditPassiveName] = useState('Passive ของสกิล');
+  const [editPassiveKind, setEditPassiveKind] = useState<ItemPassiveEffect['kind']>('stack');
+  const [editPassiveTrigger, setEditPassiveTrigger] = useState<ItemPassiveEffect['trigger']>('turn_start');
+  const [editPassiveValue, setEditPassiveValue] = useState(1);
+  const [editPassiveMaxStacks, setEditPassiveMaxStacks] = useState(6);
+  const [editPassiveChance, setEditPassiveChance] = useState(100);
+  const [editPassiveDuration, setEditPassiveDuration] = useState(1);
+  const [editPassiveStackKey, setEditPassiveStackKey] = useState('skill');
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillDesc, setNewSkillDesc] = useState('');
   const [newSkillType, setNewSkillType] = useState('วิชาทั่วไป');
@@ -379,6 +397,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     setEditingSkillDrawbacksText(JSON.stringify(skill.battleDrawbacks || [], null, 2));
     setEditingSkillEffectsText(JSON.stringify(skill.battleEffects || [], null, 2));
     setEditingSkillPassivesText(JSON.stringify(skill.passiveEffects || [], null, 2));
+    setEditingSkillAdvancedMode('form');
   };
 
   const saveEditedSkill = async () => {
@@ -982,46 +1001,84 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
           <div className="bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-violet-500/40 rounded-3xl max-w-2xl w-full shadow-2xl my-4 max-h-[92vh] overflow-hidden">
             <div className="px-5 py-4 border-b border-violet-500/20 flex items-center justify-between">
               <div><div className="text-[10px] font-mono tracking-widest text-violet-300">SKILL EDITOR</div><h3 className="text-lg font-black text-white">✏️ แก้ไขสกิลที่สร้างไว้</h3></div>
-              <button type="button" onClick={() => { setEditingSkillDraft(null); }} className="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 cursor-pointer">ปิด</button>
+              <button type="button" onClick={() => setEditingSkillDraft(null)} className="px-3 py-2 rounded-xl bg-slate-800 text-slate-300">ปิด</button>
             </div>
             <div className="p-5 space-y-4 overflow-y-auto max-h-[78vh] text-xs">
-              <div className="rounded-xl border border-violet-500/25 bg-violet-950/10 p-3 space-y-2">
-                <div className="text-[11px] font-black text-violet-200">✨ ความสามารถพิเศษ / ระยะเวลา / ข้อเสีย — แก้ไขได้</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <label className="text-slate-400">ผลหลัก
-                    <select value={editingSkillDraft.battleEffect || 'damage'} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battleEffect:e.target.value as Skill['battleEffect']})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"><option value="damage">โจมตี</option><option value="heal">ฟื้น HP</option><option value="defense">ป้องกัน</option><option value="reflect">สะท้อน</option><option value="stun">สตัน</option><option value="copy_ability">🧬 คัดลอกความสามารถ</option><option value="immortal">♾️ อมตะ</option><option value="damage_reduction">🛡️ ลดความเสียหาย</option></select>
-                  </label>
-                  <label className="text-slate-400">ระยะเวลา (1–10 เทิร์น)
-                    <input type="number" min={1} max={10} value={editingSkillDraft.battleEffectDuration ?? 1} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battleEffectDuration:Math.max(1,Math.min(10,Number(e.target.value)||1))})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"/>
-                  </label>
-                </div>
-                <label className="text-slate-400 block">ข้อเสีย (JSON)
-                  <textarea value={editingSkillDrawbacksText} onChange={e=>setEditingSkillDrawbacksText(e.target.value)} rows={4} className="mt-1 w-full rounded-xl bg-slate-950 border border-rose-500/20 px-2 py-2 text-[10px] text-rose-100 font-mono" placeholder='[{"kind":"bleeding","value":10,"duration":2,"target":"self"}]'/>
-                </label>
-                <label className="text-slate-400 block">เอฟเฟกต์เพิ่มเติม (JSON)
-                  <textarea value={editingSkillEffectsText} onChange={e=>setEditingSkillEffectsText(e.target.value)} rows={4} className="mt-1 w-full rounded-xl bg-slate-950 border border-cyan-500/20 px-2 py-2 text-[10px] text-cyan-100 font-mono" placeholder='[{"kind":"poison","value":10,"duration":3,"chance":100,"target":"enemy"}]'/>
-                </label>
-                <label className="text-slate-400 block">Passive ของสกิล (JSON)
-                  <textarea value={editingSkillPassivesText} onChange={e=>setEditingSkillPassivesText(e.target.value)} rows={4} className="mt-1 w-full rounded-xl bg-slate-950 border border-fuchsia-500/20 px-2 py-2 text-[10px] text-fuchsia-100 font-mono" placeholder='[{"id":"p1","name":"Passive","trigger":"turn_start","kind":"stack","value":1,"maxStacks":6,"duration":1}]'/>
-                </label>
-              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="text-slate-400">ชื่อสกิล<input value={editingSkillDraft.name} onChange={e=>setEditingSkillDraft({...editingSkillDraft,name:e.target.value})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2.5 text-white font-bold"/></label>
                 <label className="text-slate-400">ประเภท<input value={editingSkillDraft.type || ''} onChange={e=>setEditingSkillDraft({...editingSkillDraft,type:e.target.value})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2.5 text-white"/></label>
               </div>
               <label className="text-slate-400 block">คำอธิบาย<textarea rows={3} value={editingSkillDraft.description} onChange={e=>setEditingSkillDraft({...editingSkillDraft,description:e.target.value})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2.5 text-white resize-none"/></label>
+              <div className="rounded-2xl border border-violet-500/25 bg-violet-950/10 p-3 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div><div className="text-[11px] font-black text-violet-200">🧩 ความสามารถพิเศษของสกิล</div><div className="text-[10px] text-slate-400">แก้แบบเลือกได้เหมือนหน้าสร้างสกิล หรือเลือก JSON เพื่อเขียนเอง</div></div>
+                  <div className="flex rounded-lg border border-slate-700 bg-slate-900 p-1">
+                    <button type="button" onClick={()=>setEditingSkillAdvancedMode('form')} className={`rounded-md px-3 py-1 text-[10px] font-black ${editingSkillAdvancedMode==='form'?'bg-violet-600 text-white':'text-slate-400'}`}>🧩 แบบเลือก</button>
+                    <button type="button" onClick={()=>setEditingSkillAdvancedMode('json')} className={`rounded-md px-3 py-1 text-[10px] font-black ${editingSkillAdvancedMode==='json'?'bg-cyan-600 text-white':'text-slate-400'}`}>{'</>'} JSON</button>
+                  </div>
+                </div>
+                <label className="text-slate-400 block">ผลหลัก
+                  <select value={editingSkillDraft.battleEffect || 'damage'} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battleEffect:e.target.value as Skill['battleEffect']})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white">
+                    <option value="damage">⚔️ โจมตี / ดาเมจ</option><option value="heal">❤️ ฟื้น HP</option><option value="defense">🛡️ ป้องกัน</option><option value="reflect">↩️ สะท้อน</option><option value="stun">💫 สตัน</option><option value="copy_ability">🧬 คัดลอกความสามารถ</option><option value="immortal">♾️ อมตะ</option><option value="damage_reduction">🛡️ ลดความเสียหาย</option>
+                  </select>
+                </label>
+                {editingSkillAdvancedMode==='form' ? (
+                  <div className="space-y-3">
+                    <div className="rounded-xl border border-rose-500/20 bg-rose-950/10 p-3 space-y-2">
+                      <div className="text-[10px] font-black text-rose-200">⚠️ ข้อเสียตอนใช้สกิล</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <select value={editDrawbackKind} onChange={e=>setEditDrawbackKind(e.target.value as BattleExtraEffect['kind'])} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"><option value="bleeding">เสียเลือด</option><option value="burn">เผาไหม้</option><option value="poison">พิษ</option><option value="stun">สตัน</option><option value="damage_percent">เพิ่มดาเมจที่ได้รับ %</option><option value="reduce_defense_percent">ลดป้องกัน %</option><option value="damage_reduction">ลดความเสียหายตัวเอง</option></select>
+                        <input type="number" min="0" value={editDrawbackValue} onChange={e=>setEditDrawbackValue(Number(e.target.value))} placeholder="ค่า" className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"/>
+                        <input type="number" min="1" max="10" value={editDrawbackDuration} onChange={e=>setEditDrawbackDuration(Number(e.target.value))} placeholder="เทิร์น" className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"/>
+                        <input type="number" min="0" max="100" value={editDrawbackChance} onChange={e=>setEditDrawbackChance(Number(e.target.value))} placeholder="โอกาส %" className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"/>
+                      </div>
+                      <button type="button" onClick={()=>{const e:BattleExtraEffect={kind:editDrawbackKind,value:Math.max(0,Number(editDrawbackValue)||0),duration:Math.max(1,Math.min(10,Math.round(Number(editDrawbackDuration)||1))),chance:Math.max(0,Math.min(100,Number(editDrawbackChance)||0)),target:'self'}; const a:BattleExtraEffect[]=JSON.parse(editingSkillDrawbacksText||'[]'); setEditingSkillDrawbacksText(JSON.stringify([...a,e],null,2));}} className="rounded-lg bg-rose-500/20 px-3 py-2 text-[10px] font-black text-rose-100">＋ เพิ่มข้อเสีย</button>
+                      <pre className="max-h-24 overflow-auto rounded-lg bg-black/20 p-2 text-[9px] text-rose-200">{editingSkillDrawbacksText}</pre>
+                    </div>
+                    <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-3 space-y-2">
+                      <div className="text-[10px] font-black text-cyan-200">✨ เอฟเฟกต์เพิ่มเติม</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                        <select value={editEffectKind} onChange={e=>setEditEffectKind(e.target.value as BattleExtraEffect['kind'])} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"><option value="bleeding">เลือดออก</option><option value="burn">เผาไหม้</option><option value="poison">พิษ</option><option value="freeze">แช่แข็ง</option><option value="stun">สตัน</option><option value="reduce_max_hp_percent">ลด Max HP %</option><option value="reduce_defense_percent">ลดป้องกัน %</option><option value="damage_percent">Damage %</option><option value="heal_percent">Heal %</option><option value="shield">Shield</option><option value="reflect">Reflect</option><option value="damage_reduction">ลดความเสียหาย</option></select>
+                        <input type="number" min="0" value={editEffectValue} onChange={e=>setEditEffectValue(Number(e.target.value))} placeholder="ค่า" className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"/>
+                        <input type="number" min="1" max="10" value={editEffectDuration} onChange={e=>setEditEffectDuration(Number(e.target.value))} placeholder="เทิร์น" className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"/>
+                        <input type="number" min="0" max="100" value={editEffectChance} onChange={e=>setEditEffectChance(Number(e.target.value))} placeholder="โอกาส %" className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"/>
+                        <select value={editEffectTarget} onChange={e=>setEditEffectTarget(e.target.value as 'self'|'enemy')} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"><option value="enemy">ศัตรู</option><option value="self">ตัวเอง</option></select>
+                      </div>
+                      <button type="button" onClick={()=>{const e:BattleExtraEffect={kind:editEffectKind,value:Math.max(0,Number(editEffectValue)||0),duration:Math.max(1,Math.min(10,Math.round(Number(editEffectDuration)||1))),chance:Math.max(0,Math.min(100,Number(editEffectChance)||0)),target:editEffectTarget}; const a:BattleExtraEffect[]=JSON.parse(editingSkillEffectsText||'[]'); setEditingSkillEffectsText(JSON.stringify([...a,e],null,2));}} className="rounded-lg bg-cyan-500/20 px-3 py-2 text-[10px] font-black text-cyan-100">＋ เพิ่มเอฟเฟกต์</button>
+                      <pre className="max-h-24 overflow-auto rounded-lg bg-black/20 p-2 text-[9px] text-cyan-200">{editingSkillEffectsText}</pre>
+                    </div>
+                    <div className="rounded-xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-3 space-y-2">
+                      <div className="text-[10px] font-black text-fuchsia-200">🌸 Passive ของสกิล</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <input value={editPassiveName} onChange={e=>setEditPassiveName(e.target.value)} placeholder="ชื่อ Passive" className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"/>
+                        <select value={editPassiveKind} onChange={e=>setEditPassiveKind(e.target.value as ItemPassiveEffect['kind'])} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"><option value="stack">🌸 สะสม Stack</option><option value="true_damage_at_max_stacks">💥 ครบ Stack → True Damage</option><option value="true_damage_per_stack">💠 True Damage ต่อ Stack</option><option value="damage">⚔️ Damage</option><option value="damage_percent">⚔️ Damage %</option><option value="heal">❤️ Heal</option><option value="heal_percent">❤️ Heal %</option><option value="buff_stat">📈 Buff Stat</option><option value="shield">🛡️ Shield</option><option value="reflect">↩️ Reflect %</option><option value="repeat_attack_chance">🔁 Repeat Attack %</option><option value="critical_chance">🎯 Critical %</option></select>
+                        <select value={editPassiveTrigger} onChange={e=>setEditPassiveTrigger(e.target.value as ItemPassiveEffect['trigger'])} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"><option value="turn_start">ทุกต้นเทิร์น</option><option value="attack">ทุกครั้งที่โจมตี</option></select>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <input type="number" min="0" step="0.1" value={editPassiveValue} onChange={e=>setEditPassiveValue(Number(e.target.value))} placeholder="ค่า" className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"/>
+                        <input type="number" min="1" value={editPassiveMaxStacks} onChange={e=>setEditPassiveMaxStacks(Number(e.target.value))} placeholder="Max Stack" className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"/>
+                        <input type="number" min="0" max="100" value={editPassiveChance} onChange={e=>setEditPassiveChance(Number(e.target.value))} placeholder="โอกาส %" className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"/>
+                        <input type="number" min="1" max="10" value={editPassiveDuration} onChange={e=>setEditPassiveDuration(Number(e.target.value))} placeholder="เทิร์น" className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"/>
+                      </div>
+                      <button type="button" onClick={()=>{const e:ItemPassiveEffect={id:`skill-passive-${Date.now()}`,name:editPassiveName.trim()||'Skill Passive',trigger:editPassiveTrigger,kind:editPassiveKind,value:Math.max(0,Number(editPassiveValue)||0),chance:Math.max(0,Math.min(100,Number(editPassiveChance)||0)),maxStacks:Math.max(1,Math.round(Number(editPassiveMaxStacks)||1)),duration:Math.max(1,Math.min(10,Math.round(Number(editPassiveDuration)||1))),stackKey:'skill'}; const a:ItemPassiveEffect[]=JSON.parse(editingSkillPassivesText||'[]'); setEditingSkillPassivesText(JSON.stringify([...a,e],null,2));}} className="rounded-lg bg-fuchsia-500/20 px-3 py-2 text-[10px] font-black text-fuchsia-100">＋ เพิ่ม Passive</button>
+                      <pre className="max-h-24 overflow-auto rounded-lg bg-black/20 p-2 text-[9px] text-fuchsia-200">{editingSkillPassivesText}</pre>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="text-rose-200 block">⚠️ ข้อเสีย (JSON)<textarea value={editingSkillDrawbacksText} onChange={e=>setEditingSkillDrawbacksText(e.target.value)} rows={5} className="mt-1 w-full rounded-xl bg-slate-950 border border-rose-500/20 px-2 py-2 text-[10px] text-rose-100 font-mono"/></label>
+                    <label className="text-cyan-200 block">✨ เอฟเฟกต์เพิ่มเติม (JSON)<textarea value={editingSkillEffectsText} onChange={e=>setEditingSkillEffectsText(e.target.value)} rows={5} className="mt-1 w-full rounded-xl bg-slate-950 border border-cyan-500/20 px-2 py-2 text-[10px] text-cyan-100 font-mono"/></label>
+                    <label className="text-fuchsia-200 block">🌸 Passive (JSON)<textarea value={editingSkillPassivesText} onChange={e=>setEditingSkillPassivesText(e.target.value)} rows={5} className="mt-1 w-full rounded-xl bg-slate-950 border border-fuchsia-500/20 px-2 py-2 text-[10px] text-fuchsia-100 font-mono"/></label>
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <label className="text-slate-400">พลัง<input type="number" value={editingSkillDraft.battlePower ?? 0} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battlePower:Number(e.target.value)})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"/></label>
+                <label className="text-slate-400">ผลหลักพลัง<input type="number" value={editingSkillDraft.battlePower ?? 0} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battlePower:Number(e.target.value)})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"/></label>
                 <label className="text-slate-400">Cooldown<input type="number" min="0" value={editingSkillDraft.cooldownTurns ?? 0} onChange={e=>setEditingSkillDraft({...editingSkillDraft,cooldownTurns:Number(e.target.value),cooldown:Number(e.target.value)>0?e.target.value+' เทิร์น':undefined})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"/></label>
                 <label className="text-slate-400">คริ %<input type="number" step="0.001" min="0" max="100" value={editingSkillDraft.battleCriticalChance ?? 0} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battleCriticalChance:Number(e.target.value)})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"/></label>
                 <label className="text-slate-400">ตีซ้ำ %<input type="number" step="0.001" min="0" max="100" value={editingSkillDraft.repeatAttackChance ?? 0} onChange={e=>setEditingSkillDraft({...editingSkillDraft,repeatAttackChance:Number(e.target.value)})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"/></label>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <label className="text-slate-400">สูตรดาเมจ<select value={editingSkillDraft.damageScaling || 'fixed'} onChange={e=>setEditingSkillDraft({...editingSkillDraft,damageScaling:e.target.value as Skill['damageScaling']})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"><option value="fixed">คงที่</option><option value="strength">ตาม STR</option><option value="durability">ตาม DUR</option><option value="agility">ตาม AGI</option><option value="magic">ตาม MAG</option></select></label>
-                <label className="text-slate-400">ตัวคูณสเกล<input type="number" step="0.1" min="0" value={editingSkillDraft.damageScalingMultiplier ?? 1} onChange={e=>setEditingSkillDraft({...editingSkillDraft,damageScalingMultiplier:Number(e.target.value)})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"/></label>
-                <label className="text-slate-400">ตีซ้ำสูงสุด<input type="number" min="1" max="20" value={editingSkillDraft.maxRepeatAttacks ?? 1} onChange={e=>setEditingSkillDraft({...editingSkillDraft,maxRepeatAttacks:Number(e.target.value)})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"/></label>
-              </div>
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800"><button type="button" onClick={()=>{setEditingSkillDraft(null)}} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 cursor-pointer">ยกเลิก</button><button type="button" onClick={()=>void saveEditedSkill()} className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-black cursor-pointer">💾 บันทึกการแก้ไข</button></div>
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800"><button type="button" onClick={()=>setEditingSkillDraft(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">ยกเลิก</button><button type="button" onClick={()=>void saveEditedSkill()} className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-black">💾 บันทึกการแก้ไข</button></div>
             </div>
           </div>
         </div>
