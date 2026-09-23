@@ -353,6 +353,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editingSkillCritMultiplier, setEditingSkillCritMultiplier] = useState(2);
   const [editingSkillRepeatChance, setEditingSkillRepeatChance] = useState(0);
   const [editingSkillMaxRepeats, setEditingSkillMaxRepeats] = useState(1);
+  const [editingSkillEffectDuration, setEditingSkillEffectDuration] = useState(1);
+  const [editingSkillDrawbacksText, setEditingSkillDrawbacksText] = useState('[]');
+  const [editingSkillEffectsText, setEditingSkillEffectsText] = useState('[]');
+  const [editingSkillPassivesText, setEditingSkillPassivesText] = useState('[]');
   const [newRewardCooldownTurns, setNewRewardCooldownTurns] = useState(0);
   const [newRewardDrawbacks, setNewRewardDrawbacks] = useState<BattleExtraEffect[]>([]);
   const [newDrawbackKind, setNewDrawbackKind] = useState<BattleExtraEffect['kind']>('bleeding');
@@ -618,12 +622,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setEditingSkillCritMultiplier(Math.max(1, Number(skill.battleCriticalMultiplier) || 1));
     setEditingSkillRepeatChance(Math.max(0, Number(skill.repeatAttackChance) || 0));
     setEditingSkillMaxRepeats(Math.max(1, Number(skill.maxRepeatAttacks) || 1));
+    setEditingSkillEffectDuration(Math.max(1, Math.min(10, Number(skill.battleEffectDuration) || 1)));
+    setEditingSkillDrawbacksText(JSON.stringify(skill.battleDrawbacks || [], null, 2));
+    setEditingSkillEffectsText(JSON.stringify(skill.battleEffects || [], null, 2));
+    setEditingSkillPassivesText(JSON.stringify(skill.passiveEffects || [], null, 2));
   };
 
   const saveEditedSkill = async () => {
     const reward = gachaRewards.find(item => item.id === editingSkillRewardId);
     if (!reward?.skillData) return;
     const oldSkill = reward.skillData;
+    let parsedDrawbacks: BattleExtraEffect[] = []; let parsedEffects: BattleExtraEffect[] = []; let parsedPassives: ItemPassiveEffect[] = [];
+    try { parsedDrawbacks = JSON.parse(editingSkillDrawbacksText || '[]'); if (!Array.isArray(parsedDrawbacks)) throw new Error(); } catch { alert('JSON ข้อเสียไม่ถูกต้อง'); return; }
+    try { parsedEffects = JSON.parse(editingSkillEffectsText || '[]'); if (!Array.isArray(parsedEffects)) throw new Error(); } catch { alert('JSON เอฟเฟกต์ไม่ถูกต้อง'); return; }
+    try { parsedPassives = JSON.parse(editingSkillPassivesText || '[]'); if (!Array.isArray(parsedPassives)) throw new Error(); } catch { alert('JSON Passive ไม่ถูกต้อง'); return; }
     const skill: Skill = {
       ...oldSkill,
       name: editingSkillName.trim() || oldSkill.name,
@@ -639,6 +651,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       battleCriticalMultiplier: Math.max(1, Number(editingSkillCritMultiplier) || 1),
       repeatAttackChance: Math.max(0, Math.min(100, Number(editingSkillRepeatChance) || 0)),
       maxRepeatAttacks: Math.max(1, Math.min(20, Number(editingSkillMaxRepeats) || 1)),
+      battleEffects: parsedEffects.length ? parsedEffects : undefined,
+      battleDrawbacks: parsedDrawbacks.length ? parsedDrawbacks : undefined,
+      passiveEffects: parsedPassives.length ? parsedPassives : undefined,
     };
     try {
       await onAddGachaReward({ ...reward, name: skill.name, description: skill.description, skillData: skill });
@@ -2607,13 +2622,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="flex items-center justify-between"><div><h3 className="text-lg font-black text-white">✏️ แก้ไขสกิลที่สร้างไว้</h3><p className="text-xs text-slate-400">แก้ไขภายหลังได้ และบันทึกลงฐานข้อมูลทันที</p></div><button type="button" onClick={() => setEditingSkillRewardId(null)} className="text-slate-400">✕</button></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <input value={editingSkillName} onChange={e => setEditingSkillName(e.target.value)} placeholder="ชื่อสกิล" className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" />
-              <select value={editingSkillEffect} onChange={e => setEditingSkillEffect(e.target.value as NonNullable<Skill['battleEffect']>)} className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white"><option value="damage">โจมตี / ดาเมจ</option><option value="heal">ฟื้นฟู HP</option><option value="defense">ป้องกัน</option><option value="reflect">สะท้อน</option><option value="stun">สตัน</option></select>
+              <select value={editingSkillEffect} onChange={e => setEditingSkillEffect(e.target.value as NonNullable<Skill['battleEffect']>)} className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white"><option value="damage">โจมตี / ดาเมจ</option><option value="heal">ฟื้นฟู HP</option><option value="defense">ป้องกัน</option><option value="reflect">สะท้อน</option><option value="stun">สตัน</option><option value="copy_ability">🧬 คัดลอกความสามารถศัตรู</option><option value="immortal">♾️ อมตะ / กัน True Damage</option><option value="damage_reduction">🛡️ ลดความเสียหาย</option></select>
               <textarea value={editingSkillDesc} onChange={e => setEditingSkillDesc(e.target.value)} placeholder="คำอธิบาย" className="sm:col-span-2 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white min-h-20" />
               <label className="text-[10px] text-slate-400">พลังสกิล<input type="number" min={1} value={editingSkillPower} onChange={e => setEditingSkillPower(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
               <label className="text-[10px] text-slate-400">คูลดาวน์<input type="number" min={0} value={editingSkillCooldown} onChange={e => setEditingSkillCooldown(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /><input type="number" min={1} max={10} value={editingSkillEffectDuration} onChange={e => setEditingSkillEffectDuration(Math.max(1, Math.min(10, Number(e.target.value)||1)))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" placeholder="ระยะเวลาเอฟเฟกต์" /></label>
               {editingSkillEffect === 'damage' && <div className="sm:col-span-2 rounded-2xl border border-amber-500/30 bg-amber-950/10 p-3"><div className="text-xs font-black text-amber-200 mb-2">⚔️ ดาเมจตามค่าสเตตัส</div><div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><select value={editingSkillScaling} onChange={e => setEditingSkillScaling(e.target.value as NonNullable<Skill['damageScaling']>)} className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white"><option value="fixed">ค่าพลังสกิลคงที่</option><option value="strength">พละกำลัง (STR)</option><option value="durability">ความแข็งแกร่ง/ทนทาน (DUR)</option><option value="agility">ความว่องไว (AGI)</option><option value="magic">พลังเวท (MAG)</option></select><input type="number" min={0} step={0.1} value={editingSkillScalingMultiplier} onChange={e => setEditingSkillScalingMultiplier(Number(e.target.value))} placeholder="ตัวคูณ" className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></div><div className="text-[10px] text-slate-500 mt-1">เช่น STR 100 × 1.5 = 150 ดาเมจ</div></div>}
               <label className="text-[10px] text-slate-400">โอกาสคริ %<input type="number" min={0} max={100} step={0.1} value={editingSkillCritChance} onChange={e => setEditingSkillCritChance(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
               <label className="text-[10px] text-slate-400">ตัวคูณคริ<input type="number" min={1} step={0.1} value={editingSkillCritMultiplier} onChange={e => setEditingSkillCritMultiplier(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
+            <div className="rounded-xl border border-violet-500/25 bg-violet-950/10 p-3 space-y-2 sm:col-span-2">
+              <div className="text-[11px] font-black text-violet-200">✨ ความสามารถพิเศษของสกิลกาชา — แก้ไขได้ครบ</div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-[10px] text-slate-400">ระยะเวลาเอฟเฟกต์ (1–10 เทิร์น)
+                  <input type="number" min={1} max={10} value={editingSkillEffectDuration} onChange={e=>setEditingSkillEffectDuration(Math.max(1,Math.min(10,Number(e.target.value)||1)))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white"/>
+                </label>
+                <div className="text-[10px] text-slate-500 pt-5">Copy / Immortal / Damage Reduction / สถานะหลัก ใช้ระยะเวลานี้</div>
+              </div>
+              <label className="text-[10px] text-rose-200 block">⚠️ ข้อเสีย (JSON) — บันทึกและทำงานจริง
+                <textarea value={editingSkillDrawbacksText} onChange={e=>setEditingSkillDrawbacksText(e.target.value)} rows={4} className="mt-1 w-full rounded-xl border border-rose-500/20 bg-slate-800 px-2 py-2 text-[10px] text-rose-100 font-mono" placeholder='[{"kind":"bleeding","value":10,"duration":2,"target":"self"}]'/>
+              </label>
+              <label className="text-[10px] text-cyan-200 block">เอฟเฟกต์เพิ่มเติม (JSON)
+                <textarea value={editingSkillEffectsText} onChange={e=>setEditingSkillEffectsText(e.target.value)} rows={4} className="mt-1 w-full rounded-xl border border-cyan-500/20 bg-slate-800 px-2 py-2 text-[10px] text-cyan-100 font-mono" placeholder='[{"kind":"poison","value":10,"duration":3,"chance":100,"target":"enemy"}]'/>
+              </label>
+              <label className="text-[10px] text-fuchsia-200 block">Passive ของสกิล (JSON)
+                <textarea value={editingSkillPassivesText} onChange={e=>setEditingSkillPassivesText(e.target.value)} rows={4} className="mt-1 w-full rounded-xl border border-fuchsia-500/20 bg-slate-800 px-2 py-2 text-[10px] text-fuchsia-100 font-mono" placeholder='[{"id":"p1","name":"Passive","trigger":"turn_start","kind":"stack","value":1,"maxStacks":6,"duration":1}]'/>
+              </label>
+            </div>
               <label className="text-[10px] text-slate-400">โอกาสตีซ้ำ %<input type="number" min={0} max={100} step={0.1} value={editingSkillRepeatChance} onChange={e => setEditingSkillRepeatChance(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
               <label className="text-[10px] text-slate-400">ตีซ้ำสูงสุด<input type="number" min={1} max={20} value={editingSkillMaxRepeats} onChange={e => setEditingSkillMaxRepeats(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
             </div>
