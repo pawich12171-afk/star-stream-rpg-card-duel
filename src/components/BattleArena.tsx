@@ -81,7 +81,20 @@ function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): Batt
 }
 
 function makeBotCombatant(bot: BattleBot, team: 'a' | 'b'): BattleCombatant {
-  return { id: `bot:${bot.id}`, sourceId: bot.id, name: bot.name, avatarUrl: bot.avatarUrl, type: 'bot', team, stats: { ...bot.stats }, hp: bot.hp, maxHp: bot.maxHp, isBoss: bot.isBoss };
+  return {
+    id: `bot:${bot.id}`,
+    sourceId: bot.id,
+    name: bot.name,
+    avatarUrl: bot.avatarUrl,
+    type: 'bot',
+    team,
+    stats: { ...bot.stats },
+    hp: bot.hp,
+    maxHp: bot.maxHp,
+    isBoss: bot.isBoss,
+    skills: (bot.skills || []).map(skill => ({ ...skill })),
+    skillCooldowns: {},
+  };
 }
 
 function healthPercent(unit: BattleCombatant) {
