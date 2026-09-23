@@ -264,6 +264,16 @@ export default function App() {
   };
   const canUseAdminMode = isMomiProfile(currentUser) || currentUser.role === 'admin';
 
+  // If the active profile is no longer allowed to use Admin Mode (for example
+  // after switching characters or having the role revoked), immediately leave
+  // the admin screen and disable the mode.
+  useEffect(() => {
+    if (!canUseAdminMode) {
+      if (isAdminMode) setIsAdminMode(false);
+      if (activeTab === 'admin') setActiveTab('status');
+    }
+  }, [canUseAdminMode, isAdminMode, activeTab]);
+
   const handleSelectCharacter = (charId: string) => {
     setCurrentUserId(charId);
     try {
@@ -887,7 +897,7 @@ export default function App() {
             onResetToDefaults={() => { void resetDatabaseToDefaults(); }}
           />
         )}
-        {activeTab === 'admin' && (
+        {activeTab === 'admin' && canUseAdminMode && isAdminMode && (
           <AdminCharacterBalancePanel
             characters={characters}
             onUpdateCharacter={handleUpdateCharacter}
