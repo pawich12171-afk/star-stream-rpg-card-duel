@@ -887,15 +887,33 @@ export async function updateCharacterData(char: CharacterProfile): Promise<void>
   // Serialize writes so rapid consecutive saves cannot finish out of order.
   try {
     await enqueueCharacterWrite(updated.id, async () => {
+      // Confirm that the shared document still exists before updating it.
+      // A character deleted by an admin/player must not be recreated by a
+      // stale Shop/Inventory/Profile client.
+      const serverSnap = await getDoc(doc(db, CHARACTERS_COLLECTION, updated.id));
+      if (!serverSnap.exists()) {
+        throw new Error('CHARACTER_DELETED');
+      }
       const cleaned = sanitizeForFirestore(updated);
-      // Character updates must never recreate a document that was deleted by
-      // another player/device. setDoc() is an upsert; updateDoc() requires the
-      // shared database row to still exist.
       await updateDoc(doc(db, CHARACTERS_COLLECTION, updated.id), cleaned);
     });
   } catch (err) {
     const pending = pendingCharacterUpdates.get(updated.id);
     if (pending && valuesMatch(pending, updated)) pendingCharacterUpdates.delete(updated.id);
+
+    // If another player/device deleted this character, accept that deletion
+    // as the authoritative shared state instead of showing a database error
+    // and restoring the stale character locally.
+    const deleted = err instanceof Error && err.message === 'CHARACTER_DELETED'
+      || String((err as any)?.message || '').includes('Document not found');
+    if (deleted) {
+      pendingCharacterDeletes.add(updated.id);
+      localCharacters = localCharacters.filter(character => character.id !== updated.id);
+      saveLocalAll();
+      broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
+      return;
+    }
+
     if (previousLocalCharacter) {
       localCharacters = localCharacters.map(character =>
         character.id === updated.id ? previousLocalCharacter : character
