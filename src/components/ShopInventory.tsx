@@ -513,6 +513,63 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   };
 
   const getInventoryKey = (item: InventoryItem, index: number) => item.instanceId || `legacy-${item.id}-${index}`;
+
+  // Use the same identity as stackInventory so deleting one copy from a stack
+  // never removes the entire stack (including legacy records that were merged).
+  const getStackIdentity = (item: InventoryItem) => [
+    String(item.name || '').trim().toLocaleLowerCase(),
+    String(item.category || ''),
+    String(item.effectType || ''),
+    String(item.targetStat || ''),
+    String(item.effectValue ?? ''),
+    String(item.hpBonus ?? ''),
+    String(item.gachaRateMultiplier ?? ''),
+    String(item.gachaRateMinRarity ?? 'rare'),
+  ].join('|');
+
+  const removeInventoryQuantityFromList = (
+    inventory: InventoryItem[],
+    sourceItem: InventoryItem,
+    requestedQuantity: number
+  ) => {
+    const quantityToRemove = Math.max(
+      1,
+      Math.min(Math.floor(Number(requestedQuantity) || 1), Math.max(1, Number(sourceItem.quantity) || 1))
+    );
+    const identity = getStackIdentity(sourceItem);
+    let remainingToRemove = quantityToRemove;
+
+    return inventory.flatMap(item => {
+      if (remainingToRemove <= 0 || getStackIdentity(item) !== identity) return [item];
+
+      const quantity = Math.max(1, Number(item.quantity) || 1);
+      const remove = Math.min(quantity, remainingToRemove);
+      const nextQuantity = quantity - remove;
+      remainingToRemove -= remove;
+
+      if (nextQuantity <= 0) return [];
+
+      if (item.category === 'equipment') {
+        const equipped = Math.max(
+          0,
+          Math.min(quantity, Number(item.equippedQuantity) || (item.isEquipped ? 1 : 0))
+        );
+        const nextEquipped = Math.min(equipped, nextQuantity);
+        return [{
+          ...item,
+          quantity: nextQuantity,
+          equippedQuantity: nextEquipped,
+          isEquipped: nextEquipped > 0,
+        }];
+      }
+
+      return [{ ...item, quantity: nextQuantity }];
+    });
+  };
+
+  const removeInventoryQuantity = (sourceItem: InventoryItem, requestedQuantity: number) =>
+    removeInventoryQuantityFromList(character.inventory || [], sourceItem, requestedQuantity);
+
   const stackedInventory = stackInventory(character.inventory || []);
   // Persist the repaired stack once so legacy duplicate records are permanently merged.
   useEffect(() => {
@@ -540,11 +597,45 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const clearInventorySelection = () => setSelectedInventoryKeys([]);
   const deleteSelectedInventory = async () => {
     if (!selectedInventoryKeys.length) return;
-    if (!confirm(`ต้องการลบไอเทมที่เลือก ${selectedInventoryKeys.length} รายการออกจากกระเป๋าใช่หรือไม่?`)) return;
-    const selected = new Set(selectedInventoryKeys);
-    const remaining = (character.inventory || []).filter((item, index) => !selected.has(getInventoryKey(item, index)));
-    try { await onUpdateCharacter({ ...character, inventory: remaining, lastUpdated: Date.now() + 1 }); clearInventorySelection(); }
-    catch (error) { console.error('Failed to delete selected inventory:', error); alert('ลบไอเทมไม่สำเร็จ กรุณาลองใหม่'); }
+    const selectedItems = stackedInventory.filter((item, index) => selectedInventoryKeys.includes(getInventoryKey(item, index)));
+    if (!selectedItems.length) {
+      clearInventorySelection();
+      return;
+    }
+
+    const quantities = new Map<string, number>();
+    for (const item of selectedItems) {
+      const total = Math.max(1, Number(item.quantity) || 1);
+      const answer = window.prompt(
+        total > 1
+          ? `ลบ "${item.name}" กี่ชิ้น? มีทั้งหมด x${total} (ใส่ 1-${total})`
+          : `ต้องการลบ "${item.name}" ออกจากกระเป๋าใช่หรือไม่? ใส่ 1 เพื่อยืนยัน`,
+        '1'
+      );
+      if (answer === null) return;
+      const quantity = Math.floor(Number(answer));
+      if (!Number.isFinite(quantity) || quantity < 1 || quantity > total) {
+        alert(`จำนวนของ "${item.name}" ไม่ถูกต้อง กรุณาใส่ 1-${total}`);
+        return;
+      }
+      quantities.set(getStackIdentity(item), quantity);
+    }
+
+    if (!confirm(`ยืนยันลบไอเทมที่เลือก ${selectedItems.length} รายการตามจำนวนที่ระบุใช่หรือไม่?`)) return;
+
+    let remaining = [...(character.inventory || [])];
+    for (const item of selectedItems) {
+      const quantity = quantities.get(getStackIdentity(item)) || 1;
+      remaining = removeInventoryQuantityFromList(remaining, item, quantity);
+    }
+
+    try {
+      await onUpdateCharacter({ ...character, inventory: remaining, lastUpdated: Date.now() + 1 });
+      clearInventorySelection();
+    } catch (error) {
+      console.error('Failed to delete selected inventory:', error);
+      alert('ลบไอเทมไม่สำเร็จ กรุณาลองใหม่');
+    }
   };
 
   // Use Item handler
@@ -1302,12 +1393,21 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                           type="button"
                           id={`btn-delete-inventory-${inventoryKey}`}
                           onClick={() => {
-                            const qty = Math.max(1, Number(invItem.quantity) || 1);
-                            const message = qty > 1 ? `ต้องการลบ ${invItem.name} ทั้งหมด x${qty} ใช่หรือไม่?` : `ต้องการลบ ${invItem.name} ออกจากกระเป๋าใช่หรือไม่?`;
-                            if (!confirm(message)) return;
-                            const remaining = (character.inventory || []).filter(item =>
-                              invItem.instanceId ? item.instanceId !== invItem.instanceId : item.id !== invItem.id
+                            const total = Math.max(1, Number(invItem.quantity) || 1);
+                            const answer = window.prompt(
+                              total > 1
+                                ? `ลบ "${invItem.name}" กี่ชิ้น? มีทั้งหมด x${total} (ใส่ 1-${total})`
+                                : `ต้องการลบ "${invItem.name}" ออกจากกระเป๋าใช่หรือไม่? ใส่ 1 เพื่อยืนยัน`,
+                              '1'
                             );
+                            if (answer === null) return;
+                            const quantity = Math.floor(Number(answer));
+                            if (!Number.isFinite(quantity) || quantity < 1 || quantity > total) {
+                              alert(`จำนวนไม่ถูกต้อง กรุณาใส่ 1-${total}`);
+                              return;
+                            }
+                            if (!confirm(`ยืนยันลบ "${invItem.name}" จำนวน x${quantity} ใช่หรือไม่?`)) return;
+                            const remaining = removeInventoryQuantity(invItem, quantity);
                             void onUpdateCharacter({ ...character, inventory: remaining, lastUpdated: Date.now() + 1 });
                           }}
                           className="p-2 rounded-xl bg-slate-800 hover:bg-rose-950/80 text-slate-500 hover:text-rose-300 border border-slate-700 hover:border-rose-700/60 cursor-pointer transition-all"
