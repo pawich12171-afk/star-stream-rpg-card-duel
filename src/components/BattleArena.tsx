@@ -405,6 +405,8 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
 
   const handleUseBattleItem = async (room: BattleRoom, item: any) => {
     if (usingBattleItemId) return;
+    // Never allow an item action from an already completed/deleted room.
+    if (!room || room.status !== 'active') return;
     const liveRoom = rooms.find(candidate => candidate.id === room.id) || room;
     const requestedItemId = String(item?.instanceId || item?.id || '').trim();
     if (!requestedItemId) {
@@ -430,16 +432,22 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
             const botResolved = resolveBattleTurn(botRoom, config, chooseBotSkill(botActor));
             if (!botResolved.result && botResolved.room.turnActorId === botRoom.turnActorId && botResolved.room.status === botRoom.status) break;
             botRoom = botResolved.room;
+            // Persist the room once per bot turn. Do NOT write every player
+            // character on every step here: that causes the characters realtime
+            // listener to rerender the whole BattleArena while the item action
+            // is still running and can freeze mobile browsers.
             await updateBattleRoom(botRoom);
-            try { await persistBattleHp(botRoom); } catch (persistError) {
-              console.warn('Battle HP sync after item/bot turn failed:', persistError);
-            }
           }
         } catch (botError) {
           // The item was already consumed successfully. A malformed bot turn
           // must never make the whole battle page crash or undo the bag write.
           console.error('Bot turn after item failed:', botError);
           try { await updateBattleRoom(botRoom); } catch {}
+        }
+        // Sync the final player HP/status once after all automatic bot turns.
+        // This avoids a write storm when a single item use advances several turns.
+        try { await persistBattleHp(botRoom); } catch (persistError) {
+          console.warn('Final Battle HP sync after item failed:', persistError);
         }
       }
       setSelectedBattleItemId('');
