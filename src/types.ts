@@ -223,6 +223,8 @@ export interface CharacterProfile {
   storySummary?: string;
   statusBuffs?: string;
   coins: number;
+  /** รูปแบบการแสดง Coins ของผู้เล่น: compact = 1K/1M, full = 1,000/1,000,000 */
+  coinDisplayMode?: 'compact' | 'full';
   hp: number;
   maxHp: number;
   stats: CharacterStats;
