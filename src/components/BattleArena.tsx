@@ -268,16 +268,25 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
         creatingRoomRef.current = false; setIsCreatingRoom(false);
         alert('ยังไม่มีมอนหรือบอสสำหรับโหมดสุ่ม'); return;
       }
-      const weighted = pool.map(bot => ({ bot, weight: Math.max(0, Number(bot.encounterChancePercent) || 0) }));
-      const totalWeight = weighted.reduce((sum, item) => sum + item.weight, 0);
-      let roll = Math.random() * (totalWeight > 0 ? totalWeight : pool.length);
-      let picked = pool[pool.length - 1];
-      if (totalWeight > 0) {
-        for (const item of weighted) { roll -= item.weight; if (roll <= 0) { picked = item.bot; break; } }
-      } else {
-        picked = pool[Math.floor(Math.random() * pool.length)];
+      // Random mode prepares exactly 3 unique enemies up front. They are
+      // fought one-by-one; the next enemy is loaded only after the current
+      // enemy is defeated, and the reward is settled only after enemy #3.
+      const remainingPool = [...pool];
+      const pickedBots: BattleBot[] = [];
+      while (pickedBots.length < Math.min(3, remainingPool.length)) {
+        const weighted = remainingPool.map(bot => ({ bot, weight: Math.max(0, Number(bot.encounterChancePercent) || 0) }));
+        const totalWeight = weighted.reduce((sum, item) => sum + item.weight, 0);
+        let picked = remainingPool[remainingPool.length - 1];
+        if (totalWeight > 0) {
+          let roll = Math.random() * totalWeight;
+          for (const item of weighted) { roll -= item.weight; if (roll <= 0) { picked = item.bot; break; } }
+        } else {
+          picked = remainingPool[Math.floor(Math.random() * remainingPool.length)];
+        }
+        pickedBots.push(picked);
+        remainingPool.splice(remainingPool.findIndex(bot => bot.id === picked.id), 1);
       }
-      enemies = [picked];
+      enemies = pickedBots;
     } else {
       enemies = otherPlayers.filter(character => character.id === selectedOpponentId);
     }
@@ -289,7 +298,8 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
     }
     const teamA = teamMembers.slice(0, 3).map(character => makePlayerCombatant(character, 'a'));
     const selectedBots = (mode === 'pve' || mode === 'random') ? enemies.slice(0, 3).map(bot => bot as BattleBot) : [];
-    const teamB = (mode === 'pve' || mode === 'random') ? selectedBots.map(bot => makeBotCombatant(bot, 'b')) : enemies.slice(0, 3).map(character => makePlayerCombatant(character as CharacterProfile, 'b'));
+    const teamB = (mode === 'pve' || mode === 'random') ? [makeBotCombatant(selectedBots[0], 'b')] : enemies.slice(0, 3).map(character => makePlayerCombatant(character as CharacterProfile, 'b'));
+    const randomBattleQueue = mode === 'random' ? selectedBots.slice(1).map(bot => makeBotCombatant(bot, 'b')) : undefined;
     const isPveBoss = selectedBots.some(bot => bot.isBoss);
     let randomReward: BattleRandomReward | undefined;
     if (mode === 'random') {
@@ -318,7 +328,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
         ]),
         { id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pve' || mode === 'random' ? `เริ่มการต่อสู้ — หักค่าเข้า ${(mode === 'random' ? randomEntryFee : BATTLE_ENTRY_FEE).toLocaleString()} Coins · รางวัลสุ่ม ${victoryReward.toLocaleString()} Coins` : 'เริ่มการต่อสู้ — Passive/TRAIT พร้อมทำงาน · เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' },
       ],
-      entryFeeCoins: mode === 'random' ? randomEntryFee : (mode === 'pve' ? BATTLE_ENTRY_FEE : 0), victoryRewardCoins: victoryReward, randomReward, createdAt: now, updatedAt: now
+      entryFeeCoins: mode === 'random' ? randomEntryFee : (mode === 'pve' ? BATTLE_ENTRY_FEE : 0), victoryRewardCoins: victoryReward, randomReward, randomBattleQueue, randomBattleStage: mode === 'random' ? 1 : undefined, createdAt: now, updatedAt: now
     };
       await (mode === 'pve' || mode === 'random' ? createBattleRoomWithEntryFee(room, currentUser.id, mode === 'random' ? randomEntryFee : BATTLE_ENTRY_FEE) : createBattleRoom(room));
       setSelectedBotIds([]);
