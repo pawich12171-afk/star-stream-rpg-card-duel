@@ -2917,9 +2917,6 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         } else {
           result.message += ` • 🧬 ${skillName} ไม่พบความสามารถให้คัดลอก`;
         }
-      } else if (skillProfile.effect === "stun") {
-        defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
-        result.message += ` • ใช้สกิล ${skillName} ทำให้ ${defender.name} ติดสตัน 1 เทิร์น`;
       }
       if (skill?.battleEffects?.length) {
         const statusChanceBonus = getSkillStat(skill, 'status_chance_percent');
@@ -3053,10 +3050,13 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         result.damage = 0;
       }
       const reductionPercent = defender.damageReductionTurns && defender.damageReductionTurns > 0 ? Math.min(100, Math.max(0, Number(defender.damageReductionPercent) || 0)) : 0;
-      const reducedBySkill = reductionPercent > 0 ? Math.max(0, Math.round(result.damage * (1 - reductionPercent / 100))) : result.damage;
-      if (reductionPercent > 0) result.message += ` • 🛡️ ลดความเสียหาย ${reductionPercent}%`;
-      result.damage = reducedBySkill;
-      const damageAfterStatus = Math.max(0, Math.round(result.damage * getAdminIncomingDamageMultiplier(defender)));
+      // Apply skill damage reduction exactly once. getAdminIncomingDamageMultiplier
+      // also knows about this state, so do not multiply it a second time here.
+      if (reductionPercent > 0) {
+        result.damage = Math.max(0, Math.round(result.damage * (1 - reductionPercent / 100)));
+        result.message += ` • 🛡️ ลดความเสียหาย ${reductionPercent}%`;
+      }
+      const damageAfterStatus = Math.max(0, Math.round(result.damage * (1 - (getAdminIncomingDamageMultiplier(defender) < 1 && reductionPercent === 0 ? 1 - getAdminIncomingDamageMultiplier(defender) : 0))));
       const statusBlocked = Math.max(0, result.damage - damageAfterStatus);
       const blocked = Math.min(damageAfterStatus, defender.defenseTurns ? (defender.defenseValue || 0) : 0);
       const finalDamage = Math.max(0, damageAfterStatus - blocked);
