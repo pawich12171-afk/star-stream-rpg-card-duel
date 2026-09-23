@@ -980,35 +980,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <Store className="w-4 h-4" />
           จัดการร้านค้า (เพิ่ม/ลบของ)
         </button>
-        <button
-          type="button"
-          data-admin-tab="admin-items"
-          aria-label="สร้างไอเทมพิเศษ"
-          onClickCapture={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setActiveTab('admin_items');
-          }}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setActiveTab('admin_items');
-          }}
-          onMouseDown={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setActiveTab('admin_items');
-          }}
-          onPointerDown={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setActiveTab('admin_items');
-          }}
-          className={`relative z-[99999] isolate px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 pointer-events-auto touch-manipulation select-none ${activeTab === 'admin_items' ? 'bg-fuchsia-500 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'}`}
-          style={{ pointerEvents: 'auto' }}
-        >
+        <button type="button" onClick={() => setActiveTab('admin_items')} className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${activeTab === 'admin_items' ? 'bg-fuchsia-500 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'}`}>
           <Package className="w-4 h-4 text-fuchsia-300" />
-          สร้างไอเทมพิเศษ
+          จัดการไอเทม
         </button>
         <button
           onClick={() => setActiveTab('inventory_spawner')}
@@ -1757,7 +1731,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               try {
                 if (editingItemId) await onUpdateShopItem(item); else await onAddShopItem(item);
                 setEditingItemId(null); setShopItemName(''); setShopItemDesc(''); setShopItemAdminOnly(false);
-                alert(editingItemId ? 'แก้ไขไอเทมสำเร็จ' : 'สร้างไอเทมสำเร็จ');
+                alert(editingItemId ? 'แก้ไขไอเทมสำเร็จ' : 'สร้างไอเทมกลางสำเร็จ — ไม่เพิ่มเข้าร้านค้า');
               } catch(error) { console.error(error); alert('บันทึกไอเทมไม่สำเร็จ'); }
             }} className="grid gap-3 sm:grid-cols-2">
               <label className="text-xs text-slate-400">ชื่อไอเทม<input className={inputClass+' mt-1'} value={shopItemName} onChange={e=>setShopItemName(e.target.value)} /></label>
@@ -1770,7 +1744,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <label className="text-xs text-slate-400">โบนัส HP<input className={inputClass+' mt-1'} type="number" value={shopItemHpBonus} onChange={e=>setShopItemHpBonus(Number(e.target.value))}/></label>
               <label className="text-xs text-slate-400">ไอคอน<select className={inputClass+' mt-1'} value={shopItemIcon} onChange={e=>setShopItemIcon(e.target.value)}>{AVAILABLE_SHOP_ICONS.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
               <label className="text-xs text-slate-400 sm:col-span-2">คำอธิบาย<textarea className={inputClass+' mt-1 min-h-20'} value={shopItemDesc} onChange={e=>setShopItemDesc(e.target.value)}/></label>
-              <label className="sm:col-span-2 flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/40 p-3 text-xs text-slate-300"><input type="checkbox" checked={!shopItemAdminOnly} onChange={e=>setShopItemAdminOnly(!e.target.checked)} /> แสดงในร้านค้า</label>
+              <div className="sm:col-span-2 rounded-xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-3 text-xs text-fuchsia-200">🔒 ไอเทมที่สร้างจาก “จัดการไอเทม” จะเป็นไอเทมกลางของระบบ และจะ <b>ไม่ถูกเพิ่มเข้าร้านค้าอัตโนมัติ</b> แต่ยังเชื่อมกับคลังผู้เล่นและระบบกาชาได้</div>
               <div className="sm:col-span-2 flex gap-2"><button type="submit" className="flex-1 rounded-xl bg-fuchsia-500 px-4 py-3 font-black text-slate-950">{editingItemId ? 'บันทึกการแก้ไขไอเทม' : '＋ สร้าง Item'}</button>{editingItemId && <button type="button" onClick={()=>{setEditingItemId(null);setShopItemName('');setShopItemDesc('');setShopItemAdminOnly(false);}} className="rounded-xl bg-slate-700 px-4 py-3 font-black text-white">ยกเลิก</button>}</div>
             </form>
           </div>
