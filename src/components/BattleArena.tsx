@@ -395,9 +395,14 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
 
   const handleUseBattleItem = async (room: BattleRoom, item: any) => {
     if (usingBattleItemId) return;
-    setUsingBattleItemId(item.instanceId);
+    const requestedItemId = String(item?.instanceId || item?.id || '').trim();
+    if (!requestedItemId) {
+      alert('ไอเทมนี้ไม่มีรหัสสำหรับใช้งาน กรุณารีเฟรชกระเป๋าแล้วลองใหม่');
+      return;
+    }
+    setUsingBattleItemId(requestedItemId);
     try {
-      const nextRoom = await useBattleItem(room, currentUser.id, item.instanceId);
+      const nextRoom = await useBattleItem(room, currentUser.id, requestedItemId);
       await persistBattleHp(nextRoom);
 
       if (nextRoom.mode === 'pve' || nextRoom.mode === 'random') {
@@ -791,14 +796,19 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
                   <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                     <select aria-label="เลือกไอเทมสำหรับใช้ระหว่างการต่อสู้" value={selectedBattleItemId} onChange={event => setSelectedBattleItemId(event.target.value)} className={inputClass + ' min-h-11'}>
                       <option value="">เลือกไอเทม...</option>
-                      {(currentUser.inventory || []).filter(item => item.quantity > 0 && item.category === 'consumable').map(item => (
-                        <option key={item.instanceId} value={item.instanceId}>
-                          {item.icon || '🧪'} {item.name} ×{item.quantity} · {getBattleItemLabel(item)}
-                        </option>
-                      ))}
+                      {(currentUser.inventory || []).filter(item => item.quantity > 0 && item.category === 'consumable').map((item, index) => {
+                        const battleItemKey = String(item.instanceId || item.id || ('legacy-' + item.id + '-' + index));
+                        return (
+                          <option key={battleItemKey} value={battleItemKey}>
+                            {item.icon || '🧪'} {item.name} ×{item.quantity} · {getBattleItemLabel(item)}
+                          </option>
+                        );
+                      })}
                     </select>
                     <button type="button" disabled={!selectedBattleItemId || usingBattleItemId !== '' || Number(room.battleItemUses || 0) >= 2} onClick={() => {
-                      const item = (currentUser.inventory || []).find(inv => inv.instanceId === selectedBattleItemId);
+                      const item = (currentUser.inventory || []).find(inv =>
+                        String(inv.instanceId || inv.id || '') === String(selectedBattleItemId)
+                      );
                       if (item && canAct) void handleUseBattleItem(room, item);
                     }} className={buttonClass + ' min-h-11 bg-emerald-500 text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40'}>
                       <Heart className="mr-1 inline h-4 w-4" />
