@@ -274,6 +274,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [shopItemInShop, setShopItemInShop] = useState(false);
   const [shopItemRewardEligible, setShopItemRewardEligible] = useState(true);
   const [shopItemStackable, setShopItemStackable] = useState(true);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [shopSearch, setShopSearch] = useState('');
 
   const [newRewardSelectedShopItemId, setNewRewardSelectedShopItemId] = useState(shopItems[0]?.id || '');
