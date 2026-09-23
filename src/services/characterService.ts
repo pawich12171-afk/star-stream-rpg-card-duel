@@ -2359,7 +2359,7 @@ export async function createBattleRoomWithEntryFee(room: BattleRoom, playerId: s
 }
 
 export async function settleBattleVictoryReward(room: BattleRoom, playerId: string): Promise<number> {
-  if (room.mode !== "pve" || room.status !== "completed" || room.winnerTeam !== "a") return 0;
+  if ((room.mode !== "pve" && room.mode !== "random") || room.status !== "completed" || room.winnerTeam !== "a") return 0;
   const reward = Math.max(0, Math.floor(Number(room.victoryRewardCoins) || 0));
   if (reward <= 0) return 0;
 
