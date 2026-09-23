@@ -1,3 +1,4 @@
+import { formatCoins } from '../utils/formatNumber';
 // Vercel build sync: force fresh main build after JSX repair.
 import React, { useEffect, useRef, useState } from 'react';
 // Build trigger: StatusWindow JSX fix is present on main.
@@ -200,7 +201,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     }
     const currentCoins = Number(base.coins) || 0;
     if (currentCoins < totalCost) {
-      alert(`เหรียญไม่เพียงพอ ต้องการ ${totalCost.toLocaleString()} Coins (คุณมี ${currentCoins.toLocaleString()} Coins)`);
+      alert(`เหรียญไม่เพียงพอ ต้องการ ${formatCoins(totalCost)} Coins (คุณมี ${formatCoins(currentCoins)} Coins)`);
       return;
     }
     const now = Date.now();
@@ -219,7 +220,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         {
           id: `notif-stat-up-${now}-${nextTimes}`,
           title: 'อัปเกรดสเตตัสทะลุขีดจำกัดสำเร็จ!',
-          message: `เพิ่มค่า ${statName} +${requestedTimes} (ปัจจุบัน Lv.${newStats[statName]}) ใช้เหรียญ ${totalCost.toLocaleString()} Coins`,
+          message: `เพิ่มค่า ${statName} +${requestedTimes} (ปัจจุบัน Lv.${newStats[statName]}) ใช้เหรียญ ${formatCoins(totalCost)} Coins`,
           timestamp: now,
           read: false,
           type: 'system',
@@ -255,7 +256,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     for (let i = 0; i < requestedTimes; i += 1) totalCost += calculateSkillUpgradeCost({ ...targetSkill, upgradeCount: startUpgradeCount + i });
     const currentCoins = Number(base.coins) || 0;
     if (currentCoins < totalCost) {
-      alert(`เหรียญไม่เพียงพอ ต้องการ ${totalCost.toLocaleString()} Coins (คุณมี ${currentCoins.toLocaleString()} Coins)`);
+      alert(`เหรียญไม่เพียงพอ ต้องการ ${formatCoins(totalCost)} Coins (คุณมี ${formatCoins(currentCoins)} Coins)`);
       return;
     }
     let finalSkill = { ...targetSkill };
@@ -274,7 +275,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       coins: currentCoins - totalCost,
       skills: (base.skills || []).map(skill => skill.id === skillId ? finalSkill : skill),
       lastUpdated: Math.max(now, Number(base.lastUpdated || 0) + 1),
-      notifications: [{ id: `notif-skill-up-${now}-${startUpgradeCount + requestedTimes}`, title: ascensionCount ? 'สกิลจุติสวรรค์ (Ascension)!' : 'อัปเกรดสกิลสำเร็จ', message: `อัปเกรด "${targetSkill.name}" +${requestedTimes} ขั้น → Lv.${finalSkill.level} • ใช้ ${totalCost.toLocaleString()} Coins${ascensionCount ? ` • จุติ ${ascensionCount} ครั้ง → x${finalSkill.multiplier}` : ''}${newHpBonus > oldHpBonus ? ` • HP +${newHpBonus - oldHpBonus}` : ''}`, timestamp: now, read: false, type: 'system' }, ...(base.notifications || [])],
+      notifications: [{ id: `notif-skill-up-${now}-${startUpgradeCount + requestedTimes}`, title: ascensionCount ? 'สกิลจุติสวรรค์ (Ascension)!' : 'อัปเกรดสกิลสำเร็จ', message: `อัปเกรด "${targetSkill.name}" +${requestedTimes} ขั้น → Lv.${finalSkill.level} • ใช้ ${formatCoins(totalCost)} Coins${ascensionCount ? ` • จุติ ${ascensionCount} ครั้ง → x${finalSkill.multiplier}` : ''}${newHpBonus > oldHpBonus ? ` • HP +${newHpBonus - oldHpBonus}` : ''}`, timestamp: now, read: false, type: 'system' }, ...(base.notifications || [])],
     };
     setIsUpgradingSkill(true);
     latestCharacterRef.current = updatedChar;
@@ -507,7 +508,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               <div className="flex items-center gap-2 mt-0.5">
                 <Coins className="w-5 h-5 text-amber-400" />
                 <span className="text-2xl font-black text-amber-300">
-                  {character.coins.toLocaleString()}
+                  {formatCoins(character.coins)}
                 </span>
                 <span className="text-xs text-amber-500/80 font-mono">C</span>
               </div>
@@ -623,11 +624,11 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               <div>
                 <span className="text-[10px] text-slate-400 block">ราคาอัปเกรด:</span>
                 <span className="text-sm font-black text-amber-300 font-mono">
-                  {currentStatUpgradeCost.toLocaleString()} Coins
+                  {formatCoins(currentStatUpgradeCost)} Coins
                 </span>
               </div>
               <div className="text-[10px] text-emerald-400 bg-emerald-950/60 px-2 py-1 rounded-lg border border-emerald-800">
-                +5% รอบถัดไป ({nextStatUpgradeCost.toLocaleString()} C)
+                +5% รอบถัดไป ({formatCoins(nextStatUpgradeCost)} C)
               </div>
             </div>
           )}
@@ -935,7 +936,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                 <div className="mt-4 pt-3 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-2">
                   <div className="text-[11px] text-slate-400 flex items-center gap-1">
                     <Coins className="w-3.5 h-3.5 text-amber-400" />
-                    <span>ราคา: <strong className="text-amber-300">{upgradePreview.cost.toLocaleString()} C</strong></span>
+                    <span>ราคา: <strong className="text-amber-300">{formatCoins(upgradePreview.cost)} C</strong></span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
