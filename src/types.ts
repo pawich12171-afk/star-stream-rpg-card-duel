@@ -412,7 +412,12 @@ export interface BattleConfig {
   victoryMessage?: string;
 }
 
-export interface BattleBotSkill extends Skill {\n  /** โอกาสที่ AI จะเลือกใช้สกิลนี้เมื่อถึงเทิร์น (%) */\n  aiChancePercent?: number;\n}\n\nexport interface BattleBot {
+export interface BattleBotSkill extends Skill {
+  /** โอกาสที่ AI จะเลือกใช้สกิลนี้เมื่อถึงเทิร์น (%) */
+  aiChancePercent?: number;
+}
+
+export interface BattleBot {
   id: string;
   name: string;
   description: string;
@@ -423,7 +428,11 @@ export interface BattleBotSkill extends Skill {\n  /** โอกาสที่ 
   stats: CharacterStats;
   hp: number;
   maxHp: number;
-  aiProfile?: 'balanced' | 'aggressive' | 'defensive';\n  /** สกิลที่แอดมินยัดให้มอน/บอส และโอกาสที่ AI จะเลือกใช้ */\n  skills?: BattleBotSkill[];\n  /** น้ำหนัก/โอกาสที่มอนหรือบอสตัวนี้จะถูกสุ่มเจอในโหมดสุ่ม (%) */\n  encounterChancePercent?: number;
+  aiProfile?: 'balanced' | 'aggressive' | 'defensive';
+  /** สกิลที่แอดมินยัดให้มอน/บอส และโอกาสที่ AI จะเลือกใช้ */
+  skills?: BattleBotSkill[];
+  /** น้ำหนัก/โอกาสที่มอนหรือบอสตัวนี้จะถูกสุ่มเจอในโหมดสุ่ม (%) */
+  encounterChancePercent?: number;
   createdAt: number;
   updatedAt: number;
 }
