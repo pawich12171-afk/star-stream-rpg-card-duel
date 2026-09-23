@@ -798,7 +798,7 @@ export default function App() {
         {activeTab === 'shop' && (
           <ShopInventory
             character={currentUser}
-            shopItems={shopItems}
+            shopItems={shopItems.filter(item => !item.adminOnly)}
             onUpdateCharacter={handleUpdateCharacter}
             onAddShopItem={handleAddShopItem}
             onDeleteShopItem={handleDeleteShopItem}
