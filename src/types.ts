@@ -122,6 +122,12 @@ export interface Item {
   passiveEffects?: ItemPassiveEffect[];
   /** ไอเทมนี้สร้างโดย Admin สำหรับรางวัล/กาชาเท่านั้น ไม่แสดงในร้านค้า */
   adminOnly?: boolean;
+  /** ไอเทมชนิดนี้รวมจำนวนในช่องเดียวกันได้ */
+  stackable?: boolean;
+  /** อนุญาตให้นำไอเทมนี้ไปใช้เป็นรางวัลแบบกำหนดเอง */
+  rewardEligible?: boolean;
+  /** สถานะการนำไอเทมกลางเข้า Shop */
+  inShop?: boolean;
 }
 
 export interface InventoryItem extends Item {
