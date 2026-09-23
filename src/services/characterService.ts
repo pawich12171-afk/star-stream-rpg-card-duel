@@ -2869,7 +2869,14 @@ export function rollBattleAttack(attacker: BattleCombatant, defender: BattleComb
   return { roll, face, damage, heal, message };
 }
 
+const battleItemLocks = new Set<string>();
+
 export async function useBattleItem(room: BattleRoom, playerId: string, itemInstanceId: string): Promise<BattleRoom> {
+  const lockKey = String(room?.id || '') + ':' + String(playerId || '');
+  if (!lockKey || lockKey === ':') throw new Error('ข้อมูลการใช้ไอเทมไม่ครบ');
+  if (battleItemLocks.has(lockKey)) throw new Error('กำลังประมวลผลการใช้ไอเทมอยู่');
+  battleItemLocks.add(lockKey);
+  try {
   if (room.status !== 'active') throw new Error('การต่อสู้จบแล้ว');
 
   // Normalize the room first. Rooms created by an older build can contain
@@ -3018,6 +3025,9 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
 
   await updateBattleRoom(nextRoom);
   return nextRoom;
+  } finally {
+    battleItemLocks.delete(lockKey);
+  }
 }
 function getBattleCombatants(room: BattleRoom): BattleCombatant[] {
   return [...room.teamA, ...room.teamB];
