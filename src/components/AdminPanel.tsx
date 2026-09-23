@@ -245,7 +245,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [spawnerTargetCharId, setSpawnerTargetCharId] = useState<string>(characters[0]?.id || '');
   const [selectedShopItemToSpawnId, setSelectedShopItemToSpawnId] = useState<string>(shopItems[0]?.id || '');
   const [spawnQuantity, setSpawnQuantity] = useState<number>(1);
-  const [spawnerMode, setSpawnerMode] = useState<'shop'>('shop');
+  const [spawnerMode, setSpawnerMode] = useState<'shop' | 'custom'>('shop');
+
+  // Custom Item Spawner Form
+  const [customItemName, setCustomItemName] = useState('');
+  const [customItemCategory, setCustomItemCategory] = useState<'consumable' | 'equipment'>('equipment');
+  const [customItemRarity, setCustomItemRarity] = useState<GachaRarity>('rare');
+  const [customItemPrice, setCustomItemPrice] = useState(1000);
+  const [customItemEffectType, setCustomItemEffectType] = useState<'heal_hp' | 'boost_max_hp' | 'buff_stat' | 'enhance_skill' | 'custom'>('buff_stat');
+  const [customItemEffectVal, setCustomItemEffectVal] = useState(15);
+  const [customItemHpBonus, setCustomItemHpBonus] = useState(15);
+  const [customItemTargetStat, setCustomItemTargetStat] = useState<'strength' | 'durability' | 'agility' | 'magic'>('strength');
+  const [customItemDesc, setCustomItemDesc] = useState('');
 
   // New Shop Item Form
   const [shopItemName, setShopItemName] = useState('');
@@ -467,7 +478,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       skillEnhanceTarget: shopItemEffectType === 'enhance_skill' ? shopItemSkillTarget : undefined,
       usableByPlayers: true,
       equipped: false,
-      adminOnly: shopItemAdminOnly,
+      adminOnly: !shopItemInShop,
+      inShop: shopItemInShop,
+      rewardEligible: shopItemRewardEligible,
+      stackable: shopItemStackable,
     };
 
     try {
@@ -499,7 +513,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         return;
       }
       itemToGrant = found;
-
+    }
 
     if (onGrantItem) {
       const res = await onGrantItem(spawnerTargetChar.id, itemToGrant, spawnQuantity);
@@ -518,11 +532,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         inventory: currentInv,
       }));
       alert(`เสกไอเทม "${itemToGrant.name}" (x${spawnQuantity}) ให้ผู้เล่น ${spawnerTargetChar.displayName} เรียบร้อยแล้ว!`);
-    }
-
-    if (spawnerMode === 'custom') {
-      setCustomItemName('');
-      setCustomItemDesc('');
     }
   };
 
