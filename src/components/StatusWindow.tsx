@@ -426,7 +426,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               title="คลิกเพื่อตกแต่งและเปลี่ยนรูปโปรไฟล์"
             >
               <img
-                src={character.avatarUrl}
+                src={character.avatarUrl || (character.id === 'yeon-chaewon' ? '/avatars/chaewon.svg' : '/avatars/system.svg')}
                 alt={character.displayName}
                 className="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-cover border-2 border-cyan-400/60 group-hover:border-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all"
               />
