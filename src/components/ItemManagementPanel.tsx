@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Item, GachaRarity, ItemPassiveEffect } from '../types';
-import { Package, Search, Store, Gift, Layers, Edit3, Trash2, Save, X, UploadCloud } from 'lucide-react';
+import { Package, Search, Store, Gift, Layers, Edit3, Trash2, Save, X, UploadCloud, Eye } from 'lucide-react';
 
 interface ItemManagementPanelProps {
   shopItems: Item[];
@@ -10,6 +10,36 @@ interface ItemManagementPanelProps {
 }
 
 const icons = ['HeartPulse','Heart','Flame','Flower2','Droplets','Shield','Sword','Sparkles','Gem','Zap','Scroll','Crown','Package'];
+const getItemEffectSummary = (item: Partial<Item>) => {
+  switch (item.effectType) {
+    case 'heal_hp': return item.healPercent ? 'ฟื้น HP ' + item.healPercent + '% + ' + (item.effectValue || 0) + ' HP' : 'ฟื้น HP +' + (item.effectValue || 0);
+    case 'boost_max_hp': return 'เพิ่ม Max HP +' + (item.hpBonus || item.effectValue || 0);
+    case 'buff_stat': return 'เพิ่ม ' + String(item.targetStat || 'STR').toUpperCase() + ' +' + (item.effectValue || 0);
+    case 'enhance_skill': return 'เสริมสกิล ' + (item.skillEnhanceTarget || 'ที่กำหนด');
+    default: return 'เอฟเฟกต์กำหนดเอง';
+  }
+};
+const getItemExtraDetails = (item: Partial<Item>) => {
+  const d: string[] = [];
+  if (item.battleDamagePercent) d.push('ดาเมจ +' + item.battleDamagePercent + '%');
+  if (item.battleCriticalChancePercent) d.push('คริติคอล +' + item.battleCriticalChancePercent + '%');
+  if (item.battleRepeatAttackChancePercent) d.push('ตีซ้ำ +' + item.battleRepeatAttackChancePercent + '%');
+  if (item.battleLuckMultiplier) d.push('โชค x' + item.battleLuckMultiplier);
+  if (item.gachaRateMultiplier) d.push('กาชา x' + item.gachaRateMultiplier);
+  if (item.revivePercent) d.push('ชุบชีวิต ' + item.revivePercent + '%');
+  if (item.reviveAlly) d.push('ชุบเพื่อนได้');
+  if (item.cleanseNegative) d.push('ล้างสถานะผิดปกติ');
+  if (item.shieldPercent) d.push('โล่ ' + item.shieldPercent + '%');
+  if (item.damageReductionPercent) d.push('ลดความเสียหาย ' + item.damageReductionPercent + '%');
+  if (item.dodgeChancePercent) d.push('หลบหลีก ' + item.dodgeChancePercent + '%');
+  if (item.lifestealPercent) d.push('ดูดเลือด ' + item.lifestealPercent + '%');
+  if (item.cooldownReductionPercent) d.push('ลดคูลดาวน์ ' + item.cooldownReductionPercent + '%');
+  if (item.statusImmunityDuration) d.push('ต้านสถานะ ' + item.statusImmunityDuration + ' เทิร์น');
+  if (item.stunDuration) d.push('ชะงัก ' + item.stunDuration + ' เทิร์น');
+  if (item.passiveEffects?.length) d.push('Passive ' + item.passiveEffects.length + ' อัน');
+  return d;
+};
+
 
 export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   shopItems, onAddItem, onUpdateItem, onDeleteItem
@@ -206,7 +236,37 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
             </div>
             <button className="w-full rounded-xl bg-fuchsia-500 hover:bg-fuchsia-400 text-slate-950 font-black py-3 flex justify-center gap-2 items-center"><Save className="w-4 h-4"/>{editingId ? 'บันทึกการแก้ไข' : 'สร้างไอเทม'}</button>
           </form>
-          <div className="lg:col-span-2 bg-gradient-to-b from-slate-900/90 to-slate-950/80 border border-slate-700/70 rounded-3xl p-5 shadow-2xl shadow-black/20">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="rounded-3xl border border-cyan-500/20 bg-gradient-to-b from-slate-900/95 to-slate-950/90 p-5 shadow-2xl">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-sm font-black text-white"><Eye className="w-4 h-4 text-cyan-300"/> พรีวิวหน้าตาสินค้า</div>
+                <span className="text-[10px] font-bold text-emerald-300">LIVE PREVIEW</span>
+              </div>
+              <div className="rounded-2xl border border-cyan-500/20 bg-slate-900/80 p-4">
+                <div className="flex gap-3 items-start">
+                  <div className="w-20 h-20 rounded-2xl bg-slate-950 border border-slate-700 overflow-hidden flex items-center justify-center shrink-0">
+                    {iconPreview ? <img src={iconPreview} alt="ตัวอย่างรูปไอเทม" className="w-full h-full object-cover"/> : <Package className="w-8 h-8 text-slate-500"/>}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap gap-1.5 mb-1">
+                      <span className="px-2 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-[9px] text-cyan-300">{rarity}</span>
+                      <span className="px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[9px] text-emerald-300">{category === 'equipment' ? 'อุปกรณ์' : 'ไอเทมใช้งาน'}</span>
+                    </div>
+                    <h3 className="text-lg font-black text-white break-words">{name || 'ชื่อไอเทมตัวอย่าง'}</h3>
+                  </div>
+                </div>
+                <p className="mt-4 text-sm text-slate-300 leading-relaxed">{description || 'คำอธิบายไอเทมจะแสดงตรงนี้...'}</p>
+                <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+                  <div className="text-sm font-black text-emerald-300">{getItemEffectSummary({effectType,effectValue,healPercent,hpBonus,targetStat,skillEnhanceTarget:skillTarget})}</div>
+                  {getItemExtraDetails({battleDamagePercent,battleCriticalChancePercent,battleRepeatAttackChancePercent,battleLuckMultiplier,gachaRateMultiplier,revivePercent,reviveAlly,cleanseNegative,shieldPercent,damageReductionPercent,dodgeChancePercent,lifestealPercent,cooldownReductionPercent,statusImmunityDuration,stunDuration,passiveEffects}).length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{getItemExtraDetails({battleDamagePercent,battleCriticalChancePercent,battleRepeatAttackChancePercent,battleLuckMultiplier,gachaRateMultiplier,revivePercent,reviveAlly,cleanseNegative,shieldPercent,damageReductionPercent,dodgeChancePercent,lifestealPercent,cooldownReductionPercent,statusImmunityDuration,stunDuration,passiveEffects}).map((d,i)=><span key={i} className="text-[10px] px-2 py-1 rounded-full bg-slate-950 border border-slate-700 text-slate-300">{d}</span>)}</div>}
+                </div>
+                <div className="mt-4 flex items-center justify-between border-t border-slate-800 pt-4">
+                  <div className="text-xl font-black text-amber-300">{Number(price || 0).toLocaleString()} <span className="text-xs text-slate-400">Coins</span></div>
+                  <div className="rounded-xl bg-cyan-500/80 px-4 py-2 text-sm font-black text-slate-950">ซื้อไอเทม</div>
+                </div>
+              </div>
+            </div>
+          <div className="bg-gradient-to-b from-slate-900/90 to-slate-950/80 border border-slate-700/70 rounded-3xl p-5 shadow-2xl shadow-black/20">
             <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
               <div><div className="text-lg font-black text-white">คลังไอเทมทั้งหมด</div><div className="text-[11px] text-slate-500">จัดการไอเทมกลางของเว็บไซต์</div></div>
               <div className="flex-1 flex items-center gap-2 rounded-xl bg-slate-900 border border-slate-700 px-3"><Search className="w-4 h-4 text-slate-500"/><input className="flex-1 bg-transparent outline-none p-2.5 text-sm text-white" placeholder="ค้นหาชื่อหรือ ID..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
