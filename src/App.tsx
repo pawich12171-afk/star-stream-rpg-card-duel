@@ -183,14 +183,16 @@ export default function App() {
     }
   }, [activeTab]);
 
-  useEffect(() => {
-    try { localStorage.setItem('starstream_admin_mode', String(isAdminMode)); } catch {}
-  }, [isAdminMode]);
-
-  // Admin Mode is declared below currentUser so permission checks never access it before initialization.
+  // Admin mode state must be initialized before any hook/dependency reads it.
+  // Reading a const from a dependency array before its declaration causes a
+  // production runtime TDZ error: "Cannot access 'isAdminMode' before initialization".
   const [isAdminMode, setIsAdminMode] = useState<boolean>(() => {
     try { return localStorage.getItem('starstream_admin_mode') === 'true'; } catch { return false; }
   });
+
+  useEffect(() => {
+    try { localStorage.setItem('starstream_admin_mode', String(isAdminMode)); } catch {}
+  }, [isAdminMode]);
 
   // Modals
   const [isTransferOpen, setIsTransferOpen] = useState<boolean>(false);
