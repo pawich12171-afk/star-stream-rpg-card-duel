@@ -2371,6 +2371,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <input type="number" min={1} value={newRewardBattlePower} onChange={(e) => setNewRewardBattlePower(Number(e.target.value))} placeholder="พลังผลลัพธ์" className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white outline-none" />
                       <input type="number" min={0} max={99} value={newRewardCooldownTurns} onChange={(e) => setNewRewardCooldownTurns(Number(e.target.value))} placeholder="คูลดาวน์ (เทิร์น)" className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white outline-none" /><input type="number" min={1} max={10} value={newRewardEffectDuration} onChange={(e) => setNewRewardEffectDuration(Number(e.target.value))} placeholder="ระยะเวลาเอฟเฟกต์ (เทิร์น)" className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white outline-none" />
                     </div>
+                    <div className="rounded-lg border border-violet-500/30 bg-violet-950/20 p-3">
+                      <div className="mb-2 text-[11px] font-black text-violet-200">✨ ความสามารถพิเศษของสกิลกาชา</div>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="rounded-lg border border-violet-500/20 bg-black/20 p-2 text-[10px] text-slate-300">
+                          <b className="text-white">🧬 คัดลอกความสามารถศัตรู</b>
+                          <div className="mt-1">เลือกประเภทด้านบนเป็น “คัดลอกความสามารถศัตรู” แล้วกำหนดระยะเวลา 1–10 เทิร์น ระบบจะคัดลอกสกิล/Passive ของศัตรูที่พบในสนามรบและลบเมื่อครบเวลา</div>
+                        </div>
+                        <div className="rounded-lg border border-violet-500/20 bg-black/20 p-2 text-[10px] text-slate-300">
+                          <b className="text-white">♾️ อมตะ</b>
+                          <div className="mt-1">เลือก “อมตะ” แล้วกำหนดระยะเวลา 1–10 เทิร์น ระบบจะกันดาเมจรวมถึง True Damage ตามระยะเวลาที่ตั้ง</div>
+                        </div>
+                        <div className="rounded-lg border border-violet-500/20 bg-black/20 p-2 text-[10px] text-slate-300">
+                          <b className="text-white">🛡️ ลดความเสียหาย</b>
+                          <div className="mt-1">เลือก “ลดความเสียหาย” ค่า “พลังผลลัพธ์” = เปอร์เซ็นต์ลดดาเมจ และช่อง “ระยะเวลา” = จำนวนเทิร์น</div>
+                        </div>
+                        <div className="rounded-lg border border-rose-500/20 bg-rose-950/20 p-2 text-[10px] text-slate-300">
+                          <b className="text-rose-200">⚠️ ข้อเสียของสกิล</b>
+                          <div className="mt-1">ด้านล่างสามารถเพิ่มข้อเสียได้หลายรายการ เช่น เลือดไหล/พิษ/เผาไหม้/สตันตัวเอง/ลดป้องกัน พร้อมค่าและระยะเวลา และมีผลจริงตอนใช้สกิล</div>
+                        </div>
+                      </div>
+                    </div>
+
                     {newRewardBattleEffect === 'damage' && (
                       <div className="rounded-lg border border-amber-500/20 bg-amber-950/10 p-2">
                         <div className="text-[10px] font-black text-amber-200 mb-2">⚔️ สูตรคำนวณดาเมจ</div>
