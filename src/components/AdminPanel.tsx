@@ -225,7 +225,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onAssignQuest,
   onReviewQuestProof,
 }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'shop' | 'inventory_spawner' | 'gacha_manage' | 'quests'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'shop' | 'admin_items' | 'inventory_spawner' | 'gacha_manage' | 'quests'>('users');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCharId, setSelectedCharId] = useState<string>(characters[0]?.id || '');
   const [coinInput, setCoinInput] = useState<number>(5000);
@@ -472,6 +472,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setShopItemDesc('');
     setShopItemAdminOnly(false);
     alert(shopItemAdminOnly ? `สร้างไอเทมรางวัล "${newItem.name}" สำเร็จแล้ว! ไอเทมนี้จะไม่แสดงในร้านค้า` : `เพิ่มไอเทม "${newItem.name}" ลงร้านค้าสำเร็จแล้ว!`);
+  };
+
+  const handleCreateAdminOnlyItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customItemName.trim()) { alert('กรุณากรอกชื่อไอเทม'); return; }
+    const item: Item = {
+      id: 'admin-item-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+      name: customItemName.trim(), price: Math.max(0, Number(customItemPrice) || 0), category: customItemCategory,
+      rarity: customItemRarity, description: customItemDesc.trim() || 'ไอเทมพิเศษจากผู้ดูแลระบบ',
+      icon: customItemCategory === 'consumable' ? (customItemEffectType === 'heal_hp' ? 'HeartPulse' : 'Heart') : 'Shield',
+      effectType: customItemEffectType, effectValue: Math.max(0, Number(customItemEffectVal) || 0),
+      hpBonus: (customItemEffectType === 'heal_hp' || customItemEffectType === 'boost_max_hp' || customItemCategory === 'equipment') ? Math.max(0, Number(customItemHpBonus) || 0) : undefined,
+      targetStat: customItemEffectType === 'buff_stat' ? customItemTargetStat : undefined,
+      usableByPlayers: true, equipped: false, adminOnly: true,
+    };
+    try { await onAddShopItem(item); setCustomItemName(''); setCustomItemDesc(''); alert('สร้างไอเทมพิเศษแล้ว — ไม่แสดงในร้านค้า และนำไปใช้เป็นรางวัลกาชา/โหมดสุ่มได้'); }
+    catch (error) { console.error(error); alert('สร้างไอเทมไม่สำเร็จ'); }
   };
 
   // Grant Item Handler
@@ -942,6 +959,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <Store className="w-4 h-4" />
           จัดการร้านค้า (เพิ่ม/ลบของ)
         </button>
+        <button onClick={() => setActiveTab('admin_items')} className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${activeTab === 'admin_items' ? 'bg-fuchsia-500 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'}`}><Package className="w-4 h-4 text-fuchsia-300" />สร้างไอเทมพิเศษ</button>
         <button
           onClick={() => setActiveTab('inventory_spawner')}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
@@ -1585,6 +1603,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       )}
 
       {/* ==================== TAB 3: INVENTORY SPAWNER & MANAGER ==================== */}
+      {activeTab === 'admin_items' && (
+        <div className="space-y-5">
+          <div className="rounded-3xl border border-fuchsia-500/30 bg-fuchsia-950/10 p-5">
+            <div className="mb-4 flex items-center gap-3"><Package className="h-6 w-6 text-fuchsia-300" /><div><h3 className="text-lg font-black text-white">🎁 สร้างไอเทมพิเศษ</h3><p className="text-xs text-fuchsia-200/70">ไอเทมหมวดนี้อยู่ในระบบรางวัลเท่านั้น ไม่แสดงในร้านค้า</p></div></div>
+            <form onSubmit={handleCreateAdminOnlyItem} className="grid gap-3 sm:grid-cols-2">
+              <label className="text-xs text-slate-400">ชื่อไอเทม<input className={inputClass+' mt-1'} value={customItemName} onChange={e=>setCustomItemName(e.target.value)} placeholder="ชื่อไอเทม" /></label>
+              <label className="text-xs text-slate-400">ความหายาก<select className={inputClass+' mt-1'} value={customItemRarity} onChange={e=>setCustomItemRarity(e.target.value as GachaRarity)}><option value="common">Common</option><option value="rare">Rare</option><option value="epic">Epic</option><option value="legendary">Legendary</option><option value="mythic">Mythic</option></select></label>
+              <label className="text-xs text-slate-400">ประเภท<select className={inputClass+' mt-1'} value={customItemCategory} onChange={e=>setCustomItemCategory(e.target.value as 'consumable'|'equipment')}><option value="consumable">ของใช้</option><option value="equipment">อุปกรณ์</option></select></label>
+              <label className="text-xs text-slate-400">ผลหลัก<select className={inputClass+' mt-1'} value={customItemEffectType} onChange={e=>setCustomItemEffectType(e.target.value as typeof customItemEffectType)}><option value="heal_hp">ฟื้น HP</option><option value="boost_max_hp">เพิ่ม Max HP</option><option value="buff_stat">เพิ่มสเตตัส</option><option value="enhance_skill">เสริมสกิล</option><option value="custom">กำหนดเอง</option></select></label>
+              {customItemEffectType==='buff_stat' && <label className="text-xs text-slate-400">สเตตัส<select className={inputClass+' mt-1'} value={customItemTargetStat} onChange={e=>setCustomItemTargetStat(e.target.value as typeof customItemTargetStat)}><option value="strength">STR</option><option value="durability">DUR</option><option value="agility">AGI</option><option value="magic">MAG</option></select></label>}
+              <label className="text-xs text-slate-400">ค่าผล<input className={inputClass+' mt-1'} type="number" min="0" step="0.1" value={customItemEffectVal} onChange={e=>setCustomItemEffectVal(Number(e.target.value))}/></label>
+              <label className="text-xs text-slate-400">โบนัส HP<input className={inputClass+' mt-1'} type="number" min="0" value={customItemHpBonus} onChange={e=>setCustomItemHpBonus(Number(e.target.value))}/></label>
+              <label className="text-xs text-slate-400">ราคาอ้างอิง<input className={inputClass+' mt-1'} type="number" min="0" value={customItemPrice} onChange={e=>setCustomItemPrice(Number(e.target.value))}/></label>
+              <label className="text-xs text-slate-400 sm:col-span-2">คำอธิบาย<textarea className={inputClass+' mt-1 min-h-20'} value={customItemDesc} onChange={e=>setCustomItemDesc(e.target.value)}/></label>
+              <button type="submit" className="sm:col-span-2 rounded-xl bg-fuchsia-500 px-4 py-3 font-black text-slate-950">＋ สร้างไอเทมพิเศษ</button>
+            </form>
+          </div>
+          <div className="space-y-2"><h4 className="text-sm font-black text-white">ไอเทมพิเศษที่สร้างไว้ ({shopItems.filter(i=>i.adminOnly).length})</h4>{shopItems.filter(i=>i.adminOnly).map(item=><div key={item.id} className="flex items-center justify-between rounded-2xl border border-fuchsia-500/20 bg-slate-900 p-3"><div className="flex items-center gap-3">{renderAdminItemIcon(item.icon,item.category,item.effectType)}<div><div className="font-bold text-white">{item.name}</div><div className="text-[10px] text-fuchsia-200">{getAdminRarityBadge(item.rarity).name} · ไม่เข้าร้านค้า</div></div></div><button type="button" onClick={()=>onDeleteShopItem(item.id)} className="text-xs font-black text-rose-300">ลบ</button></div>)}</div>
+        </div>
+      )}
+
       {activeTab === 'inventory_spawner' && (
         <div className="space-y-6">
           {/* Target Player Bar */}
