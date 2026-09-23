@@ -1192,6 +1192,28 @@ export async function addShopItem(item: Item): Promise<void> {
 }
 
 // Delete Shop item (Admin)
+export async function updateShopItem(item: Item): Promise<void> {
+  const previousItem = localShopItems.find(existing => existing.id === item.id);
+  localShopItems = [item, ...localShopItems.filter(existing => existing.id !== item.id)];
+  pendingShopItems.add(item.id);
+  saveLocalAll();
+  broadcast?.postMessage({ type: 'SHOP_UPDATE' });
+  try {
+    await enqueuePersistenceWrite(`shop:${item.id}`, () =>
+      updateDoc(doc(db, SHOP_ITEMS_COLLECTION, item.id), sanitizeForFirestore(item))
+    );
+    pendingShopItems.delete(item.id);
+  } catch (err) {
+    pendingShopItems.delete(item.id);
+    localShopItems = previousItem
+      ? [previousItem, ...localShopItems.filter(existing => existing.id !== item.id)]
+      : localShopItems.filter(existing => existing.id !== item.id);
+    saveLocalAll();
+    broadcast?.postMessage({ type: 'SHOP_UPDATE' });
+    throw err;
+  }
+}
+
 export async function deleteShopItem(itemId: string): Promise<void> {
   const previousItem = localShopItems.find(existing => existing.id === itemId);
   pendingShopDeletes.add(itemId);
