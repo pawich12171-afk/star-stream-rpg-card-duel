@@ -46,7 +46,9 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  useEffect(() => { if (editingId && !shopItems.some(i => i.id === editingId)) reset(); }, [shopItems, editingId]);
+  useEffect(() => {
+    if (editingId && !shopItems.some(i => i.id === editingId)) reset();
+  }, [shopItems, editingId]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,9 +64,10 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
       equipped: old?.equipped || false,
     };
     try {
-      if (editingId) await onUpdateItem(item); else await onAddItem(item);
+      const wasEditing = Boolean(editingId);
+      if (wasEditing) await onUpdateItem(item); else await onAddItem(item);
       reset();
-      alert(editingId ? 'บันทึกไอเทมแล้ว' : 'สร้างไอเทมแล้ว');
+      alert(wasEditing ? 'บันทึกไอเทมแล้ว' : 'สร้างไอเทมแล้ว');
     } catch (error) {
       console.error(error); alert('บันทึกไอเทมไม่สำเร็จ');
     }
