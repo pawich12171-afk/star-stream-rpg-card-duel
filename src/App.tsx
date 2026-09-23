@@ -821,6 +821,7 @@ export default function App() {
           <BattleArena
             currentUser={currentUser}
             allCharacters={characters}
+            shopItems={shopItems}
             isAdmin={isAdminMode && canUseAdminMode}
           />
         )}
