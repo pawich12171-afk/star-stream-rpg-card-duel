@@ -173,7 +173,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   };
 
   // Perform Gacha Pull
-  const handlePull = (count: number) => {
+  const handlePull = async (count: number) => {
     if (!activeBanner) {
       alert('ขณะนี้ไม่มีตู้กาชาที่เปิดใช้งาน');
       return;
@@ -184,10 +184,16 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     }
     const currentCharacter = characterRef.current;
     const cost = getPullCost(count);
-    // The boost is a one-pull effect. Read the already-activated local state
-    // so a stale character prop can never resurrect an old boost during a pull.
+    // Capture the boost for THIS pull only. Consume it immediately before the
+    // animation starts, so a refresh/re-render cannot resurrect the old boost.
     const gachaRateMultiplier = Math.max(1, Math.min(1000, Number(activeGachaRateMultiplier) || 1));
     const gachaRateMinRarity = activeGachaRateMinRarity || 'rare';
+    const characterAfterBoostConsumed: CharacterProfile = {
+      ...currentCharacter,
+      pendingGachaRateMultiplier: undefined,
+      pendingGachaRateMinRarity: undefined,
+      lastUpdated: Math.max(Date.now(), Number(currentCharacter.lastUpdated || 0) + 1),
+    };
     if (currentCharacter.coins < cost) {
       alert(`เหรียญไม่เพียงพอ ต้องการ ${cost.toLocaleString()} C แต่คุณมี ${character.coins.toLocaleString()} C`);
       return;
@@ -200,6 +206,21 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     setIsPulling(true);
     setPullResults(null);
     setDetailLimit(0);
+
+    // Clear the one-shot boost locally AND persist the consumed state now.
+    // The result save below will be queued after this write, preventing a
+    // stale pendingGachaRateMultiplier from surviving the pull.
+    characterRef.current = characterAfterBoostConsumed;
+    setActiveGachaRateMultiplier(1);
+    setActiveGachaRateMinRarity('rare');
+    try {
+      await onUpdateCharacter(characterAfterBoostConsumed);
+    } catch (error) {
+      console.error('Failed to consume gacha boost before pull:', error);
+      setIsPulling(false);
+      alert('บันทึกการใช้ยาไม่สำเร็จ กรุณาลองใหม่');
+      return;
+    }
 
     setTimeout(() => {
       const results: GachaReward[] = [];
@@ -374,7 +395,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       ];
 
       const updatedCharacter: CharacterProfile = {
-        ...currentCharacter,
+        ...characterAfterBoostConsumed,
         coins: updatedCoins,
         inventory: existingInventory,
         skills: existingSkills,
@@ -388,7 +409,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       characterRef.current = updatedCharacter;
       setActiveGachaRateMultiplier(1);
       setActiveGachaRateMinRarity('rare');
-      onUpdateCharacter(updatedCharacter);
+      void onUpdateCharacter(updatedCharacter);
 
       setPullResults(results);
       setIsPulling(false);
