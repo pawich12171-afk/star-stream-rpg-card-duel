@@ -338,9 +338,16 @@ export default function App() {
     const result = await grantItemToPlayerInDB(targetCharId, item, quantity);
     const updated = result.updatedChar;
     if (result.success && updated) {
-      setCharacters(prev => prev.some(character => character.id === updated.id)
-        ? prev.map(character => character.id === updated.id ? updated : character)
-        : [...prev, updated]);
+      const previous = charactersRef.current.find(character => character.id === updated.id);
+      const committed = previous &&
+        isPersistentCustomAvatar(previous.avatarUrl) &&
+        isBundledAvatar(updated.avatarUrl)
+        ? { ...updated, avatarUrl: previous.avatarUrl }
+        : updated;
+      charactersRef.current = charactersRef.current.some(character => character.id === committed.id)
+        ? charactersRef.current.map(character => character.id === committed.id ? committed : character)
+        : [...charactersRef.current, committed];
+      setCharacters([...charactersRef.current]);
     }
     return result;
   };
