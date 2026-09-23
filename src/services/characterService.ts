@@ -2580,6 +2580,10 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
       target.defenseValue = Math.max(target.defenseValue || 0, Math.round(value));
       target.defenseTurns = Math.max(target.defenseTurns || 0, duration);
       result.message += ` • ${label} ป้องกัน ${Math.round(value)}`;
+    } else if (effect.kind === 'damage_reduction') {
+      target.damageReductionPercent = Math.min(100, Math.max(0, value));
+      target.damageReductionTurns = Math.max(target.damageReductionTurns || 0, duration);
+      result.message += ` • 🛡️ ${label} ลดความเสียหาย ${value}% ${duration} เทิร์น`;
     } else if (effect.kind === 'reflect') {
       target.reflectPercent = Math.max(target.reflectPercent || 0, Math.min(100, value));
       target.reflectTurns = Math.max(target.reflectTurns || 0, duration);
@@ -2661,7 +2665,7 @@ function advanceAdminStatusEffects(unit: BattleCombatant) {
   }
   if (unit.copiedAbilityTurns && unit.copiedAbilityTurns > 0) {
     unit.copiedAbilityTurns = Math.max(0, unit.copiedAbilityTurns - 1);
-    if (unit.copiedAbilityTurns === 0) unit.copiedAbility = undefined;
+    if (unit.copiedAbilityTurns === 0) { unit.copiedAbility = undefined; unit.activeSkillPassives = (unit.activeSkillPassives || []).filter(effect => !String(effect.id).startsWith(`copy:${unit.id}:`)); }
   }
   if (unit.itemLuckTurns && unit.itemLuckTurns > 0) {
     unit.itemLuckTurns = Math.max(0, unit.itemLuckTurns - 1);
@@ -2924,6 +2928,10 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         }));
         applyBattleExtraEffects(current, defender, adjustedEffects, result);
       }
+      if (skill?.battleDrawbacks?.length) {
+        applyBattleExtraEffects(current, current, skill.battleDrawbacks.map(effect => ({ ...effect, target: 'self' })), result);
+        result.message += ` • ⚠️ ข้อเสียของสกิล ${skillName} ทำงาน`;
+      }
       // Skill-specific critical chance is separate from the dice's critical face.
       // This makes an Admin-created skill capable of critical hits regardless of the roll.
       if (skill && result.damage > 0) {
@@ -3070,7 +3078,9 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       result.damage = finalDamage;
     }
     if ((result.trueDamage || 0) > 0) {
-      const appliedTrueDamage = Math.min(defender.hp, Math.max(0, Math.round(result.trueDamage || 0)));
+      const appliedTrueDamage = defender.immortalTurns && defender.immortalTurns > 0 ? 0 : Math.min(defender.hp, Math.max(0, Math.round(result.trueDamage || 0)));
+      if (defender.immortalTurns && defender.immortalTurns > 0) result.message += ` • ♾️ ${defender.name} อมตะ — กัน True Damage ด้วย`;
+      const _unusedTrueDamageGuard = Math.min(defender.hp, Math.max(0, Math.round(result.trueDamage || 0)));
       defender.hp = Math.max(0, defender.hp - appliedTrueDamage);
       result.message += ` • 💠 True Damage ${appliedTrueDamage}`;
       result.trueDamage = appliedTrueDamage;
