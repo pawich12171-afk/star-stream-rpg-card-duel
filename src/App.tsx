@@ -90,6 +90,40 @@ const isPersistentCustomAvatar = (value: unknown): boolean => {
   return !isBundledAvatar(avatar);
 };
 
+class BattleArenaErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean; message: string}> {
+  state = { hasError: false, message: '' };
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, message: String(error?.message || 'เกิดข้อผิดพลาดในระบบต่อสู้') };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('Battle Arena runtime error:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-[50vh] flex items-center justify-center p-8">
+          <div className="max-w-lg w-full rounded-2xl border border-rose-500/30 bg-slate-950 p-6 text-center">
+            <div className="text-lg font-black text-white mb-2">ระบบต่อสู้มีปัญหา</div>
+            <div className="text-sm text-slate-400 mb-3">ระบบป้องกันการเด้งทั้งเว็บทำงานแล้ว กรุณากลับเข้าหน้าต่อสู้อีกครั้ง</div>
+            <div className="mb-4 rounded-xl bg-black/50 p-3 text-left text-xs text-rose-300 break-words">{this.state.message}</div>
+            <button
+              type="button"
+              onClick={() => this.setState({ hasError: false, message: '' })}
+              className="rounded-xl bg-cyan-400 px-4 py-2 font-bold text-slate-950"
+            >
+              โหลดระบบต่อสู้อีกครั้ง
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 class ItemPanelErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean}> {
   state = { hasError: false };
   static getDerivedStateFromError() { return { hasError: true }; }
