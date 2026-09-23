@@ -1,3 +1,5 @@
+export type CoinDisplayMode = 'compact' | 'full';
+
 export function formatCompactNumber(value: number | string | null | undefined): string {
   const amount = Number(value);
   if (!Number.isFinite(amount)) return '0';
@@ -16,6 +18,22 @@ export function formatCompactNumber(value: number | string | null | undefined): 
   return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)}${unit.suffix}`;
 }
 
-export function formatCoins(value: number | string | null | undefined): string {
-  return formatCompactNumber(value);
+export function formatFullNumber(value: number | string | null | undefined): string {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return '0';
+  return Math.trunc(amount).toLocaleString('en-US');
+}
+
+export function getCoinDisplayMode(): CoinDisplayMode {
+  try {
+    const saved = localStorage.getItem('starstream_coin_display_mode');
+    return saved === 'full' ? 'full' : 'compact';
+  } catch {
+    return 'compact';
+  }
+}
+
+export function formatCoins(value: number | string | null | undefined, mode?: CoinDisplayMode): string {
+  const displayMode = mode || getCoinDisplayMode();
+  return displayMode === 'full' ? formatFullNumber(value) : formatCompactNumber(value);
 }
