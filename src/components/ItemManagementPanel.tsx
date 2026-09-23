@@ -77,6 +77,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   };
 
   const edit = (item: Item) => {
+    if (!item || !item.id) return;
     setEditingId(item.id); setName(item.name); setDescription(item.description || '');
     setPrice(item.price || 0); setCategory(item.category); setRarity(item.rarity as GachaRarity);
     setEffectType(item.effectType || 'custom'); setEffectValue(item.effectValue || 0);
@@ -130,7 +131,9 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
     }
   };
 
-  const filtered = shopItems.filter(i => !search.trim() || i.name.toLowerCase().includes(search.toLowerCase()) || i.id.toLowerCase().includes(search.toLowerCase()));
+  const safeItems = Array.isArray(shopItems) ? shopItems.filter(Boolean) : [];
+  const query = search.trim().toLowerCase();
+  const filtered = safeItems.filter(i => !query || String(i.name ?? '').toLowerCase().includes(query) || String(i.id ?? '').toLowerCase().includes(query));
 
   return (
     <div className="space-y-6">
@@ -140,7 +143,7 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
             <div className="w-12 h-12 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/30 flex items-center justify-center"><Package className="w-6 h-6 text-fuchsia-300"/></div>
             <div><h2 className="text-xl font-black text-white">จัดการไอเทมของเว็บ</h2><p className="text-xs text-slate-400">คลังกลางของไอเทมทั้งหมดในระบบ</p></div>
           </div>
-          <div className="flex gap-2 text-xs"><span className="px-3 py-1.5 rounded-full bg-fuchsia-500/10 text-fuchsia-300">ทั้งหมด {shopItems.length}</span><span className="px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-300">ในร้านค้า {shopItems.filter(i=>i.inShop===true&&!i.adminOnly).length}</span></div>
+          <div className="flex gap-2 text-xs"><span className="px-3 py-1.5 rounded-full bg-fuchsia-500/10 text-fuchsia-300">ทั้งหมด {safeItems.length}</span><span className="px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-300">ในร้านค้า {safeItems.filter(i=>i.inShop===true&&!i.adminOnly).length}</span></div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
           <form onSubmit={submit} className="bg-slate-950/70 border border-slate-800 rounded-2xl p-5 space-y-3">
