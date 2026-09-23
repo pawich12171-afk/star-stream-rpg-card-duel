@@ -74,6 +74,7 @@ import {
   Swords
 } from 'lucide-react';
 import confetti from './utils/confetti';
+import { formatCoins } from './utils/formatNumber';
 
 const isBundledAvatar = (value: unknown): boolean => {
   const avatar = String(value || '').trim();
@@ -515,7 +516,7 @@ export default function App() {
     <div className="star-shell min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
       {/* Top Main Navigation Bar */}
       <header className="star-topbar sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 md:px-8 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto flex w-full min-w-0 items-center justify-between gap-3">
           {/* Logo and System Title */}
           <div className="flex items-center gap-3">
             <div className="star-brand-mark w-10 h-10 rounded-2xl p-0.5 flex items-center justify-center">
@@ -539,23 +540,23 @@ export default function App() {
           {/* Character Quick Switcher & Admin Switch */}
           <div className="flex items-center gap-3">
             {/* Coin Pill */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs font-mono font-bold shadow-sm">
+            <div className="flex max-w-[42vw] min-w-0 items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs font-mono font-bold shadow-sm">
               <Coins className="w-3.5 h-3.5 text-amber-400" />
-              <span>{currentUser.coins.toLocaleString()} C</span>
+              <span className="truncate">{formatCoins(currentUser.coins)} C</span>
             </div>
 
             {/* Character Selector Button */}
             <button
               id="btn-character-switcher"
               onClick={() => setIsCharSelectOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all cursor-pointer shadow"
+              className="flex min-w-0 max-w-[48vw] items-center gap-2 px-2 sm:px-3 py-1.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all cursor-pointer shadow"
             >
               <img
                 src={currentUser.avatarUrl}
                 alt={currentUser.displayName}
                 className="w-7 h-7 rounded-xl object-cover border border-cyan-500/40"
               />
-              <div className="text-left hidden sm:block">
+              <div className="text-left hidden min-w-0 sm:block">
                 <div className="text-xs font-bold text-white leading-none">
                   {currentUser.displayName}
                 </div>
@@ -591,8 +592,8 @@ export default function App() {
 
       {/* Navigation Tabs Bar */}
 
-      <nav className="star-nav bg-slate-900/60 border-b border-slate-800 px-4 md:px-8 py-2 overflow-x-auto overflow-y-hidden nav-scroll-x">
-        <div className="max-w-7xl mx-auto flex w-max min-w-full items-center gap-2">
+      <nav className="star-nav bg-slate-900/60 border-b border-slate-800 px-2 sm:px-4 md:px-8 py-2 overflow-x-auto overflow-y-hidden nav-scroll-x">
+        <div className="max-w-7xl mx-auto flex w-max min-w-max items-center gap-1.5 sm:gap-2">
           <button
             id="nav-tab-status"
             onClick={() => setActiveTab('status')}
