@@ -1992,14 +1992,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             {gachaRewards.filter(r => r.type === 'skill' && r.skillData).length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-6 text-center text-xs text-slate-500">ยังไม่มีสกิลที่สร้างไว้</div>
             ) : (
-              <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-3">
-                <label className="flex items-center gap-2 text-xs text-cyan-100 font-bold">
-                  <input type="checkbox" checked={shopItemAdminOnly} onChange={e=>setShopItemAdminOnly(e.target.checked)} />
-                  🎁 ไอเทมรางวัลพิเศษ (ซ่อนจากร้านค้า)
-                </label>
-                <div className="mt-1 text-[10px] text-slate-400">ไอเทมนี้ยังใช้เป็นรางวัลกาชา เควสต์ และรางวัลโหมดสุ่มมอน/บอสได้ แต่จะไม่แสดงในหน้าร้านค้า</div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-3">
+                <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-3">
+                  <div className="text-[10px] font-black text-cyan-200">คลังสกิลรางวัล</div>
+                  <div className="mt-1 text-[10px] text-slate-400">สกิลที่สร้างไว้สามารถนำไปเป็นรางวัลกาชาและรางวัลโหมดสุ่มมอน/บอสได้</div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {gachaRewards.filter(r => r.type === 'skill' && r.skillData).map(rw => (
                   <div key={rw.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
                     <div className="flex items-start justify-between gap-3">
@@ -2014,6 +2012,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
                 ))}
+                </div>
               </div>
             )}
           </div>
