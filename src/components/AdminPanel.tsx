@@ -959,7 +959,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <Store className="w-4 h-4" />
           จัดการร้านค้า (เพิ่ม/ลบของ)
         </button>
-        <button type="button" onClick={() => setActiveTab('admin_items')} className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${activeTab === 'admin_items' ? 'bg-fuchsia-500 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'}`}><Package className="w-4 h-4 text-fuchsia-300" />สร้างไอเทมพิเศษ</button>
+        <button
+          type="button"
+          data-admin-tab="admin-items"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setActiveTab('admin_items');
+          }}
+          onPointerDown={(event) => {
+            event.stopPropagation();
+          }}
+          className={`relative z-20 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 pointer-events-auto ${activeTab === 'admin_items' ? 'bg-fuchsia-500 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'}`}
+        >
+          <Package className="w-4 h-4 text-fuchsia-300" />
+          สร้างไอเทมพิเศษ
+        </button>
         <button
           onClick={() => setActiveTab('inventory_spawner')}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
