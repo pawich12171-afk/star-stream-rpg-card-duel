@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, Check, Crown, Dice5, Heart, Package, Plus, Settings2, Shield, Skull, Sparkles, Swords, Target, Trash2, UsersRound, Zap } from 'lucide-react';
-import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRandomReward, BattleRoom, CharacterProfile, Skill, BattleBotSkill } from '../types';
+import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRandomReward, BattleRoom, CharacterProfile, Skill, BattleBotSkill, Item } from '../types';
 import {
   DEFAULT_BATTLE_CONFIG,
   createBattleRoom,
@@ -24,6 +24,7 @@ import {
 type BattleArenaProps = {
   currentUser: CharacterProfile;
   allCharacters: CharacterProfile[];
+  shopItems: Item[];
   isAdmin: boolean;
 };
 
@@ -200,8 +201,11 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   const [victoryImageFileName, setVictoryImageFileName] = useState('');
   const [victoryVideoFileName, setVictoryVideoFileName] = useState('');
   const [randomRewardName, setRandomRewardName] = useState('');
+  const [randomRewardType, setRandomRewardType] = useState<'coin' | 'item' | 'skill'>('coin');
   const [randomRewardAmount, setRandomRewardAmount] = useState('10000');
   const [randomRewardRate, setRandomRewardRate] = useState('10');
+  const [randomRewardItemId, setRandomRewardItemId] = useState('');
+  const [randomRewardSkillId, setRandomRewardSkillId] = useState('');
 
   useEffect(() => {
     const unsubConfig = subscribeToBattleConfig(next => setConfig({ ...DEFAULT_BATTLE_CONFIG, ...next, bossDice: { ...DEFAULT_BATTLE_CONFIG.bossDice, ...(next.bossDice || {}) } }));
@@ -289,7 +293,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
     const isPveBoss = selectedBots.some(bot => bot.isBoss);
     let randomReward: BattleRandomReward | undefined;
     if (mode === 'random') {
-      const rewardPool = randomRewards.filter(reward => Number(reward.coinAmount) > 0 && Number(reward.rate) > 0);
+      const rewardPool = randomRewards.filter(reward => Number(reward.rate) > 0 && (reward.type === 'item' ? !!reward.itemData : reward.type === 'skill' ? !!reward.skillData : Number(reward.coinAmount) > 0));
       const totalRate = rewardPool.reduce((sum, reward) => sum + Number(reward.rate), 0);
       if (!rewardPool.length || totalRate <= 0) throw new Error('แอดมินยังไม่ได้ตั้งค่ารางวัลสุ่มหรือเรทรางวัล');
       let rewardRoll = Math.random() * totalRate;
@@ -541,11 +545,26 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   };
   const saveConfig = async () => { try { await saveBattleConfig(config); alert('บันทึกกติกาและเรทรางวัลแล้ว'); } catch (error) { alert('บันทึกกติกาไม่สำเร็จ'); } };
   const addRandomReward = () => {
-    const amount = Math.max(1, Math.floor(Number(randomRewardAmount) || 0));
     const rate = Math.max(0, Number(randomRewardRate) || 0);
-    if (!randomRewardName.trim() || amount <= 0 || rate <= 0) return alert('กรุณากรอกชื่อรางวัล จำนวน Coins และเรทให้ครบ');
-    const reward: BattleRandomReward = { id: 'random-reward-' + Date.now(), name: randomRewardName.trim(), coinAmount: amount, rate };
+    const item = shopItems.find(value => value.id === randomRewardItemId);
+    const skill = allCharacters.flatMap(character => character.skills || []).find(value => value.id === randomRewardSkillId);
+    if (!randomRewardName.trim() || rate <= 0) return alert('กรุณากรอกชื่อรางวัลและเรทให้ครบ');
+    if (randomRewardType === 'coin' && Math.max(1, Math.floor(Number(randomRewardAmount) || 0)) <= 0) return alert('จำนวน Coins ไม่ถูกต้อง');
+    if (randomRewardType === 'item' && !item) return alert('กรุณาเลือกไอเทมรางวัล');
+    if (randomRewardType === 'skill' && !skill) return alert('กรุณาเลือกสกิลรางวัล');
+    const reward: BattleRandomReward = {
+      id: 'random-reward-' + Date.now(),
+      name: randomRewardName.trim(),
+      type: randomRewardType,
+      rate,
+      coinAmount: randomRewardType === 'coin' ? Math.max(1, Math.floor(Number(randomRewardAmount) || 0)) : undefined,
+      itemData: randomRewardType === 'item' ? { ...item! } : undefined,
+      skillData: randomRewardType === 'skill' ? { ...skill! } : undefined,
+    };
     setConfig(prev => ({ ...prev, randomBattleRewards: [...(prev.randomBattleRewards || []), reward] }));
+    setRandomRewardName('');
+    setRandomRewardItemId('');
+    setRandomRewardSkillId('');
     setRandomRewardName('');
   };
   const removeRandomReward = (id: string) => setConfig(prev => ({ ...prev, randomBattleRewards: (prev.randomBattleRewards || []).filter(reward => reward.id !== id) }));
@@ -574,7 +593,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
 <label className="text-[10px] text-slate-400">เรท (%)<input className={inputClass + ' mt-1'} type="number" min="0.001" step="0.001" value={randomRewardRate} onChange={event => setRandomRewardRate(event.target.value)} /></label>
 </div>
 <button type="button" onClick={addRandomReward} className={buttonClass + ' bg-amber-400 text-slate-950'}>+ เพิ่มรางวัลสุ่ม</button>
-<div className="space-y-1">{randomRewards.map(reward => <div key={reward.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs"><span className="font-bold text-white">{reward.name} · {Number(reward.coinAmount).toLocaleString()} Coins · เรท {Number(reward.rate)}%</span><button type="button" onClick={() => removeRandomReward(reward.id)} className="text-rose-300">ลบ</button></div>)}{!randomRewards.length && <div className="text-[10px] text-rose-200">ยังไม่มีรางวัลสุ่ม — ต้องเพิ่มอย่างน้อย 1 รายการ</div>}</div>
+<div className="space-y-1">{randomRewards.map(reward => <div key={reward.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs"><span className="font-bold text-white">{reward.name} · {reward.type === 'item' ? '🎁 ไอเทม' : reward.type === 'skill' ? '🧬 สกิล' : Number(reward.coinAmount || 0).toLocaleString() + ' Coins'} · เรท {Number(reward.rate)}%</span><button type="button" onClick={() => removeRandomReward(reward.id)} className="text-rose-300">ลบ</button></div>)}{!randomRewards.length && <div className="text-[10px] text-rose-200">ยังไม่มีรางวัลสุ่ม — ต้องเพิ่มอย่างน้อย 1 รายการ</div>}</div>
 <div className="text-[10px] text-slate-500">ระบบจะสุ่มรางวัลตามเรทที่ตั้งไว้ และเก็บผลรางวัลไว้กับห้องตั้งแต่เริ่มต่อสู้</div>
 </div><div className="space-y-3 rounded-2xl border border-emerald-500/20 bg-emerald-950/10 p-3"><h4 className="font-black text-emerald-200">🏆 หน้าชนะการต่อสู้</h4><p className="text-[10px] text-slate-500">ใส่ URL รูปหรือวิดีโอได้ เมื่อจบศึกจะแสดงชื่อผู้เล่น/ผู้ชนะพร้อมสื่อที่ตั้งไว้</p><input className={inputClass} value={config.victoryTitle || ''} onChange={event => setConfig(prev => ({ ...prev, victoryTitle: event.target.value }))} placeholder="หัวข้อ เช่น VICTORY" /><input className={inputClass} value={config.victoryMessage || ''} onChange={event => setConfig(prev => ({ ...prev, victoryMessage: event.target.value }))} placeholder="ข้อความชนะ" /><input className={inputClass} value={config.victoryImageUrl?.startsWith("data:") ? "" : (config.victoryImageUrl || "")} onChange={event => setConfig(prev => ({ ...prev, victoryImageUrl: event.target.value, victoryImageFileName: "" }))} placeholder="URL รูปภาพตอนชนะ (ถ้าต้องการใช้ URL)" /><label className="flex cursor-pointer items-center justify-between rounded-xl border border-emerald-400/20 bg-slate-950/50 px-3 py-2 text-xs text-slate-300"><span>🖼️ เลือกไฟล์รูป {victoryImageFileName ? `· ${victoryImageFileName}` : ""}</span><input type="file" accept="image/*" className="hidden" onChange={e=>void saveVictoryMedia(e.target.files?.[0],"image")} /></label><input className={inputClass} value={config.victoryVideoUrl?.startsWith("data:") ? "" : (config.victoryVideoUrl || "")} onChange={event => setConfig(prev => ({ ...prev, victoryVideoUrl: event.target.value, victoryVideoFileName: "" }))} placeholder="URL วิดีโอตอนชนะ (ถ้าต้องการใช้ URL)" /><label className="flex cursor-pointer items-center justify-between rounded-xl border border-emerald-400/20 bg-slate-950/50 px-3 py-2 text-xs text-slate-300"><span>🎬 เลือกไฟล์วิดีโอ {victoryVideoFileName ? `· ${victoryVideoFileName}` : ""}</span><input type="file" accept="video/*" className="hidden" onChange={e=>void saveVictoryMedia(e.target.files?.[0],"video")} /></label></div></div><form onSubmit={createBot} className="space-y-4 rounded-2xl border border-rose-500/20 bg-rose-950/10 p-4"><div className="flex items-center gap-2"><Bot className="h-5 w-5 text-rose-300" /><h4 className="font-black text-rose-200">สร้างบอท / บอส</h4></div><div className="grid gap-3 sm:grid-cols-2"><input className={inputClass} value={botForm.name} onChange={event => setBotForm(prev => ({ ...prev, name: event.target.value }))} placeholder="ชื่อบอทหรือบอส" required /><div className="space-y-2"><input className={inputClass} value={botForm.avatarUrl.startsWith("data:") ? "" : botForm.avatarUrl} onChange={event => setBotForm(prev => ({ ...prev, avatarUrl: event.target.value, avatarFileName: "" }))} placeholder="URL รูป avatar (หรือเลือกไฟล์)" /><label className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-300"><span>🖼️ รูปโปรไฟล์ {botForm.avatarFileName ? `· ${botForm.avatarFileName}` : ""}</span><input type="file" accept="image/*" className="hidden" onChange={async e => { const f=e.target.files?.[0]; if(!f)return; if(f.size>4*1024*1024)return alert("รูปโปรไฟล์ต้องไม่เกิน 4MB"); const d=await fileToDataUrl(f); setBotForm(p=>({...p,avatarUrl:d,avatarFileName:f.name})); }} /></label></div></div><input className={inputClass} value={botForm.description} onChange={event => setBotForm(prev => ({ ...prev, description: event.target.value }))} placeholder="คำอธิบาย AI / กลไกบอส" /><div className="grid grid-cols-2 gap-3 sm:grid-cols-5">{[['hp', 'HP'], ['strength', 'พลัง'], ['durability', 'ทนทาน'], ['agility', 'ว่องไว'], ['magic', 'เวท']].map(([key, label]) => <label key={key} className="text-[10px] text-slate-500">{label}<input className={inputClass + ' mt-1'} type="number" min={key === 'hp' ? '1' : '0'} value={botForm[key as keyof typeof botForm] as string} onChange={event => setBotForm(prev => ({ ...prev, [key]: event.target.value }))} /></label>)}</div><label className="flex items-center gap-2 text-xs text-rose-100"><input type="checkbox" checked={botForm.isBoss} onChange={event => setBotForm(prev => ({ ...prev, isBoss: event.target.checked }))} /> <Crown className="h-4 w-4 text-amber-300" /> ตั้งเป็น Boss</label><div className="grid gap-2 sm:grid-cols-2"><label className="text-[10px] text-slate-500">โอกาสถูกสุ่มเจอ (%)<input className={inputClass + ' mt-1'} type="number" min="0" max="100" value={botForm.encounterChancePercent} onChange={event => setBotForm(prev => ({ ...prev, encounterChancePercent: event.target.value }))} /></label><div className="text-[10px] text-slate-500 rounded-xl border border-amber-500/20 bg-amber-950/10 p-2">โหมดสุ่มจะใช้ค่านี้เป็นน้ำหนักการออกของมอน/บอส</div></div>
 <div className="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-3">
