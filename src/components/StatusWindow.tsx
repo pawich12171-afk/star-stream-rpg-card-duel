@@ -426,8 +426,19 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               title="คลิกเพื่อตกแต่งและเปลี่ยนรูปโปรไฟล์"
             >
               <img
-                src={character.avatarUrl || (character.id === 'yeon-chaewon' ? '/avatars/chaewon.svg' : '/avatars/system.svg')}
+                src={character.avatarUrl || '/avatars/system.svg'}
                 alt={character.displayName}
+                onError={(event) => {
+                  const isChaeWon =
+                    character.displayName.includes('แชวอน') ||
+                    character.displayName.toLowerCase().includes('chae-won') ||
+                    character.displayName.toLowerCase().includes('chaewon');
+                  if (isChaeWon) {
+                    event.currentTarget.src = '/avatars/chaewon.svg';
+                  } else {
+                    event.currentTarget.src = '/avatars/system.svg';
+                  }
+                }
                 className="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-cover border-2 border-cyan-400/60 group-hover:border-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all"
               />
               <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 rounded-2xl flex items-center justify-center transition-opacity text-white text-[10px] font-bold gap-1">
