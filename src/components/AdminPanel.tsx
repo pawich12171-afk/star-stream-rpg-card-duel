@@ -245,18 +245,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [spawnerTargetCharId, setSpawnerTargetCharId] = useState<string>(characters[0]?.id || '');
   const [selectedShopItemToSpawnId, setSelectedShopItemToSpawnId] = useState<string>(shopItems[0]?.id || '');
   const [spawnQuantity, setSpawnQuantity] = useState<number>(1);
-  const [spawnerMode, setSpawnerMode] = useState<'shop' | 'custom'>('shop');
-
-  // Custom Item Spawner Form
-  const [customItemName, setCustomItemName] = useState('');
-  const [customItemCategory, setCustomItemCategory] = useState<'consumable' | 'equipment'>('equipment');
-  const [customItemRarity, setCustomItemRarity] = useState<GachaRarity>('rare');
-  const [customItemPrice, setCustomItemPrice] = useState(1000);
-  const [customItemEffectType, setCustomItemEffectType] = useState<'heal_hp' | 'boost_max_hp' | 'buff_stat' | 'enhance_skill' | 'custom'>('buff_stat');
-  const [customItemEffectVal, setCustomItemEffectVal] = useState(15);
-  const [customItemHpBonus, setCustomItemHpBonus] = useState(15);
-  const [customItemTargetStat, setCustomItemTargetStat] = useState<'strength' | 'durability' | 'agility' | 'magic'>('strength');
-  const [customItemDesc, setCustomItemDesc] = useState('');
+  const [spawnerMode, setSpawnerMode] = useState<'shop'>('shop');
 
   // New Shop Item Form
   const [shopItemName, setShopItemName] = useState('');
@@ -494,28 +483,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     alert(shopItemAdminOnly ? `สร้างไอเทมรางวัล "${newItem.name}" สำเร็จแล้ว! ไอเทมนี้จะไม่แสดงในร้านค้า` : `เพิ่มไอเทม "${newItem.name}" ลงร้านค้าสำเร็จแล้ว!`);
   };
 
-  const handleCreateAdminOnlyItem = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customItemName.trim()) { alert('กรุณากรอกชื่อไอเทม'); return; }
-    const item: Item = {
-      id: 'admin-item-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-      name: customItemName.trim(), price: Math.max(0, Number(customItemPrice) || 0), category: customItemCategory,
-      rarity: customItemRarity, description: customItemDesc.trim() || 'ไอเทมพิเศษจากผู้ดูแลระบบ',
-      icon: customItemCategory === 'consumable' ? (customItemEffectType === 'heal_hp' ? 'HeartPulse' : 'Heart') : 'Shield',
-      effectType: customItemEffectType, effectValue: Math.max(0, Number(customItemEffectVal) || 0),
-      hpBonus: (customItemEffectType === 'heal_hp' || customItemEffectType === 'boost_max_hp' || customItemCategory === 'equipment') ? Math.max(0, Number(customItemHpBonus) || 0) : undefined,
-      targetStat: customItemEffectType === 'buff_stat' ? customItemTargetStat : undefined,
-      usableByPlayers: true, equipped: false, adminOnly: true,
-    };
-    // This is an API-backed save, not Firestore. Do not block the Admin UI
-    // while the remote backend responds.
-    void Promise.resolve(onAddShopItem(item)).catch((error) => {
-      console.error('Failed to persist special item via backend API:', error);
-    });
-    setCustomItemName('');
-    setCustomItemDesc('');
-    alert('สร้างไอเทมพิเศษแล้ว — ไม่แสดงในร้านค้า และนำไปใช้เป็นรางวัลกาชา/โหมดสุ่มได้');
-  };
 
   // Grant Item Handler
   const handleGrantItemToPlayer = async () => {
@@ -532,26 +499,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         return;
       }
       itemToGrant = found;
-    } else {
-      if (!customItemName.trim()) {
-        alert('กรุณากรอกชื่อไอเทมที่ต้องการเสก');
-        return;
-      }
-      itemToGrant = {
-        id: `custom-spawn-${Date.now()}`,
-        name: customItemName.trim(),
-        price: customItemPrice,
-        category: customItemCategory,
-        rarity: customItemRarity,
-        description: customItemDesc.trim() || 'ไอเทมที่เสกโดยผู้ดูแลระบบ Star Stream',
-        icon: customItemCategory === 'consumable' ? (customItemEffectType === 'heal_hp' ? 'HeartPulse' : 'Heart') : 'Shield',
-        effectType: customItemEffectType,
-        effectValue: customItemEffectVal,
-        hpBonus: (customItemEffectType === 'heal_hp' || customItemEffectType === 'boost_max_hp' || customItemCategory === 'equipment') ? (customItemHpBonus || customItemEffectVal) : undefined,
-        targetStat: customItemEffectType === 'buff_stat' ? customItemTargetStat : undefined,
-        usableByPlayers: true,
-      };
-    }
+
 
     if (onGrantItem) {
       const res = await onGrantItem(spawnerTargetChar.id, itemToGrant, spawnQuantity);
@@ -998,7 +946,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           }`}
         >
           <Wand2 className="w-4 h-4 text-purple-400" />
-          เสกไอเทม / ลบไอเทมผู้เล่น
+          จัดการคลังผู้เล่น / ลบไอเทม
         </button>
         <button
           onClick={() => setActiveTab('quests')}
