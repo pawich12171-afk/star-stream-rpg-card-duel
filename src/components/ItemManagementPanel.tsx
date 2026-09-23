@@ -209,7 +209,7 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
               <div className="flex-1 flex items-center gap-2 rounded-xl bg-slate-900 border border-slate-700 px-3"><Search className="w-4 h-4 text-slate-500"/><input className="flex-1 bg-transparent outline-none p-2.5 text-sm text-white" placeholder="ค้นหาชื่อหรือ ID..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
             </div>
             <div className="space-y-2 max-h-[650px] overflow-y-auto pr-1">
-              {filtered.length === 0 ? <div className="py-16 text-center text-slate-500">ไม่พบไอเทม</div> : filtered.map((item) => (
+              {filtered.length === 0 ? <div className="py-16 text-center text-slate-500">ไม่พบไอเทม</div> : filtered.map((item) => { return (
                 <div key={item.id} className="group rounded-2xl border border-slate-800 bg-slate-900/90 p-4 hover:border-fuchsia-500/30 hover:bg-slate-800/80 transition-all">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="min-w-0 flex items-center gap-3">
@@ -221,7 +221,7 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
                     <div className="flex gap-2 shrink-0"><button type="button" onClick={()=>edit(item)} className="px-3 py-2 rounded-lg bg-cyan-950/60 text-cyan-300 text-xs font-black flex gap-1 items-center"><Edit3 className="w-3 h-3"/>แก้ไข</button><button type="button" onClick={async()=>{if(confirm(`ลบ "${item.name}" ออกจากคลังไอเทมหรือไม่?`)) await onDeleteItem(item.id)}} className="px-3 py-2 rounded-lg bg-rose-950/60 text-rose-300 text-xs font-black flex gap-1 items-center"><Trash2 className="w-3 h-3"/>ลบ</button></div>
                   </div>
                 </div>
-              ))}
+              ); })}
             </div>
           </div>
         </div>
