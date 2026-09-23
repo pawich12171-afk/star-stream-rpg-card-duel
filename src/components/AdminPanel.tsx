@@ -1980,44 +1980,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {activeTab === 'gacha_manage' && (
         <div className="space-y-6">
-          <div className="bg-slate-900 border border-cyan-500/30 rounded-3xl p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-black text-white flex items-center gap-2"><Sparkles className="w-4 h-4 text-cyan-300" />SKILL REGISTRY — สร้างและแก้ไขสกิล</h3>
-                <p className="text-[11px] text-slate-400 mt-1">สกิลที่สร้างไว้ทั้งหมดจะแสดงที่นี่ แก้ไขได้ทันทีโดยไม่ต้องเลือกตู้กาชาก่อน</p>
-              </div>
-              <span className="rounded-full bg-cyan-500/10 border border-cyan-500/20 px-3 py-1 text-[10px] font-black text-cyan-200">
-                {gachaRewards.filter(r => r.type === 'skill' && r.skillData).length} สกิล
-              </span>
-            </div>
-            {gachaRewards.filter(r => r.type === 'skill' && r.skillData).length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-6 text-center text-xs text-slate-500">ยังไม่มีสกิลที่สร้างไว้</div>
-            ) : (
-              <div className="space-y-3">
-                <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-3">
-                  <div className="text-[10px] font-black text-cyan-200">คลังสกิลรางวัล</div>
-                  <div className="mt-1 text-[10px] text-slate-400">สกิลที่สร้างไว้สามารถนำไปเป็นรางวัลกาชาและรางวัลโหมดสุ่มมอน/บอสได้</div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {gachaRewards.filter(r => r.type === 'skill' && r.skillData).map(rw => (
-                  <div key={rw.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-sm font-black text-white truncate">{rw.skillData?.name || rw.name}</div>
-                        <div className="mt-1 text-[10px] text-slate-400">
-                          {rw.skillData?.battleEffect || 'damage'} • พลัง {Number(rw.skillData?.battlePower) || 0}
-                          {rw.skillData?.damageScaling && rw.skillData.damageScaling !== 'fixed' ? ` • ตาม ${rw.skillData.damageScaling.toUpperCase()} × ${Number(rw.skillData.damageScalingMultiplier) || 1}` : ' • ดาเมจคงที่'}
-                        </div>
-                      </div>
-                      <button type="button" onClick={() => openSkillEditor(rw)} className="shrink-0 px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-black cursor-pointer shadow">✏️ แก้ไขสกิล</button>
-                    </div>
-                  </div>
-                ))}
-                </div>
-              </div>
-            )}
-          </div>
-
           <div className="bg-slate-900 border border-purple-500/30 rounded-3xl p-6 space-y-4 shadow-xl">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -2816,3 +2778,4 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     </div>
   );
 };
+
