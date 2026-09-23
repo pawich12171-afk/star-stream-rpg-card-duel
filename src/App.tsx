@@ -385,8 +385,13 @@ export default function App() {
   };
 
   const handleAddShopItem = async (item: Item): Promise<void> => {
-    await addShopItemToDB(item);
+    // Update the Admin UI immediately. Do not make the form wait for a
+    // Firestore network round-trip; the shop service already performs an
+    // optimistic local write and persists it in the background.
     setShopItems(prev => [item, ...prev.filter(existing => existing.id !== item.id)]);
+    void addShopItemToDB(item).catch((error) => {
+      console.error('Failed to persist shop item to Firestore:', error);
+    });
   };
 
   const handleDeleteShopItem = async (itemId: string): Promise<void> => {
