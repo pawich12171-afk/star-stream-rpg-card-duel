@@ -320,6 +320,8 @@ export interface GachaReward {
   description: string;
   coinAmount?: number;
   itemData?: Item;
+  /** อ้างอิงไอเทมกลางในคลังไอเทม */
+  itemId?: string;
   skillData?: Skill;
   characteristic?: string;
   bannerId?: string;
