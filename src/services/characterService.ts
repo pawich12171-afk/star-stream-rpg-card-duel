@@ -344,29 +344,15 @@ function isCustomProfileAvatar(value: unknown): boolean {
   return !/^\/avatars\/(system|chaewon|hayeon|miyeon|sera)\.svg$/i.test(avatar);
 }
 
-function getPreservedCustomAvatar(charId: string, incomingAvatar: unknown): string | null {
+function getPreservedCustomAvatar(_charId: string, incomingAvatar: unknown): string | null {
   const incoming = String(incomingAvatar || '').trim();
-  if (isCustomProfileAvatar(incoming)) return incoming;
-
-  const override = readAvatarOverrides()[charId];
-  if (override && isCustomProfileAvatar(override)) return override;
-
-  const local = localCharacters.find(character => character.id === charId);
-  if (local && isCustomProfileAvatar(local.avatarUrl)) return local.avatarUrl;
-
-  return null;
+  return isCustomProfileAvatar(incoming) ? incoming : null;
 }
 
 function preserveLocalCustomAvatars(serverCharacters: CharacterProfile[]): CharacterProfile[] {
-  const overrides = readAvatarOverrides();
-  return serverCharacters.map((serverChar) => {
-    const override = overrides[serverChar.id];
-    if (override && isCustomProfileAvatar(override)) return { ...serverChar, avatarUrl: override };
-    const localChar = localCharacters.find(c => c.id === serverChar.id);
-    if (!localChar || !isCustomProfileAvatar(localChar.avatarUrl)) return serverChar;
-    if (serverChar.avatarUrl === localChar.avatarUrl) return serverChar;
-    return { ...serverChar, avatarUrl: localChar.avatarUrl };
-  });
+  // Kept as a compatibility wrapper for older callers. Server data is now
+  // authoritative; avatar persistence belongs to the shared character record.
+  return serverCharacters;
 }
 
 // Subscribe to characters
@@ -415,11 +401,11 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
       // so server changes to stats, coins, inventory, skills, etc. are untouched.
       const reconciledList = preserveLocalCustomAvatars(list);
       reconciledList.sort((a, b) => (b.powerScore || 0) - (a.powerScore || 0));
-      // Firestore is authoritative for character data, except a locally selected
-      // custom avatar that has not yet been reflected by the server snapshot.
-      localCharacters = reconciledList;
+      // The shared database is authoritative. A deleted character must never
+      // come back from localStorage or the bundled seed.
+      localCharacters = list;
       saveLocalAll();
-      callback(reconciledList);
+      callback(list);
     }, (err) => {
       // Keep the app usable while the API/Supabase connection is unavailable.
       // The next successful poll will replace this fallback with server data.
@@ -902,7 +888,10 @@ export async function updateCharacterData(char: CharacterProfile): Promise<void>
   try {
     await enqueueCharacterWrite(updated.id, async () => {
       const cleaned = sanitizeForFirestore(updated);
-      await setDoc(doc(db, CHARACTERS_COLLECTION, updated.id), cleaned);
+      // Character updates must never recreate a document that was deleted by
+      // another player/device. setDoc() is an upsert; updateDoc() requires the
+      // shared database row to still exist.
+      await updateDoc(doc(db, CHARACTERS_COLLECTION, updated.id), cleaned);
     });
   } catch (err) {
     const pending = pendingCharacterUpdates.get(updated.id);
@@ -925,14 +914,26 @@ export async function deleteCharacterFromDB(characterId: string): Promise<void> 
   const id = String(characterId || '').trim();
   if (!id) throw new Error('ไม่พบ ID ตัวละครที่ต้องการลบ');
 
-  await enqueueCharacterWrite(id, async () => {
-    await deleteDoc(doc(db, CHARACTERS_COLLECTION, id));
-  });
-
+  // Mark the deletion before touching the server so a realtime poll cannot
+  // briefly reinsert the character while the DELETE request is in flight.
+  pendingCharacterDeletes.add(id);
   pendingCharacterUpdates.delete(id);
+  const previous = localCharacters.find(character => character.id === id);
   localCharacters = localCharacters.filter(character => character.id !== id);
   saveLocalAll();
   broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
+
+  try {
+    await enqueueCharacterWrite(id, async () => {
+      await deleteDoc(doc(db, CHARACTERS_COLLECTION, id));
+    });
+  } catch (error) {
+    pendingCharacterDeletes.delete(id);
+    if (previous) localCharacters = [previous, ...localCharacters.filter(character => character.id !== id)];
+    saveLocalAll();
+    broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
+    throw error;
+  }
 }
 
 // Atomic partial character update used by systems that change only a few fields.
