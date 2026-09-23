@@ -1592,21 +1592,72 @@ export async function grantItemToPlayer(
   const char = localCharacters.find(c => c.id === targetCharId);
   if (!char) return { success: false, message: "ไม่พบตัวละครเป้าหมาย" };
 
-  const currentInventory: InventoryItem[] = [...(char.inventory || [])];
-  const existingIndex = currentInventory.findIndex(
-    i => i.id === item.id && !i.isEquipped && i.category === 'consumable'
-  );
+  const incomingQuantity = Math.max(1, Math.floor(Number(quantity) || 1));
 
-  if (existingIndex > -1) {
-    currentInventory[existingIndex] = {
-      ...currentInventory[existingIndex],
-      quantity: currentInventory[existingIndex].quantity + quantity
+  // Use the same identity as the gacha stacker so admin-granted items
+  // stack with existing copies even when legacy records have different IDs.
+  const getItemStackKey = (entry: Item | InventoryItem) => [
+    String(entry.name || '').trim().toLocaleLowerCase(),
+    String(entry.category || ''),
+    String(entry.effectType || ''),
+    String(entry.targetStat || ''),
+    String(entry.effectValue ?? ''),
+    String(entry.hpBonus ?? ''),
+    String(entry.gachaRateMultiplier ?? ''),
+    String(entry.gachaRateMinRarity ?? 'rare'),
+  ].join('|');
+
+  const currentInventory: InventoryItem[] = [];
+  const stackIndex = new Map<string, number>();
+
+  // Normalize old duplicate stacks while processing this grant.
+  for (const raw of (char.inventory || [])) {
+    const normalized: InventoryItem = {
+      ...raw,
+      instanceId: raw.instanceId || `legacy-stack-${raw.id}-${currentInventory.length}`,
+      quantity: Math.max(1, Number(raw.quantity) || 1),
+      equippedQuantity: raw.category === 'equipment'
+        ? Math.max(0, Number(raw.equippedQuantity) || (raw.isEquipped ? 1 : 0))
+        : raw.equippedQuantity,
     };
+    const key = getItemStackKey(normalized);
+    const existingIndex = stackIndex.get(key);
+
+    if (existingIndex === undefined) {
+      stackIndex.set(key, currentInventory.length);
+      currentInventory.push(normalized);
+      continue;
+    }
+
+    const existing = currentInventory[existingIndex];
+    existing.quantity += normalized.quantity;
+    if (existing.category === 'equipment') {
+      const equipped = Math.max(0, Number(existing.equippedQuantity) || (existing.isEquipped ? 1 : 0));
+      const incomingEquipped = Math.max(0, Number(normalized.equippedQuantity) || (normalized.isEquipped ? 1 : 0));
+      existing.equippedQuantity = Math.min(existing.quantity, equipped + incomingEquipped);
+      existing.isEquipped = existing.equippedQuantity > 0;
+    }
+  }
+
+  const key = getItemStackKey(item);
+  const existingIndex = stackIndex.get(key);
+
+  if (existingIndex !== undefined) {
+    const existing = currentInventory[existingIndex];
+    existing.quantity += incomingQuantity;
+    if (existing.category === 'equipment') {
+      existing.equippedQuantity = Math.min(
+        existing.quantity,
+        Math.max(0, Number(existing.equippedQuantity) || (existing.isEquipped ? 1 : 0))
+      );
+      existing.isEquipped = existing.equippedQuantity > 0;
+    }
   } else {
     currentInventory.push({
       ...item,
       instanceId: `inst-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      quantity: Math.max(1, quantity),
+      quantity: incomingQuantity,
+      equippedQuantity: item.category === 'equipment' ? 0 : undefined,
       isEquipped: false
     });
   }
