@@ -515,6 +515,10 @@ export interface BattleRoom {
   victoryRewardCoins?: number;
   /** รางวัลที่สุ่มได้ตั้งแต่ตอนสร้างห้อง เพื่อให้ทุกคนเห็นผลเดียวกัน */
   randomReward?: BattleRandomReward;
+  /** คิวศัตรูที่เหลือของโหมดสุ่ม หลังจากชนะตัวปัจจุบัน */
+  randomBattleQueue?: BattleCombatant[];
+  /** ลำดับศัตรูปัจจุบันในโหมดสุ่ม (1-3) */
+  randomBattleStage?: number;
   rewardClaimedBy?: string;
   /** จำนวนครั้งที่ผู้เล่นใช้ไอเทมระหว่างการต่อสู้ครั้งนี้ */
   battleItemUses?: number;
