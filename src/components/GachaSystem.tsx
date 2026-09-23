@@ -456,7 +456,8 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             </button>
           ))}
         </div>
-\n        {/* Gacha Rate Boost Item */}
+
+        {/* Gacha Rate Boost Item */}
         {(gachaBoostItems.length > 0 || activeGachaRateMultiplier > 1) && (
           <div className="mt-5 rounded-2xl border-2 border-purple-500/40 bg-purple-950/25 p-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
