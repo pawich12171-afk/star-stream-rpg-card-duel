@@ -175,6 +175,31 @@ button {
   filter: blur(12px);
 }
 
+.nav-scroll-x {
+  scrollbar-width: auto;
+  scrollbar-color: rgba(105, 131, 169, .55) rgba(8, 13, 26, .5);
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+}
+
+.nav-scroll-x > div {
+  flex-shrink: 0;
+}
+
+.nav-scroll-x::-webkit-scrollbar {
+  height: 7px;
+}
+
+.nav-scroll-x::-webkit-scrollbar-track {
+  background: rgba(8, 13, 26, .5);
+}
+
+.nav-scroll-x::-webkit-scrollbar-thumb {
+  background: rgba(105, 131, 169, .55);
+  border-radius: 999px;
+}
+
 .star-nav-tab {
   border: 1px solid transparent;
   letter-spacing: -.01em;
