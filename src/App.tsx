@@ -75,6 +75,17 @@ import {
 } from 'lucide-react';
 import confetti from './utils/confetti';
 
+const isBundledAvatar = (value: unknown): boolean => {
+  const avatar = String(value || '').trim();
+  return !avatar || /^\/avatars\/(system|chaewon|hayeon|miyeon|sera)\.svg$/i.test(avatar);
+};
+
+const isPersistentCustomAvatar = (value: unknown): boolean => {
+  const avatar = String(value || '').trim();
+  if (!avatar || /^blob:/i.test(avatar)) return false;
+  return !isBundledAvatar(avatar);
+};
+
 export default function App() {
   // Deployment sync checkpoint: keep main/Vercel source aligned.
   const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin'>(() => {
@@ -268,6 +279,19 @@ export default function App() {
       const ignoredKeys = new Set(['id', 'lastUpdated', 'powerScore']);
       (Object.keys(updated) as (keyof CharacterProfile)[]).forEach((key) => {
         if (ignoredKeys.has(key as string)) return;
+
+        // Never let a stale Shop/Inventory/Battle/Admin object erase a custom
+        // profile image while saving another field. Child screens can hold an
+        // older CharacterProfile for a moment, especially after navigation or
+        // a hard refresh.
+        if (
+          key === 'avatarUrl' &&
+          isPersistentCustomAvatar(previous.avatarUrl) &&
+          isBundledAvatar(updated.avatarUrl)
+        ) {
+          return;
+        }
+
         const before = JSON.stringify(previous[key]);
         const after = JSON.stringify(updated[key]);
         if (before !== after) {
