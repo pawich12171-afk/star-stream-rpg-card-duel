@@ -172,7 +172,9 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([currentUser.id]);
   const [selectedOpponentId, setSelectedOpponentId] = useState('');
   const [selectedBotIds, setSelectedBotIds] = useState<string[]>([]);
-  const [selectedSkillId, setSelectedSkillId] = useState('');\n  const [botSkillDraftId, setBotSkillDraftId] = useState('');\n  const [botSkillChance, setBotSkillChance] = useState('25');
+  const [selectedSkillId, setSelectedSkillId] = useState('');
+  const [botSkillDraftId, setBotSkillDraftId] = useState('');
+  const [botSkillChance, setBotSkillChance] = useState('25');
   const [selectedBattleItemId, setSelectedBattleItemId] = useState('');
   const [usingBattleItemId, setUsingBattleItemId] = useState('');
   const [showAdmin, setShowAdmin] = useState(isAdmin);
