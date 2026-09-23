@@ -548,7 +548,7 @@ export default function App() {
           </div>
 
           {/* Character Quick Switcher & Admin Switch */}
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 sm:gap-3">
             {/* Coin Pill */}
             <div className="flex min-w-0 max-w-[44vw] shrink items-center gap-1 px-1.5 sm:max-w-[48vw] sm:gap-1.5 sm:px-2 py-1.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs font-mono font-bold shadow-sm">
               <Coins className="w-3.5 h-3.5 shrink-0 text-amber-400" />
