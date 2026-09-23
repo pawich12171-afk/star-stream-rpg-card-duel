@@ -339,7 +339,7 @@ function isCustomProfileAvatar(value: unknown): boolean {
   if (!avatar) return false;
   if (avatar.startsWith('data:image/')) return true;
   if (/^blob:/i.test(avatar)) return true;
-  return !/^\/avatars\/(system|chaewon|hayeon|miyeon|sera)\\.svg$/i.test(avatar);
+  return !/^\/avatars\/(system|chaewon|hayeon|miyeon|sera)\.svg$/i.test(avatar);
 }
 
 function preserveLocalCustomAvatars(serverCharacters: CharacterProfile[]): CharacterProfile[] {
