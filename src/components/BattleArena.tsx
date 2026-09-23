@@ -188,7 +188,7 @@ function DiceEditor({ title, accent, dice, faces, onPatch, onSidesChange }: {
   </div>;
 }
 
-export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArenaProps) {
+export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: BattleArenaProps) {
   const [config, setConfig] = useState<BattleConfig>(DEFAULT_BATTLE_CONFIG);
   const [bots, setBots] = useState<BattleBot[]>([]);
   const [rooms, setRooms] = useState<BattleRoom[]>([]);
