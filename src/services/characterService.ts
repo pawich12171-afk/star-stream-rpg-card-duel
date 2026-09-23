@@ -2534,7 +2534,7 @@ function getSkillStat(skill: Skill | undefined, kind: NonNullable<Skill['battleS
   return (skill?.battleStats || []).filter(s => s.kind === kind).reduce((sum, s) => sum + (Number(s.value) || 0), 0);
 }
 
-export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect; power: number; cooldownTurns: number } {
+export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect; power: number; cooldownTurns: number; duration: number } {
   const text = `${skill.name || ""} ${skill.description || ""} ${skill.type || ""}`.toLowerCase();
   const effect = skill.battleEffect
     || (text.includes("สะท้อน") || text.includes("reflect") ? "reflect"
@@ -2545,8 +2545,9 @@ export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect
   // Skills created before cooldownTurns existed use the migration default of 3 turns.
   const configuredCooldown = skill.cooldownTurns == null ? 3 : skill.cooldownTurns;
   const cooldownTurns = Math.max(0, Math.min(99, Math.round(configuredCooldown)));
+  const duration = Math.max(1, Math.min(10, Math.round(Number(skill.battleEffectDuration) || 1)));
   const power = Math.max(1, skill.battlePower ?? (effect === "reflect" ? percent || 35 : effect === "defense" ? 5 : 5));
-  return { effect, power, cooldownTurns };
+  return { effect, power, cooldownTurns, duration };
 }
 
 function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleCombatant, effects: NonNullable<Skill['battleEffects']>, result: BattleRollResult) {
@@ -2610,6 +2611,7 @@ function getAdminOutgoingDamageMultiplier(unit: BattleCombatant): number {
 }
 
 function getAdminIncomingDamageMultiplier(unit: BattleCombatant): number {
+  const skillReduction = unit.damageReductionTurns && unit.damageReductionTurns > 0 ? Math.min(100, Math.max(0, Number(unit.damageReductionPercent) || 0)) / 100 : 0;
   return getActiveAdminStatusEffects(unit).reduce((multiplier, effect) => {
     if (effect.kind !== 'shield') return multiplier;
     const percent = Math.min(100, Math.max(0, Number(effect.power) || 0)) / 100;
@@ -2651,6 +2653,15 @@ function advanceAdminStatusEffects(unit: BattleCombatant) {
   if (unit.itemDamageTurns && unit.itemDamageTurns > 0) {
     unit.itemDamageTurns = Math.max(0, unit.itemDamageTurns - 1);
     if (unit.itemDamageTurns === 0) unit.itemDamagePercent = 0;
+  }
+  if (unit.immortalTurns && unit.immortalTurns > 0) unit.immortalTurns = Math.max(0, unit.immortalTurns - 1);
+  if (unit.damageReductionTurns && unit.damageReductionTurns > 0) {
+    unit.damageReductionTurns = Math.max(0, unit.damageReductionTurns - 1);
+    if (unit.damageReductionTurns === 0) unit.damageReductionPercent = 0;
+  }
+  if (unit.copiedAbilityTurns && unit.copiedAbilityTurns > 0) {
+    unit.copiedAbilityTurns = Math.max(0, unit.copiedAbilityTurns - 1);
+    if (unit.copiedAbilityTurns === 0) unit.copiedAbility = undefined;
   }
   if (unit.itemLuckTurns && unit.itemLuckTurns > 0) {
     unit.itemLuckTurns = Math.max(0, unit.itemLuckTurns - 1);
@@ -2873,12 +2884,32 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         result.message += ` • ใช้สกิล ${skillName} ฟื้นฟู ${skillProfile.power + bonusHeal}`;
       } else if (skillProfile.effect === "defense") {
         current.defenseValue = Math.max(0, skillProfile.power + getSkillStat(skill, 'defense_power'));
-        current.defenseTurns = 1;
-        result.message += ` • ใช้สกิล ${skillName} ป้องกันดาเมจ ${skillProfile.power} ในเทิร์นถัดไป`;
+        current.defenseTurns = skillProfile.duration;
+        result.message += ` • ใช้สกิล ${skillName} ป้องกันดาเมจ ${skillProfile.power} เป็นเวลา ${skillProfile.duration} เทิร์น`;
       } else if (skillProfile.effect === "reflect") {
         current.reflectPercent = Math.min(100, skillProfile.power);
-        current.reflectTurns = 1;
-        result.message += ` • ใช้สกิล ${skillName} สะท้อนดาเมจ ${current.reflectPercent}% ในเทิร์นถัดไป`;
+        current.reflectTurns = skillProfile.duration;
+        result.message += ` • ใช้สกิล ${skillName} สะท้อนดาเมจ ${current.reflectPercent}% เป็นเวลา ${skillProfile.duration} เทิร์น`;
+      } else if (skillProfile.effect === "stun") {
+        defender.stunnedTurns = (defender.stunnedTurns || 0) + skillProfile.duration;
+        result.message += ` • ใช้สกิล ${skillName} ทำให้ ${defender.name} ติดสตัน ${skillProfile.duration} เทิร์น`;
+      } else if (skillProfile.effect === "immortal") {
+        current.immortalTurns = skillProfile.duration;
+        result.message += ` • ใช้สกิล ${skillName} — อมตะ ${skillProfile.duration} เทิร์น`;
+      } else if (skillProfile.effect === "damage_reduction") {
+        current.damageReductionPercent = Math.min(100, skillProfile.power);
+        current.damageReductionTurns = skillProfile.duration;
+        result.message += ` • ใช้สกิล ${skillName} — ลดความเสียหาย ${current.damageReductionPercent}% เป็นเวลา ${skillProfile.duration} เทิร์น`;
+      } else if (skillProfile.effect === "copy_ability") {
+        const sourceSkill = defender.skills?.[0];
+        if (sourceSkill) {
+          current.copiedAbility = { ...sourceSkill };
+          current.copiedAbilityTurns = skillProfile.duration;
+          if (sourceSkill.passiveEffects?.length) current.activeSkillPassives = [...(current.activeSkillPassives || []), ...sourceSkill.passiveEffects.map(effect => ({ ...effect, id: `copy:${current.id}:${effect.id}`, name: `คัดลอก: ${effect.name}` }))];
+          result.message += ` • 🧬 ${skillName} คัดลอกความสามารถ "${sourceSkill.name}" เป็นเวลา ${skillProfile.duration} เทิร์น`;
+        } else {
+          result.message += ` • 🧬 ${skillName} ไม่พบความสามารถให้คัดลอก`;
+        }
       } else if (skillProfile.effect === "stun") {
         defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
         result.message += ` • ใช้สกิล ${skillName} ทำให้ ${defender.name} ติดสตัน 1 เทิร์น`;
@@ -3006,6 +3037,14 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       current.reflectTurns = 1;
     }
     if (result.damage > 0) {
+      if (defender.immortalTurns && defender.immortalTurns > 0) {
+        result.message += ` • ♾️ ${defender.name} อมตะ — ไม่ได้รับดาเมจ`;
+        result.damage = 0;
+      }
+      const reductionPercent = defender.damageReductionTurns && defender.damageReductionTurns > 0 ? Math.min(100, Math.max(0, Number(defender.damageReductionPercent) || 0)) : 0;
+      const reducedBySkill = reductionPercent > 0 ? Math.max(0, Math.round(result.damage * (1 - reductionPercent / 100))) : result.damage;
+      if (reductionPercent > 0) result.message += ` • 🛡️ ลดความเสียหาย ${reductionPercent}%`;
+      result.damage = reducedBySkill;
       const damageAfterStatus = Math.max(0, Math.round(result.damage * getAdminIncomingDamageMultiplier(defender)));
       const statusBlocked = Math.max(0, result.damage - damageAfterStatus);
       const blocked = Math.min(damageAfterStatus, defender.defenseTurns ? (defender.defenseValue || 0) : 0);
