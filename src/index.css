@@ -343,19 +343,51 @@ button {
 
 @media (max-width: 640px) {
   .star-shell header {
-    padding-left: 14px !important;
-    padding-right: 14px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .star-shell header > div {
+    flex-wrap: wrap !important;
+    row-gap: 8px;
+  }
+
+  .star-shell header > div > :first-child {
+    min-width: 0;
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .star-shell header > div > :last-child {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 100%;
+    justify-content: flex-end;
   }
 
   .star-shell main {
     padding: 14px !important;
   }
 
+  .star-shell nav {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .star-shell nav > div {
     min-width: max-content;
+    width: max-content;
+    max-width: none;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
   }
 
   .star-shell nav button {
     min-height: 40px;
+    flex: 0 0 auto;
   }
 }
