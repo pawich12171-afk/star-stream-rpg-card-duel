@@ -2836,68 +2836,136 @@ export function rollBattleAttack(attacker: BattleCombatant, defender: BattleComb
 
 export async function useBattleItem(room: BattleRoom, playerId: string, itemInstanceId: string): Promise<BattleRoom> {
   if (room.status !== 'active') throw new Error('การต่อสู้จบแล้ว');
-  const actor = [...room.teamA, ...room.teamB].find(unit => unit.id === room.turnActorId);
-  if (!actor || actor.type !== 'player' || actor.sourceId !== playerId) throw new Error('ยังไม่ใช่เทิร์นของผู้เล่นนี้');
 
-  const currentUses = Math.max(0, Number(room.battleItemUses) || 0);
+  // Normalize the room first. Rooms created by an older build can contain
+  // partial/legacy combatant data; using that data directly was able to crash
+  // the page when the item button was pressed.
+  const normalizeStats = (value: any) => ({
+    strength: Number(value?.strength) || 0,
+    durability: Number(value?.durability) || 0,
+    agility: Number(value?.agility) || 0,
+    magic: Number(value?.magic) || 0,
+  });
+  const normalizedRoom: BattleRoom = {
+    ...room,
+    teamA: (room.teamA || []).map(unit => ({
+      ...unit,
+      stats: normalizeStats(unit.stats),
+      hp: Math.max(0, Number(unit.hp) || 0),
+      maxHp: Math.max(1, Number(unit.maxHp) || 1),
+      skillCooldowns: { ...(unit.skillCooldowns || {}) },
+    })),
+    teamB: (room.teamB || []).map(unit => ({
+      ...unit,
+      stats: normalizeStats(unit.stats),
+      hp: Math.max(0, Number(unit.hp) || 0),
+      maxHp: Math.max(1, Number(unit.maxHp) || 1),
+      skillCooldowns: { ...(unit.skillCooldowns || {}) },
+    })),
+    log: [...(room.log || [])],
+  };
+
+  const actor = [...normalizedRoom.teamA, ...normalizedRoom.teamB]
+    .find(unit => unit.id === normalizedRoom.turnActorId);
+  if (!actor || actor.type !== 'player' || actor.sourceId !== playerId) {
+    throw new Error('ยังไม่ใช่เทิร์นของผู้เล่นนี้');
+  }
+
+  const currentUses = Math.max(0, Number(normalizedRoom.battleItemUses) || 0);
   if (currentUses >= 2) throw new Error('เกมนี้ใช้ไอเทมครบ 2 ครั้งแล้ว');
 
   const character = localCharacters.find(item => item.id === playerId);
   if (!character) throw new Error('ไม่พบตัวละครผู้ใช้');
-  const item = (character.inventory || []).find(inv => inv.instanceId === itemInstanceId);
-  if (!item || item.quantity <= 0) throw new Error('ไม่พบไอเทมในกระเป๋า');
-  if (item.category !== 'consumable' || !item.usableByPlayers) throw new Error('ไอเทมนี้ใช้ระหว่างการต่อสู้ไม่ได้');
+
+  const requestedId = String(itemInstanceId || '').trim();
+  if (!requestedId) throw new Error('ไม่พบรหัสไอเทม');
+
+  const item = (character.inventory || []).find(inv =>
+    String(inv.instanceId || '') === requestedId ||
+    String(inv.id || '') === requestedId
+  );
+  if (!item || Math.max(0, Number(item.quantity) || 0) <= 0) {
+    throw new Error('ไม่พบไอเทมในกระเป๋า');
+  }
+  if (item.category !== 'consumable' || item.usableByPlayers !== true) {
+    throw new Error('ไอเทมนี้ใช้ระหว่างการต่อสู้ไม่ได้');
+  }
 
   const inventory = (character.inventory || [])
-    .map(inv => inv.instanceId === itemInstanceId ? { ...inv, quantity: Math.max(0, inv.quantity - 1) } : inv)
-    .filter(inv => inv.quantity > 0);
+    .map(inv => (
+      String(inv.instanceId || '') === String(item.instanceId || '') ||
+      (!inv.instanceId && String(inv.id || '') === String(item.id || ''))
+    ) ? { ...inv, quantity: Math.max(0, Number(inv.quantity) - 1) } : inv)
+    .filter(inv => Math.max(0, Number(inv.quantity) || 0) > 0);
 
-  let hp = character.hp;
-  let maxHp = character.maxHp;
-  // Older character records may not have a stats object. Always normalize it before applying an item stat effect.
-  const stats = { ...(character.stats || {}) };
+  let hp = Math.max(0, Number(character.hp) || 0);
+  let maxHp = Math.max(1, Number(character.maxHp) || 1);
+  const rawStats = character.stats || {};
+  const stats: any = {
+    strength: Number(rawStats.strength) || 0,
+    durability: Number(rawStats.durability) || 0,
+    agility: Number(rawStats.agility) || 0,
+    magic: Number(rawStats.magic) || 0,
+  };
+
+  // Basic item effects.
   if (item.effectType === 'heal_hp') {
     const flatHeal = Math.max(0, Number(item.effectValue) || 0);
     const percentHeal = Math.min(100, Math.max(0, Number(item.healPercent) || 0));
-    const percentAmount = Math.round(maxHp * percentHeal / 100);
-    hp = Math.min(maxHp, hp + flatHeal + percentAmount);
+    hp = Math.min(maxHp, hp + flatHeal + Math.round(maxHp * percentHeal / 100));
   } else if (item.effectType === 'buff_stat' && item.targetStat) {
-    stats[item.targetStat] = (stats[item.targetStat] || 0) + Math.max(0, Number(item.effectValue) || 0);
+    const stat = String(item.targetStat);
+    if (stat in stats) stats[stat] = Math.max(0, Number(stats[stat]) || 0) + Math.max(0, Number(item.effectValue) || 0);
   } else if (item.effectType === 'boost_max_hp') {
     const bonus = Math.max(0, Number(item.effectValue) || 0);
     maxHp += bonus;
     hp = Math.min(maxHp, hp + bonus);
   }
 
-  await updateCharacterFields(playerId, { inventory, hp, maxHp, stats, lastUpdated: Date.now() });
+  const itemKey = String(item.instanceId || item.id || requestedId);
+  const actorPatch: BattleCombatant = {
+    ...actor,
+    stats,
+    hp: Math.min(maxHp, hp),
+    maxHp,
+    itemDamagePercent: Math.min(1000, Math.max(0, Number(item.battleDamagePercent) || 0)),
+    itemDamageTurns: Math.max(0, Math.floor(Number(item.battleDamageDuration) || 0)),
+    itemLuckMultiplier: Math.max(1, Math.min(20, Number(item.battleLuckMultiplier) || 1)),
+    itemLuckTurns: Math.max(0, Math.floor(Number(item.battleLuckDuration) || 0)),
+    itemCriticalChancePercent: Math.max(0, Math.min(100, Number(item.battleCriticalChancePercent) || 0)),
+    itemRepeatAttackChancePercent: Math.max(0, Math.min(100, Number(item.battleRepeatAttackChancePercent) || 0)),
+    itemPassiveChanceMultiplier: Math.max(1, Math.min(20, Number(item.battlePassiveChanceMultiplier) || 1)),
+    damageReductionPercent: Math.max(0, Math.min(100, Number(item.damageReductionPercent) || 0)),
+    damageReductionTurns: Math.max(0, Math.floor(Number(item.damageReductionDuration) || 0)),
+  };
 
+  // Store the item-use result in the same room state that the next turn uses.
   const nextRoom: BattleRoom = {
-    ...room,
-    teamA: room.teamA.map(unit => unit.id === actor.id ? { ...unit, hp: Math.min(maxHp, hp), maxHp, stats, itemDamagePercent: Math.min(1000, Math.max(0, Number(item.battleDamagePercent) || 0)),
-        itemDamageTurns: Math.max(0, Math.floor(Number(item.battleDamageDuration) || 0)),
-        itemLuckMultiplier: Math.max(1, Math.min(20, Number(item.battleLuckMultiplier) || 1)),
-        itemLuckTurns: Math.max(0, Math.floor(Number(item.battleLuckDuration) || 0)),
-        itemCriticalChancePercent: Math.max(0, Math.min(100, Number(item.battleCriticalChancePercent) || 0)),
-        itemRepeatAttackChancePercent: Math.max(0, Math.min(100, Number(item.battleRepeatAttackChancePercent) || 0)),
-        itemPassiveChanceMultiplier: Math.max(1, Math.min(20, Number(item.battlePassiveChanceMultiplier) || 1)) } : { ...unit }),
-    teamB: room.teamB.map(unit => ({ ...unit })),
+    ...normalizedRoom,
+    teamA: normalizedRoom.teamA.map(unit => unit.id === actor.id ? actorPatch : { ...unit }),
+    teamB: normalizedRoom.teamB.map(unit => ({ ...unit })),
     battleItemUses: currentUses + 1,
     log: [{
-      id: 'battle-log-item-' + Date.now(),
+      id: 'battle-log-item-' + Date.now() + '-' + itemKey,
       timestamp: Date.now(),
       actorName: actor.name,
       message: `🧪 ${actor.name} ใช้ไอเทม "${item.name}"${item.healPercent ? ` · ฟื้น ${item.healPercent}% Max HP` : ''}${item.battleDamagePercent ? ` · ดาเมจ +${item.battleDamagePercent}% ${item.battleDamageDuration || 0} เทิร์น` : ''}${item.battleLuckMultiplier && item.battleLuckMultiplier > 1 ? ` · 🍀 โชค ×${item.battleLuckMultiplier} ${item.battleLuckDuration || 0} เทิร์น` : ''}${item.battleCriticalChancePercent ? ` · 💥 คริ +${item.battleCriticalChancePercent}%` : ''}${item.battleRepeatAttackChancePercent ? ` · 🔁 ตีซ้ำ +${item.battleRepeatAttackChancePercent}%` : ''} · โควตาไอเทม ${currentUses + 1}/2 ครั้งในเกมนี้`,
-    }, ...(room.log || [])],
+    }, ...(normalizedRoom.log || [])],
     updatedAt: Date.now(),
   };
 
   const nextActor = getNextBattleActor(nextRoom, actor.id);
   nextRoom.turnActorId = nextActor?.id || actor.id;
-  if (nextActor?.team === 'a' && actor.team === 'b') {
-    nextRoom.round = (room.round || 1) + 1;
-  } else {
-    nextRoom.round = room.round || 1;
-  }
+  nextRoom.round = nextActor?.team === 'a' && actor.team === 'b'
+    ? (normalizedRoom.round || 1) + 1
+    : (normalizedRoom.round || 1);
+
+  await updateCharacterFields(playerId, {
+    inventory,
+    hp: actorPatch.hp,
+    maxHp: actorPatch.maxHp,
+    stats,
+  });
 
   await updateBattleRoom(nextRoom);
   return nextRoom;
