@@ -1,7 +1,7 @@
 // Vercel build sync: force fresh main build after JSX repair.
 import React, { useEffect, useRef, useState } from 'react';
 // Build trigger: StatusWindow JSX fix is present on main.
-import { CharacterProfile, Skill, ORVSkillRank } from '../types';
+import { CharacterProfile, Skill, ORVSkillRank, BattleExtraEffect, ItemPassiveEffect } from '../types';
 import { 
   Sparkles, 
   Zap, 
@@ -77,10 +77,24 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [newSkillStatValue, setNewSkillStatValue] = useState(15);
   const [newSkillStatDuration, setNewSkillStatDuration] = useState(1);
   const [newSkillExtraEffects, setNewSkillExtraEffects] = useState<NonNullable<Skill['battleEffects']>>([]);
+  const [newSkillPassiveEffects, setNewSkillPassiveEffects] = useState<ItemPassiveEffect[]>([]);
+  const [newSkillPassiveName, setNewSkillPassiveName] = useState('Passive ของสกิล');
+  const [newSkillPassiveKind, setNewSkillPassiveKind] = useState<ItemPassiveEffect['kind']>('stack');
+  const [newSkillPassiveTrigger, setNewSkillPassiveTrigger] = useState<ItemPassiveEffect['trigger']>('turn_start');
+  const [newSkillPassiveValue, setNewSkillPassiveValue] = useState(1);
+  const [newSkillPassiveMaxStacks, setNewSkillPassiveMaxStacks] = useState(6);
+  const [newSkillPassiveChance, setNewSkillPassiveChance] = useState(100);
+  const [newSkillPassiveStackKey, setNewSkillPassiveStackKey] = useState('skill');
+  const [newSkillPassiveDuration, setNewSkillPassiveDuration] = useState(1);
   const [newSkillExtraKind, setNewSkillExtraKind] = useState<NonNullable<Skill['battleEffects']>[number]['kind']>('bleeding');
   const [newSkillExtraValue, setNewSkillExtraValue] = useState(15);
   const [newSkillExtraDuration, setNewSkillExtraDuration] = useState(3);
   const [newSkillExtraChance, setNewSkillExtraChance] = useState(100);
+  const [newSkillEffectDuration, setNewSkillEffectDuration] = useState(1);
+  const [newSkillDrawbacks, setNewSkillDrawbacks] = useState<BattleExtraEffect[]>([]);
+  const [newSkillDrawbackKind, setNewSkillDrawbackKind] = useState<BattleExtraEffect['kind']>('bleeding');
+  const [newSkillDrawbackValue, setNewSkillDrawbackValue] = useState(10);
+  const [newSkillDrawbackDuration, setNewSkillDrawbackDuration] = useState(1);
 
   const [showHpBreakdown, setShowHpBreakdown] = useState(false);
   const [showStatEditModal, setShowStatEditModal] = useState(false);
@@ -307,6 +321,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       perkLevel10: newSkillPerk10.trim() || undefined,
       description: newSkillDesc.trim() || 'วิชาพิเศษที่สร้างสรรค์โดยผู้ใช้งาน',
       battleEffect: newSkillBattleEffect,
+      battleEffectDuration: Math.max(1, Math.min(10, Math.round(Number(newSkillEffectDuration) || 1))),
       battlePower: Math.max(1, Number(newSkillBattlePower) || 1),
       cooldownTurns: Math.max(0, Math.min(99, Number(newSkillCooldownTurns) || 0)),
       cooldown: Number(newSkillCooldownTurns) > 0 ? `${newSkillCooldownTurns} เทิร์น` : undefined,
@@ -316,6 +331,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       maxRepeatAttacks: Math.max(1, Math.min(20, Number(newSkillMaxRepeatAttacks) || 1)),
       battleStats: newSkillBattleStats.length ? [...newSkillBattleStats] : undefined,
       battleEffects: newSkillExtraEffects.length ? [...newSkillExtraEffects] : undefined,
+      battleDrawbacks: newSkillDrawbacks.length ? [...newSkillDrawbacks] : undefined,
+      passiveEffects: newSkillPassiveEffects.length ? [...newSkillPassiveEffects] : undefined,
       upgradeCount: 0,
     };
 
@@ -347,17 +364,20 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     setNewSkillMaxRepeatAttacks(1);
     setNewSkillBattleStats([]);
     setNewSkillExtraEffects([]);
+    setNewSkillEffectDuration(1);
+    setNewSkillDrawbacks([]); setNewSkillDrawbackKind('bleeding'); setNewSkillDrawbackValue(10); setNewSkillDrawbackDuration(1);
+    setNewSkillPassiveEffects([]); setNewSkillPassiveName('Passive ของสกิล'); setNewSkillPassiveKind('stack'); setNewSkillPassiveTrigger('turn_start'); setNewSkillPassiveValue(1); setNewSkillPassiveMaxStacks(6); setNewSkillPassiveChance(100); setNewSkillPassiveStackKey('skill'); setNewSkillPassiveDuration(1);
     setShowAddSkillModal(false);
   };
 
   const openSkillEditor = (skill: Skill) => {
-    setEditingSkillDraft({ ...skill, battleStats: skill.battleStats ? [...skill.battleStats] : undefined, battleEffects: skill.battleEffects ? [...skill.battleEffects] : undefined, passiveEffects: skill.passiveEffects ? [...skill.passiveEffects] : undefined });
+    setEditingSkillDraft({ ...skill, battleStats: skill.battleStats ? [...skill.battleStats] : undefined, battleEffects: skill.battleEffects ? [...skill.battleEffects] : undefined, battleDrawbacks: skill.battleDrawbacks ? [...skill.battleDrawbacks] : undefined, passiveEffects: skill.passiveEffects ? [...skill.passiveEffects] : undefined });
   };
 
   const saveEditedSkill = async () => {
     if (!editingSkillDraft) return;
     const updatedSkills = (latestCharacterRef.current.skills || []).map(skill =>
-      skill.id === editingSkillDraft.id ? { ...editingSkillDraft, name: editingSkillDraft.name.trim() || skill.name, description: editingSkillDraft.description.trim() || skill.description, battlePower: Math.max(0, Number(editingSkillDraft.battlePower) || 0), cooldownTurns: Math.max(0, Number(editingSkillDraft.cooldownTurns) || 0), battleCriticalChance: Math.max(0, Math.min(100, Number(editingSkillDraft.battleCriticalChance) || 0)), battleCriticalMultiplier: Math.max(1, Number(editingSkillDraft.battleCriticalMultiplier) || 1), repeatAttackChance: Math.max(0, Math.min(100, Number(editingSkillDraft.repeatAttackChance) || 0)), maxRepeatAttacks: Math.max(1, Math.min(20, Number(editingSkillDraft.maxRepeatAttacks) || 1)), damageScalingMultiplier: Math.max(0, Number(editingSkillDraft.damageScalingMultiplier) || 1) } : skill
+      skill.id === editingSkillDraft.id ? { ...editingSkillDraft, name: editingSkillDraft.name.trim() || skill.name, description: editingSkillDraft.description.trim() || skill.description, battlePower: Math.max(0, Number(editingSkillDraft.battlePower) || 0), cooldownTurns: Math.max(0, Number(editingSkillDraft.cooldownTurns) || 0), battleCriticalChance: Math.max(0, Math.min(100, Number(editingSkillDraft.battleCriticalChance) || 0)), battleCriticalMultiplier: Math.max(1, Number(editingSkillDraft.battleCriticalMultiplier) || 1), repeatAttackChance: Math.max(0, Math.min(100, Number(editingSkillDraft.repeatAttackChance) || 0)), maxRepeatAttacks: Math.max(1, Math.min(20, Number(editingSkillDraft.maxRepeatAttacks) || 1)), damageScalingMultiplier: Math.max(0, Number(editingSkillDraft.damageScalingMultiplier) || 1), battleEffectDuration: Math.max(1, Math.min(10, Number(editingSkillDraft.battleEffectDuration) || 1)), battleDrawbacks: editingSkillDraft.battleDrawbacks?.length ? [...editingSkillDraft.battleDrawbacks] : undefined, battleEffects: editingSkillDraft.battleEffects?.length ? [...editingSkillDraft.battleEffects] : undefined, passiveEffects: editingSkillDraft.passiveEffects?.length ? [...editingSkillDraft.passiveEffects] : undefined } : skill
     );
     const saved = await commitCharacterUpdate({ ...latestCharacterRef.current, skills: updatedSkills });
     if (saved) { setEditingSkillDraft(null); }
@@ -1106,7 +1126,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                       <option value="heal">ฟื้นฟู HP</option>
                       <option value="defense">โล่ / ป้องกัน</option>
                       <option value="reflect">สะท้อนดาเมจ</option>
-                      <option value="stun">ควบคุม / สตัน</option>
+                      <option value="stun">ควบคุม / สตัน</option><option value="copy_ability">🧬 คัดลอกความสามารถศัตรู</option><option value="immortal">♾️ อมตะ / กัน True Damage</option><option value="damage_reduction">🛡️ ลดความเสียหาย</option>
                     </select>
                   </div>
                   <div>
@@ -1127,6 +1147,42 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                   เคล็ดลับ: ตั้งค่า <strong className="text-cyan-200">ค่าพลัง</strong> ให้สอดคล้องกับคำอธิบายด้านบน เพื่อให้ผู้เล่นเข้าใจผลของสกิลได้ทันที
                 </div>
 
+                <div className="rounded-xl border border-violet-500/25 bg-violet-950/10 p-3 space-y-2">
+                  <div className="text-[11px] font-black text-violet-200">🧬 ความสามารถพิเศษ + ข้อเสียของสกิล</div>
+                  <div className="text-[10px] text-slate-400">ตั้งระยะเวลาเอฟเฟกต์หลัก 1–10 เทิร์น และกำหนดข้อเสีย/Passive ที่ทำงานจริง</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="text-[10px] text-slate-400">ระยะเวลาเอฟเฟกต์
+                      <input type="number" min={1} max={10} value={newSkillEffectDuration} onChange={e=>setNewSkillEffectDuration(Math.max(1,Math.min(10,Number(e.target.value)||1)))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"/>
+                    </label>
+                    <div className="text-[10px] text-slate-500 pt-5">ใช้กับ Copy / Immortal / Damage Reduction และสถานะหลัก</div>
+                  </div>
+                  <div className="border-t border-violet-500/20 pt-2">
+                    <div className="text-[10px] font-black text-rose-200 mb-2">⚠️ ข้อเสีย — ทำงานจริงหลังใช้สกิล</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select value={newSkillDrawbackKind} onChange={e=>setNewSkillDrawbackKind(e.target.value as BattleExtraEffect['kind'])} className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"><option value="bleeding">เสียเลือดต่อเทิร์น</option><option value="burn">เผาไหม้ตัวเอง</option><option value="poison">พิษตัวเอง</option><option value="stun">สตันตัวเอง</option><option value="damage_percent">รับดาเมจเพิ่ม %</option><option value="damage_reduction">ลดดาเมจตัวเอง %</option><option value="reduce_defense_percent">ลดป้องกันตัวเอง %</option></select>
+                      <input type="number" min={0} value={newSkillDrawbackValue} onChange={e=>setNewSkillDrawbackValue(Number(e.target.value)||0)} placeholder="ค่า" className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"/>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <input type="number" min={1} max={10} value={newSkillDrawbackDuration} onChange={e=>setNewSkillDrawbackDuration(Math.max(1,Math.min(10,Number(e.target.value)||1)))} placeholder="ระยะเวลา" className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"/>
+                      <button type="button" onClick={()=>setNewSkillDrawbacks(prev=>[...prev,{kind:newSkillDrawbackKind,value:Math.max(0,Number(newSkillDrawbackValue)||0),duration:Math.max(1,Math.min(10,Number(newSkillDrawbackDuration)||1)),chance:100,target:'self'}])} className="rounded-lg bg-rose-500/20 px-2 py-2 text-xs font-black text-rose-100">+ เพิ่มข้อเสีย</button>
+                    </div>
+                    {newSkillDrawbacks.map((e,i)=><div key={i} className="flex items-center justify-between rounded bg-black/20 px-2 py-1 text-[10px] text-rose-200"><span>{e.kind} • {e.value} • {e.duration} เทิร์น</span><button type="button" onClick={()=>setNewSkillDrawbacks(prev=>prev.filter((_,j)=>j!==i))} className="text-rose-300">ลบ</button></div>)}
+                  </div>
+                  <div className="border-t border-violet-500/20 pt-2">
+                    <div className="text-[10px] font-black text-fuchsia-200 mb-2">🌸 Passive ของสกิล</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input value={newSkillPassiveName} onChange={e=>setNewSkillPassiveName(e.target.value)} placeholder="ชื่อ Passive" className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"/>
+                      <select value={newSkillPassiveKind} onChange={e=>setNewSkillPassiveKind(e.target.value as ItemPassiveEffect['kind'])} className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"><option value="stack">Stack</option><option value="true_damage_at_max_stacks">ครบ Stack → True Damage</option><option value="true_damage_per_stack">True Damage / Stack</option><option value="damage">Damage</option><option value="damage_percent">Damage %</option><option value="heal">Heal</option><option value="heal_percent">Heal %</option><option value="buff_stat">Buff Stat</option><option value="shield">Shield</option><option value="reflect">Reflect</option><option value="repeat_attack_chance">Repeat Attack %</option><option value="critical_chance">Critical %</option></select>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      <input type="number" value={newSkillPassiveValue} onChange={e=>setNewSkillPassiveValue(Number(e.target.value)||0)} placeholder="ค่า" className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"/>
+                      <input type="number" min={1} value={newSkillPassiveMaxStacks} onChange={e=>setNewSkillPassiveMaxStacks(Math.max(1,Number(e.target.value)||1))} placeholder="Max Stack" className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"/>
+                      <input type="number" min={1} value={newSkillPassiveDuration} onChange={e=>setNewSkillPassiveDuration(Math.max(1,Number(e.target.value)||1))} placeholder="เทิร์น" className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-white"/>
+                    </div>
+                    <button type="button" onClick={()=>setNewSkillPassiveEffects(prev=>[...prev,{id:'skill-passive-'+Date.now(),name:newSkillPassiveName.trim()||'Passive ของสกิล',trigger:newSkillPassiveTrigger,kind:newSkillPassiveKind,value:Math.max(0,Number(newSkillPassiveValue)||0),chance:Math.max(0,Math.min(100,Number(newSkillPassiveChance)||0)),maxStacks:Math.max(1,Math.round(Number(newSkillPassiveMaxStacks)||1)),stackKey:newSkillPassiveStackKey.trim()||'skill',duration:Math.max(1,Number(newSkillPassiveDuration)||1)}])} className="mt-2 w-full rounded-lg bg-fuchsia-500/20 px-2 py-2 text-xs font-black text-fuchsia-100">+ เพิ่ม Passive</button>
+                    {newSkillPassiveEffects.map((e,i)=><div key={e.id} className="flex items-center justify-between rounded bg-black/20 px-2 py-1 text-[10px] text-fuchsia-200"><span>{e.name} • {e.kind} • {e.value} • {e.duration} เทิร์น</span><button type="button" onClick={()=>setNewSkillPassiveEffects(prev=>prev.filter(x=>x.id!==e.id))} className="text-rose-300">ลบ</button></div>)}
+                  </div>
+                </div>
                 <div className="rounded-xl border border-amber-500/25 bg-amber-950/10 p-3 space-y-2">
                   <div className="text-[11px] font-black text-amber-200">💥 คริติคอล</div>
                   <div className="grid grid-cols-2 gap-2">
