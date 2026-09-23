@@ -77,7 +77,16 @@ import confetti from './utils/confetti';
 
 export default function App() {
   // Deployment sync checkpoint: keep main/Vercel source aligned.
-  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin'>('status');
+  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin'>(() => {
+    const fallback = 'status' as const;
+    try {
+      const saved = localStorage.getItem('starstream_active_tab');
+      const allowed = ['status', 'shop', 'games', 'gacha', 'rankings', 'notifications', 'quests', 'battle', 'admin'] as const;
+      return allowed.includes(saved as typeof allowed[number]) ? saved as typeof allowed[number] : fallback;
+    } catch {
+      return fallback;
+    }
+  });
 
   // Real-time State
   const [characters, setCharacters] = useState<CharacterProfile[]>(() => [...INITIAL_CHARACTERS]);
@@ -101,6 +110,14 @@ export default function App() {
   useEffect(() => {
     charactersRef.current = characters;
   }, [characters]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('starstream_active_tab', activeTab);
+    } catch {
+      // Ignore storage failures; the current tab still works in memory.
+    }
+  }, [activeTab]);
 
   // Admin Mode Toggle
   const [isAdminMode, setIsAdminMode] = useState<boolean>(true);
