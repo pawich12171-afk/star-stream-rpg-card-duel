@@ -332,6 +332,9 @@ export default function App() {
   const handleCreateCharacter = async (newChar: CharacterProfile) => {
     await addCharacterToDB(newChar);
     setCurrentUserId(newChar.id);
+    try {
+      localStorage.setItem('starstream_current_user_id', newChar.id);
+    } catch {}
     confetti({ particleCount: 80, spread: 60 });
   };
 
