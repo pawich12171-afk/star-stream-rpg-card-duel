@@ -2828,6 +2828,10 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
   const defender = opponentTeam.find(item => item.hp > 0);
   if (!defender) return { room: { ...nextRoom, status: "completed", winnerTeam: actor.team }, result: null };
   const current = all.find(item => item.id === actor.id) as BattleCombatant;
+  // Duration is consumed on the owner's next turn, not at the end of the
+  // opponent's turn. This keeps a 1-turn effect active for the full opposing
+  // turn and makes duration behavior symmetric for Team A and Team B.
+  advanceAdminStatusEffects(current);
   const statusTick = tickAdminStatusEffects(current);
   if (statusTick.skipTurn) current.stunnedTurns = Math.max(current.stunnedTurns || 0, 1);
   let result: BattleRollResult | null = null;
@@ -3097,7 +3101,6 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
     return { room: nextRoom, result };
   }
   const nextActor = getNextBattleActor(nextRoom, current.id);
-  if (nextActor?.team === "a" && current.team === "b") getBattleCombatants(nextRoom).forEach(advanceAdminStatusEffects);
   nextRoom.turnActorId = nextActor?.id || current.id;
   nextRoom.round = (nextRoom.round || 1) + (nextActor?.team === "a" && current.team === "b" ? 1 : 0);
   return { room: nextRoom, result };
