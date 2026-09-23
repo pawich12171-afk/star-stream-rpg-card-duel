@@ -1489,7 +1489,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <Package className="w-4 h-4 text-cyan-400" />
-                  รายการไอเทมที่สร้างไว้ ({shopItems.length} ชิ้น)
+                  รายการไอเทมที่สร้างไว้ ({shopItems.filter(item => !item.adminOnly).length} ชิ้น)
                 </h3>
                 <p className="text-xs text-slate-400">
                   สามารถตรวจสอบและกดลบของออกจากร้านค้าได้ทันที
@@ -1520,6 +1520,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
                   {shopItems
+                    .filter(item => !item.adminOnly)
                     .filter(item => item.name.toLowerCase().includes(shopSearch.toLowerCase()) || item.description.toLowerCase().includes(shopSearch.toLowerCase()))
                     .map((item) => (
                       <tr key={item.id} className="hover:bg-slate-800/30">
