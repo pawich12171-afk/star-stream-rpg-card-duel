@@ -1451,6 +1451,22 @@ export function subscribeToGachaRewards(callback: (rewards: GachaReward[]) => vo
         ...pendingRewards
       ].sort((a, b) => (Number(a.rate) || 0) - (Number(b.rate) || 0));
 
+      // Ensure legacy gacha item rewards also exist in the central catalog.
+      for (const reward of mergedList) {
+        if (reward.type !== 'item' || !reward.itemData) continue;
+        const catalogItem: Item = {
+          ...reward.itemData,
+          id: reward.itemId || reward.itemData.id,
+          inShop: reward.itemData.inShop === true,
+          adminOnly: reward.itemData.inShop !== true,
+          rewardEligible: true,
+          stackable: reward.itemData.stackable !== false,
+        };
+        if (!localShopItems.some(item => item.id === catalogItem.id)) {
+          localShopItems = [catalogItem, ...localShopItems];
+        }
+      }
+
       // Firebase is authoritative, including an empty collection.
       localGachaRewards = mergedList;
       saveLocalAll();
