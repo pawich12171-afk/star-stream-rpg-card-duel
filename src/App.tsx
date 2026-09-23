@@ -591,8 +591,8 @@ export default function App() {
 
       {/* Navigation Tabs Bar */}
 
-      <nav className="star-nav bg-slate-900/60 border-b border-slate-800 px-4 md:px-8 py-2 overflow-x-auto scrollbar-none">
-        <div className="max-w-7xl mx-auto flex items-center gap-2">
+      <nav className="star-nav bg-slate-900/60 border-b border-slate-800 px-4 md:px-8 py-2 overflow-x-auto overflow-y-hidden nav-scroll-x">
+        <div className="max-w-7xl mx-auto flex w-max min-w-full items-center gap-2">
           <button
             id="nav-tab-status"
             onClick={() => setActiveTab('status')}
