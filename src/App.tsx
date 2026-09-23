@@ -733,7 +733,6 @@ export default function App() {
             )}
           </button>
 
-          {/* ADMIN TAB - ALWAYS ACCESSIBLE */}
           <button
             id="nav-tab-quests"
             onClick={() => setActiveTab('quests')}
@@ -742,7 +741,8 @@ export default function App() {
             <ScrollText className="w-4 h-4" />
             ภารกิจ
           </button>
-          <button
+          {canUseAdminMode && isAdminMode && (
+            <button
             id="nav-tab-admin"
             onClick={() => setActiveTab('admin')}
              className={`star-nav-tab px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
@@ -754,6 +754,7 @@ export default function App() {
             <ShieldCheck className="w-4 h-4" />
             ผู้ดูแลระบบ (Admin Panel)
           </button>
+          )}
         </div>
       </nav>
 
