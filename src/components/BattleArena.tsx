@@ -393,7 +393,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
           const botActor = [...botRoom.teamA, ...botRoom.teamB].find(unit => unit.id === botRoom.turnActorId);
           if (!botActor || botActor.type !== 'bot') break;
           await new Promise(resolve => window.setTimeout(resolve, 350));
-          const botResolved = resolveBattleTurn(botRoom, config, chooseBotSkill(botNow));
+          const botResolved = resolveBattleTurn(botRoom, config, chooseBotSkill(botActor));
           if (!botResolved.result && botResolved.room.turnActorId === botRoom.turnActorId && botResolved.room.status === botRoom.status) break;
           botRoom = botResolved.room;
           await updateBattleRoom(botRoom);
