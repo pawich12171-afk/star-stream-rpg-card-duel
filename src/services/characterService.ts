@@ -2892,7 +2892,9 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
   if (!item || Math.max(0, Number(item.quantity) || 0) <= 0) {
     throw new Error('ไม่พบไอเทมในกระเป๋า');
   }
-  if (item.category !== 'consumable' || item.usableByPlayers !== true) {
+  // Legacy items may not have usableByPlayers yet. Only an explicit false
+  // disables battle use, so older inventory records remain usable.
+  if (item.category !== 'consumable' || item.usableByPlayers === false) {
     throw new Error('ไอเทมนี้ใช้ระหว่างการต่อสู้ไม่ได้');
   }
 
