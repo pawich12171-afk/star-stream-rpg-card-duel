@@ -153,7 +153,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
           read: false,
           type: 'gacha' as const,
         },
-        ...(latestCharacter.notifications || []),
+        ...(currentCharacter.notifications || []),
       ],
       lastUpdated: Math.max(Date.now(), Number(currentCharacter.lastUpdated || 0) + 1),
     };
@@ -399,7 +399,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
           read: false,
           type: 'gacha' as const,
         },
-        ...(currentCharacter.notifications || []),
+        ...(latestCharacter.notifications || []),
       ];
 
       const updatedCharacter: CharacterProfile = {
