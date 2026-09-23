@@ -2017,6 +2017,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             )}
           </div>
+          </div>
 
           <div className="bg-slate-900 border border-purple-500/30 rounded-3xl p-6 space-y-4 shadow-xl">
             <div className="flex items-center justify-between gap-3">
