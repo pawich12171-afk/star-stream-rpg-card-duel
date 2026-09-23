@@ -3080,7 +3080,6 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
     if ((result.trueDamage || 0) > 0) {
       const appliedTrueDamage = defender.immortalTurns && defender.immortalTurns > 0 ? 0 : Math.min(defender.hp, Math.max(0, Math.round(result.trueDamage || 0)));
       if (defender.immortalTurns && defender.immortalTurns > 0) result.message += ` • ♾️ ${defender.name} อมตะ — กัน True Damage ด้วย`;
-      const _unusedTrueDamageGuard = Math.min(defender.hp, Math.max(0, Math.round(result.trueDamage || 0)));
       defender.hp = Math.max(0, defender.hp - appliedTrueDamage);
       result.message += ` • 💠 True Damage ${appliedTrueDamage}`;
       result.trueDamage = appliedTrueDamage;
