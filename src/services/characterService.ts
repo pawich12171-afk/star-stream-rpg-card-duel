@@ -2615,15 +2615,13 @@ function getAdminOutgoingDamageMultiplier(unit: BattleCombatant): number {
 }
 
 function getAdminIncomingDamageMultiplier(unit: BattleCombatant): number {
-  const skillReduction = unit.damageReductionTurns && unit.damageReductionTurns > 0
-    ? Math.min(100, Math.max(0, Number(unit.damageReductionPercent) || 0)) / 100
-    : 0;
-  const baseMultiplier = 1 - skillReduction;
+  // Skill damage reduction is applied explicitly at hit resolution so it is
+  // never multiplied twice. This helper only handles percentage shield status.
   return getActiveAdminStatusEffects(unit).reduce((multiplier, effect) => {
     if (effect.kind !== 'shield') return multiplier;
     const percent = Math.min(100, Math.max(0, Number(effect.power) || 0)) / 100;
     return multiplier * (effect.mode === 'buff' ? 1 - percent : 1 + percent);
-  }, baseMultiplier);
+  }, 1);
 }
 
 function getAdminReflectPercent(unit: BattleCombatant): number {
@@ -3056,7 +3054,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         result.damage = Math.max(0, Math.round(result.damage * (1 - reductionPercent / 100)));
         result.message += ` • 🛡️ ลดความเสียหาย ${reductionPercent}%`;
       }
-      const damageAfterStatus = Math.max(0, Math.round(result.damage * (1 - (getAdminIncomingDamageMultiplier(defender) < 1 && reductionPercent === 0 ? 1 - getAdminIncomingDamageMultiplier(defender) : 0))));
+      const damageAfterStatus = Math.max(0, Math.round(result.damage * getAdminIncomingDamageMultiplier(defender)));
       const statusBlocked = Math.max(0, result.damage - damageAfterStatus);
       const blocked = Math.min(damageAfterStatus, defender.defenseTurns ? (defender.defenseValue || 0) : 0);
       const finalDamage = Math.max(0, damageAfterStatus - blocked);
