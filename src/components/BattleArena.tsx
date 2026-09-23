@@ -58,6 +58,16 @@ function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): Batt
     })));
   const allPassives = [...equippedPassives, ...skillPassives];
   const stats = { ...character.stats };
+  // Direct stat bonuses configured on equipped items are active in battle.
+  (character.inventory || [])
+    .filter(item => item.isEquipped && item.category === 'equipment')
+    .forEach(item => {
+      const copies = Math.max(1, Number(item.equippedQuantity) || 1);
+      stats.strength += (Number(item.equipmentStrengthBonus) || 0) * copies;
+      stats.durability += (Number(item.equipmentDurabilityBonus) || 0) * copies;
+      stats.agility += (Number(item.equipmentAgilityBonus) || 0) * copies;
+      stats.magic += (Number(item.equipmentMagicBonus) || 0) * copies;
+    });
   allPassives.filter(effect => effect.kind === 'buff_stat' && effect.targetStat).forEach(effect => {
     const stat = effect.targetStat as keyof typeof stats;
     stats[stat] = (stats[stat] || 0) + (Number(effect.value) || 0);
