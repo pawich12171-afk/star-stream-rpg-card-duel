@@ -1062,6 +1062,44 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                     <option value="damage">⚔️ โจมตี / ดาเมจ</option><option value="heal">❤️ ฟื้น HP</option><option value="defense">🛡️ ป้องกัน</option><option value="reflect">↩️ สะท้อน</option><option value="stun">💫 สตัน</option><option value="copy_ability">🧬 คัดลอกความสามารถ</option><option value="immortal">♾️ อมตะ</option><option value="damage_reduction">🛡️ ลดความเสียหาย</option>
                   </select>
                 </label>
+                <div className="rounded-xl border border-violet-500/20 bg-violet-950/10 p-3 space-y-2">
+                  <div className="text-[10px] font-black text-violet-200">⚙️ ตั้งค่าผลหลัก</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <label className="text-[10px] text-slate-400">พลัง / ค่า
+                      <input type="number" min="0" step="0.1" value={editingSkillDraft.battlePower ?? 0} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battlePower:Number(e.target.value)})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-white"/>
+                    </label>
+                    {(editingSkillDraft.battleEffect === 'heal' || editingSkillDraft.battleEffect === 'defense' || editingSkillDraft.battleEffect === 'reflect' || editingSkillDraft.battleEffect === 'damage_reduction' || editingSkillDraft.battleEffect === 'copy_ability' || editingSkillDraft.battleEffect === 'immortal' || editingSkillDraft.battleEffect === 'stun') && (
+                      <label className="text-[10px] text-slate-400">ระยะเวลา (เทิร์น)
+                        <input type="number" min="1" max="99" value={editingSkillDraft.battleEffectDuration ?? 1} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battleEffectDuration:Math.max(1,Math.min(99,Number(e.target.value)||1))})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-white"/>
+                      </label>
+                    )}
+                    {editingSkillDraft.battleEffect === 'heal' && (
+                      <label className="text-[10px] text-slate-400">ฟื้น HP เพิ่ม (% Max HP)
+                        <input type="number" min="0" max="100" step="0.1" value={Number(editingSkillDraft.battleStats?.find(s=>s.kind==='heal_percent')?.value ?? 0)} onChange={e=>{
+                          const value=Math.max(0,Math.min(100,Number(e.target.value)||0));
+                          const stats=[...(editingSkillDraft.battleStats||[])].filter(s=>s.kind!=='heal_percent');
+                          if(value>0) stats.push({kind:'heal_percent',value});
+                          setEditingSkillDraft({...editingSkillDraft,battleStats:stats});
+                        }} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-white"/>
+                      </label>
+                    )}
+                    {editingSkillDraft.battleEffect === 'damage_reduction' && (
+                      <label className="text-[10px] text-slate-400">ลดความเสียหาย (%)
+                        <input type="number" min="0" max="100" step="0.1" value={editingSkillDraft.battlePower ?? 0} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battlePower:Number(e.target.value)})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-white"/>
+                      </label>
+                    )}
+                    {editingSkillDraft.battleEffect === 'reflect' && (
+                      <label className="text-[10px] text-slate-400">สะท้อนความเสียหาย (%)
+                        <input type="number" min="0" max="100" step="0.1" value={editingSkillDraft.battlePower ?? 0} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battlePower:Math.max(0,Math.min(100,Number(e.target.value)||0))})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-white"/>
+                      </label>
+                    )}
+                    {editingSkillDraft.battleEffect === 'defense' && (
+                      <label className="text-[10px] text-slate-400">ค่าป้องกัน
+                        <input type="number" min="0" step="0.1" value={editingSkillDraft.battlePower ?? 0} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battlePower:Math.max(0,Number(e.target.value)||0)})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-white"/>
+                      </label>
+                    )}
+                  </div>
+                </div>
                 {editingSkillAdvancedMode==='form' ? (
                   <div className="space-y-3">
                     <div className="rounded-xl border border-rose-500/20 bg-rose-950/10 p-3 space-y-2">
