@@ -2598,7 +2598,17 @@ function applyItemPassiveEffects(
   result: BattleRollResult,
   trigger: ItemPassiveEffect['trigger'],
 ) {
-  const passives = [...(attacker.activeSkillPassives || []), ...getEquippedItemPassives(attacker)].filter(effect => effect.trigger === trigger);
+  const rawPassives = [...(attacker.activeSkillPassives || []), ...getEquippedItemPassives(attacker)]
+    .filter(effect => effect && effect.trigger === trigger && effect.kind && effect.id);
+  // Legacy data can accidentally contain the same passive many times. Execute
+  // each logical passive once per trigger and cap the total work.
+  const seenPassiveKeys = new Set<string>();
+  const passives = rawPassives.filter(effect => {
+    const key = String(effect.stackKey || effect.id || '').trim();
+    if (!key || seenPassiveKeys.has(key + ':' + effect.kind)) return false;
+    seenPassiveKeys.add(key + ':' + effect.kind);
+    return true;
+  }).slice(0, 50);
   const ordered = [...passives.filter(effect => effect.kind === 'stack'), ...passives.filter(effect => effect.kind !== 'stack')];
   for (const passive of ordered) {
     const baseChance = passive.chance == null ? 100 : Math.max(0, Math.min(100, Number(passive.chance) || 0));
@@ -3200,14 +3210,12 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         const maxRepeats = Math.max(1, Math.min(20, Number(skill.maxRepeatAttacks) || 1));
         let repeatsDone = 0;
         if (result.damage > 0 && repeatChance > 0) {
-          let repeatRoll = Math.random() * 100;
-          while (repeatsDone < maxRepeats && repeatRoll < repeatChance) {
+          for (; repeatsDone < maxRepeats; repeatsDone += 1) {
+            if (Math.random() * 100 >= repeatChance) break;
             const repeat = rollBattleAttack(current, defender, diceConfig);
             result.damage += repeat.damage;
             result.heal += repeat.heal;
-            repeatsDone += 1;
-            result.message += ` • 🔁 ตีซ้ำรอบที่ ${repeatsDone} (${repeatChance}%) +${repeat.damage} ดาเมจ`;
-            if (repeatsDone < maxRepeats) repeatRoll = Math.random() * 100;
+            result.message += ` • 🔁 ตีซ้ำรอบที่ ${repeatsDone + 1} (${repeatChance}%) +${repeat.damage} ดาเมจ`;
           }
           if (repeatsDone === 0) {
             result.message += ` • ❌ Passive ${skillName} ล้มเหลว: โอกาส ${repeatChance}% ไม่ออก`;
@@ -3256,14 +3264,12 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       let repeatsDone = 0;
       const maxRepeats = 20;
       if (result.damage > 0 && repeatChance > 0) {
-        let repeatRoll = Math.random() * 100;
-        while (repeatsDone < maxRepeats && repeatRoll < repeatChance) {
+        for (; repeatsDone < maxRepeats; repeatsDone += 1) {
+          if (Math.random() * 100 >= repeatChance) break;
           const repeat = rollBattleAttack(current, defender, diceConfig);
           result.damage += repeat.damage;
           result.heal += repeat.heal;
-          repeatsDone += 1;
-          result.message += ` • 🔁 ไอเทมติดตัวตีซ้ำรอบที่ ${repeatsDone} (${repeatChance}%) +${repeat.damage} ดาเมจ`;
-          if (repeatsDone < maxRepeats) repeatRoll = Math.random() * 100;
+          result.message += ` • 🔁 ไอเทมติดตัวตีซ้ำรอบที่ ${repeatsDone + 1} (${repeatChance}%) +${repeat.damage} ดาเมจ`;
         }
         if (repeatsDone === 0) {
           result.message += ` • ❌ Passive ตีซ้ำ ล้มเหลว: โอกาส ${repeatChance}% ไม่ออก`;
