@@ -727,7 +727,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       battleDamagePercent: newItemCategory === 'consumable' ? Math.max(0, Math.min(1000, newItemBattleDamagePercent)) : undefined,
       battleDamageDuration: newItemCategory === 'consumable' && newItemBattleDamagePercent > 0 ? Math.max(1, Math.floor(newItemBattleDamageDuration)) : undefined,
       battleLuckMultiplier: newItemCategory === 'consumable' && newItemBattleLuckMultiplier > 1 ? Math.max(1, Math.min(20, newItemBattleLuckMultiplier)) : undefined,
-      battleLuckDuration: newItemCategory === 'consumable' && newItemBattleLuckMultiplier > 1 ? Math.max(1, Math.floor(newItemBattleLuckDuration)) : undefined,
+      battleLuckDuration: newItemCategory === 'consumable' && newItemBattleLuckMultiplier > 1 ? Math.min(10, Math.max(1, Math.floor(newItemBattleLuckDuration))) : undefined,
       battleCriticalChancePercent: newItemCategory === 'consumable' && newItemBattleCriticalChancePercent > 0 ? Math.max(0, Math.min(100, newItemBattleCriticalChancePercent)) : undefined,
       battleRepeatAttackChancePercent: newItemCategory === 'consumable' && newItemBattleRepeatAttackChancePercent > 0 ? Math.max(0, Math.min(100, newItemBattleRepeatAttackChancePercent)) : undefined,
       battlePassiveChanceMultiplier: newItemCategory === 'consumable' && newItemBattlePassiveChanceMultiplier > 1 ? Math.max(1, Math.min(20, newItemBattlePassiveChanceMultiplier)) : undefined,
@@ -1374,7 +1374,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                     <input type="number" min="1" max="20" step="0.1" value={editBattleLuckMultiplier} onChange={e=>setEditBattleLuckMultiplier(Number(e.target.value))} className="mt-1 w-full rounded-xl bg-slate-950 border border-emerald-700/60 px-3 py-2.5 text-white font-black" />
                   </label>
                   <label className="text-xs font-bold text-cyan-300">ระยะเวลาโชค (เทิร์น)
-                    <input type="number" min="1" max="100" value={editBattleLuckDuration} onChange={e=>setEditBattleLuckDuration(Number(e.target.value))} disabled={editBattleLuckMultiplier<=1} className="mt-1 w-full rounded-xl bg-slate-950 border border-cyan-700/60 px-3 py-2.5 text-white font-black disabled:opacity-40" />
+                    <input type="number" min="1" max="10" value={editBattleLuckDuration} onChange={e=>setEditBattleLuckDuration(Number(e.target.value))} disabled={editBattleLuckMultiplier<=1} className="mt-1 w-full rounded-xl bg-slate-950 border border-cyan-700/60 px-3 py-2.5 text-white font-black disabled:opacity-40" />
                   </label>
                 </div>
                 <p className="text-[10px] text-slate-400">เช่น ×2 เป็นการคูณโอกาส Passive/Effect/Crit/ตีซ้ำ 2 เท่า</p>
@@ -1411,7 +1411,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                   const updated = {
                     ...editingBattleItem,
                     battleLuckMultiplier: editBattleLuckMultiplier > 1 ? Math.max(1, Math.min(20, editBattleLuckMultiplier)) : undefined,
-                    battleLuckDuration: editBattleLuckMultiplier > 1 ? Math.max(1, Math.floor(editBattleLuckDuration)) : undefined,
+                    battleLuckDuration: editBattleLuckMultiplier > 1 ? Math.min(10, Math.max(1, Math.floor(editBattleLuckDuration))) : undefined,
                     battleCriticalChancePercent: editBattleCriticalChancePercent > 0 ? Math.max(0, Math.min(100, editBattleCriticalChancePercent)) : undefined,
                     battleRepeatAttackChancePercent: editBattleRepeatAttackChancePercent > 0 ? Math.max(0, Math.min(100, editBattleRepeatAttackChancePercent)) : undefined,
                     battlePassiveChanceMultiplier: editBattlePassiveChanceMultiplier > 1 ? Math.max(1, Math.min(20, editBattlePassiveChanceMultiplier)) : undefined,
@@ -1706,7 +1706,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                         </div>
                         <div>
                           <label className="text-cyan-300 font-bold block mb-1">⏱️ ระยะเวลาโชค (เทิร์น)</label>
-                          <input type="number" min="1" max="100" value={newItemBattleLuckDuration} onChange={e=>setNewItemBattleLuckDuration(Number(e.target.value))} disabled={newItemBattleLuckMultiplier<=1} className="w-full rounded-xl bg-slate-900 border border-cyan-700/60 px-3 py-2 text-white font-black"/>
+                          <input type="number" min="1" max="10" value={newItemBattleLuckDuration} onChange={e=>setNewItemBattleLuckDuration(Number(e.target.value))} disabled={newItemBattleLuckMultiplier<=1} className="w-full rounded-xl bg-slate-900 border border-cyan-700/60 px-3 py-2 text-white font-black"/>
                           <p className="text-[10px] text-slate-400 mt-1">โชคจะหมดเมื่อครบจำนวนเทิร์นที่ตั้งไว้</p>
                         </div>
                         <div>
