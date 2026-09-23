@@ -915,7 +915,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {shopItems.map(item => {
+            {shopItems.filter(item => !item.adminOnly).map(item => {
               const rarityInfo = getRarityBadge(item.rarity);
               const isMaxHpBooster = item.effectType === 'boost_max_hp' || item.name.includes('ทองคำ') || item.name.includes('Max HP') || item.name.includes('หยาดโลหิต');
               const isHealHp = item.effectType === 'heal_hp';
