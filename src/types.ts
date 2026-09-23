@@ -363,7 +363,7 @@ export interface CardDuelRoom {
   updatedAt: number;
 }
 
-export type BattleMode = 'pvp' | 'pve';
+export type BattleMode = 'pvp' | 'pve' | 'random';
 export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect' | 'stun' | 'copy_ability' | 'immortal' | 'damage_reduction';
 
 export type BattleExtraEffectKind = 'bleeding' | 'burn' | 'poison' | 'freeze' | 'stun' | 'reduce_max_hp_percent' | 'reduce_defense_percent' | 'damage_percent' | 'heal_percent' | 'shield' | 'reflect' | 'damage_reduction';
@@ -401,7 +401,7 @@ export interface BattleConfig {
   victoryMessage?: string;
 }
 
-export interface BattleBot {
+export interface BattleBotSkill extends Skill {\n  /** โอกาสที่ AI จะเลือกใช้สกิลนี้เมื่อถึงเทิร์น (%) */\n  aiChancePercent?: number;\n}\n\nexport interface BattleBot {
   id: string;
   name: string;
   description: string;
@@ -412,7 +412,7 @@ export interface BattleBot {
   stats: CharacterStats;
   hp: number;
   maxHp: number;
-  aiProfile?: 'balanced' | 'aggressive' | 'defensive';
+  aiProfile?: 'balanced' | 'aggressive' | 'defensive';\n  /** สกิลที่แอดมินยัดให้มอน/บอส และโอกาสที่ AI จะเลือกใช้ */\n  skills?: BattleBotSkill[];\n  /** น้ำหนัก/โอกาสที่มอนหรือบอสตัวนี้จะถูกสุ่มเจอในโหมดสุ่ม (%) */\n  encounterChancePercent?: number;
   createdAt: number;
   updatedAt: number;
 }
