@@ -426,30 +426,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               title="คลิกเพื่อตกแต่งและเปลี่ยนรูปโปรไฟล์"
             >
               <img
-                src={character.avatarUrl || '/avatars/system.svg'}
+                src={character.avatarUrl}
                 alt={character.displayName}
-                onError={(event) => {
-                  // If a saved/custom avatar is missing or broken, restore the
-                  // avatar configured for this character instead of replacing
-                  // it with the generic system avatar.
-                  const configuredAvatars: Record<string, string> = {
-                    'yeon-chaewon': '/avatars/chaewon.svg',
-                    'baek-hayeon': '/avatars/hayeon.svg',
-                    'chayathat-chathai': '/avatars/sera.svg',
-                    'revadis-ravencroft': '/avatars/miyeon.svg',
-                  };
-                  const fallbackAvatar =
-                    configuredAvatars[character.id] ||
-                    (character.displayName.includes('แชวอน') ||
-                    character.displayName.toLowerCase().includes('chae-won') ||
-                    character.displayName.toLowerCase().includes('chaewon')
-                      ? '/avatars/chaewon.svg'
-                      : '/avatars/system.svg');
-
-                  // Prevent an error loop if even the configured asset is unavailable.
-                  if (event.currentTarget.src.endsWith(fallbackAvatar)) return;
-                  event.currentTarget.src = fallbackAvatar;
-                }}
                 className="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-cover border-2 border-cyan-400/60 group-hover:border-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all"
               />
               <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 rounded-2xl flex items-center justify-center transition-opacity text-white text-[10px] font-bold gap-1">
