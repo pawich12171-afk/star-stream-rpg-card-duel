@@ -549,7 +549,7 @@ export default function App() {
             <button
               id="btn-character-switcher"
               onClick={() => setIsCharSelectOpen(true)}
-              className="flex min-w-0 max-w-[42vw] items-center sm:max-w-[48vw]" gap-2 px-2 sm:px-3 py-1.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all cursor-pointer shadow"
+              className="flex min-w-0 max-w-[42vw] items-center gap-2 px-2 sm:max-w-[48vw] sm:px-3 py-1.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all cursor-pointer shadow"
             >
               <img
                 src={currentUser.avatarUrl}
