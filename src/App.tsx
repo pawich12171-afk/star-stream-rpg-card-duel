@@ -165,8 +165,14 @@ export default function App() {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    try { localStorage.setItem('starstream_admin_mode', String(isAdminMode)); } catch {}
+  }, [isAdminMode]);
+
   // Admin Mode is declared below currentUser so permission checks never access it before initialization.
-  const [isAdminMode, setIsAdminMode] = useState<boolean>(() => false);
+  const [isAdminMode, setIsAdminMode] = useState<boolean>(() => {
+    try { return localStorage.getItem('starstream_admin_mode') === 'true'; } catch { return false; }
+  });
 
   // Modals
   const [isTransferOpen, setIsTransferOpen] = useState<boolean>(false);
@@ -273,7 +279,7 @@ export default function App() {
   useEffect(() => {
     if (!canUseAdminMode) {
       if (isAdminMode) setIsAdminMode(false);
-      if (activeTab === 'admin') setActiveTab('status');
+      if (activeTab === 'admin' || activeTab === 'items') setActiveTab('status');
     }
   }, [canUseAdminMode, isAdminMode, activeTab]);
 
