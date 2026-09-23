@@ -99,10 +99,18 @@ export default function App() {
   const [currentUserId, setCurrentUserId] = useState<string>(() => {
     const fallback = INITIAL_CHARACTERS[0]?.id || '';
     try {
+      // Keep the selected character in the URL as a second persistence layer.
+      // This prevents a hard refresh from falling back to the first bundled
+      // character when browser storage is unavailable or stale.
+      const fromUrl = new URLSearchParams(window.location.search).get('character');
       const saved = localStorage.getItem('starstream_current_user_id');
-      return saved || fallback;
+      return fromUrl || saved || fallback;
     } catch {
-      return fallback;
+      try {
+        return new URLSearchParams(window.location.search).get('character') || fallback;
+      } catch {
+        return fallback;
+      }
     }
   });
   const [shopItems, setShopItems] = useState<Item[]>(() => []);
@@ -238,6 +246,11 @@ export default function App() {
     setCurrentUserId(charId);
     try {
       localStorage.setItem('starstream_current_user_id', charId);
+    } catch (e) {}
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('character', charId);
+      window.history.replaceState(null, '', url.toString());
     } catch (e) {}
   };
 
