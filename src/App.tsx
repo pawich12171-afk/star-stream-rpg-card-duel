@@ -512,7 +512,7 @@ export default function App() {
   // Waiting rooms count
   const waitingDuelRoomsCount = duelRooms.filter(r => r.status === 'waiting').length;
   const unreadNotifsCount = currentUser?.notifications?.filter(n => !n.read).length || 0;
-\n  const handleCoinDisplayModeChange = (mode: CoinDisplayMode) => {
+  const handleCoinDisplayModeChange = (mode: CoinDisplayMode) => {
     setCoinDisplayMode(mode);
     try {
       localStorage.setItem('starstream_coin_display_mode', mode);
