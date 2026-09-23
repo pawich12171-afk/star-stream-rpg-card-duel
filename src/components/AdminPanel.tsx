@@ -1,3 +1,4 @@
+import { formatCoins } from '../utils/formatNumber';
 import React, { useEffect, useState } from 'react';
 import { CharacterProfile, Item, Skill, Quest, GachaReward, GachaBanner, GachaConfig, GachaRarity, MAX_GACHA_REWARDS, BattleExtraEffect, BattleSkillStat, ItemPassiveEffect } from '../types';
 import { 
@@ -399,19 +400,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleAddCoins = () => {
     if (!selectedCharId) return;
     onUpdateCharacterCoins(selectedCharId, coinInput);
-    alert(`เพิ่มเหรียญ ${coinInput.toLocaleString()} Coins ให้ผู้เล่น "${selectedChar?.displayName}" เรียบร้อยแล้ว!`);
+    alert(`เพิ่มเหรียญ ${formatCoins(coinInput)} Coins ให้ผู้เล่น "${selectedChar?.displayName}" เรียบร้อยแล้ว!`);
   };
 
   const handleDeductCoins = () => {
     if (!selectedCharId) return;
     onUpdateCharacterCoins(selectedCharId, -coinInput);
-    alert(`หักเหรียญ ${coinInput.toLocaleString()} Coins จากผู้เล่น "${selectedChar?.displayName}" เรียบร้อยแล้ว!`);
+    alert(`หักเหรียญ ${formatCoins(coinInput)} Coins จากผู้เล่น "${selectedChar?.displayName}" เรียบร้อยแล้ว!`);
   };
 
   const handleSetExactCoins = () => {
     if (!selectedCharId) return;
     onSetCharacterCoins(selectedCharId, coinInput);
-    alert(`กำหนดเหรียญให้ "${selectedChar?.displayName}" เป็น ${coinInput.toLocaleString()} Coins เรียบร้อยแล้ว!`);
+    alert(`กำหนดเหรียญให้ "${selectedChar?.displayName}" เป็น ${formatCoins(coinInput)} Coins เรียบร้อยแล้ว!`);
   };
 
   // Add Item to Shop Handler
@@ -948,7 +949,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 >
                   {characters.map(c => (
                     <option key={c.id} value={c.id}>
-                      {c.displayName} ({c.nickname}) - มี {c.coins.toLocaleString()} C [{c.role || 'player'}]
+                      {c.displayName} ({c.nickname}) - มี {formatCoins(c.coins)} C [{c.role || 'player'}]
                     </option>
                   ))}
                 </select>
@@ -972,7 +973,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                     <div className="text-[11px] text-slate-400 font-serif">"{selectedChar.nickname}"</div>
                     <div className="text-xs font-mono font-bold text-amber-300 mt-0.5">
-                      เหรียญปัจจุบัน: {selectedChar.coins.toLocaleString()} Coins
+                      เหรียญปัจจุบัน: {formatCoins(selectedChar.coins)} Coins
                     </div>
                   </div>
                 </div>
@@ -1085,7 +1086,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             )}
                           </td>
                           <td className="py-2.5 font-mono font-bold text-amber-400">
-                            {char.coins.toLocaleString()} C
+                            {formatCoins(char.coins)} C
                           </td>
                           <td className="py-2.5 font-mono text-cyan-400">
                             {char.powerScore?.toLocaleString() || 0}
@@ -1384,7 +1385,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                       <span className="text-xs font-mono font-bold text-amber-300">
-                        {(shopItemPrice || 0).toLocaleString()} C
+                        {(formatCoins(shopItemPrice || 0)} C
                       </span>
                       {shopItemEffectType === 'heal_hp' && (
                         <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-950/80 border border-rose-500/40 text-rose-300 font-bold">
@@ -1505,7 +1506,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           </span>
                         </td>
                         <td className="py-2.5 font-mono font-bold text-amber-300">
-                          {item.price.toLocaleString()} C
+                          {formatCoins(item.price)} C
                         </td>
                         <td className="py-2.5 text-right space-x-1">
                           <button
@@ -1559,7 +1560,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </span>
                 </div>
                 <p className="text-xs text-slate-400">
-                  เหรียญปัจจุบัน: <span className="text-amber-300 font-mono font-bold">{spawnerTargetChar.coins.toLocaleString()} C</span> | 
+                  เหรียญปัจจุบัน: <span className="text-amber-300 font-mono font-bold">{formatCoins(spawnerTargetChar.coins)} C</span> | 
                   ของในตัว: <span className="text-cyan-300 font-bold font-mono">{spawnerTargetChar.inventory?.length || 0} ชิ้น</span>
                 </p>
               </div>
@@ -1628,7 +1629,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     >
                       {shopItems.map(item => (
                         <option key={item.id} value={item.id}>
-                          {item.name} [{item.rarity || 'common'}] - {item.price.toLocaleString()} C
+                          {item.name} [{item.rarity || 'common'}] - {formatCoins(item.price)} C
                         </option>
                       ))}
                     </select>
