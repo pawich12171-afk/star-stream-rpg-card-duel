@@ -385,6 +385,16 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
 
   const getSkillId = (skill: Skill) => String(skill?.id ?? skill?.name ?? ('skill-' + (skill?.name || 'unknown'))).trim();
 
+  const battleInventory = useMemo(() => {
+    const raw = Array.isArray(currentUser.inventory) ? currentUser.inventory : [];
+    return raw.filter((item): item is any =>
+      !!item &&
+      typeof item === 'object' &&
+      Number(item.quantity) > 0 &&
+      item.category === 'consumable'
+    );
+  }, [currentUser.inventory]);
+
   const getBattleItemLabel = (item: any) => {
     if (item.effectType === 'heal_hp') return `💚 ฟื้น HP +${Math.round(Number(item.effectValue) || 0)}`;
     if (item.effectType === 'buff_stat') return `✨ +${Math.round(Number(item.effectValue) || 0)} ${String(item.targetStat || 'STAT').toUpperCase()}`;
@@ -395,6 +405,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
 
   const handleUseBattleItem = async (room: BattleRoom, item: any) => {
     if (usingBattleItemId) return;
+    const liveRoom = rooms.find(candidate => candidate.id === room.id) || room;
     const requestedItemId = String(item?.instanceId || item?.id || '').trim();
     if (!requestedItemId) {
       alert('ไอเทมนี้ไม่มีรหัสสำหรับใช้งาน กรุณารีเฟรชกระเป๋าแล้วลองใหม่');
@@ -407,7 +418,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       // updates the battle room. Do NOT call persistBattleHp here afterwards,
       // because that helper intentionally uses the parent component's older
       // character snapshot and could race the inventory write.
-      const nextRoom = await useBattleItem(room, currentUser.id, requestedItemId);
+      const nextRoom = await useBattleItem(liveRoom, currentUser.id, requestedItemId);
 
       if (nextRoom.mode === 'pve' || nextRoom.mode === 'random') {
         let botRoom = nextRoom;
@@ -807,19 +818,27 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
                   </div>
 
                   <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                    <select aria-label="เลือกไอเทมสำหรับใช้ระหว่างการต่อสู้" value={selectedBattleItemId} onChange={event => setSelectedBattleItemId(event.target.value)} className={inputClass + ' min-h-11'}>
+                    <select aria-label="เลือกไอเทมสำหรับใช้ระหว่างการต่อสู้" value={selectedBattleItemId} onChange={event => {
+                        const value = String(event.target.value || '');
+                        if (!value) {
+                          setSelectedBattleItemId('');
+                          return;
+                        }
+                        const exists = battleInventory.some(inv => String(inv.instanceId || inv.id || '') === value);
+                        setSelectedBattleItemId(exists ? value : '');
+                      }} className={inputClass + ' min-h-11'}>
                       <option value="">เลือกไอเทม...</option>
-                      {(currentUser.inventory || []).filter(item => item.quantity > 0 && item.category === 'consumable').map((item, index) => {
-                        const battleItemKey = String(item.instanceId || item.id || ('legacy-' + item.id + '-' + index));
+                      {battleInventory.map((item, index) => {
+                        const battleItemKey = String(item.instanceId || item.id || ('legacy-' + String(item.name || 'item') + '-' + index));
                         return (
                           <option key={battleItemKey} value={battleItemKey}>
-                            {item.icon || '🧪'} {item.name} ×{item.quantity} · {getBattleItemLabel(item)}
+                            {String(item.icon || '🧪')} {String(item.name || 'ไอเทม')} ×{Number(item.quantity) || 0} · {getBattleItemLabel(item)}
                           </option>
                         );
                       })}
                     </select>
                     <button type="button" disabled={!selectedBattleItemId || usingBattleItemId !== '' || Number(room.battleItemUses || 0) >= 2} onClick={() => {
-                      const item = (currentUser.inventory || []).find(inv =>
+                      const item = battleInventory.find(inv =>
                         String(inv.instanceId || inv.id || '') === String(selectedBattleItemId)
                       );
                       if (item && canAct) void handleUseBattleItem(room, item);
