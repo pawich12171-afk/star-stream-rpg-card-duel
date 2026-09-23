@@ -740,6 +740,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       bannerId: selectedBannerId || 'main',
       coinAmount: newRewardType === 'coin' ? newRewardCoinAmount : undefined,
       itemData,
+      itemId: itemData?.id,
       characteristic: newRewardType === 'characteristic' ? newRewardCharacteristic.trim() : undefined,
       skillData: newRewardType === 'skill' ? {
         id: `skill-template-${Date.now()}`,
