@@ -569,7 +569,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             <Gift className="w-4 h-4 text-slate-950" />
             <span>สุ่ม 10 ครั้ง ({formatCoins(tenPullCost)} C)</span>
             <span className="text-[10px] bg-slate-950 text-amber-300 px-1.5 py-0.5 rounded font-bold ml-1">
-              ประหยัด {((pullCost * 10) - tenPullCost).toLocaleString()} C
+              ประหยัด {formatCoins((pullCost * 10) - tenPullCost)} C
             </span>
           </button>
           <div className="w-full mt-1 rounded-2xl border-2 border-purple-500/50 bg-purple-950/40 p-4 shadow-[0_0_24px_rgba(168,85,247,0.18)]">
@@ -668,7 +668,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             </div>
             {totalCoinsWon > 0 && (
               <div className="mt-3 text-xs font-bold text-amber-300">
-                🪙 ได้เหรียญรวม {totalCoinsWon.toLocaleString()} C
+                🪙 ได้เหรียญรวม {formatCoins(totalCoinsWon)} C
               </div>
             )}
           </div>
