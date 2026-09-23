@@ -2615,12 +2615,15 @@ function getAdminOutgoingDamageMultiplier(unit: BattleCombatant): number {
 }
 
 function getAdminIncomingDamageMultiplier(unit: BattleCombatant): number {
-  const skillReduction = unit.damageReductionTurns && unit.damageReductionTurns > 0 ? Math.min(100, Math.max(0, Number(unit.damageReductionPercent) || 0)) / 100 : 0;
+  const skillReduction = unit.damageReductionTurns && unit.damageReductionTurns > 0
+    ? Math.min(100, Math.max(0, Number(unit.damageReductionPercent) || 0)) / 100
+    : 0;
+  const baseMultiplier = 1 - skillReduction;
   return getActiveAdminStatusEffects(unit).reduce((multiplier, effect) => {
     if (effect.kind !== 'shield') return multiplier;
     const percent = Math.min(100, Math.max(0, Number(effect.power) || 0)) / 100;
     return multiplier * (effect.mode === 'buff' ? 1 - percent : 1 + percent);
-  }, 1);
+  }, baseMultiplier);
 }
 
 function getAdminReflectPercent(unit: BattleCombatant): number {
