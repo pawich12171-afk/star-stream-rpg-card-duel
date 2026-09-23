@@ -246,8 +246,8 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
             <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-3 space-y-3">
               <div className="text-sm font-black text-cyan-200">ประเภทไอเทม</div>
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={()=>setCategory('consumable')} className={\`rounded-xl py-3 text-sm font-black border \${category==='consumable'?'bg-emerald-500/20 border-emerald-400 text-emerald-200':'bg-slate-900 border-slate-700 text-slate-400'}\`}>ไอเทมใช้งาน</button>
-                <button type="button" onClick={()=>setCategory('equipment')} className={\`rounded-xl py-3 text-sm font-black border \${category==='equipment'?'bg-purple-500/20 border-purple-400 text-purple-200':'bg-slate-900 border-slate-700 text-slate-400'}\`}>อุปกรณ์สวมใส่</button>
+                <button type="button" onClick={()=>setCategory('consumable')} className={`rounded-xl py-3 text-sm font-black border ${category==='consumable'?'bg-emerald-500/20 border-emerald-400 text-emerald-200':'bg-slate-900 border-slate-700 text-slate-400'}`}>ไอเทมใช้งาน</button>
+                <button type="button" onClick={()=>setCategory('equipment')} className={`rounded-xl py-3 text-sm font-black border ${category==='equipment'?'bg-purple-500/20 border-purple-400 text-purple-200':'bg-slate-900 border-slate-700 text-slate-400'}`}>อุปกรณ์สวมใส่</button>
               </div>
             </div>
 
@@ -493,7 +493,7 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
                 <input className="rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="1" placeholder="ระยะเวลาเทิร์น" value={passiveDuration || ''} onChange={e=>setPassiveDuration(Number(e.target.value)||0)}/>
               </div>
               {passiveKind==='buff_stat' && <select className="w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" value={passiveTargetStat} onChange={e=>setPassiveTargetStat(e.target.value as any)}><option value="strength">STR</option><option value="durability">DUR</option><option value="agility">AGI</option><option value="magic">MAG</option></select>}
-              <button type="button" className="w-full rounded-lg bg-fuchsia-600/20 border border-fuchsia-500/30 py-2 text-xs font-bold text-fuchsia-200" onClick={()=>{setPassiveEffects(p=>[...p,{id:\`passive-\${Date.now()}\`,name:passiveName.trim()||'Passive',trigger:passiveTrigger,kind:passiveKind,value:Math.max(0,passiveValue),chance:Math.max(0,Math.min(100,passiveChance)),duration:Math.max(1,passiveDuration),maxStacks:Math.max(1,passiveMaxStacks),targetStat:passiveKind==='buff_stat'?passiveTargetStat:undefined}]);}}>+ เพิ่ม Passive</button>
+              <button type="button" className="w-full rounded-lg bg-fuchsia-600/20 border border-fuchsia-500/30 py-2 text-xs font-bold text-fuchsia-200" onClick={()=>{setPassiveEffects(p=>[...p,{id:`passive-${Date.now()}`,name:passiveName.trim()||'Passive',trigger:passiveTrigger,kind:passiveKind,value:Math.max(0,passiveValue),chance:Math.max(0,Math.min(100,passiveChance)),duration:Math.max(1,passiveDuration),maxStacks:Math.max(1,passiveMaxStacks),targetStat:passiveKind==='buff_stat'?passiveTargetStat:undefined}]);}}>+ เพิ่ม Passive</button>
               {passiveEffects.map(p=><div key={p.id} className="flex items-center justify-between gap-2 text-[10px] text-fuchsia-100 bg-slate-950/50 p-2 rounded-lg"><span className="min-w-0">{p.name} · {p.kind} · ค่า {p.value} · โอกาส {p.chance}% · {p.duration} เทิร์น</span><button type="button" className="text-rose-300 shrink-0" onClick={()=>setPassiveEffects(prev=>prev.filter(v=>v.id!==p.id))}>ลบ</button></div>)}
             </div>
 
