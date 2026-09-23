@@ -120,6 +120,8 @@ export interface Item {
   usableByPlayers: boolean;
   rarity?: GachaRarity;
   passiveEffects?: ItemPassiveEffect[];
+  /** ไอเทมนี้สร้างโดย Admin สำหรับรางวัล/กาชาเท่านั้น ไม่แสดงในร้านค้า */
+  adminOnly?: boolean;
 }
 
 export interface InventoryItem extends Item {
@@ -387,11 +389,16 @@ export interface BattleDiceConfig {
   faces: BattleDiceFace[];
 }
 
+export type BattleRandomRewardType = 'coin' | 'item' | 'skill';
+
 export interface BattleRandomReward {
   id: string;
   name: string;
-  coinAmount: number;
+  type: BattleRandomRewardType;
   rate: number;
+  coinAmount?: number;
+  itemData?: Item;
+  skillData?: Skill;
 }
 
 export interface BattleConfig {
