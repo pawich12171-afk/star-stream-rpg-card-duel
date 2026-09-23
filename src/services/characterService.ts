@@ -2367,13 +2367,15 @@ export async function createBattleRoomWithEntryFee(room: BattleRoom, playerId: s
 
 export async function settleBattleVictoryReward(room: BattleRoom, playerId: string): Promise<number> {
   if ((room.mode !== "pve" && room.mode !== "random") || room.status !== "completed" || room.winnerTeam !== "a") return 0;
+  const randomReward = room.mode === 'random' ? room.randomReward : undefined;
   const reward = Math.max(0, Math.floor(Number(room.victoryRewardCoins) || 0));
-  if (reward <= 0) return 0;
+  if (room.mode === 'random' && !randomReward) return 0;
+  if (room.mode !== 'random' && reward <= 0) return 0;
 
   const response = await fetch('/api/database?action=claim_battle_reward', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ roomId: room.id, playerId, reward }),
+    body: JSON.stringify({ roomId: room.id, playerId, reward, rewardData: randomReward || null }),
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body?.error || 'ไม่สามารถรับรางวัลการต่อสู้ได้');
@@ -2384,7 +2386,7 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
   localBattleRooms = [updatedRoom, ...localBattleRooms.filter(item => item.id !== room.id)];
   saveBattleLocal();
   notifyBattleRooms();
-  return reward;
+  return randomReward?.type === 'item' ? 0 : randomReward?.type === 'skill' ? 0 : reward;
 }
 
 export async function updateBattleRoom(room: BattleRoom): Promise<void> {
