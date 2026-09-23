@@ -74,7 +74,7 @@ import {
   Swords
 } from 'lucide-react';
 import confetti from './utils/confetti';
-import { formatCoins } from './utils/formatNumber';
+import { formatCoins, getCoinDisplayMode, type CoinDisplayMode } from './utils/formatNumber';
 
 const isBundledAvatar = (value: unknown): boolean => {
   const avatar = String(value || '').trim();
@@ -108,6 +108,7 @@ export default function App() {
 
   // Real-time State
   const [characters, setCharacters] = useState<CharacterProfile[]>(() => [...INITIAL_CHARACTERS]);
+  const [coinDisplayMode, setCoinDisplayMode] = useState<CoinDisplayMode>(() => getCoinDisplayMode());
   const [currentUserId, setCurrentUserId] = useState<string>(() => {
     const fallback = INITIAL_CHARACTERS[0]?.id || '';
     try {
@@ -511,6 +512,15 @@ export default function App() {
   // Waiting rooms count
   const waitingDuelRoomsCount = duelRooms.filter(r => r.status === 'waiting').length;
   const unreadNotifsCount = currentUser?.notifications?.filter(n => !n.read).length || 0;
+\n  const handleCoinDisplayModeChange = (mode: CoinDisplayMode) => {
+    setCoinDisplayMode(mode);
+    try {
+      localStorage.setItem('starstream_coin_display_mode', mode);
+    } catch {
+      // Keep the setting for the current session if storage is unavailable.
+    }
+  };
+
 
   return (
     <div className="star-shell min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
@@ -540,9 +550,28 @@ export default function App() {
           {/* Character Quick Switcher & Admin Switch */}
           <div className="flex items-center gap-3">
             {/* Coin Pill */}
-            <div className="flex min-w-0 max-w-[36vw] shrink items-center gap-1 px-1.5 sm:max-w-[42vw] sm:gap-1.5 sm:px-3 py-1.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs font-mono font-bold shadow-sm">
-              <Coins className="w-3.5 h-3.5 text-amber-400" />
-              <span className="min-w-0 truncate">{formatCoins(currentUser.coins)} C</span>
+            <div className="flex min-w-0 max-w-[44vw] shrink items-center gap-1 px-1.5 sm:max-w-[48vw] sm:gap-1.5 sm:px-2 py-1.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs font-mono font-bold shadow-sm">
+              <Coins className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+              <span className="min-w-0 truncate">{formatCoins(currentUser.coins, coinDisplayMode)} C</span>
+              <span className="hidden sm:inline text-[9px] text-amber-500/70 shrink-0">({coinDisplayMode === 'compact' ? '1K' : '1,000'})</span>
+              <div className="ml-auto flex shrink-0 rounded-lg overflow-hidden border border-amber-500/30">
+                <button
+                  type="button"
+                  onClick={() => handleCoinDisplayModeChange('compact')}
+                  className={`px-1.5 py-1 text-[9px] font-black ${coinDisplayMode === 'compact' ? 'bg-amber-500 text-slate-950' : 'bg-slate-950/60 text-amber-300 hover:bg-amber-900/50'}`}
+                  title="แสดงเงินแบบย่อ เช่น 1K, 1M, 1B"
+                >
+                  1K
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCoinDisplayModeChange('full')}
+                  className={`px-1.5 py-1 text-[9px] font-black ${coinDisplayMode === 'full' ? 'bg-amber-500 text-slate-950' : 'bg-slate-950/60 text-amber-300 hover:bg-amber-900/50'}`}
+                  title="แสดงเงินแบบเต็ม เช่น 1,000, 1,000,000"
+                >
+                  1,000
+                </button>
+              </div>
             </div>
 
             {/* Character Selector Button */}
