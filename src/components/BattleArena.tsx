@@ -214,6 +214,9 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const [botSkillChance, setBotSkillChance] = useState('25');
   const [selectedBattleItemId, setSelectedBattleItemId] = useState('');
   const [usingBattleItemId, setUsingBattleItemId] = useState('');
+  // Synchronous action lock: React state alone updates after the click event,
+  // so a double-tap could enter handleUseBattleItem twice before disabled rerenders.
+  const usingBattleItemRef = useRef(false);
   const [showAdmin, setShowAdmin] = useState(isAdmin);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   // Lock room creation synchronously on the first click. This prevents rapid clicks
@@ -404,9 +407,11 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   };
 
   const handleUseBattleItem = async (room: BattleRoom, item: any) => {
-    if (usingBattleItemId) return;
-    // Never allow an item action from an already completed/deleted room.
+    if (usingBattleItemRef.current || usingBattleItemId) return;
     if (!room || room.status !== 'active') return;
+    const actor = [...(room.teamA || []), ...(room.teamB || [])].find(unit => unit.id === room.turnActorId);
+    if (!actor || actor.type !== 'player' || actor.sourceId !== currentUser.id) return;
+    usingBattleItemRef.current = true;
     const liveRoom = rooms.find(candidate => candidate.id === room.id) || room;
     const requestedItemId = String(item?.instanceId || item?.id || '').trim();
     if (!requestedItemId) {
@@ -456,6 +461,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       alert('ใช้ไอเทมไม่สำเร็จ: ' + (error instanceof Error ? error.message : 'เกิดข้อผิดพลาด'));
     } finally {
       setUsingBattleItemId('');
+      usingBattleItemRef.current = false;
     }
   };
 
