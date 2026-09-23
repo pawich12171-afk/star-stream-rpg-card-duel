@@ -24,7 +24,6 @@ import {
 import confetti from '../utils/confetti';
 import { 
   processImageFile, 
-  DEFAULT_AVATAR_FALLBACK, 
   CURATED_AVATARS,
   ProcessedImageResult 
 } from '../utils/imageUtils';
@@ -103,7 +102,7 @@ export const ProfileCustomizerModal: React.FC<ProfileCustomizerModalProps> = ({
   // Profile form state
   const [displayName, setDisplayName] = useState(character.displayName);
   const [nickname, setNickname] = useState(character.nickname || '');
-  const [avatarUrl, setAvatarUrl] = useState(character.avatarUrl || DEFAULT_AVATAR_FALLBACK);
+  const [avatarUrl, setAvatarUrl] = useState(character.avatarUrl || '');
   const [constellation, setConstellation] = useState(character.constellation || '');
   const [badgeTitle, setBadgeTitle] = useState(character.badgeTitle || '');
   const [quote, setQuote] = useState(character.quote || '');
@@ -132,7 +131,7 @@ export const ProfileCustomizerModal: React.FC<ProfileCustomizerModalProps> = ({
     if (character && isOpen) {
       setDisplayName(character.displayName || '');
       setNickname(character.nickname || '');
-      setAvatarUrl(character.avatarUrl || DEFAULT_AVATAR_FALLBACK);
+      setAvatarUrl(character.avatarUrl || '');
       setConstellation(character.constellation || '');
       setBadgeTitle(character.badgeTitle || '');
       setQuote(character.quote || '');
@@ -702,7 +701,7 @@ export const ProfileCustomizerModal: React.FC<ProfileCustomizerModalProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      setAvatarUrl(DEFAULT_AVATAR_FALLBACK);
+                      setAvatarUrl('');
                       setImageLoadError(false);
                       setUploadStatus('คืนค่ารูปเริ่มต้นแล้ว');
                     }}
