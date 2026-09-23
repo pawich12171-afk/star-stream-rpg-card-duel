@@ -222,10 +222,12 @@ async function claimBattleRewardDirect(body) {
   const roomId = String(body.roomId || '');
   const playerId = String(body.playerId || '');
   const reward = Math.max(0, Math.floor(Number(body.reward) || 0));
+  const rewardData = body.rewardData && typeof body.rewardData === 'object' ? body.rewardData : null;
 
   if (!validId(roomId) || !validId(playerId)) throw new Error('Invalid reward reference');
 
   try {
+    if (!rewardData) {
     const result = await supabase('rpc/claim_battle_reward', {
       method: 'POST',
       body: JSON.stringify({
@@ -235,6 +237,7 @@ async function claimBattleRewardDirect(body) {
       }),
     });
     return Array.isArray(result) ? result[0] === true : result === true;
+    }
   } catch (rpcError) {
     console.warn('[database] atomic reward RPC unavailable, using compatibility fallback', rpcError?.message || rpcError);
   }
@@ -245,7 +248,7 @@ async function claimBattleRewardDirect(body) {
 
   if (
     roomData.status !== 'completed' ||
-    roomData.mode !== 'pve' ||
+    (roomData.mode !== 'pve' && roomData.mode !== 'random') ||
     roomData.winnerTeam !== 'a' ||
     roomData.rewardClaimedBy
   ) {
@@ -271,18 +274,35 @@ async function claimBattleRewardDirect(body) {
   if (!chars?.length) throw new Error('Player not found');
 
   const charData = chars[0].data || {};
-  const coins = Math.max(0, Math.floor(Number(charData.coins) || 0));
+  const nextData = {
+    ...charData,
+    coins: Math.max(0, Math.floor(Number(charData.coins) || 0)) + reward,
+    lastUpdated: Math.max(Date.now(), Number(charData.lastUpdated) || 0) + 1,
+  };
+
+  if (rewardData?.type === 'item' && rewardData.itemData) {
+    const item = { ...rewardData.itemData };
+    const inventory = Array.isArray(nextData.inventory) ? [...nextData.inventory] : [];
+    const existing = inventory.find(entry => entry.id === item.id && entry.name === item.name && entry.category === item.category && entry.effectType === item.effectType);
+    if (existing) {
+      existing.quantity = Math.max(0, Number(existing.quantity) || 0) + 1;
+    } else {
+      inventory.push({ ...item, instanceId: `battle-reward-${roomId}-${Date.now()}`, quantity: 1, isEquipped: false });
+    }
+    nextData.inventory = inventory;
+  }
+
+  if (rewardData?.type === 'skill' && rewardData.skillData) {
+    const skill = { ...rewardData.skillData, id: `reward-${roomId}-${rewardData.skillData.id || Date.now()}` };
+    const skills = Array.isArray(nextData.skills) ? [...nextData.skills] : [];
+    if (!skills.some(existing => existing.name === skill.name)) skills.push(skill);
+    nextData.skills = skills;
+  }
+
   await supabase(`star_stream_documents?${charFilter}`, {
     method: 'PATCH',
     headers: { Prefer: 'return=minimal' },
-    body: JSON.stringify({
-      data: {
-        ...charData,
-        coins: coins + reward,
-        lastUpdated: Math.max(Date.now(), Number(charData.lastUpdated) || 0) + 1,
-      },
-      updated_at: Date.now(),
-    }),
+    body: JSON.stringify({ data: nextData, updated_at: Date.now() }),
   });
 
   return true;
