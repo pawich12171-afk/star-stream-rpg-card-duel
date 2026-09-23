@@ -354,7 +354,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editingSkillRepeatChance, setEditingSkillRepeatChance] = useState(0);
   const [editingSkillMaxRepeats, setEditingSkillMaxRepeats] = useState(1);
   const [newRewardCooldownTurns, setNewRewardCooldownTurns] = useState(0);
-  const [newRewardEffectDuration, setNewRewardEffectDuration] = useState(1);
   const [newRewardDrawbacks, setNewRewardDrawbacks] = useState<BattleExtraEffect[]>([]);
   const [newDrawbackKind, setNewDrawbackKind] = useState<BattleExtraEffect['kind']>('bleeding');
   const [newDrawbackValue, setNewDrawbackValue] = useState(10);
