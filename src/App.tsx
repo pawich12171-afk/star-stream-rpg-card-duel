@@ -280,7 +280,35 @@ export default function App() {
 
   // Keep the shell usable even if localStorage contains an empty collection
   // from an earlier failed sync. The realtime snapshot can still replace it.
-  const currentUser = characters.find(c => c.id === currentUserId) || characters[0] || INITIAL_CHARACTERS[0];
+  const currentUser = (() => {
+    const fallback = INITIAL_CHARACTERS[0];
+    const candidate = characters.find(c => c && c.id === currentUserId) || characters.find(Boolean) || fallback;
+    if (!candidate) {
+      throw new Error('ไม่พบข้อมูลตัวละครเริ่มต้น');
+    }
+    // Realtime/API data can be partially populated after an old schema change.
+    // Fill only missing UI-safe fields from the bundled profile so one malformed
+    // record cannot crash the initial screen.
+    return {
+      ...fallback,
+      ...candidate,
+      id: String(candidate.id || fallback.id),
+      username: String(candidate.username || fallback.username),
+      displayName: String(candidate.displayName || fallback.displayName),
+      nickname: String(candidate.nickname || ''),
+      avatarUrl: String(candidate.avatarUrl || fallback.avatarUrl),
+      characteristics: Array.isArray(candidate.characteristics) ? candidate.characteristics : [],
+      stats: { ...fallback.stats, ...(candidate.stats || {}) },
+      skills: Array.isArray(candidate.skills) ? candidate.skills : [],
+      inventory: Array.isArray(candidate.inventory) ? candidate.inventory : [],
+      quests: Array.isArray(candidate.quests) ? candidate.quests : [],
+      notifications: Array.isArray(candidate.notifications) ? candidate.notifications : [],
+      coins: Number.isFinite(Number(candidate.coins)) ? Number(candidate.coins) : 0,
+      hp: Number.isFinite(Number(candidate.hp)) ? Number(candidate.hp) : fallback.hp,
+      maxHp: Number.isFinite(Number(candidate.maxHp)) ? Number(candidate.maxHp) : fallback.maxHp,
+      lastUpdated: Number(candidate.lastUpdated) || 0,
+    } as CharacterProfile;
+  })();
   // Momi is the permanent owner. Other profiles can only use Admin Mode after Momi grants them the admin role.
   const isMomiProfile = (character: CharacterProfile | undefined): boolean => {
     if (!character) return false;
