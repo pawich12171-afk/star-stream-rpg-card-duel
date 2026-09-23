@@ -640,6 +640,8 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   };
 
   // Use Item handler
+  const maxHpSafe = (value: number) => Math.max(1, Number(value) || 20);
+
   const handleUseItem = async (invItem: InventoryItem) => {
     let updatedChar = { ...character };
     let effectMessage = '';
@@ -659,7 +661,9 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       updatedChar.hp = Math.min(updatedChar.maxHp, (updatedChar.hp || 20) + healAmount);
       effectMessage = `ขยายค่า Max HP สูงสุดถาวร +${healAmount} หน่วย (ปัจจุบัน ${updatedChar.hp}/${updatedChar.maxHp} HP)`;
     } else if (invItem.effectType === 'heal_hp') {
-      const healAmount = invItem.effectValue || invItem.hpBonus || 10;
+      const flatHeal = Number(invItem.effectValue || invItem.hpBonus || 0);
+      const percentHeal = Math.max(0, Math.min(100, Number(invItem.healPercent) || 0));
+      const healAmount = flatHeal + Math.floor((maxHpSafe(updatedChar.maxHp || 20)) * percentHeal / 100);
       const currentHp = updatedChar.hp || 0;
       const maxHp = updatedChar.maxHp || 20;
 
@@ -671,7 +675,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       const newHp = Math.min(maxHp, currentHp + healAmount);
       const actualHealed = newHp - currentHp;
       updatedChar.hp = newHp;
-      effectMessage = `ฟื้นฟูเลือด HP +${actualHealed} หน่วย (ปัจจุบัน ${newHp}/${maxHp} HP)`;
+      effectMessage = `ฟื้นฟูเลือด HP +${actualHealed} หน่วย${percentHeal > 0 ? ` (${percentHeal}% + ${flatHeal} หน่วย)` : ''} (ปัจจุบัน ${newHp}/${maxHp} HP)`;
     } else if (invItem.effectType === 'buff_stat' && invItem.targetStat && invItem.effectValue) {
       const statName = invItem.targetStat;
       const amount = invItem.effectValue;
