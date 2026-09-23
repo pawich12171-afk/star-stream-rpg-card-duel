@@ -1385,7 +1385,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                       <span className="text-xs font-mono font-bold text-amber-300">
-                        {(formatCoins(shopItemPrice || 0)} C
+                        {formatCoins(shopItemPrice || 0)} C
                       </span>
                       {shopItemEffectType === 'heal_hp' && (
                         <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-950/80 border border-rose-500/40 text-rose-300 font-bold">
