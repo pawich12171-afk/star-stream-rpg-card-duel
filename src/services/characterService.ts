@@ -78,7 +78,38 @@ function readLocalValue<T>(key: string, fallback: T): T {
   }
 }
 
-let localCharacters: CharacterProfile[] = readLocalArray('starstream_characters', INITIAL_CHARACTERS);
+const AVATAR_OVERRIDES_KEY = 'starstream_profile_avatar_overrides';
+
+function readAvatarOverrides(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const saved = window.localStorage.getItem(AVATAR_OVERRIDES_KEY);
+    const parsed = saved ? JSON.parse(saved) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveAvatarOverride(id: string, avatarUrl: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const overrides = readAvatarOverrides();
+    const avatar = String(avatarUrl || '').trim();
+    if (avatar && isCustomProfileAvatar(avatar)) overrides[id] = avatar;
+    else delete overrides[id];
+    window.localStorage.setItem(AVATAR_OVERRIDES_KEY, JSON.stringify(overrides));
+  } catch {}
+}
+
+function applyAvatarOverrides(chars: CharacterProfile[]): CharacterProfile[] {
+  const overrides = readAvatarOverrides();
+  return chars.map(char => overrides[char.id] ? { ...char, avatarUrl: overrides[char.id] } : char);
+}
+
+let localCharacters: CharacterProfile[] = applyAvatarOverrides(
+  readLocalArray('starstream_characters', INITIAL_CHARACTERS)
+);
 let localShopItems: Item[] = readLocalArray('starstream_shop_items', INITIAL_SHOP_ITEMS);
 
 const gachaRewardsListeners = new Set<(rewards: GachaReward[]) => void>();
@@ -312,11 +343,12 @@ function isCustomProfileAvatar(value: unknown): boolean {
 }
 
 function preserveLocalCustomAvatars(serverCharacters: CharacterProfile[]): CharacterProfile[] {
+  const overrides = readAvatarOverrides();
   return serverCharacters.map((serverChar) => {
+    const override = overrides[serverChar.id];
+    if (override && isCustomProfileAvatar(override)) return { ...serverChar, avatarUrl: override };
     const localChar = localCharacters.find(c => c.id === serverChar.id);
     if (!localChar || !isCustomProfileAvatar(localChar.avatarUrl)) return serverChar;
-    // Only restore the local image when the server snapshot does not contain
-    // that same custom image. Other profile fields remain server-authoritative.
     if (serverChar.avatarUrl === localChar.avatarUrl) return serverChar;
     return { ...serverChar, avatarUrl: localChar.avatarUrl };
   });
@@ -836,6 +868,9 @@ export async function updateCharacterData(char: CharacterProfile): Promise<void>
     powerScore: score,
     lastUpdated,
   };
+  // Keep the selected profile image in its own small persistent key.
+  // This survives a hard refresh even when the full character cache is large.
+  saveAvatarOverride(updated.id, updated.avatarUrl || '');
 
   // Update local and protect it from an older realtime snapshot.
   pendingCharacterUpdates.set(updated.id, updated);
