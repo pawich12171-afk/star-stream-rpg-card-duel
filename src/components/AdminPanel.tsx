@@ -353,7 +353,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editingSkillCritMultiplier, setEditingSkillCritMultiplier] = useState(2);
   const [editingSkillRepeatChance, setEditingSkillRepeatChance] = useState(0);
   const [editingSkillMaxRepeats, setEditingSkillMaxRepeats] = useState(1);
-  const [editingSkillEffectDuration, setEditingSkillEffectDuration] = useState(1);
   const [editingSkillDrawbacksText, setEditingSkillDrawbacksText] = useState('[]');
   const [editingSkillEffectsText, setEditingSkillEffectsText] = useState('[]');
   const [editingSkillPassivesText, setEditingSkillPassivesText] = useState('[]');
