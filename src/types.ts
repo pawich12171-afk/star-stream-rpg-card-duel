@@ -105,6 +105,31 @@ export interface Item {
   battleCriticalChancePercent?: number;
   /** โบนัสโอกาสตีซ้ำจากไอเทม (%) */
   battleRepeatAttackChancePercent?: number;
+  /** ความสามารถชุบชีวิต */
+  revivePercent?: number;
+  /** ชุบเพื่อน/สมาชิกทีม */
+  reviveAlly?: boolean;
+  /** ล้างสถานะผิดปกติ */
+  cleanseNegative?: boolean;
+  /** โล่ป้องกันตามเปอร์เซ็นต์ */
+  shieldPercent?: number;
+  shieldDuration?: number;
+  /** ลดความเสียหาย */
+  damageReductionPercent?: number;
+  damageReductionDuration?: number;
+  /** โอกาสหลบหลีก */
+  dodgeChancePercent?: number;
+  /** ดูดเลือด */
+  lifestealPercent?: number;
+  /** ฟื้น MP */
+  manaRestorePercent?: number;
+  manaRestoreFlat?: number;
+  /** ลดคูลดาวน์ */
+  cooldownReductionPercent?: number;
+  /** ทำให้ติดสถานะไม่ได้ชั่วคราว */
+  statusImmunityDuration?: number;
+  /** ทำให้เป้าหมายชะงัก */
+  stunDuration?: number;
   /** ตัวคูณโอกาสทำงานของ Passive/Effect ระหว่างต่อสู้ */
   battlePassiveChanceMultiplier?: number;
   /** ระยะเวลาบัฟโชค (จำนวนเทิร์น) */
