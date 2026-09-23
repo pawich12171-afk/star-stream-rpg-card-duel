@@ -22,6 +22,7 @@ import {
   deleteCharacterFromDB,
   transferCoinsBetweenCharacters,
   addShopItemToDB,
+  updateShopItem,
   deleteShopItemFromDB,
   updateGachaConfigInDB,
   addGachaRewardToDB,
@@ -393,6 +394,16 @@ export default function App() {
       console.error('Failed to persist shop item to Firestore:', error);
     });
   };
+  const handleUpdateShopItem = async (item: Item): Promise<void> => {
+    setShopItems(prev => [item, ...prev.filter(existing => existing.id !== item.id)]);
+    try {
+      await updateShopItem(item);
+    } catch (error) {
+      console.error('Failed to update shop item:', error);
+      throw error;
+    }
+  };
+
 
   const handleDeleteShopItem = async (itemId: string): Promise<void> => {
     await deleteShopItemFromDB(itemId);
@@ -806,6 +817,7 @@ export default function App() {
             shopItems={shopItems.filter(item => !item.adminOnly)}
             onUpdateCharacter={handleUpdateCharacter}
             onAddShopItem={handleAddShopItem}
+            onUpdateShopItem={handleUpdateShopItem}
             onDeleteShopItem={handleDeleteShopItem}
             marketplaceListings={marketplaceListings}
             onCreateMarketplaceListing={(item, price, quantity) => createMarketplaceListing(currentUser.id, item, price, quantity)}
