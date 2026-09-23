@@ -1,6 +1,6 @@
 import { formatCoins } from '../utils/formatNumber';
 import React, { useEffect, useState } from 'react';
-import { CharacterProfile, Item, Skill, Quest, GachaReward, GachaBanner, GachaConfig, GachaRarity, BattleExtraEffect, BattleSkillStat, ItemPassiveEffect } from '../types';
+import { CharacterProfile, Item, Skill, Quest, GachaReward, GachaBanner, GachaConfig, GachaRarity, MAX_GACHA_REWARDS, BattleExtraEffect, BattleSkillStat, ItemPassiveEffect } from '../types';
 import { 
   ShieldCheck, 
   Coins, 
