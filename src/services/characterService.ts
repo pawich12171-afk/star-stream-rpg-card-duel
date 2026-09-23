@@ -2854,7 +2854,8 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
 
   let hp = character.hp;
   let maxHp = character.maxHp;
-  const stats = { ...character.stats };
+  // Older character records may not have a stats object. Always normalize it before applying an item stat effect.
+  const stats = { ...(character.stats || {}) };
   if (item.effectType === 'heal_hp') {
     const flatHeal = Math.max(0, Number(item.effectValue) || 0);
     const percentHeal = Math.min(100, Math.max(0, Number(item.healPercent) || 0));
