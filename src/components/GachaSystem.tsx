@@ -188,10 +188,13 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     // animation starts, so a refresh/re-render cannot resurrect the old boost.
     const gachaRateMultiplier = Math.max(1, Math.min(1000, Number(activeGachaRateMultiplier) || 1));
     const gachaRateMinRarity = activeGachaRateMinRarity || 'rare';
+    // This API removes undefined fields before PATCH, so using undefined here
+    // would leave the old multiplier (for example ×100) in the database.
+    // Store the inactive state explicitly as ×1 + Rare instead.
     const characterAfterBoostConsumed: CharacterProfile = {
       ...currentCharacter,
-      pendingGachaRateMultiplier: undefined,
-      pendingGachaRateMinRarity: undefined,
+      pendingGachaRateMultiplier: 1,
+      pendingGachaRateMinRarity: 'rare',
       lastUpdated: Math.max(Date.now(), Number(currentCharacter.lastUpdated || 0) + 1),
     };
     if (currentCharacter.coins < cost) {
