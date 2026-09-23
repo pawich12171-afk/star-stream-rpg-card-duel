@@ -96,7 +96,15 @@ export default function App() {
 
   // Real-time State
   const [characters, setCharacters] = useState<CharacterProfile[]>(() => [...INITIAL_CHARACTERS]);
-  const [currentUserId, setCurrentUserId] = useState<string>(() => INITIAL_CHARACTERS[0]?.id || '');
+  const [currentUserId, setCurrentUserId] = useState<string>(() => {
+    const fallback = INITIAL_CHARACTERS[0]?.id || '';
+    try {
+      const saved = localStorage.getItem('starstream_current_user_id');
+      return saved || fallback;
+    } catch {
+      return fallback;
+    }
+  });
   const [shopItems, setShopItems] = useState<Item[]>(() => []);
   const [gachaRewards, setGachaRewards] = useState<GachaReward[]>(() => []);
   const [gachaBanners, setGachaBanners] = useState<GachaBanner[]>(() => []);
@@ -165,11 +173,13 @@ export default function App() {
         setIsRealtimeLinked(true);
         if (chars.length > 0) {
           setCurrentUserId(prev => {
-            if (prev && chars.some(c => c.id === prev)) return prev;
             try {
               const saved = localStorage.getItem('starstream_current_user_id');
-              if (saved && chars.some(c => c.id === saved)) return saved;
+              if (saved && chars.some(c => c.id === saved)) {
+                return saved;
+              }
             } catch (e) {}
+            if (prev && chars.some(c => c.id === prev)) return prev;
             return chars[0].id;
           });
         }
