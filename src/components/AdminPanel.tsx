@@ -717,7 +717,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         repeatAttackChance: Math.max(0, Math.min(100, Number(newRewardRepeatAttackChance) || 0)),
         passiveEffects: newSkillPassiveEffects.length ? newSkillPassiveEffects : undefined,
         maxRepeatAttacks: Math.max(1, Math.min(20, Number(newRewardMaxRepeatAttacks) || 1)),
-        battleEffects: [...newRewardBattleEffects],
+        battleEffects: newRewardBattleEffects.length ? [...newRewardBattleEffects] : undefined,
         battleDrawbacks: newRewardDrawbacks.length ? [...newRewardDrawbacks] : undefined,
         battleStats: [...newRewardBattleStats],
       } : undefined,
@@ -2387,7 +2387,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <input type="number" min={0} max={99} value={newRewardCooldownTurns} onChange={(e) => setNewRewardCooldownTurns(Number(e.target.value))} placeholder="คูลดาวน์ (เทิร์น)" className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white outline-none" /><input type="number" min={1} max={10} value={newRewardEffectDuration} onChange={(e) => setNewRewardEffectDuration(Number(e.target.value))} placeholder="ระยะเวลาเอฟเฟกต์ (เทิร์น)" className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white outline-none" />
                     </div>
                     <div className="rounded-lg border border-violet-500/30 bg-violet-950/20 p-3">
-                      <div className="mb-2 text-[11px] font-black text-violet-200">✨ ความสามารถพิเศษของสกิลกาชา</div>
+                      <div className="mb-2 text-[11px] font-black text-violet-200">✨ ความสามารถพิเศษของสกิลกาชา <span className="font-normal text-slate-400">(ใส่หรือไม่ใส่ก็ได้)</span></div>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         <div className="rounded-lg border border-violet-500/20 bg-black/20 p-2 text-[10px] text-slate-300">
                           <b className="text-white">🧬 คัดลอกความสามารถศัตรู</b>
