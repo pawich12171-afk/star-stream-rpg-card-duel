@@ -126,6 +126,10 @@ export interface Item {
   stackable?: boolean;
   /** อนุญาตให้นำไอเทมนี้ไปใช้เป็นรางวัลแบบกำหนดเอง */
   rewardEligible?: boolean;
+  /** ประเภทการเผยแพร่ของไอเทม */
+  itemClass?: 'normal' | 'special' | 'limited';
+  /** จำนวน Stock สูงสุดสำหรับไอเทม Limited */
+  limitedStock?: number;
   /** สถานะการนำไอเทมกลางเข้า Shop */
   inShop?: boolean;
 }
