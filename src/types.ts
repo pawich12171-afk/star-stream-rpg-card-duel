@@ -121,9 +121,6 @@ export interface Item {
   dodgeChancePercent?: number;
   /** ดูดเลือด */
   lifestealPercent?: number;
-  /** ฟื้น MP */
-  manaRestorePercent?: number;
-  manaRestoreFlat?: number;
   /** ลดคูลดาวน์ */
   cooldownReductionPercent?: number;
   /** ทำให้ติดสถานะไม่ได้ชั่วคราว */
