@@ -271,6 +271,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [shopItemAdminOnly, setShopItemAdminOnly] = useState(false);
   const [shopSearch, setShopSearch] = useState('');
 
+  useEffect(() => {
+    if (shopItems.length === 0) {
+      setSelectedShopItemToSpawnId('');
+      setNewRewardSelectedShopItemId('');
+      return;
+    }
+    if (!shopItems.some(item => item.id === selectedShopItemToSpawnId)) {
+      setSelectedShopItemToSpawnId(shopItems[0].id);
+    }
+    if (!shopItems.some(item => item.id === newRewardSelectedShopItemId)) {
+      setNewRewardSelectedShopItemId(shopItems[0].id);
+    }
+  }, [shopItems, selectedShopItemToSpawnId, newRewardSelectedShopItemId]);
+
   const applyShopPreset = (preset: typeof SHOP_PRESET_TEMPLATES[0]) => {
     setShopItemName(preset.name);
     setShopItemCategory(preset.category);
@@ -1512,6 +1526,97 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </form>
           </div>
 
+          {/* Admin-only reward items: persisted in shop_items with adminOnly=true. */}
+          <div className="rounded-3xl border border-fuchsia-500/30 bg-slate-900 p-6 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                  <Package className="w-4 h-4 text-fuchsia-300" />
+                  คลังไอเทมพิเศษ ({shopItems.filter(item => item.adminOnly).length} ชิ้น)
+                </h3>
+                <p className="text-xs text-slate-400">
+                  ไอเทมที่สร้างจากหน้านี้ถูกบันทึกลงฐานข้อมูลจริง ใช้เสกให้ผู้เล่นหรือเลือกเป็นรางวัลกาชาได้ และไม่แสดงในร้านค้าปกติ
+                </p>
+              </div>
+            </div>
+
+            {shopItems.filter(item => item.adminOnly).length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/50 px-4 py-6 text-center text-xs text-slate-500">
+                ยังไม่มีไอเทมพิเศษ — สร้างจากแบบฟอร์มด้านบนได้เลย
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 uppercase text-[10px]">
+                      <th className="pb-3">ชื่อไอเทม</th>
+                      <th className="pb-3">ประเภท / Effect</th>
+                      <th className="pb-3">ความหายาก</th>
+                      <th className="pb-3 text-right">การจัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {shopItems
+                      .filter(item => item.adminOnly)
+                      .filter(item =>
+                        item.name.toLowerCase().includes(shopSearch.toLowerCase()) ||
+                        item.description.toLowerCase().includes(shopSearch.toLowerCase())
+                      )
+                      .map(item => (
+                        <tr key={item.id} className="hover:bg-fuchsia-950/20">
+                          <td className="py-3">
+                            <div className="font-bold text-white flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-fuchsia-950/40 border border-fuchsia-500/30 flex items-center justify-center shrink-0">
+                                {renderAdminItemIcon(item.icon, item.category, item.effectType, "w-3.5 h-3.5")}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="truncate">{item.name}</div>
+                                <div className="text-[10px] text-slate-500 truncate max-w-xs">{item.description}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 text-slate-300">
+                            <div>{item.category === 'equipment' ? 'อุปกรณ์' : 'ของใช้'} · {item.effectType}</div>
+                            {item.effectType === 'buff_stat' && item.targetStat && (
+                              <div className="text-[10px] text-cyan-300">+{item.effectValue || 0} {item.targetStat}</div>
+                            )}
+                            {item.effectType === 'boost_max_hp' && (
+                              <div className="text-[10px] text-rose-300">+{item.effectValue || 0} Max HP</div>
+                            )}
+                          </td>
+                          <td className="py-3">
+                            <span className="rounded-full border border-fuchsia-500/30 bg-fuchsia-950/30 px-2 py-1 text-[10px] font-black text-fuchsia-200">
+                              {item.rarity || 'common'}
+                            </span>
+                          </td>
+                          <td className="py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!confirm(`ลบไอเทมพิเศษ "${item.name}" ออกจากคลังรางวัลและฐานข้อมูลใช่หรือไม่?`)) return;
+                                try {
+                                  await onDeleteShopItem(item.id);
+                                  alert(`ลบไอเทมพิเศษ "${item.name}" เรียบร้อยแล้ว`);
+                                } catch (error) {
+                                  console.error('Failed to delete admin-only item:', error);
+                                  alert('ลบไอเทมพิเศษไม่สำเร็จ กรุณาลองใหม่');
+                                }
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-[10px] font-bold text-rose-300 hover:bg-rose-900/40 transition-colors cursor-pointer"
+                              title="ลบไอเทมพิเศษออกจากฐานข้อมูล"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              ลบถาวร
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
           {/* Right: Existing Shop Items List */}
           <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -2314,7 +2419,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     >
                       {shopItems.map(item => (
                         <option key={item.id} value={item.id}>
-                          {item.name} [{item.rarity || 'common'}]
+                          {item.adminOnly ? '🎁 [ไอเทมพิเศษ] ' : ''}{item.name} [{item.rarity || 'common'}]
                         </option>
                       ))}
                     </select>
