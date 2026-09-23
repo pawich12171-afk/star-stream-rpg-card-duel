@@ -59,6 +59,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 }) => {
   const [showAddSkillModal, setShowAddSkillModal] = useState(false);
   const [editingSkillDraft, setEditingSkillDraft] = useState<Skill | null>(null);
+  const [editingSkillDrawbacksText, setEditingSkillDrawbacksText] = useState('[]');
+  const [editingSkillEffectsText, setEditingSkillEffectsText] = useState('[]');
+  const [editingSkillPassivesText, setEditingSkillPassivesText] = useState('[]');
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillDesc, setNewSkillDesc] = useState('');
   const [newSkillType, setNewSkillType] = useState('วิชาทั่วไป');
@@ -372,12 +375,21 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
   const openSkillEditor = (skill: Skill) => {
     setEditingSkillDraft({ ...skill, battleStats: skill.battleStats ? [...skill.battleStats] : undefined, battleEffects: skill.battleEffects ? [...skill.battleEffects] : undefined, battleDrawbacks: skill.battleDrawbacks ? [...skill.battleDrawbacks] : undefined, passiveEffects: skill.passiveEffects ? [...skill.passiveEffects] : undefined });
+    setEditingSkillDrawbacksText(JSON.stringify(skill.battleDrawbacks || [], null, 2));
+    setEditingSkillEffectsText(JSON.stringify(skill.battleEffects || [], null, 2));
+    setEditingSkillPassivesText(JSON.stringify(skill.passiveEffects || [], null, 2));
   };
 
   const saveEditedSkill = async () => {
     if (!editingSkillDraft) return;
+    let parsedDrawbacks: BattleExtraEffect[] = [];
+    let parsedEffects: BattleExtraEffect[] = [];
+    let parsedPassives: ItemPassiveEffect[] = [];
+    try { parsedDrawbacks = JSON.parse(editingSkillDrawbacksText || '[]'); if (!Array.isArray(parsedDrawbacks)) throw new Error(); } catch { alert('รูปแบบ JSON ของข้อเสียไม่ถูกต้อง'); return; }
+    try { parsedEffects = JSON.parse(editingSkillEffectsText || '[]'); if (!Array.isArray(parsedEffects)) throw new Error(); } catch { alert('รูปแบบ JSON ของเอฟเฟกต์ไม่ถูกต้อง'); return; }
+    try { parsedPassives = JSON.parse(editingSkillPassivesText || '[]'); if (!Array.isArray(parsedPassives)) throw new Error(); } catch { alert('รูปแบบ JSON ของ Passive ไม่ถูกต้อง'); return; }
     const updatedSkills = (latestCharacterRef.current.skills || []).map(skill =>
-      skill.id === editingSkillDraft.id ? { ...editingSkillDraft, name: editingSkillDraft.name.trim() || skill.name, description: editingSkillDraft.description.trim() || skill.description, battlePower: Math.max(0, Number(editingSkillDraft.battlePower) || 0), cooldownTurns: Math.max(0, Number(editingSkillDraft.cooldownTurns) || 0), battleCriticalChance: Math.max(0, Math.min(100, Number(editingSkillDraft.battleCriticalChance) || 0)), battleCriticalMultiplier: Math.max(1, Number(editingSkillDraft.battleCriticalMultiplier) || 1), repeatAttackChance: Math.max(0, Math.min(100, Number(editingSkillDraft.repeatAttackChance) || 0)), maxRepeatAttacks: Math.max(1, Math.min(20, Number(editingSkillDraft.maxRepeatAttacks) || 1)), damageScalingMultiplier: Math.max(0, Number(editingSkillDraft.damageScalingMultiplier) || 1), battleEffectDuration: Math.max(1, Math.min(10, Number(editingSkillDraft.battleEffectDuration) || 1)), battleDrawbacks: editingSkillDraft.battleDrawbacks?.length ? [...editingSkillDraft.battleDrawbacks] : undefined, battleEffects: editingSkillDraft.battleEffects?.length ? [...editingSkillDraft.battleEffects] : undefined, passiveEffects: editingSkillDraft.passiveEffects?.length ? [...editingSkillDraft.passiveEffects] : undefined } : skill
+      skill.id === editingSkillDraft.id ? { ...editingSkillDraft, name: editingSkillDraft.name.trim() || skill.name, description: editingSkillDraft.description.trim() || skill.description, battlePower: Math.max(0, Number(editingSkillDraft.battlePower) || 0), cooldownTurns: Math.max(0, Number(editingSkillDraft.cooldownTurns) || 0), battleCriticalChance: Math.max(0, Math.min(100, Number(editingSkillDraft.battleCriticalChance) || 0)), battleCriticalMultiplier: Math.max(1, Number(editingSkillDraft.battleCriticalMultiplier) || 1), repeatAttackChance: Math.max(0, Math.min(100, Number(editingSkillDraft.repeatAttackChance) || 0)), maxRepeatAttacks: Math.max(1, Math.min(20, Number(editingSkillDraft.maxRepeatAttacks) || 1)), damageScalingMultiplier: Math.max(0, Number(editingSkillDraft.damageScalingMultiplier) || 1), battleEffectDuration: Math.max(1, Math.min(10, Number(editingSkillDraft.battleEffectDuration) || 1)), battleDrawbacks: parsedDrawbacks.length ? parsedDrawbacks : undefined, battleEffects: parsedEffects.length ? parsedEffects : undefined, passiveEffects: parsedPassives.length ? parsedPassives : undefined } : skill
     );
     const saved = await commitCharacterUpdate({ ...latestCharacterRef.current, skills: updatedSkills });
     if (saved) { setEditingSkillDraft(null); }
@@ -972,6 +984,26 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               <button type="button" onClick={() => { setEditingSkillDraft(null); }} className="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 cursor-pointer">ปิด</button>
             </div>
             <div className="p-5 space-y-4 overflow-y-auto max-h-[78vh] text-xs">
+              <div className="rounded-xl border border-violet-500/25 bg-violet-950/10 p-3 space-y-2">
+                <div className="text-[11px] font-black text-violet-200">✨ ความสามารถพิเศษ / ระยะเวลา / ข้อเสีย — แก้ไขได้</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label className="text-slate-400">ผลหลัก
+                    <select value={editingSkillDraft.battleEffect || 'damage'} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battleEffect:e.target.value as Skill['battleEffect']})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"><option value="damage">โจมตี</option><option value="heal">ฟื้น HP</option><option value="defense">ป้องกัน</option><option value="reflect">สะท้อน</option><option value="stun">สตัน</option><option value="copy_ability">🧬 คัดลอกความสามารถ</option><option value="immortal">♾️ อมตะ</option><option value="damage_reduction">🛡️ ลดความเสียหาย</option></select>
+                  </label>
+                  <label className="text-slate-400">ระยะเวลา (1–10 เทิร์น)
+                    <input type="number" min={1} max={10} value={editingSkillDraft.battleEffectDuration ?? 1} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battleEffectDuration:Math.max(1,Math.min(10,Number(e.target.value)||1))})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"/>
+                  </label>
+                </div>
+                <label className="text-slate-400 block">ข้อเสีย (JSON)
+                  <textarea value={editingSkillDrawbacksText} onChange={e=>setEditingSkillDrawbacksText(e.target.value)} rows={4} className="mt-1 w-full rounded-xl bg-slate-950 border border-rose-500/20 px-2 py-2 text-[10px] text-rose-100 font-mono" placeholder='[{"kind":"bleeding","value":10,"duration":2,"target":"self"}]'/>
+                </label>
+                <label className="text-slate-400 block">เอฟเฟกต์เพิ่มเติม (JSON)
+                  <textarea value={editingSkillEffectsText} onChange={e=>setEditingSkillEffectsText(e.target.value)} rows={4} className="mt-1 w-full rounded-xl bg-slate-950 border border-cyan-500/20 px-2 py-2 text-[10px] text-cyan-100 font-mono" placeholder='[{"kind":"poison","value":10,"duration":3,"chance":100,"target":"enemy"}]'/>
+                </label>
+                <label className="text-slate-400 block">Passive ของสกิล (JSON)
+                  <textarea value={editingSkillPassivesText} onChange={e=>setEditingSkillPassivesText(e.target.value)} rows={4} className="mt-1 w-full rounded-xl bg-slate-950 border border-fuchsia-500/20 px-2 py-2 text-[10px] text-fuchsia-100 font-mono" placeholder='[{"id":"p1","name":"Passive","trigger":"turn_start","kind":"stack","value":1,"maxStacks":6,"duration":1}]'/>
+                </label>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="text-slate-400">ชื่อสกิล<input value={editingSkillDraft.name} onChange={e=>setEditingSkillDraft({...editingSkillDraft,name:e.target.value})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2.5 text-white font-bold"/></label>
                 <label className="text-slate-400">ประเภท<input value={editingSkillDraft.type || ''} onChange={e=>setEditingSkillDraft({...editingSkillDraft,type:e.target.value})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2.5 text-white"/></label>
