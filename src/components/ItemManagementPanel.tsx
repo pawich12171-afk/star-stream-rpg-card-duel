@@ -266,6 +266,7 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
                 </div>
               </div>
             </div>
+          </div>
           <div className="bg-gradient-to-b from-slate-900/90 to-slate-950/80 border border-slate-700/70 rounded-3xl p-5 shadow-2xl shadow-black/20">
             <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
               <div><div className="text-lg font-black text-white">คลังไอเทมทั้งหมด</div><div className="text-[11px] text-slate-500">จัดการไอเทมกลางของเว็บไซต์</div></div>
