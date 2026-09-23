@@ -1568,6 +1568,25 @@ export async function saveGachaReward(reward: GachaReward): Promise<void> {
   notifyGachaRewards();
 
   try {
+    // Item rewards are linked to the central item catalog. Keep the catalog copy
+    // available even when the item is not currently shown in the Shop.
+    if (fullReward.type === 'item' && fullReward.itemData) {
+      const catalogItem: Item = {
+        ...fullReward.itemData,
+        id: fullReward.itemId || fullReward.itemData.id,
+        inShop: fullReward.itemData.inShop === true,
+        adminOnly: fullReward.itemData.inShop !== true,
+        rewardEligible: true,
+        stackable: fullReward.itemData.stackable !== false,
+      };
+      await enqueuePersistenceWrite(`shop:${catalogItem.id}`, () =>
+        setDoc(doc(db, SHOP_ITEMS_COLLECTION, catalogItem.id), sanitizeForFirestore(catalogItem))
+      );
+      localShopItems = [catalogItem, ...localShopItems.filter(item => item.id !== catalogItem.id)];
+      saveLocalAll();
+      broadcast?.postMessage({ type: 'SHOP_UPDATE' });
+    }
+
     const firestoreReward = stripUndefined(fullReward);
     await enqueuePersistenceWrite(`gacha-reward:${id}`, () =>
       setDoc(doc(db, GACHA_REWARDS_COLLECTION, id), firestoreReward)
