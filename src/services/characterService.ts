@@ -2455,11 +2455,11 @@ function applyItemPassiveEffects(
     const passiveRoll = Math.random() * 100;
     const chanceLabel = Number.isInteger(chance) ? String(chance) : String(Number(chance.toFixed(2)));
     if (passiveRoll >= chance) {
-      if (chance < 100) result.message += ` • ❌ Passive ${passive.name}: ล้มเหลว (${chanceLabel}% ไม่ออก)`;
+      if (chance < 100) result.message += ` • ❌ PASSIVE ไม่ทำงาน: ${passive.name} — โอกาส ${chanceLabel}%`;
       continue;
     }
     const value = Math.max(0, Number(passive.value) || 0);
-    result.message += ` • ✅ Passive ${passive.name}: ทำงาน (${chanceLabel}%)`;
+    result.message += ` • 🌸 PASSIVE ทำงาน: ${passive.name} — ${passive.description || passive.kind} — โอกาส ${chanceLabel}%`;
     const maxStacks = Math.max(1, Math.min(999, Math.round(Number(passive.maxStacks) || 999)));
     const stackKey = passive.stackKey || passive.id;
     let stacks = Math.max(0, Number(attacker.passiveStacks?.[stackKey]) || 0);
