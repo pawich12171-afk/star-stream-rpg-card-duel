@@ -348,11 +348,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editingSkillScaling, setEditingSkillScaling] = useState<NonNullable<Skill['damageScaling']>>('fixed');
   const [editingSkillScalingMultiplier, setEditingSkillScalingMultiplier] = useState(1);
   const [editingSkillCooldown, setEditingSkillCooldown] = useState(0);
+  const [editingSkillEffectDuration, setEditingSkillEffectDuration] = useState(1);
   const [editingSkillCritChance, setEditingSkillCritChance] = useState(0);
   const [editingSkillCritMultiplier, setEditingSkillCritMultiplier] = useState(2);
   const [editingSkillRepeatChance, setEditingSkillRepeatChance] = useState(0);
   const [editingSkillMaxRepeats, setEditingSkillMaxRepeats] = useState(1);
   const [newRewardCooldownTurns, setNewRewardCooldownTurns] = useState(0);
+  const [newRewardEffectDuration, setNewRewardEffectDuration] = useState(1);
+  const [newRewardDrawbacks, setNewRewardDrawbacks] = useState<BattleExtraEffect[]>([]);
+  const [newDrawbackKind, setNewDrawbackKind] = useState<BattleExtraEffect['kind']>('bleeding');
+  const [newDrawbackValue, setNewDrawbackValue] = useState(10);
+  const [newDrawbackDuration, setNewDrawbackDuration] = useState(1);
   const [newRewardCritChance, setNewRewardCritChance] = useState(0);
   const [newRewardCritMultiplier, setNewRewardCritMultiplier] = useState(2);
   const [newSkillPassiveEffects, setNewSkillPassiveEffects] = useState<ItemPassiveEffect[]>([]);
@@ -624,6 +630,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       name: editingSkillName.trim() || oldSkill.name,
       description: editingSkillDesc.trim() || oldSkill.description,
       battleEffect: editingSkillEffect,
+      battleEffectDuration: Math.max(1, Math.min(10, Math.round(Number(editingSkillEffectDuration) || 1))),
       battlePower: Math.max(1, Number(editingSkillPower) || 1),
       damageScaling: editingSkillScaling,
       damageScalingMultiplier: Math.max(0, Number(editingSkillScalingMultiplier) || 0),
@@ -685,6 +692,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         category: 'general',
         description: newRewardDesc.trim() || 'สกิลต่อสู้ที่ได้รับจากตู้กาชา',
         battleEffect: newRewardBattleEffect,
+        battleEffectDuration: Math.max(1, Math.min(10, Math.round(Number(newRewardEffectDuration) || 1))),
         battlePower: Math.max(1, Number(newRewardBattlePower) || 1),
         damageScaling: newRewardDamageScaling,
         damageScalingMultiplier: Math.max(0, Number(newRewardDamageScalingMultiplier) || 0),
@@ -696,6 +704,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         passiveEffects: newSkillPassiveEffects.length ? newSkillPassiveEffects : undefined,
         maxRepeatAttacks: Math.max(1, Math.min(20, Number(newRewardMaxRepeatAttacks) || 1)),
         battleEffects: [...newRewardBattleEffects],
+        battleDrawbacks: newRewardDrawbacks.length ? [...newRewardDrawbacks] : undefined,
         battleStats: [...newRewardBattleStats],
       } : undefined,
     };
@@ -708,6 +717,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setNewRewardBattleEffect('damage');
       setNewRewardBattlePower(5);
       setNewRewardCooldownTurns(0);
+      setNewRewardEffectDuration(1);
+      setNewRewardDrawbacks([]);
+      setNewDrawbackKind('bleeding');
+      setNewDrawbackValue(10);
+      setNewDrawbackDuration(1);
       setNewRewardCritChance(0);
       setNewRewardCritMultiplier(2);
       setNewSkillPassiveEffects([]);
@@ -2353,10 +2367,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div className="text-[11px] font-bold text-cyan-200">หมวดหมู่สกิลในสนามรบ</div>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                       <select value={newRewardBattleEffect} onChange={(e) => setNewRewardBattleEffect(e.target.value as NonNullable<Skill['battleEffect']>)} className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white outline-none">
-                        <option value="damage">โจมตี / ดาเมจ</option><option value="heal">ฟื้นฟู HP</option><option value="defense">โล่ / ป้องกัน</option><option value="reflect">สะท้อนดาเมจ</option><option value="stun">ควบคุม / สตัน</option>
+                        <option value="damage">โจมตี / ดาเมจ</option><option value="heal">ฟื้นฟู HP</option><option value="defense">โล่ / ป้องกัน</option><option value="reflect">สะท้อนดาเมจ</option><option value="stun">ควบคุม / สตัน</option><option value="copy_ability">🧬 คัดลอกความสามารถศัตรู</option><option value="immortal">♾️ อมตะ</option><option value="damage_reduction">🛡️ ลดความเสียหาย</option>
                       </select>
                       <input type="number" min={1} value={newRewardBattlePower} onChange={(e) => setNewRewardBattlePower(Number(e.target.value))} placeholder="พลังผลลัพธ์" className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white outline-none" />
-                      <input type="number" min={0} max={99} value={newRewardCooldownTurns} onChange={(e) => setNewRewardCooldownTurns(Number(e.target.value))} placeholder="คูลดาวน์ (เทิร์น)" className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white outline-none" />
+                      <input type="number" min={0} max={99} value={newRewardCooldownTurns} onChange={(e) => setNewRewardCooldownTurns(Number(e.target.value))} placeholder="คูลดาวน์ (เทิร์น)" className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white outline-none" /><input type="number" min={1} max={10} value={newRewardEffectDuration} onChange={(e) => setNewRewardEffectDuration(Number(e.target.value))} placeholder="ระยะเวลาเอฟเฟกต์ (เทิร์น)" className="w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white outline-none" />
                     </div>
                     {newRewardBattleEffect === 'damage' && (
                       <div className="rounded-lg border border-amber-500/20 bg-amber-950/10 p-2">
@@ -2423,6 +2437,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <button type="button" onClick={() => setNewRewardBattleEffects(prev => [...prev, { kind: newRewardEffectKind, value: Math.max(0, Number(newRewardEffectValue) || 0), duration: Math.max(1, Number(newRewardEffectDuration) || 1), chance: Math.max(0, Math.min(100, Number(newRewardEffectChance) || 0)), target: ['heal_percent','shield','reflect'].includes(newRewardEffectKind) ? 'self' : 'enemy' }])} className="rounded-lg bg-fuchsia-500/20 px-2 py-2 text-xs font-black text-fuchsia-100">+ เพิ่ม</button>
                       </div>
                       {newRewardBattleEffects.map((effect, index) => <div key={index} className="mt-1 flex items-center justify-between rounded bg-black/20 px-2 py-1 text-[10px] text-slate-300"><span>{effect.kind} • {effect.value}{effect.kind.includes('percent') || effect.kind === 'reflect' ? '%' : ''} • {effect.duration} เทิร์น • {effect.chance ?? 100}%</span><button type="button" onClick={() => setNewRewardBattleEffects(prev => prev.filter((_, i) => i !== index))} className="text-rose-300">ลบ</button></div>)}
+                    </div>
+                    <div className="rounded-lg border border-rose-500/20 bg-rose-950/10 p-2">
+                      <div className="mb-2 text-[10px] font-black text-rose-200">⚠️ ข้อเสียของสกิล — ผลย้อนกลับทำงานจริง</div>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <select value={newDrawbackKind} onChange={e=>setNewDrawbackKind(e.target.value as BattleExtraEffect['kind'])} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white">
+                          <option value="bleeding">เสียเลือดต่อเทิร์น</option><option value="burn">เผาไหม้ตัวเอง</option><option value="poison">พิษตัวเอง</option><option value="stun">สตันตัวเอง</option><option value="damage_percent">เพิ่มดาเมจที่ได้รับ/ผลเสีย %</option><option value="damage_reduction">ลดความเสียหายตัวเอง</option><option value="reduce_defense_percent">ลดป้องกันตัวเอง %</option>
+                        </select>
+                        <input type="number" min={0} value={newDrawbackValue} onChange={e=>setNewDrawbackValue(Number(e.target.value))} placeholder="ค่า" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
+                        <input type="number" min={1} max={10} value={newDrawbackDuration} onChange={e=>setNewDrawbackDuration(Number(e.target.value))} placeholder="เทิร์น" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white" />
+                        <button type="button" onClick={()=>setNewRewardDrawbacks(prev=>[...prev,{kind:newDrawbackKind,value:Math.max(0,Number(newDrawbackValue)||0),duration:Math.max(1,Math.min(10,Math.round(Number(newDrawbackDuration)||1))),chance:100,target:'self'}])} className="rounded-lg bg-rose-500/20 px-2 py-2 text-xs font-black text-rose-100">+ เพิ่มข้อเสีย</button>
+                      </div>
+                      {newRewardDrawbacks.map((effect,index)=><div key={index} className="mt-1 flex items-center justify-between rounded bg-black/20 px-2 py-1 text-[10px] text-rose-200"><span>{effect.kind} • {effect.value} • {effect.duration} เทิร์น</span><button type="button" onClick={()=>setNewRewardDrawbacks(prev=>prev.filter((_,i)=>i!==index))} className="text-rose-300">ลบ</button></div>)}
                     </div>
                     <p className="text-[10px] leading-4 text-slate-400">สกิลที่สร้างจะบันทึกประเภท พลัง คูลดาวน์ โอกาสคริติคอล ตัวคูณคริ และเอฟเฟกต์หลายรายการ แล้วนำไปคำนวณจริงในสนามรบ</p>
                   </div>
@@ -2563,7 +2589,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <select value={editingSkillEffect} onChange={e => setEditingSkillEffect(e.target.value as NonNullable<Skill['battleEffect']>)} className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white"><option value="damage">โจมตี / ดาเมจ</option><option value="heal">ฟื้นฟู HP</option><option value="defense">ป้องกัน</option><option value="reflect">สะท้อน</option><option value="stun">สตัน</option></select>
               <textarea value={editingSkillDesc} onChange={e => setEditingSkillDesc(e.target.value)} placeholder="คำอธิบาย" className="sm:col-span-2 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white min-h-20" />
               <label className="text-[10px] text-slate-400">พลังสกิล<input type="number" min={1} value={editingSkillPower} onChange={e => setEditingSkillPower(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
-              <label className="text-[10px] text-slate-400">คูลดาวน์<input type="number" min={0} value={editingSkillCooldown} onChange={e => setEditingSkillCooldown(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
+              <label className="text-[10px] text-slate-400">คูลดาวน์<input type="number" min={0} value={editingSkillCooldown} onChange={e => setEditingSkillCooldown(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /><input type="number" min={1} max={10} value={editingSkillEffectDuration} onChange={e => setEditingSkillEffectDuration(Math.max(1, Math.min(10, Number(e.target.value)||1)))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" placeholder="ระยะเวลาเอฟเฟกต์" /></label>
               {editingSkillEffect === 'damage' && <div className="sm:col-span-2 rounded-2xl border border-amber-500/30 bg-amber-950/10 p-3"><div className="text-xs font-black text-amber-200 mb-2">⚔️ ดาเมจตามค่าสเตตัส</div><div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><select value={editingSkillScaling} onChange={e => setEditingSkillScaling(e.target.value as NonNullable<Skill['damageScaling']>)} className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white"><option value="fixed">ค่าพลังสกิลคงที่</option><option value="strength">พละกำลัง (STR)</option><option value="durability">ความแข็งแกร่ง/ทนทาน (DUR)</option><option value="agility">ความว่องไว (AGI)</option><option value="magic">พลังเวท (MAG)</option></select><input type="number" min={0} step={0.1} value={editingSkillScalingMultiplier} onChange={e => setEditingSkillScalingMultiplier(Number(e.target.value))} placeholder="ตัวคูณ" className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></div><div className="text-[10px] text-slate-500 mt-1">เช่น STR 100 × 1.5 = 150 ดาเมจ</div></div>}
               <label className="text-[10px] text-slate-400">โอกาสคริ %<input type="number" min={0} max={100} step={0.1} value={editingSkillCritChance} onChange={e => setEditingSkillCritChance(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
               <label className="text-[10px] text-slate-400">ตัวคูณคริ<input type="number" min={1} step={0.1} value={editingSkillCritMultiplier} onChange={e => setEditingSkillCritMultiplier(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
