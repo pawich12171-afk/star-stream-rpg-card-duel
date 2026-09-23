@@ -2548,8 +2548,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     onChange={(e) => setNewRewardRate(Number(e.target.value))}
                     className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none font-mono"
                   />
-                </div>
-
                 <div>
                   <label className="text-xs text-slate-300 block mb-1">คำอธิบาย</label>
                   <textarea
