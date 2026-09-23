@@ -271,6 +271,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [shopItemAdminOnly, setShopItemAdminOnly] = useState(false);
   const [shopSearch, setShopSearch] = useState('');
 
+  const [newRewardSelectedShopItemId, setNewRewardSelectedShopItemId] = useState(shopItems[0]?.id || '');
+
   useEffect(() => {
     if (shopItems.length === 0) {
       setSelectedShopItemToSpawnId('');
@@ -350,7 +352,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newRewardRarity, setNewRewardRarity] = useState<GachaRarity>('rare');
   const [newRewardDesc, setNewRewardDesc] = useState('');
   const [newRewardCoinAmount, setNewRewardCoinAmount] = useState(2500);
-  const [newRewardSelectedShopItemId, setNewRewardSelectedShopItemId] = useState(shopItems[0]?.id || '');
   const [newRewardCharacteristic, setNewRewardCharacteristic] = useState('');
   const [newRewardBattleEffect, setNewRewardBattleEffect] = useState<NonNullable<Skill['battleEffect']>>('damage');
   const [newRewardBattlePower, setNewRewardBattlePower] = useState(5);
