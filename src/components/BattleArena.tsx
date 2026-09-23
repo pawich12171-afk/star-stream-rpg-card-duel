@@ -75,6 +75,7 @@ function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): Batt
     equippedPassives,
     activeSkillPassives: skillPassives,
     passiveStacks: {},
+    skills: [...(character.skills || [])],
     traits: [...(character.characteristics || [])],
   };
 }
