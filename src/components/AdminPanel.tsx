@@ -2292,7 +2292,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 )}
 
-                <div>
                 {newRewardType === 'characteristic' && (
                   <div>
                     <label className="text-xs text-slate-300 block mb-1">คุณลักษณะที่ผู้เล่นจะได้รับ</label>
@@ -2560,7 +2559,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     placeholder="เขียนบรรยายของรางวัล..."
                     className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none"
                   />
-                </div>
 
                 <button
                   type="submit"
