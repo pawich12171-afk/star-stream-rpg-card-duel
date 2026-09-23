@@ -299,6 +299,29 @@ export async function seedInitialDataIfNeeded() {
   }
 }
 
+// A profile avatar chosen in the Profile Customizer is stored as the avatarUrl
+// itself (normally a data: URL). Keep that local custom value when an older server
+// snapshot still contains one of the bundled preset avatars. This prevents a
+// refresh from replacing the user's chosen profile image with chaewon.svg, etc.
+function isCustomProfileAvatar(value: unknown): boolean {
+  const avatar = String(value || '').trim();
+  if (!avatar) return false;
+  if (avatar.startsWith('data:image/')) return true;
+  if (/^blob:/i.test(avatar)) return true;
+  return !/^\/avatars\/(system|chaewon|hayeon|miyeon|sera)\\.svg$/i.test(avatar);
+}
+
+function preserveLocalCustomAvatars(serverCharacters: CharacterProfile[]): CharacterProfile[] {
+  return serverCharacters.map((serverChar) => {
+    const localChar = localCharacters.find(c => c.id === serverChar.id);
+    if (!localChar || !isCustomProfileAvatar(localChar.avatarUrl)) return serverChar;
+    // Only restore the local image when the server snapshot does not contain
+    // that same custom image. Other profile fields remain server-authoritative.
+    if (serverChar.avatarUrl === localChar.avatarUrl) return serverChar;
+    return { ...serverChar, avatarUrl: localChar.avatarUrl };
+  });
+}
+
 // Subscribe to characters
 export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => void) {
   // Render the local seed immediately so the UI never stays on LINKING while
@@ -340,11 +363,16 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
        pendingCharacterUpdates.forEach((pending, id) => {
          if (!snapshotIds.has(id) && !pendingCharacterDeletes.has(id)) list.push(pending);
        });
-      list.sort((a, b) => (b.powerScore || 0) - (a.powerScore || 0));
-      // Firestore is authoritative, including an empty collection.
-      localCharacters = list;
+      // Preserve a custom avatar selected in Profile Customizer while the
+      // server snapshot catches up. This is intentionally limited to avatarUrl
+      // so server changes to stats, coins, inventory, skills, etc. are untouched.
+      const reconciledList = preserveLocalCustomAvatars(list);
+      reconciledList.sort((a, b) => (b.powerScore || 0) - (a.powerScore || 0));
+      // Firestore is authoritative for character data, except a locally selected
+      // custom avatar that has not yet been reflected by the server snapshot.
+      localCharacters = reconciledList;
       saveLocalAll();
-      callback(list);
+      callback(reconciledList);
     }, (err) => {
       // Keep the app usable while the API/Supabase connection is unavailable.
       // The next successful poll will replace this fallback with server data.
