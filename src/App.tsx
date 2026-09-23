@@ -52,6 +52,7 @@ import { Leaderboard } from './components/Leaderboard';
 import { QuestNotification } from './components/QuestNotification';
 import { QuestBoard } from './components/QuestBoard';
 import { AdminPanel } from './components/AdminPanel';
+import { ItemManagementPanel } from './components/ItemManagementPanel';
 import { AdminCharacterBalancePanel } from './components/AdminCharacterBalancePanel';
 import { TransferModal } from './components/TransferModal';
 import { CharacterSelectModal } from './components/CharacterSelectModal';
@@ -72,7 +73,8 @@ import {
   Radio,
   Activity,
   ScrollText,
-  Swords
+  Swords,
+  Package
 } from 'lucide-react';
 import confetti from './utils/confetti';
 import { formatCoins, getCoinDisplayMode, type CoinDisplayMode } from './utils/formatNumber';
@@ -90,9 +92,9 @@ const isPersistentCustomAvatar = (value: unknown): boolean => {
 
 export default function App() {
   // Deployment sync checkpoint: keep main/Vercel source aligned.
-  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin'>(() => {
+  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin' | 'items'>(() => {
     const fallback = 'status' as const;
-    const allowed = ['status', 'shop', 'games', 'gacha', 'rankings', 'notifications', 'quests', 'battle', 'admin'] as const;
+    const allowed = ['status', 'shop', 'games', 'gacha', 'rankings', 'notifications', 'quests', 'battle', 'admin', 'items'] as const;
     try {
       // URL hash is the primary source because it survives a hard refresh
       // even when browser storage is unavailable/cleared by the environment.
@@ -769,6 +771,16 @@ export default function App() {
           </button>
           {canUseAdminMode && isAdminMode && (
             <button
+              id="nav-tab-items"
+              onClick={() => setActiveTab('items')}
+              className={`star-nav-tab px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'items' ? 'is-active text-fuchsia-200 font-black shadow-[0_0_20px_rgba(217,70,239,0.24)]' : 'text-fuchsia-300 hover:bg-fuchsia-950/40 border border-fuchsia-500/40'}`}
+            >
+              <Package className="w-4 h-4" />
+              จัดการไอเทมของเว็บ
+            </button>
+          )}
+          {canUseAdminMode && isAdminMode && (
+            <button
             id="nav-tab-admin"
             onClick={() => setActiveTab('admin')}
              className={`star-nav-tab px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
@@ -884,6 +896,15 @@ export default function App() {
             character={currentUser}
             shopItems={shopItems}
             onUpdateCharacter={handleUpdateCharacter}
+          />
+        )}
+
+        {activeTab === 'items' && canUseAdminMode && isAdminMode && (
+          <ItemManagementPanel
+            shopItems={shopItems}
+            onAddItem={handleAddShopItem}
+            onUpdateItem={handleUpdateShopItem}
+            onDeleteItem={handleDeleteShopItem}
           />
         )}
 
