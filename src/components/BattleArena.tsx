@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, Check, Crown, Dice5, Heart, Package, Plus, Settings2, Shield, Skull, Sparkles, Swords, Target, Trash2, UsersRound, Zap } from 'lucide-react';
-import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRoom, CharacterProfile, Skill, BattleBotSkill } from '../types';
+import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRandomReward, BattleRoom, CharacterProfile, Skill, BattleBotSkill } from '../types';
 import {
   DEFAULT_BATTLE_CONFIG,
   createBattleRoom,
@@ -168,7 +168,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   const [config, setConfig] = useState<BattleConfig>(DEFAULT_BATTLE_CONFIG);
   const [bots, setBots] = useState<BattleBot[]>([]);
   const [rooms, setRooms] = useState<BattleRoom[]>([]);
-  const [mode, setMode] = useState<'pvp' | 'pve'>('pve');
+  const [mode, setMode] = useState<'pvp' | 'pve' | 'random'>('pve');
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([currentUser.id]);
   const [selectedOpponentId, setSelectedOpponentId] = useState('');
   const [selectedBotIds, setSelectedBotIds] = useState<string[]>([]);
@@ -184,6 +184,9 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   const [editingBotId, setEditingBotId] = useState('');
   const [victoryImageFileName, setVictoryImageFileName] = useState('');
   const [victoryVideoFileName, setVictoryVideoFileName] = useState('');
+  const [randomRewardName, setRandomRewardName] = useState('');
+  const [randomRewardAmount, setRandomRewardAmount] = useState('10000');
+  const [randomRewardRate, setRandomRewardRate] = useState('10');
 
   useEffect(() => {
     const unsubConfig = subscribeToBattleConfig(next => setConfig({ ...DEFAULT_BATTLE_CONFIG, ...next, bossDice: { ...DEFAULT_BATTLE_CONFIG.bossDice, ...(next.bossDice || {}) } }));
@@ -213,6 +216,8 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   const BOT_VICTORY_REWARD = 7000;
   const BOSS_VICTORY_REWARD = 10000;
   const BATTLE_ENTRY_FEE = 5000;
+  const randomEntryFee = Math.max(0, Number(config.randomBattleEntryFee ?? 10000) || 0);
+  const randomRewards = config.randomBattleRewards || [];
 
   const toggleTeamMember = (id: string) => { if (id !== currentUser.id) setSelectedTeamIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]); };
   const toggleBot = (id: string) => setSelectedBotIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
@@ -267,7 +272,16 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
     const selectedBots = (mode === 'pve' || mode === 'random') ? enemies.slice(0, 3).map(bot => bot as BattleBot) : [];
     const teamB = mode === 'pve' ? selectedBots.map(bot => makeBotCombatant(bot, 'b')) : enemies.slice(0, 3).map(character => makePlayerCombatant(character as CharacterProfile, 'b'));
     const isPveBoss = selectedBots.some(bot => bot.isBoss);
-    const victoryReward = (mode === 'pve' || mode === 'random') ? (isPveBoss ? BOSS_VICTORY_REWARD : BOT_VICTORY_REWARD) : 0;
+    let randomReward: BattleRandomReward | undefined;
+    if (mode === 'random') {
+      const rewardPool = randomRewards.filter(reward => Number(reward.coinAmount) > 0 && Number(reward.rate) > 0);
+      const totalRate = rewardPool.reduce((sum, reward) => sum + Number(reward.rate), 0);
+      if (!rewardPool.length || totalRate <= 0) throw new Error('แอดมินยังไม่ได้ตั้งค่ารางวัลสุ่มหรือเรทรางวัล');
+      let rewardRoll = Math.random() * totalRate;
+      randomReward = rewardPool[rewardPool.length - 1];
+      for (const reward of rewardPool) { rewardRoll -= Number(reward.rate); if (rewardRoll <= 0) { randomReward = reward; break; } }
+    }
+    const victoryReward = mode === 'random' ? Math.max(0, Number(randomReward?.coinAmount) || 0) : (mode === 'pve' ? (isPveBoss ? BOSS_VICTORY_REWARD : BOT_VICTORY_REWARD) : 0);
     const now = Date.now();
     const room: BattleRoom = {
       id: 'battle-' + now, mode, status: 'active', createdBy: currentUser.id, createdByName: currentUser.displayName,
@@ -283,11 +297,11 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
           ...(unit.activeSkillPassives || []).map(passive => ({ id: `battle-skill-passive-${unit.id}-${passive.id}-${now}`, timestamp: now, actorName: unit.name, message: `🌸 SKILL PASSIVE พร้อมทำงาน: ${passive.name} · ${passive.description || passive.kind}` })),
           ...(unit.equippedPassives || []).map(passive => ({ id: `battle-item-passive-${unit.id}-${passive.id}-${now}`, timestamp: now, actorName: unit.name, message: `⚙️ ITEM PASSIVE พร้อมทำงาน: ${passive.name} · ${passive.description || passive.kind}` })),
         ]),
-        { id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pve' ? `เริ่มการต่อสู้ — หักค่าเข้า ${BATTLE_ENTRY_FEE.toLocaleString()} Coins · ชนะรับ ${victoryReward.toLocaleString()} Coins` : 'เริ่มการต่อสู้ — Passive/TRAIT พร้อมทำงาน · เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' },
+        { id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pve' || mode === 'random' ? `เริ่มการต่อสู้ — หักค่าเข้า ${(mode === 'random' ? randomEntryFee : BATTLE_ENTRY_FEE).toLocaleString()} Coins · รางวัลสุ่ม ${victoryReward.toLocaleString()} Coins` : 'เริ่มการต่อสู้ — Passive/TRAIT พร้อมทำงาน · เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' },
       ],
-      entryFeeCoins: mode === 'pve' ? BATTLE_ENTRY_FEE : 0, victoryRewardCoins: victoryReward, createdAt: now, updatedAt: now
+      entryFeeCoins: mode === 'random' ? randomEntryFee : (mode === 'pve' ? BATTLE_ENTRY_FEE : 0), victoryRewardCoins: victoryReward, randomReward, createdAt: now, updatedAt: now
     };
-      await (mode === 'pve' ? createBattleRoomWithEntryFee(room, currentUser.id, BATTLE_ENTRY_FEE) : createBattleRoom(room));
+      await (mode === 'pve' || mode === 'random' ? createBattleRoomWithEntryFee(room, currentUser.id, mode === 'random' ? randomEntryFee : BATTLE_ENTRY_FEE) : createBattleRoom(room));
       setSelectedBotIds([]);
       setSelectedOpponentId('');
     } catch (error: any) {
