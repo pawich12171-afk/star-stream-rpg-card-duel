@@ -52,7 +52,7 @@ import { Leaderboard } from './components/Leaderboard';
 import { QuestNotification } from './components/QuestNotification';
 import { QuestBoard } from './components/QuestBoard';
 import { AdminPanel } from './components/AdminPanel';
-import { ItemManagementPanel } from './components/ItemManagementPanel';
+const ItemManagementPanel = lazy(() => import('./components/ItemManagementPanel').then(m => ({ default: m.ItemManagementPanel })));
 import { AdminCharacterBalancePanel } from './components/AdminCharacterBalancePanel';
 import { TransferModal } from './components/TransferModal';
 import { CharacterSelectModal } from './components/CharacterSelectModal';
@@ -89,6 +89,24 @@ const isPersistentCustomAvatar = (value: unknown): boolean => {
   if (!avatar || /^blob:/i.test(avatar)) return false;
   return !isBundledAvatar(avatar);
 };
+
+class ItemPanelErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean}> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error) { console.error('Item Management runtime error:', error); }
+  render() {
+    if (this.state.hasError) return (
+      <div className="min-h-[50vh] flex items-center justify-center p-8">
+        <div className="max-w-lg w-full rounded-2xl border border-rose-500/30 bg-slate-950 p-6 text-center">
+          <div className="text-lg font-black text-white mb-2">ระบบจัดการไอเทมมีปัญหา</div>
+          <div className="text-sm text-slate-400 mb-4">ส่วนอื่นของเว็บไซต์ยังสามารถใช้งานได้</div>
+          <button type="button" onClick={() => this.setState({hasError:false})} className="rounded-xl bg-fuchsia-500 px-4 py-2 font-bold text-slate-950">ลองโหลดใหม่</button>
+        </div>
+      </div>
+    );
+    return this.props.children;
+  }
+}
 
 export default function App() {
   // Deployment sync checkpoint: keep main/Vercel source aligned.
@@ -906,12 +924,16 @@ export default function App() {
         )}
 
         {activeTab === 'items' && canUseAdminMode && isAdminMode && (
-          <ItemManagementPanel
-            shopItems={shopItems}
-            onAddItem={handleAddShopItem}
-            onUpdateItem={handleUpdateShopItem}
-            onDeleteItem={handleDeleteShopItem}
-          />
+          <ItemPanelErrorBoundary>
+            <Suspense fallback={<div className="min-h-[50vh] flex items-center justify-center text-slate-400">กำลังโหลดระบบจัดการไอเทม...</div>}>
+              <ItemManagementPanel
+                shopItems={shopItems}
+                onAddItem={handleAddShopItem}
+                onUpdateItem={handleUpdateShopItem}
+                onDeleteItem={handleDeleteShopItem}
+              />
+            </Suspense>
+          </ItemPanelErrorBoundary>
         )}
 
         {activeTab === 'admin' && canUseAdminMode && isAdminMode && (
