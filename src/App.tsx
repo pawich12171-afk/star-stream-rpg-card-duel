@@ -162,16 +162,7 @@ export default function App() {
     }
   }, [activeTab]);
 
-  // Admin ownership: Momi is the permanent owner. Other profiles can only use
-  // Admin Mode after Momi grants them the admin role.
-  const isMomiProfile = (character: CharacterProfile | undefined): boolean => {
-    if (!character) return false;
-    const id = String(character.id || '').trim().toLowerCase();
-    const username = String(character.username || '').trim().toLowerCase();
-    const displayName = String(character.displayName || '').trim().toLowerCase();
-    return id === 'momi' || username === 'momi' || displayName === 'โมมิ' || displayName.includes('(momi)');
-  };
-  const canUseAdminMode = isMomiProfile(currentUser) || currentUser.role === 'admin';
+  // Admin Mode is declared below currentUser so permission checks never access it before initialization.
   const [isAdminMode, setIsAdminMode] = useState<boolean>(() => false);
 
   // Modals
@@ -263,6 +254,15 @@ export default function App() {
   // Keep the shell usable even if localStorage contains an empty collection
   // from an earlier failed sync. The realtime snapshot can still replace it.
   const currentUser = characters.find(c => c.id === currentUserId) || characters[0] || INITIAL_CHARACTERS[0];
+  // Momi is the permanent owner. Other profiles can only use Admin Mode after Momi grants them the admin role.
+  const isMomiProfile = (character: CharacterProfile | undefined): boolean => {
+    if (!character) return false;
+    const id = String(character.id || '').trim().toLowerCase();
+    const username = String(character.username || '').trim().toLowerCase();
+    const displayName = String(character.displayName || '').trim().toLowerCase();
+    return id === 'momi' || username === 'momi' || displayName === 'โมมิ' || displayName.includes('(momi)');
+  };
+  const canUseAdminMode = isMomiProfile(currentUser) || currentUser.role === 'admin';
 
   const handleSelectCharacter = (charId: string) => {
     setCurrentUserId(charId);
