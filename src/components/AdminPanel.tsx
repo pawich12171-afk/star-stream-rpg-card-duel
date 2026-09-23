@@ -936,7 +936,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap items-center gap-2 bg-slate-900/80 p-2 rounded-2xl border border-slate-800">
+      <div className="relative z-[100] flex flex-wrap items-center gap-2 bg-slate-900/80 p-2 rounded-2xl border border-slate-800">
         <button
           onClick={() => setActiveTab('users')}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
@@ -962,15 +962,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <button
           type="button"
           data-admin-tab="admin-items"
+          aria-label="สร้างไอเทมพิเศษ"
+          onClickCapture={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setActiveTab('admin_items');
+          }}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
             setActiveTab('admin_items');
           }}
-          onPointerDown={(event) => {
+          onMouseDown={(event) => {
+            event.preventDefault();
             event.stopPropagation();
+            setActiveTab('admin_items');
           }}
-          className={`relative z-20 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 pointer-events-auto ${activeTab === 'admin_items' ? 'bg-fuchsia-500 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'}`}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setActiveTab('admin_items');
+          }}
+          className={`relative z-[99999] isolate px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 pointer-events-auto touch-manipulation select-none ${activeTab === 'admin_items' ? 'bg-fuchsia-500 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'}`}
+          style={{ pointerEvents: 'auto' }}
         >
           <Package className="w-4 h-4 text-fuchsia-300" />
           สร้างไอเทมพิเศษ
