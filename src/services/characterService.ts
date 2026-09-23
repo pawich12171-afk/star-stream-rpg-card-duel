@@ -344,6 +344,19 @@ function isCustomProfileAvatar(value: unknown): boolean {
   return !/^\/avatars\/(system|chaewon|hayeon|miyeon|sera)\.svg$/i.test(avatar);
 }
 
+function getPreservedCustomAvatar(charId: string, incomingAvatar: unknown): string | null {
+  const incoming = String(incomingAvatar || '').trim();
+  if (isCustomProfileAvatar(incoming)) return incoming;
+
+  const override = readAvatarOverrides()[charId];
+  if (override && isCustomProfileAvatar(override)) return override;
+
+  const local = localCharacters.find(character => character.id === charId);
+  if (local && isCustomProfileAvatar(local.avatarUrl)) return local.avatarUrl;
+
+  return null;
+}
+
 function preserveLocalCustomAvatars(serverCharacters: CharacterProfile[]): CharacterProfile[] {
   const overrides = readAvatarOverrides();
   return serverCharacters.map((serverChar) => {
@@ -830,8 +843,10 @@ export async function updateCharacterData(char: CharacterProfile): Promise<void>
   // IMPORTANT: the object passed by the UI is the user's newest edit.
   // Reconcile the admin snapshot BEFORE health sync so a deleted skill
   // cannot be resurrected from an older snapshot/local overlay.
+  const preservedAvatar = getPreservedCustomAvatar(char.id, char.avatarUrl);
   const requested: CharacterProfile = {
     ...char,
+    ...(preservedAvatar ? { avatarUrl: preservedAvatar } : {}),
     skills: [...(char.skills || [])],
     adminBalanceSnapshot: char.adminBalanceSnapshot
       ? { ...char.adminBalanceSnapshot, skills: [...(char.adminBalanceSnapshot.skills || [])] }
@@ -936,8 +951,10 @@ export async function updateCharacterFields(
       if (!snap.exists()) throw new Error('ไม่พบตัวละครที่ต้องการบันทึก');
 
       const current = { ...snap.data(), id: snap.id } as CharacterProfile;
+      const preservedAvatar = getPreservedCustomAvatar(charId, current.avatarUrl);
       const updated: CharacterProfile = {
         ...current,
+        ...(preservedAvatar ? { avatarUrl: preservedAvatar } : {}),
         ...patch,
         lastUpdated: Math.max(Date.now(), Number(current.lastUpdated || 0) + 1),
       };
@@ -985,8 +1002,10 @@ export async function updateCharacterStatusData(
     if (!snap.exists()) throw new Error('ไม่พบตัวละครที่ต้องการบันทึก');
 
     const current = { ...snap.data(), id: snap.id } as CharacterProfile;
+    const preservedAvatar = getPreservedCustomAvatar(charId, current.avatarUrl);
     const updated: CharacterProfile = {
       ...current,
+      ...(preservedAvatar ? { avatarUrl: preservedAvatar } : {}),
       stats: {
         ...current.stats,
         strength: Number(patch.stats.strength),
