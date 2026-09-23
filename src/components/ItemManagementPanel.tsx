@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Item, GachaRarity, ItemPassiveEffect } from '../types';
+import type { Item, GachaRarity, ItemPassiveEffect } from '../types';
 import { Package, Search, Store, Gift, Layers, Edit3, Trash2, Save, X, UploadCloud } from 'lucide-react';
 
 interface ItemManagementPanelProps {
