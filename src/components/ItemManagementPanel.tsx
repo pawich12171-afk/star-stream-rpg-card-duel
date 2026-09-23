@@ -29,11 +29,27 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const [inShop, setInShop] = useState(false);
   const [rewardEligible, setRewardEligible] = useState(true);
   const [stackable, setStackable] = useState(true);
+  const [itemClass, setItemClass] = useState<'normal'|'special'|'limited'>('normal');
+  const [limitedStock, setLimitedStock] = useState(0);
+  const [healPercent, setHealPercent] = useState(0);
+  const [hpBonus, setHpBonus] = useState(0);
+  const [skillTarget, setSkillTarget] = useState('');
+  const [skillDesc, setSkillDesc] = useState('');
+  const [battleDamagePercent, setBattleDamagePercent] = useState(0);
+  const [battleDamageDuration, setBattleDamageDuration] = useState(0);
+  const [battleCriticalChancePercent, setBattleCriticalChancePercent] = useState(0);
+  const [battleRepeatAttackChancePercent, setBattleRepeatAttackChancePercent] = useState(0);
+  const [battleLuckMultiplier, setBattleLuckMultiplier] = useState(0);
+  const [battleLuckDuration, setBattleLuckDuration] = useState(0);
+  const [gachaRateMultiplier, setGachaRateMultiplier] = useState(0);
+  const [gachaRateMinRarity, setGachaRateMinRarity] = useState<GachaRarity>('rare');
 
   const reset = () => {
     setEditingId(null); setName(''); setDescription(''); setPrice(0);
     setCategory('consumable'); setRarity('common'); setEffectType('heal_hp');
     setEffectValue(10); setIcon('HeartPulse'); setIconPreview(null); setTargetStat('strength');
+    setItemClass('normal'); setLimitedStock(0); setHealPercent(0); setHpBonus(0); setSkillTarget(''); setSkillDesc('');
+    setBattleDamagePercent(0); setBattleDamageDuration(0); setBattleCriticalChancePercent(0); setBattleRepeatAttackChancePercent(0); setBattleLuckMultiplier(0); setBattleLuckDuration(0); setGachaRateMultiplier(0);
     setInShop(false); setRewardEligible(true); setStackable(true);
   };
 
@@ -44,6 +60,9 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     setIcon(item.icon || 'Package'); setIconPreview(item.icon && (item.icon.startsWith('data:') || item.icon.startsWith('http')) ? item.icon : null); setTargetStat(item.targetStat || 'strength');
     setInShop(item.inShop === true && !item.adminOnly);
     setRewardEligible(item.rewardEligible !== false); setStackable(item.stackable !== false);
+    setItemClass(item.itemClass || 'normal'); setLimitedStock(item.limitedStock || 0); setHealPercent(item.healPercent || 0); setHpBonus(item.hpBonus || 0);
+    setSkillTarget(item.skillEnhanceTarget || ''); setSkillDesc(item.skillEnhanceDesc || ''); setBattleDamagePercent(item.battleDamagePercent || 0); setBattleDamageDuration(item.battleDamageDuration || 0);
+    setBattleCriticalChancePercent(item.battleCriticalChancePercent || 0); setBattleRepeatAttackChancePercent(item.battleRepeatAttackChancePercent || 0); setBattleLuckMultiplier(item.battleLuckMultiplier || 0); setBattleLuckDuration(item.battleLuckDuration || 0); setGachaRateMultiplier(item.gachaRateMultiplier || 0); setGachaRateMinRarity(item.gachaRateMinRarity || 'rare');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -60,7 +79,16 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
       id: editingId || `item-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
       name: name.trim(), description: description.trim() || 'ไอเทม Star Stream',
       price: Math.max(0, price), category, rarity, effectType, effectValue: Math.max(0, effectValue),
-      icon: iconPreview || icon, targetStat: effectType === 'buff_stat' ? targetStat : undefined,
+      icon: iconPreview || icon, itemClass, limitedStock: itemClass === 'limited' ? Math.max(0, limitedStock) : undefined,
+      targetStat: effectType === 'buff_stat' ? targetStat : undefined,
+      hpBonus: (hpBonus || (category === 'equipment' ? effectValue : 0)) || undefined,
+      healPercent: effectType === 'heal_hp' && healPercent > 0 ? healPercent : undefined,
+      skillEnhanceTarget: effectType === 'enhance_skill' ? skillTarget : undefined,
+      skillEnhanceDesc: effectType === 'enhance_skill' ? skillDesc : undefined,
+      battleDamagePercent: battleDamagePercent || undefined, battleDamageDuration: battleDamageDuration || undefined,
+      battleCriticalChancePercent: battleCriticalChancePercent || undefined, battleRepeatAttackChancePercent: battleRepeatAttackChancePercent || undefined,
+      battleLuckMultiplier: battleLuckMultiplier || undefined, battleLuckDuration: battleLuckDuration || undefined,
+      gachaRateMultiplier: gachaRateMultiplier || undefined, gachaRateMinRarity: gachaRateMultiplier > 0 ? gachaRateMinRarity : undefined,
       usableByPlayers: true, adminOnly: !inShop, inShop, rewardEligible, stackable,
       equipped: old?.equipped || false,
     };
@@ -98,7 +126,10 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
             <select className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white text-sm" value={category} onChange={e=>setCategory(e.target.value as any)}><option value="consumable">ของใช้</option><option value="equipment">อุปกรณ์</option></select>
             <select className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white text-sm" value={rarity} onChange={e=>setRarity(e.target.value as GachaRarity)}><option value="common">Common</option><option value="rare">Rare</option><option value="epic">Epic</option><option value="legendary">Legendary</option><option value="mythic">Mythic</option></select>
             <select className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white text-sm" value={effectType} onChange={e=>setEffectType(e.target.value as any)}><option value="heal_hp">ฟื้น HP</option><option value="boost_max_hp">เพิ่ม Max HP</option><option value="buff_stat">เพิ่มสเตตัส</option><option value="enhance_skill">เสริมสกิล</option><option value="custom">กำหนดเอง</option></select>
+            {effectType === 'heal_hp' && <div className="grid grid-cols-2 gap-2"><label className="text-[11px] text-slate-400">ฟื้น HP (หน่วย)<input className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" type="number" min="0" value={effectValue} onChange={e=>setEffectValue(Number(e.target.value))}/></label><label className="text-[11px] text-slate-400">ฟื้น HP (%)<input className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" type="number" min="0" max="100" value={healPercent} onChange={e=>setHealPercent(Number(e.target.value))}/></label></div>}
+            {effectType === 'boost_max_hp' && <label className="text-[11px] text-slate-400 block">เพิ่ม Max HP<input className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" type="number" min="0" value={hpBonus || effectValue} onChange={e=>{setHpBonus(Number(e.target.value));setEffectValue(Number(e.target.value))}}/></label>}
             {effectType === 'buff_stat' && <select className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white text-sm" value={targetStat} onChange={e=>setTargetStat(e.target.value as any)}><option value="strength">STR</option><option value="durability">DUR</option><option value="agility">AGI</option><option value="magic">MAG</option></select>}
+            {effectType === 'enhance_skill' && <div className="space-y-2"><input className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white text-sm" placeholder="ชื่อ/ID สกิลที่เสริม" value={skillTarget} onChange={e=>setSkillTarget(e.target.value)}/><textarea className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white text-sm" placeholder="ความสามารถที่เพิ่มให้สกิล" value={skillDesc} onChange={e=>setSkillDesc(e.target.value)}/></div>}
             <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-3 space-y-2">
               <div className="flex items-center justify-between"><span className="text-xs font-bold text-white">ไอคอนไอเทม</span>{iconPreview && <button type="button" onClick={()=>setIconPreview(null)} className="text-[10px] text-rose-300">ใช้ไอคอนเดิม</button>}</div>
               <div className="flex items-center gap-3">
@@ -118,6 +149,8 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
               </div>
               <select className="w-full rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-sm" value={iconPreview ? '__uploaded__' : icon} onChange={e=>{if(e.target.value!=='__uploaded__') {setIcon(e.target.value); setIconPreview(null);}}}>{icons.map(x=><option key={x} value={x}>{x}</option>)}{iconPreview && <option value="__uploaded__">รูปที่อัปโหลด</option>}</select>
             </div>
+            <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-3 space-y-2"><div className="text-xs font-bold text-white">ประเภทไอเทม</div><select className="w-full rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-sm" value={itemClass} onChange={e=>setItemClass(e.target.value as any)}><option value="normal">ไอเทมธรรมดา</option><option value="special">ไอเทมพิเศษ</option><option value="limited">ไอเทม Limited</option></select>{itemClass==='limited' && <input className="w-full rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-sm" type="number" min="0" placeholder="จำนวน Stock Limited" value={limitedStock} onChange={e=>setLimitedStock(Number(e.target.value))}/>}</div>
+            <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-3 space-y-2"><div className="text-xs font-bold text-white">ความสามารถเพิ่มเติมในการต่อสู้ / กาชา</div><div className="grid grid-cols-2 gap-2"><input className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" type="number" min="0" placeholder="โบนัส Damage %" value={battleDamagePercent} onChange={e=>setBattleDamagePercent(Number(e.target.value))}/><input className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" type="number" min="0" placeholder="จำนวนเทิร์น Damage" value={battleDamageDuration} onChange={e=>setBattleDamageDuration(Number(e.target.value))}/><input className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" type="number" min="0" placeholder="Critical Chance %" value={battleCriticalChancePercent} onChange={e=>setBattleCriticalChancePercent(Number(e.target.value))}/><input className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" type="number" min="0" placeholder="Repeat Attack %" value={battleRepeatAttackChancePercent} onChange={e=>setBattleRepeatAttackChancePercent(Number(e.target.value))}/><input className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" type="number" min="0" placeholder="Luck Multiplier" value={battleLuckMultiplier} onChange={e=>setBattleLuckMultiplier(Number(e.target.value))}/><input className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" type="number" min="0" placeholder="Luck Duration" value={battleLuckDuration} onChange={e=>setBattleLuckDuration(Number(e.target.value))}/><input className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" type="number" min="0" placeholder="Gacha Rate Multiplier" value={gachaRateMultiplier} onChange={e=>setGachaRateMultiplier(Number(e.target.value))}/><select className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" value={gachaRateMinRarity} onChange={e=>setGachaRateMinRarity(e.target.value as GachaRarity)}><option value="rare">ขั้นต่ำ Rare</option><option value="epic">ขั้นต่ำ Epic</option><option value="legendary">ขั้นต่ำ Legendary</option><option value="mythic">ขั้นต่ำ Mythic</option></select></div></div>
             <div className="space-y-2">
               <label className="flex justify-between items-center rounded-xl border border-slate-700 p-3 text-xs text-white"><span className="flex gap-2"><Store className="w-4 h-4"/>เพิ่มเข้าร้านค้า</span><input type="checkbox" checked={inShop} onChange={e=>setInShop(e.target.checked)}/></label>
               <label className="flex justify-between items-center rounded-xl border border-slate-700 p-3 text-xs text-white"><span className="flex gap-2"><Gift className="w-4 h-4"/>ใช้เป็นรางวัล</span><input type="checkbox" checked={rewardEligible} onChange={e=>setRewardEligible(e.target.checked)}/></label>
