@@ -10,6 +10,8 @@ interface ItemManagementPanelProps {
 }
 
 const icons = ['HeartPulse','Heart','Flame','Flower2','Droplets','Shield','Sword','Sparkles','Gem','Zap','Scroll','Crown','Package'];
+const isImageIcon = (value: unknown): value is string => typeof value === 'string' && (value.startsWith('data:image/') || /^https?:\/\//i.test(value));
+const safeText = (value: unknown, fallback = '') => typeof value === 'string' ? value : fallback;
 const getItemEffectSummary = (item: Partial<Item>) => {
   switch (item.effectType) {
     case 'heal_hp': return item.healPercent ? 'ฟื้น HP ' + item.healPercent + '% + ' + (item.effectValue || 0) + ' HP' : 'ฟื้น HP +' + (item.effectValue || 0);
@@ -111,7 +113,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     setEditingId(item.id); setName(item.name); setDescription(item.description || '');
     setPrice(item.price || 0); setCategory(item.category); setRarity(item.rarity as GachaRarity);
     setEffectType(item.effectType || 'custom'); setEffectValue(item.effectValue || 0);
-    setIcon(item.icon || 'Package'); setIconPreview(item.icon && (item.icon.startsWith('data:') || item.icon.startsWith('http')) ? item.icon : null); setTargetStat(item.targetStat || 'strength');
+    setIcon(typeof item.icon === 'string' ? item.icon : 'Package'); setIconPreview(isImageIcon(item.icon) ? item.icon : null); setTargetStat(item.targetStat || 'strength');
     setInShop(item.inShop === true && !item.adminOnly);
     setRewardEligible(item.rewardEligible !== false); setStackable(item.stackable !== false);
     setItemClass(item.itemClass || 'normal'); setLimitedStock(item.limitedStock || 0); setHealPercent(item.healPercent || 0); setHpBonus(item.hpBonus || 0);
@@ -195,7 +197,7 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
               <div className="flex items-center justify-between"><span className="text-xs font-bold text-white">ไอคอนไอเทม</span>{iconPreview && <button type="button" onClick={()=>setIconPreview(null)} className="text-[10px] text-rose-300">ใช้ไอคอนเดิม</button>}</div>
               <div className="flex items-center gap-3">
                 <div className="w-14 h-14 rounded-xl border border-slate-700 bg-slate-950 flex items-center justify-center overflow-hidden">
-                  {iconPreview ? <img src={iconPreview} alt="" className="w-full h-full object-cover" /> : <Package className="w-6 h-6 text-slate-500" />}
+                  {isImageIcon(iconPreview) ? <img src={iconPreview} alt="รูปไอเทม" className="w-full h-full object-cover" onError={()=>setIconPreview(null)} /> : <Package className="w-6 h-6 text-slate-500" />}
                 </div>
                 <label className="flex-1 cursor-pointer rounded-xl border border-dashed border-fuchsia-500/40 bg-fuchsia-500/5 p-3 text-center text-xs text-fuchsia-200 hover:bg-fuchsia-500/10">
                   <UploadCloud className="w-4 h-4 mx-auto mb-1" />เลือกรูปจากเครื่อง
@@ -276,10 +278,25 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
               {filtered.length === 0 ? <div className="py-16 text-center text-slate-500">ไม่พบไอเทม</div> : filtered.map((item) => { return (
                 <div key={item.id} className="group rounded-2xl border border-slate-800 bg-slate-900/90 p-4 hover:border-fuchsia-500/30 hover:bg-slate-800/80 transition-all">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="min-w-0 flex items-center gap-3">
-                      <div className="w-12 h-12 shrink-0 rounded-xl overflow-hidden border border-slate-700 bg-slate-950 flex items-center justify-center">{item.icon?.startsWith("data:") || item.icon?.startsWith("http") ? <img src={item.icon} alt="" className="w-full h-full object-cover"/> : <Package className="w-5 h-5 text-slate-500"/>}</div>
-                      <div className="min-w-0"><div className="font-black text-white truncate">{item.name}</div><div className="text-[10px] text-slate-500">ID: {item.id}</div>
-                        <div className="flex flex-wrap gap-1.5 mt-2"><span className="text-[9px] px-2 py-1 rounded-full border border-slate-700 text-slate-300">{item.rarity}</span><span className="text-[9px] px-2 py-1 rounded-full border border-emerald-500/30 text-emerald-300">{item.inShop&&!item.adminOnly?'SHOP':'ไม่ลง SHOP'}</span><span className="text-[9px] px-2 py-1 rounded-full border border-amber-500/30 text-amber-300">{item.rewardEligible===false?'ไม่ใช้เป็นรางวัล':'ใช้เป็นรางวัล'}</span><span className="text-[9px] px-2 py-1 rounded-full border border-fuchsia-500/30 text-fuchsia-300">{item.stackable===false?'ไม่ Stack':'Stack'}</span><span className="text-[9px] px-2 py-1 rounded-full border border-cyan-500/30 text-cyan-300">{item.itemClass==='limited'?'LIMITED':item.itemClass==='special'?'SPECIAL':'NORMAL'}</span></div>
+                    <div className="min-w-0 flex items-start gap-3 flex-1">
+                      <div className="w-12 h-12 shrink-0 rounded-xl overflow-hidden border border-slate-700 bg-slate-950 flex items-center justify-center">
+                        {isImageIcon(item.icon) ? <img src={item.icon} alt={safeText(item.name,'ไอเทม')} className="w-full h-full object-cover" onError={(e)=>{e.currentTarget.style.display='none';}}/> : <Package className="w-5 h-5 text-slate-500"/>}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-black text-white truncate">{safeText(item.name,'ไม่มีชื่อ')}</div>
+                        <div className="text-[10px] text-slate-500 truncate">ID: {safeText(item.id)}</div>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          <span className="text-[9px] px-2 py-1 rounded-full border border-slate-700 text-slate-300">{safeText(item.rarity,'common')}</span>
+                          <span className="text-[9px] px-2 py-1 rounded-full border border-emerald-500/30 text-emerald-300">{item.inShop&&!item.adminOnly?'SHOP':'ไม่ลง SHOP'}</span>
+                          <span className="text-[9px] px-2 py-1 rounded-full border border-amber-500/30 text-amber-300">{item.rewardEligible===false?'ไม่ใช้เป็นรางวัล':'ใช้เป็นรางวัล'}</span>
+                          <span className="text-[9px] px-2 py-1 rounded-full border border-fuchsia-500/30 text-fuchsia-300">{item.stackable===false?'ไม่ Stack':'Stack'}</span>
+                          <span className="text-[9px] px-2 py-1 rounded-full border border-cyan-500/30 text-cyan-300">{item.itemClass==='limited'?'LIMITED':item.itemClass==='special'?'SPECIAL':'NORMAL'}</span>
+                        </div>
+                        <div className="mt-2 text-xs text-slate-300 leading-relaxed break-words">{safeText(item.description,'ไม่มีคำอธิบาย')}</div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <span className="text-[10px] px-2 py-1 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-emerald-300">{getItemEffectSummary(item)}</span>
+                          {getItemExtraDetails(item).map((d,i)=><span key={i} className="text-[10px] px-2 py-1 rounded-lg bg-slate-950 border border-slate-700 text-slate-300">{d}</span>)}
+                        </div>
                       </div>
                     </div>
                     <div className="flex gap-2 shrink-0"><button type="button" onClick={()=>edit(item)} className="px-3 py-2 rounded-lg bg-cyan-950/60 text-cyan-300 text-xs font-black flex gap-1 items-center"><Edit3 className="w-3 h-3"/>แก้ไข</button><button type="button" onClick={async()=>{if(confirm(`ลบ "${item.name}" ออกจากคลังไอเทมหรือไม่?`)) await onDeleteItem(item.id)}} className="px-3 py-2 rounded-lg bg-rose-950/60 text-rose-300 text-xs font-black flex gap-1 items-center"><Trash2 className="w-3 h-3"/>ลบ</button></div>
