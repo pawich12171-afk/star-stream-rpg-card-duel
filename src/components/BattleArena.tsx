@@ -340,7 +340,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
           const botActor = [...botRoom.teamA, ...botRoom.teamB].find(unit => unit.id === botRoom.turnActorId);
           if (!botActor || botActor.type !== 'bot') break;
           await new Promise(resolve => window.setTimeout(resolve, 350));
-          const botResolved = resolveBattleTurn(botRoom, config);
+          const botResolved = resolveBattleTurn(botRoom, config, chooseBotSkill(botNow));
           if (!botResolved.result && botResolved.room.turnActorId === botRoom.turnActorId && botResolved.room.status === botRoom.status) break;
           botRoom = botResolved.room;
           await updateBattleRoom(botRoom);
@@ -354,6 +354,22 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
     } finally {
       setUsingBattleItemId('');
     }
+  };
+
+  const chooseBotSkill = (bot: BattleCombatant): Skill | undefined => {
+    const candidates = (bot.skills || []).filter(skill => {
+      const id = getSkillId(skill);
+      return (Number(bot.skillCooldowns?.[id] || 0) <= 0) && (Number((skill as BattleBotSkill).aiChancePercent ?? 0) > 0);
+    });
+    if (!candidates.length) return undefined;
+    const total = candidates.reduce((sum, skill) => sum + Math.max(0, Math.min(100, Number((skill as BattleBotSkill).aiChancePercent) || 0)), 0);
+    if (total <= 0 || Math.random() * 100 >= Math.min(100, total)) return undefined;
+    let roll = Math.random() * total;
+    for (const skill of candidates) {
+      roll -= Math.max(0, Math.min(100, Number((skill as BattleBotSkill).aiChancePercent) || 0));
+      if (roll <= 0) return skill;
+    }
+    return candidates[candidates.length - 1];
   };
 
   const takeTurn = async (room: BattleRoom, skill?: Skill) => {
