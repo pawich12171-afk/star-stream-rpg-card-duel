@@ -855,6 +855,7 @@ export default function App() {
             character={currentUser}
             gachaRewards={gachaRewards}
             gachaConfig={gachaConfig}
+            shopItems={shopItems}
             gachaBanners={gachaBanners}
             onUpdateCharacter={handleUpdateCharacter}
           />
