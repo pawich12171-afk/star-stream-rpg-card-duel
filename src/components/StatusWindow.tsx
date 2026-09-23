@@ -176,7 +176,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
   const healthData = calculateCharacterHealth(character);
 
-  const equippedItems = character.inventory?.filter(i => i.isEquipped) || [];
+  const equippedItems = character.inventory?.filter(i => i.isEquipped || (Number(i.equippedQuantity) || 0) > 0) || [];
   const statBonus = {
     strength: 0,
     durability: 0,
@@ -184,9 +184,21 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     magic: 0,
   };
   equippedItems.forEach(item => {
+    const copies = Math.max(1, Number(item.equippedQuantity) || (item.isEquipped ? 1 : 0));
     if (item.effectType === 'buff_stat' && item.targetStat && item.effectValue) {
-      statBonus[item.targetStat] += item.effectValue;
+      statBonus[item.targetStat] += Number(item.effectValue) * copies;
     }
+    if (item.category === 'equipment') {
+      statBonus.strength += (Number(item.equipmentStrengthBonus) || 0) * copies;
+      statBonus.durability += (Number(item.equipmentDurabilityBonus) || 0) * copies;
+      statBonus.agility += (Number(item.equipmentAgilityBonus) || 0) * copies;
+      statBonus.magic += (Number(item.equipmentMagicBonus) || 0) * copies;
+    }
+    (item.passiveEffects || []).forEach(effect => {
+      if (effect.kind === 'buff_stat' && effect.targetStat) {
+        statBonus[effect.targetStat] += (Number(effect.value) || 0) * copies;
+      }
+    });
   });
 
   const isAllStats100 = 
