@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, Check, Crown, Dice5, Heart, Package, Plus, Settings2, Shield, Skull, Sparkles, Swords, Target, Trash2, UsersRound, Zap } from 'lucide-react';
-import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRoom, CharacterProfile, Skill } from '../types';
+import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRoom, CharacterProfile, Skill, BattleBotSkill } from '../types';
 import {
   DEFAULT_BATTLE_CONFIG,
   createBattleRoom,
@@ -172,7 +172,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([currentUser.id]);
   const [selectedOpponentId, setSelectedOpponentId] = useState('');
   const [selectedBotIds, setSelectedBotIds] = useState<string[]>([]);
-  const [selectedSkillId, setSelectedSkillId] = useState('');
+  const [selectedSkillId, setSelectedSkillId] = useState('');\n  const [botSkillDraftId, setBotSkillDraftId] = useState('');\n  const [botSkillChance, setBotSkillChance] = useState('25');
   const [selectedBattleItemId, setSelectedBattleItemId] = useState('');
   const [usingBattleItemId, setUsingBattleItemId] = useState('');
   const [showAdmin, setShowAdmin] = useState(isAdmin);
@@ -180,7 +180,7 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
   // Lock room creation synchronously on the first click. This prevents rapid clicks
   // from entering the async flow multiple times before React can re-render.
   const creatingRoomRef = useRef(false);
-  const [botForm, setBotForm] = useState({ name: '', description: '', hp: '30', strength: '9', durability: '6', agility: '5', magic: '0', isBoss: false, avatarUrl: '/avatars/system.svg', avatarFileName: '' });
+  const [botForm, setBotForm] = useState({ name: '', description: '', hp: '30', strength: '9', durability: '6', agility: '5', magic: '0', isBoss: false, avatarUrl: '/avatars/system.svg', avatarFileName: '', encounterChancePercent: '10', skills: [] as BattleBotSkill[] });
   const [editingBotId, setEditingBotId] = useState('');
   const [victoryImageFileName, setVictoryImageFileName] = useState('');
   const [victoryVideoFileName, setVictoryVideoFileName] = useState('');
@@ -235,18 +235,39 @@ export function BattleArena({ currentUser, allCharacters, isAdmin }: BattleArena
     try {
       const teamMembers = allCharacters.filter(character => selectedTeamIds.includes(character.id));
     if (!teamMembers.some(character => character.id === currentUser.id)) teamMembers.unshift(currentUser);
-    const enemies = mode === 'pve' ? bots.filter(bot => selectedBotIds.includes(bot.id)) : otherPlayers.filter(character => character.id === selectedOpponentId);
+    let enemies: (BattleBot | CharacterProfile)[] = [];
+    if (mode === 'pve') {
+      enemies = bots.filter(bot => selectedBotIds.includes(bot.id));
+    } else if (mode === 'random') {
+      const pool = bots.filter(bot => bot.hp > 0);
+      if (!pool.length) {
+        creatingRoomRef.current = false; setIsCreatingRoom(false);
+        alert('ยังไม่มีมอนหรือบอสสำหรับโหมดสุ่ม'); return;
+      }
+      const weighted = pool.map(bot => ({ bot, weight: Math.max(0, Number(bot.encounterChancePercent) || 0) }));
+      const totalWeight = weighted.reduce((sum, item) => sum + item.weight, 0);
+      let roll = Math.random() * (totalWeight > 0 ? totalWeight : pool.length);
+      let picked = pool[pool.length - 1];
+      if (totalWeight > 0) {
+        for (const item of weighted) { roll -= item.weight; if (roll <= 0) { picked = item.bot; break; } }
+      } else {
+        picked = pool[Math.floor(Math.random() * pool.length)];
+      }
+      enemies = [picked];
+    } else {
+      enemies = otherPlayers.filter(character => character.id === selectedOpponentId);
+    }
     if (!enemies.length) {
       creatingRoomRef.current = false;
       setIsCreatingRoom(false);
-      alert(mode === 'pve' ? 'เลือกบอทหรือบอสก่อนสร้างห้อง' : 'เลือกผู้เล่นฝ่ายตรงข้ามก่อนสร้างห้อง');
+      alert(mode === 'pve' ? 'เลือกบอทหรือบอสก่อนสร้างห้อง' : mode === 'random' ? 'ไม่ต้องเลือก — ระบบจะสุ่มมอน/บอสให้เอง' : 'เลือกผู้เล่นฝ่ายตรงข้ามก่อนสร้างห้อง');
       return;
     }
     const teamA = teamMembers.slice(0, 3).map(character => makePlayerCombatant(character, 'a'));
-    const selectedBots = mode === 'pve' ? enemies.slice(0, 3).map(bot => bot as BattleBot) : [];
+    const selectedBots = (mode === 'pve' || mode === 'random') ? enemies.slice(0, 3).map(bot => bot as BattleBot) : [];
     const teamB = mode === 'pve' ? selectedBots.map(bot => makeBotCombatant(bot, 'b')) : enemies.slice(0, 3).map(character => makePlayerCombatant(character as CharacterProfile, 'b'));
     const isPveBoss = selectedBots.some(bot => bot.isBoss);
-    const victoryReward = mode === 'pve' ? (isPveBoss ? BOSS_VICTORY_REWARD : BOT_VICTORY_REWARD) : 0;
+    const victoryReward = (mode === 'pve' || mode === 'random') ? (isPveBoss ? BOSS_VICTORY_REWARD : BOT_VICTORY_REWARD) : 0;
     const now = Date.now();
     const room: BattleRoom = {
       id: 'battle-' + now, mode, status: 'active', createdBy: currentUser.id, createdByName: currentUser.displayName,
