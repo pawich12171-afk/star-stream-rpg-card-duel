@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import confetti from '../utils/confetti';
 import { syncCharacterHealth } from '../utils/healthSystem';
+import { formatCoins } from '../utils/formatNumber';
 
 interface ShopInventoryProps {
   character: CharacterProfile;
@@ -410,7 +411,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
           {
             id: `notif-buy-${Date.now()}`,
             title: "ซื้อไอเทมสำเร็จ",
-            message: `คุณได้ซื้อ "${item.name}" ในราคา ${item.price.toLocaleString()} Coins เรียบร้อยแล้ว`,
+            message: `คุณได้ซื้อ "${item.name}" ในราคา ${formatCoins(item.price)} Coins เรียบร้อยแล้ว`,
             timestamp: Date.now(),
             read: false,
             type: "system",
@@ -884,7 +885,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
           <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs font-bold shadow-[0_0_10px_rgba(245,158,11,0.15)]">
             <Coins className="w-4 h-4 text-amber-400" />
-            <span>{character.coins.toLocaleString()} Coins</span>
+            <span>{formatCoins(character.coins)} Coins</span>
           </div>
 
           {isAdmin && activeTab === 'shop' && (
@@ -1124,7 +1125,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                   <p className="text-xs text-slate-300">{listing.item.description}</p>
                   <div className="flex items-center justify-between border-t border-slate-800 pt-3">
                     <div>
-  <span className="font-black text-amber-300">🪙 {Number(listing.price).toLocaleString()} Coins / ชิ้น</span>
+  <span className="font-black text-amber-300">🪙 {formatCoins(listing.price)} Coins / ชิ้น</span>
   <div className="text-[10px] text-slate-400 mt-1">คงเหลือ {Math.max(1, Number(listing.quantity) || Number(listing.item.quantity) || 1)} ชิ้น</div>
 </div>
                     {listing.sellerId !== character.id && (
@@ -1186,7 +1187,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                       ผู้ขาย {auction.sellerName} · เหลือ {Math.max(0, Math.ceil((auction.endsAt - Date.now()) / 60000))} นาที
                     </div>
                     <div className="mt-2 font-black text-amber-300">
-                      เริ่ม {Number(auction.startingPrice).toLocaleString()} · บิดล่าสุด {auction.currentBid ? Number(auction.currentBid).toLocaleString() : 'ยังไม่มี'} Coins
+                      เริ่ม {formatCoins(auction.startingPrice)} · บิดล่าสุด {auction.currentBid ? formatCoins(auction.currentBid) : 'ยังไม่มี'} Coins
                     </div>
 
                     {auction.sellerId === character.id ? (
@@ -2076,7 +2077,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                           <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-1 text-amber-400 font-black text-sm">
                               <Coins className="w-4 h-4" />
-                              <span>{newItemPrice.toLocaleString()}</span>
+                              <span>{formatCoins(newItemPrice)}</span>
                               <span className="text-[10px] text-slate-400 font-normal">Coins</span>
                             </div>
 
