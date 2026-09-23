@@ -1068,12 +1068,18 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                     <label className="text-[10px] text-slate-400">พลัง / ค่า
                       <input type="number" min="0" step="0.1" value={editingSkillDraft.battlePower ?? 0} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battlePower:Number(e.target.value)})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-white"/>
                     </label>
-                    {(editingSkillDraft.battleEffect === 'heal' || editingSkillDraft.battleEffect === 'defense' || editingSkillDraft.battleEffect === 'reflect' || editingSkillDraft.battleEffect === 'damage_reduction' || editingSkillDraft.battleEffect === 'copy_ability' || editingSkillDraft.battleEffect === 'immortal' || editingSkillDraft.battleEffect === 'stun') && (
+                    {(editingSkillDraft.battleEffect === 'damage' || editingSkillDraft.battleEffect === 'heal' || editingSkillDraft.battleEffect === 'defense' || editingSkillDraft.battleEffect === 'reflect' || editingSkillDraft.battleEffect === 'damage_reduction' || editingSkillDraft.battleEffect === 'copy_ability' || editingSkillDraft.battleEffect === 'immortal' || editingSkillDraft.battleEffect === 'stun') && (
                       <label className="text-[10px] text-slate-400">ระยะเวลา (เทิร์น)
                         <input type="number" min="1" max="99" value={editingSkillDraft.battleEffectDuration ?? 1} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battleEffectDuration:Math.max(1,Math.min(99,Number(e.target.value)||1))})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-white"/>
                       </label>
                     )}
-                    {editingSkillDraft.battleEffect === 'heal' && (
+                    {(editingSkillDraft.battleEffect === 'copy_ability' || editingSkillDraft.battleEffect === 'immortal') && (
+  <div className="rounded-xl border border-violet-500/30 bg-violet-950/20 p-3 text-xs text-violet-100">
+    <div className="font-black">⏱️ ระยะเวลาผลหลัก</div>
+    <div className="mt-1 text-violet-200/80">ตั้งจำนวนเทิร์นด้านบน — {editingSkillDraft.battleEffect === 'copy_ability' ? 'คัดลอกความสามารถตามจำนวนเทิร์นที่กำหนด' : 'อมตะตามจำนวนเทิร์นที่กำหนด'}</div>
+  </div>
+)}
+{editingSkillDraft.battleEffect === 'heal' && (
                       <label className="text-[10px] text-slate-400">ฟื้น HP เพิ่ม (% Max HP)
                         <input type="number" min="0" max="100" step="0.1" value={Number(editingSkillDraft.battleStats?.find(s=>s.kind==='heal_percent')?.value ?? 0)} onChange={e=>{
                           const value=Math.max(0,Math.min(100,Number(e.target.value)||0));
