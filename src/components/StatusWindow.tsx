@@ -400,6 +400,46 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     setEditingSkillAdvancedMode('form');
   };
 
+  const updateEditingDrawback = (index: number, patch: Partial<BattleExtraEffect>) => {
+    try {
+      const items = JSON.parse(editingSkillDrawbacksText || '[]') as BattleExtraEffect[];
+      items[index] = { ...items[index], ...patch };
+      setEditingSkillDrawbacksText(JSON.stringify(items, null, 2));
+    } catch {}
+  };
+  const removeEditingDrawback = (index: number) => {
+    try {
+      const items = JSON.parse(editingSkillDrawbacksText || '[]') as BattleExtraEffect[];
+      setEditingSkillDrawbacksText(JSON.stringify(items.filter((_, i) => i !== index), null, 2));
+    } catch {}
+  };
+  const updateEditingEffect = (index: number, patch: Partial<BattleExtraEffect>) => {
+    try {
+      const items = JSON.parse(editingSkillEffectsText || '[]') as BattleExtraEffect[];
+      items[index] = { ...items[index], ...patch };
+      setEditingSkillEffectsText(JSON.stringify(items, null, 2));
+    } catch {}
+  };
+  const removeEditingEffect = (index: number) => {
+    try {
+      const items = JSON.parse(editingSkillEffectsText || '[]') as BattleExtraEffect[];
+      setEditingSkillEffectsText(JSON.stringify(items.filter((_, i) => i !== index), null, 2));
+    } catch {}
+  };
+  const updateEditingPassive = (index: number, patch: Partial<ItemPassiveEffect>) => {
+    try {
+      const items = JSON.parse(editingSkillPassivesText || '[]') as ItemPassiveEffect[];
+      items[index] = { ...items[index], ...patch };
+      setEditingSkillPassivesText(JSON.stringify(items, null, 2));
+    } catch {}
+  };
+  const removeEditingPassive = (index: number) => {
+    try {
+      const items = JSON.parse(editingSkillPassivesText || '[]') as ItemPassiveEffect[];
+      setEditingSkillPassivesText(JSON.stringify(items.filter((_, i) => i !== index), null, 2));
+    } catch {}
+  };
+
   const saveEditedSkill = async () => {
     if (!editingSkillDraft) return;
     let parsedDrawbacks: BattleExtraEffect[] = [];
@@ -1033,7 +1073,22 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                         <input type="number" min="0" max="100" value={editDrawbackChance} onChange={e=>setEditDrawbackChance(Number(e.target.value))} placeholder="โอกาส %" className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"/>
                       </div>
                       <button type="button" onClick={()=>{const e:BattleExtraEffect={kind:editDrawbackKind,value:Math.max(0,Number(editDrawbackValue)||0),duration:Math.max(1,Math.min(10,Math.round(Number(editDrawbackDuration)||1))),chance:Math.max(0,Math.min(100,Number(editDrawbackChance)||0)),target:'self'}; const a:BattleExtraEffect[]=JSON.parse(editingSkillDrawbacksText||'[]'); setEditingSkillDrawbacksText(JSON.stringify([...a,e],null,2));}} className="rounded-lg bg-rose-500/20 px-3 py-2 text-[10px] font-black text-rose-100">＋ เพิ่มข้อเสีย</button>
-                      <pre className="max-h-24 overflow-auto rounded-lg bg-black/20 p-2 text-[9px] text-rose-200">{editingSkillDrawbacksText}</pre>
+                      {(() => {
+                        try {
+                          const items = JSON.parse(editingSkillDrawbacksText || '[]') as BattleExtraEffect[];
+                          return items.length ? items.map((item,index) => (
+                            <div key={index} className="rounded-lg border border-rose-500/15 bg-black/20 p-2 space-y-2">
+                              <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-bold text-rose-200">ข้อเสีย #{index + 1}</span><button type="button" onClick={()=>removeEditingDrawback(index)} className="text-[9px] text-rose-300">ลบ</button></div>
+                              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                                <select value={item.kind} onChange={e=>updateEditingDrawback(index,{kind:e.target.value as BattleExtraEffect['kind']})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"><option value="bleeding">เสียเลือด</option><option value="burn">เผาไหม้</option><option value="poison">พิษ</option><option value="stun">สตัน</option><option value="damage_percent">เพิ่มดาเมจที่ได้รับ %</option><option value="damage_reduction">ลดความเสียหาย</option><option value="reduce_defense_percent">ลดป้องกัน %</option></select>
+                                <input type="number" value={Number(item.value ?? 0)} onChange={e=>updateEditingDrawback(index,{value:Number(e.target.value)})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="ค่า"/>
+                                <input type="number" min="1" max="10" value={Number(item.duration ?? 1)} onChange={e=>updateEditingDrawback(index,{duration:Math.max(1,Math.min(10,Number(e.target.value)||1))})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="เทิร์น"/>
+                                <input type="number" min="0" max="100" step="0.1" value={Number(item.chance ?? 100)} onChange={e=>updateEditingDrawback(index,{chance:Math.max(0,Math.min(100,Number(e.target.value)||0))})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="โอกาส %"/>
+                              </div>
+                            </div>
+                          )) : <div className="text-[9px] text-slate-500">ยังไม่มีข้อเสีย — ใช้ปุ่ม ＋ เพิ่มข้อเสีย ด้านบน</div>;
+                        } catch { return <div className="text-[9px] text-amber-300">ข้อมูล JSON ไม่ถูกต้อง ให้แก้ในโหมด JSON</div>; }
+                      })()}
                     </div>
                     <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-3 space-y-2">
                       <div className="text-[10px] font-black text-cyan-200">✨ เอฟเฟกต์เพิ่มเติม</div>
@@ -1045,7 +1100,23 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                         <select value={editEffectTarget} onChange={e=>setEditEffectTarget(e.target.value as 'self'|'enemy')} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"><option value="enemy">ศัตรู</option><option value="self">ตัวเอง</option></select>
                       </div>
                       <button type="button" onClick={()=>{const e:BattleExtraEffect={kind:editEffectKind,value:Math.max(0,Number(editEffectValue)||0),duration:Math.max(1,Math.min(10,Math.round(Number(editEffectDuration)||1))),chance:Math.max(0,Math.min(100,Number(editEffectChance)||0)),target:editEffectTarget}; const a:BattleExtraEffect[]=JSON.parse(editingSkillEffectsText||'[]'); setEditingSkillEffectsText(JSON.stringify([...a,e],null,2));}} className="rounded-lg bg-cyan-500/20 px-3 py-2 text-[10px] font-black text-cyan-100">＋ เพิ่มเอฟเฟกต์</button>
-                      <pre className="max-h-24 overflow-auto rounded-lg bg-black/20 p-2 text-[9px] text-cyan-200">{editingSkillEffectsText}</pre>
+                      {(() => {
+                        try {
+                          const items = JSON.parse(editingSkillEffectsText || '[]') as BattleExtraEffect[];
+                          return items.length ? items.map((item,index) => (
+                            <div key={index} className="rounded-lg border border-cyan-500/15 bg-black/20 p-2 space-y-2">
+                              <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-bold text-cyan-200">เอฟเฟกต์ #{index + 1}</span><button type="button" onClick={()=>removeEditingEffect(index)} className="text-[9px] text-rose-300">ลบ</button></div>
+                              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                                <select value={item.kind} onChange={e=>updateEditingEffect(index,{kind:e.target.value as BattleExtraEffect['kind']})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"><option value="bleeding">เลือดออก</option><option value="burn">เผาไหม้</option><option value="poison">พิษ</option><option value="freeze">แช่แข็ง</option><option value="stun">สตัน</option><option value="reduce_max_hp_percent">ลด Max HP %</option><option value="reduce_defense_percent">ลดป้องกัน %</option><option value="damage_percent">Damage %</option><option value="heal_percent">Heal %</option><option value="shield">Shield</option><option value="reflect">Reflect</option><option value="damage_reduction">ลดความเสียหาย</option></select>
+                                <input type="number" value={Number(item.value ?? 0)} onChange={e=>updateEditingEffect(index,{value:Number(e.target.value)})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="ค่า"/>
+                                <input type="number" min="1" max="10" value={Number(item.duration ?? 1)} onChange={e=>updateEditingEffect(index,{duration:Math.max(1,Math.min(10,Number(e.target.value)||1))})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="เทิร์น"/>
+                                <input type="number" min="0" max="100" step="0.1" value={Number(item.chance ?? 100)} onChange={e=>updateEditingEffect(index,{chance:Math.max(0,Math.min(100,Number(e.target.value)||0))})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="โอกาส %"/>
+                                <select value={item.target === 'self' ? 'self' : 'enemy'} onChange={e=>updateEditingEffect(index,{target:e.target.value as 'self'|'enemy'})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"><option value="enemy">ศัตรู</option><option value="self">ตัวเอง</option></select>
+                              </div>
+                            </div>
+                          )) : <div className="text-[9px] text-slate-500">ยังไม่มีเอฟเฟกต์ — ใช้ปุ่ม ＋ เพิ่มเอฟเฟกต์ ด้านบน</div>;
+                        } catch { return <div className="text-[9px] text-amber-300">ข้อมูล JSON ไม่ถูกต้อง ให้แก้ในโหมด JSON</div>; }
+                      })()}
                     </div>
                     <div className="rounded-xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-3 space-y-2">
                       <div className="text-[10px] font-black text-fuchsia-200">🌸 Passive ของสกิล</div>
@@ -1061,7 +1132,27 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                         <input type="number" min="1" max="10" value={editPassiveDuration} onChange={e=>setEditPassiveDuration(Number(e.target.value))} placeholder="เทิร์น" className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-[10px] text-white"/>
                       </div>
                       <button type="button" onClick={()=>{const e:ItemPassiveEffect={id:`skill-passive-${Date.now()}`,name:editPassiveName.trim()||'Skill Passive',trigger:editPassiveTrigger,kind:editPassiveKind,value:Math.max(0,Number(editPassiveValue)||0),chance:Math.max(0,Math.min(100,Number(editPassiveChance)||0)),maxStacks:Math.max(1,Math.round(Number(editPassiveMaxStacks)||1)),duration:Math.max(1,Math.min(10,Math.round(Number(editPassiveDuration)||1))),stackKey:'skill'}; const a:ItemPassiveEffect[]=JSON.parse(editingSkillPassivesText||'[]'); setEditingSkillPassivesText(JSON.stringify([...a,e],null,2));}} className="rounded-lg bg-fuchsia-500/20 px-3 py-2 text-[10px] font-black text-fuchsia-100">＋ เพิ่ม Passive</button>
-                      <pre className="max-h-24 overflow-auto rounded-lg bg-black/20 p-2 text-[9px] text-fuchsia-200">{editingSkillPassivesText}</pre>
+                      {(() => {
+                        try {
+                          const items = JSON.parse(editingSkillPassivesText || '[]') as ItemPassiveEffect[];
+                          return items.length ? items.map((item,index) => (
+                            <div key={index} className="rounded-lg border border-fuchsia-500/15 bg-black/20 p-2 space-y-2">
+                              <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-bold text-fuchsia-200">Passive #{index + 1}</span><button type="button" onClick={()=>removeEditingPassive(index)} className="text-[9px] text-rose-300">ลบ</button></div>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <input value={item.name || ''} onChange={e=>updateEditingPassive(index,{name:e.target.value})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="ชื่อ Passive"/>
+                                <select value={item.kind} onChange={e=>updateEditingPassive(index,{kind:e.target.value as ItemPassiveEffect['kind']})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"><option value="stack">สะสม Stack</option><option value="true_damage_at_max_stacks">ครบ Stack → True Damage</option><option value="true_damage_per_stack">True Damage ต่อ Stack</option><option value="damage">Damage</option><option value="damage_percent">Damage %</option><option value="heal">Heal</option><option value="heal_percent">Heal %</option><option value="buff_stat">Buff Stat</option><option value="shield">Shield</option><option value="reflect">Reflect %</option><option value="repeat_attack_chance">Repeat Attack %</option><option value="critical_chance">Critical %</option></select>
+                                <select value={item.trigger} onChange={e=>updateEditingPassive(index,{trigger:e.target.value as ItemPassiveEffect['trigger']})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"><option value="turn_start">ทุกต้นเทิร์น</option><option value="attack">ทุกครั้งที่โจมตี</option></select>
+                              </div>
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <input type="number" value={Number(item.value ?? 0)} onChange={e=>updateEditingPassive(index,{value:Number(e.target.value)})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="ค่า"/>
+                                <input type="number" min="1" value={Number(item.maxStacks ?? 1)} onChange={e=>updateEditingPassive(index,{maxStacks:Math.max(1,Math.round(Number(e.target.value)||1))})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="Max Stack"/>
+                                <input type="number" min="0" max="100" step="0.1" value={Number(item.chance ?? 100)} onChange={e=>updateEditingPassive(index,{chance:Math.max(0,Math.min(100,Number(e.target.value)||0))})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="โอกาส %"/>
+                                <input type="number" min="1" max="10" value={Number(item.duration ?? 1)} onChange={e=>updateEditingPassive(index,{duration:Math.max(1,Math.min(10,Number(e.target.value)||1))})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="เทิร์น"/>
+                              </div>
+                            </div>
+                          )) : <div className="text-[9px] text-slate-500">ยังไม่มี Passive — ใช้ปุ่ม ＋ เพิ่ม Passive ด้านบน</div>;
+                        } catch { return <div className="text-[9px] text-amber-300">ข้อมูล JSON ไม่ถูกต้อง ให้แก้ในโหมด JSON</div>; }
+                      })()}
                     </div>
                   </div>
                 ) : (
