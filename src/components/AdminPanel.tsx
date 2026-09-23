@@ -245,9 +245,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [spawnerTargetCharId, setSpawnerTargetCharId] = useState<string>(characters[0]?.id || '');
   const [selectedShopItemToSpawnId, setSelectedShopItemToSpawnId] = useState<string>(shopItems[0]?.id || '');
   const [spawnQuantity, setSpawnQuantity] = useState<number>(1);
-  const [spawnerMode, setSpawnerMode] = useState<'shop' | 'custom'>('shop');
+  const [spawnerMode, setSpawnerMode] = useState<'shop'>('shop');
 
-  // Custom Item Spawner Form
+  // Legacy custom spawner state is retained only for backwards-compatible data; the UI no longer exposes it.
   const [customItemName, setCustomItemName] = useState('');
   const [customItemCategory, setCustomItemCategory] = useState<'consumable' | 'equipment'>('equipment');
   const [customItemRarity, setCustomItemRarity] = useState<GachaRarity>('rare');
@@ -1720,7 +1720,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="mb-3 flex items-center justify-between gap-3"><h4 className="text-sm font-black text-white">ไอเทมทั้งหมดในระบบ ({shopItems.length})</h4><input className={inputClass+' max-w-xs'} placeholder="ค้นหาไอเทม..." value={shopSearch} onChange={e=>setShopSearch(e.target.value)} /></div>
             <div className="grid gap-2">
               {shopItems.filter(i=>!shopSearch.trim()||i.name.toLowerCase().includes(shopSearch.toLowerCase())).map(item=><div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-3">
-                <div className="flex items-center gap-3">{renderAdminItemIcon(item.icon,item.category,item.effectType)}<div><div className="font-bold text-white">{item.name}</div><div className="text-[10px] text-slate-400">{getAdminRarityBadge(item.rarity).name} · {item.inShop === false || item.adminOnly ? 'ไม่แสดงในร้านค้า' : 'แสดงในร้านค้า'} · {item.rewardEligible === false ? 'ไม่ใช้เป็นรางวัล' : 'ใช้เป็นรางวัล'} · Stack · ราคา {item.price}</div></div></div>
+                <div className="flex items-center gap-3">{renderAdminItemIcon(item.icon,item.category,item.effectType)}<div><div className="font-bold text-white">{item.name}</div><div className="text-[10px] text-slate-400">{getAdminRarityBadge(item.rarity).name} · {item.inShop === false || item.adminOnly ? 'ไม่แสดงในร้านค้า' : 'แสดงในร้านค้า'} · {item.rewardEligible === false ? 'ไม่ใช้เป็นรางวัล' : 'ใช้เป็นรางวัล'} · {item.stackable === false ? 'ไม่ Stack' : 'Stack'} · ราคา {item.price}</div></div></div>
                 <div className="flex gap-2"><button type="button" onClick={()=>{setEditingItemId(item.id);setShopItemName(item.name);setShopItemPrice(item.price);setShopItemCategory(item.category);setShopItemRarity(item.rarity as GachaRarity);setShopItemEffectType(item.effectType||'custom');setShopItemEffectVal(item.effectValue||0);setShopItemHpBonus(item.hpBonus||0);setShopItemTargetStat(item.targetStat||'strength');setShopItemSkillTarget(item.skillEnhanceTarget||'');setShopItemIcon(item.icon||'Package');setShopItemDesc(item.description||'');setShopItemAdminOnly(!!item.adminOnly);setShopItemInShop(item.inShop ?? !item.adminOnly);setShopItemRewardEligible(item.rewardEligible ?? true);setShopItemStackable(item.stackable ?? true);}} className="rounded-lg bg-cyan-950/50 px-3 py-1.5 text-xs font-black text-cyan-300">แก้ไข</button><button type="button" onClick={()=>{if(confirm(`ลบ "${item.name}" ออกจากระบบไอเทมหรือไม่?`)) onDeleteShopItem(item.id);}} className="rounded-lg bg-rose-950/40 px-3 py-1.5 text-xs font-black text-rose-300">ลบ</button></div>
               </div>)}
             </div>
