@@ -502,8 +502,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       targetStat: customItemEffectType === 'buff_stat' ? customItemTargetStat : undefined,
       usableByPlayers: true, equipped: false, adminOnly: true,
     };
-    try { await onAddShopItem(item); setCustomItemName(''); setCustomItemDesc(''); alert('สร้างไอเทมพิเศษแล้ว — ไม่แสดงในร้านค้า และนำไปใช้เป็นรางวัลกาชา/โหมดสุ่มได้'); }
-    catch (error) { console.error(error); alert('สร้างไอเทมไม่สำเร็จ'); }
+    // This is an API-backed save, not Firestore. Do not block the Admin UI
+    // while the remote backend responds.
+    void Promise.resolve(onAddShopItem(item)).catch((error) => {
+      console.error('Failed to persist special item via backend API:', error);
+    });
+    setCustomItemName('');
+    setCustomItemDesc('');
+    alert('สร้างไอเทมพิเศษแล้ว — ไม่แสดงในร้านค้า และนำไปใช้เป็นรางวัลกาชา/โหมดสุ่มได้');
   };
 
   // Grant Item Handler
