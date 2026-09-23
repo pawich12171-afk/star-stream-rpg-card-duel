@@ -79,9 +79,15 @@ export default function App() {
   // Deployment sync checkpoint: keep main/Vercel source aligned.
   const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin'>(() => {
     const fallback = 'status' as const;
+    const allowed = ['status', 'shop', 'games', 'gacha', 'rankings', 'notifications', 'quests', 'battle', 'admin'] as const;
     try {
+      // URL hash is the primary source because it survives a hard refresh
+      // even when browser storage is unavailable/cleared by the environment.
+      const hashTab = window.location.hash.replace(/^#/, '');
+      if (allowed.includes(hashTab as typeof allowed[number])) {
+        return hashTab as typeof allowed[number];
+      }
       const saved = localStorage.getItem('starstream_active_tab');
-      const allowed = ['status', 'shop', 'games', 'gacha', 'rankings', 'notifications', 'quests', 'battle', 'admin'] as const;
       return allowed.includes(saved as typeof allowed[number]) ? saved as typeof allowed[number] : fallback;
     } catch {
       return fallback;
@@ -115,7 +121,15 @@ export default function App() {
     try {
       localStorage.setItem('starstream_active_tab', activeTab);
     } catch {
-      // Ignore storage failures; the current tab still works in memory.
+      // URL hash below is still enough to preserve the current page.
+    }
+    try {
+      const nextHash = '#' + activeTab;
+      if (window.location.hash !== nextHash) {
+        window.history.replaceState(null, '', nextHash);
+      }
+    } catch {
+      // Ignore URL update failures.
     }
   }, [activeTab]);
 
