@@ -11,12 +11,27 @@ function collectionPath(ref: CollectionReference) { return `${API_BASE}?collecti
 function docPath(ref: DocumentReference) { return `${API_BASE}?collection=${encodeURIComponent(ref.collection)}&id=${encodeURIComponent(ref.id)}`; }
 
 async function request(url: string, init?: RequestInit) {
-  const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
-  const text = await res.text();
-  let body: any = null;
-  try { body = text ? JSON.parse(text) : null; } catch { body = { error: text }; }
-  if (!res.ok) throw new Error(body?.error || `API request failed (${res.status})`);
-  return body;
+  // All persistence goes through the Vercel backend API. Never let a stalled
+  // network request hang indefinitely in the browser.
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 12000);
+  try {
+    const res = await fetch(url, {
+      ...init,
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) }
+    });
+    const text = await res.text();
+    let body: any = null;
+    try { body = text ? JSON.parse(text) : null; } catch { body = { error: text }; }
+    if (!res.ok) throw new Error(body?.error || `Backend API request failed (${res.status})`);
+    return body;
+  } catch (error: any) {
+    if (error?.name === 'AbortError') throw new Error('Backend API request timed out');
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function makeDoc(collection: string, raw: any): SnapshotDoc {
