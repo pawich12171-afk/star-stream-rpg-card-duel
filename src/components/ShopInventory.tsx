@@ -390,10 +390,22 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         });
       }
 
+      // Buying a new gacha-rate potion starts a fresh boost slot.
+      // Clear any stale one-shot multiplier left by an older consumed potion,
+      // so purchasing ×40 can never leave an old ×100 displayed in Gacha.
+      const isGachaBoostPurchase =
+        item.category === 'consumable' && Number(item.gachaRateMultiplier) > 1;
+
       const updatedCharacter: CharacterProfile = {
         ...currentCharacter,
         coins: newCoins,
         inventory: updatedInventory,
+        ...(isGachaBoostPurchase
+          ? {
+              pendingGachaRateMultiplier: 1,
+              pendingGachaRateMinRarity: 'rare' as GachaRarity,
+            }
+          : {}),
         notifications: [
           {
             id: `notif-buy-${Date.now()}`,
@@ -480,6 +492,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         String(item.effectValue ?? ''),
         String(item.hpBonus ?? ''),
         String(item.gachaRateMultiplier ?? ''),
+        String(item.gachaRateMinRarity ?? 'rare'),
       ].join('|');
       const existing = map.get(key);
       if (!existing) {
