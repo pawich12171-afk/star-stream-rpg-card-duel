@@ -268,6 +268,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [shopItemSkillTarget, setShopItemSkillTarget] = useState('');
   const [shopItemIcon, setShopItemIcon] = useState('HeartPulse');
   const [shopItemDesc, setShopItemDesc] = useState('');
+  const [shopItemAdminOnly, setShopItemAdminOnly] = useState(false);
   const [shopSearch, setShopSearch] = useState('');
 
   const applyShopPreset = (preset: typeof SHOP_PRESET_TEMPLATES[0]) => {
@@ -457,6 +458,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       skillEnhanceTarget: shopItemEffectType === 'enhance_skill' ? shopItemSkillTarget : undefined,
       usableByPlayers: true,
       equipped: false,
+      adminOnly: shopItemAdminOnly,
     };
 
     try {
@@ -468,7 +470,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
     setShopItemName('');
     setShopItemDesc('');
-    alert(`เพิ่มไอเทม "${newItem.name}" ลงร้านค้าสำเร็จแล้ว!`);
+    setShopItemAdminOnly(false);
+    alert(shopItemAdminOnly ? `สร้างไอเทมรางวัล "${newItem.name}" สำเร็จแล้ว! ไอเทมนี้จะไม่แสดงในร้านค้า` : `เพิ่มไอเทม "${newItem.name}" ลงร้านค้าสำเร็จแล้ว!`);
   };
 
   // Grant Item Handler
@@ -1177,7 +1180,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <Store className="w-4 h-4 text-emerald-400" />
-                เพิ่มไอเทมใหม่ในร้านค้า
+                🧰 สร้างไอเทม (ร้านค้า / รางวัลพิเศษ)
               </h3>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
                 Admin Shop
@@ -1468,7 +1471,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <Package className="w-4 h-4 text-cyan-400" />
-                  รายการสินค้าในร้านค้าปัจจุบัน ({shopItems.length} ชิ้น)
+                  รายการไอเทมที่สร้างไว้ ({shopItems.length} ชิ้น)
                 </h3>
                 <p className="text-xs text-slate-400">
                   สามารถตรวจสอบและกดลบของออกจากร้านค้าได้ทันที
