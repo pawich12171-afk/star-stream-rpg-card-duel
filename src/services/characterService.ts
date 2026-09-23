@@ -2246,9 +2246,26 @@ const pendingBattleBotDeletes = new Set<string>();
 const pendingBattleRooms = new Map<string, BattleRoom>();
 const pendingBattleRoomDeletes = new Set<string>();
 
+function trimBattleRoom(room: BattleRoom): BattleRoom {
+  const safeLog = Array.isArray(room.log) ? room.log.slice(0, 200) : [];
+  return {
+    ...room,
+    teamA: Array.isArray(room.teamA) ? room.teamA : [],
+    teamB: Array.isArray(room.teamB) ? room.teamB : [],
+    log: safeLog,
+  };
+}
+
 function saveBattleLocal() {
   if (typeof window === 'undefined') return;
   try {
+    // Mobile browsers can freeze when a very large battle history is repeatedly
+    // serialized to localStorage. Keep only the latest active/completed rooms and
+    // a bounded battle log; Firestore remains the shared source of truth.
+    localBattleRooms = localBattleRooms
+      .map(trimBattleRoom)
+      .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
+      .slice(0, 50);
     window.localStorage.setItem("starstream_battle_config", JSON.stringify(localBattleConfig));
     window.localStorage.setItem("starstream_battle_bots", JSON.stringify(localBattleBots));
     window.localStorage.setItem("starstream_battle_rooms", JSON.stringify(localBattleRooms));
@@ -2330,7 +2347,7 @@ export function subscribeToBattleRooms(callback: (rooms: BattleRoom[]) => void) 
       if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) return;
       const serverIds = new Set(snapshot.docs.map(item => item.id));
       localBattleRooms = snapshot.docs
-        .map(item => ({ ...item.data(), id: item.id } as BattleRoom))
+        .map(item => trimBattleRoom({ ...item.data(), id: item.id } as BattleRoom))
         .filter(item => !pendingBattleRoomDeletes.has(item.id))
         .map(item => {
           const pending = pendingBattleRooms.get(item.id);
@@ -2508,10 +2525,10 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
 
 export async function updateBattleRoom(room: BattleRoom): Promise<void> {
   const previous = localBattleRooms.find(item => item.id === room.id);
-  const next = {
+  const next = trimBattleRoom({
     ...room,
     updatedAt: Math.max(Date.now(), (localBattleRooms.find(item => item.id === room.id)?.updatedAt || 0) + 1),
-  };
+  });
   pendingBattleRooms.set(next.id, next);
   pendingBattleRoomDeletes.delete(next.id);
   localBattleRooms = [next, ...localBattleRooms.filter(item => item.id !== next.id)];
