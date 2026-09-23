@@ -2277,7 +2277,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 {newRewardType === 'item' && (
                   <div>
-                    <label className="text-xs text-slate-300 block mb-1">ผูกกับไอเทมในร้านค้า:</label>
+                    <label className="text-xs text-slate-300 block mb-1">เลือกไอเทมจากคลังรางวัล (รวมไอเทมพิเศษ):</label>
                     <select
                       value={newRewardSelectedShopItemId}
                       onChange={(e) => setNewRewardSelectedShopItemId(e.target.value)}
