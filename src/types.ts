@@ -42,12 +42,16 @@ export interface Skill {
   /** ตัวคูณของสเตตัส เช่น 1.5 = 150% ของค่า stat */
   damageScalingMultiplier?: number;
   cooldownTurns?: number;
+  /** ระยะเวลาของเอฟเฟกต์หลักของสกิล (เทิร์น) */
+  battleEffectDuration?: number;
   battleCriticalChance?: number;
   battleCriticalMultiplier?: number;
   repeatAttackChance?: number;
   passiveEffects?: ItemPassiveEffect[];
   maxRepeatAttacks?: number;
   battleEffects?: BattleExtraEffect[];
+  /** ข้อเสีย/ผลย้อนกลับของสกิลที่ผู้สร้างกำหนด และมีผลจริงในสนามรบ */
+  battleDrawbacks?: BattleExtraEffect[];
   battleStats?: BattleSkillStat[];
 }
 
@@ -358,9 +362,9 @@ export interface CardDuelRoom {
 }
 
 export type BattleMode = 'pvp' | 'pve';
-export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect' | 'stun';
+export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect' | 'stun' | 'copy_ability' | 'immortal' | 'damage_reduction';
 
-export type BattleExtraEffectKind = 'bleeding' | 'burn' | 'poison' | 'freeze' | 'stun' | 'reduce_max_hp_percent' | 'reduce_defense_percent' | 'damage_percent' | 'heal_percent' | 'shield' | 'reflect';
+export type BattleExtraEffectKind = 'bleeding' | 'burn' | 'poison' | 'freeze' | 'stun' | 'reduce_max_hp_percent' | 'reduce_defense_percent' | 'damage_percent' | 'heal_percent' | 'shield' | 'reflect' | 'damage_reduction';
 
 export interface BattleExtraEffect { kind: BattleExtraEffectKind; value: number; duration?: number; chance?: number; target?: 'self' | 'enemy'; label?: string; }
 export type BattleDiceEffect = 'damage' | 'critical' | 'heal' | 'miss' | 'stun' | 'defense' | 'reflect';
@@ -448,6 +452,12 @@ export interface BattleCombatant {
   itemPassiveChanceMultiplier?: number;
   /** เทิร์นที่เหลือของบัฟโชคจากไอเทม */
   itemLuckTurns?: number;
+  immortalTurns?: number;
+  damageReductionPercent?: number;
+  damageReductionTurns?: number;
+  copiedAbility?: Skill;
+  copiedAbilityTurns?: number;
+  skills?: Skill[];
 }
 
 export interface BattleLogEntry {
