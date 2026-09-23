@@ -1,3 +1,4 @@
+import { formatCoins } from '../utils/formatNumber';
 import React, { useEffect, useRef, useState } from 'react';
 import { CharacterProfile, GachaReward, GachaConfig, GachaBanner, Skill, InventoryItem, Item } from '../types';
 import { 
@@ -198,7 +199,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       lastUpdated: Math.max(Date.now(), Number(currentCharacter.lastUpdated || 0) + 1),
     };
     if (currentCharacter.coins < cost) {
-      alert(`เหรียญไม่เพียงพอ ต้องการ ${cost.toLocaleString()} C แต่คุณมี ${character.coins.toLocaleString()} C`);
+      alert(`เหรียญไม่เพียงพอ ต้องการ ${formatCoins(cost)} C แต่คุณมี ${formatCoins(character.coins)} C`);
       return;
     }
     if (activeRewards.length === 0) {
@@ -486,7 +487,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
               <span className="text-[11px] text-slate-400 block">เหรียญของคุณ</span>
               <div className="flex items-baseline gap-1">
                 <span className="text-xl font-black text-amber-300">
-                  {character.coins.toLocaleString()}
+                  {formatCoins(character.coins)}
                 </span>
                 <span className="text-xs text-amber-500/80 font-mono">Coins</span>
               </div>
@@ -508,8 +509,8 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
               </div>
               <div className="mt-2 text-xs text-slate-400">{banner.bannerTitle}</div>
               <div className="mt-3 flex gap-2 text-[10px]">
-                <span className="px-2 py-1 rounded-lg bg-slate-800 text-cyan-300">1 ครั้ง {banner.pullCost.toLocaleString()} C</span>
-                <span className="px-2 py-1 rounded-lg bg-slate-800 text-amber-300">10 ครั้ง {banner.tenPullCost.toLocaleString()} C</span>
+                <span className="px-2 py-1 rounded-lg bg-slate-800 text-cyan-300">1 ครั้ง {formatCoins(banner.pullCost)} C</span>
+                <span className="px-2 py-1 rounded-lg bg-slate-800 text-amber-300">10 ครั้ง {formatCoins(banner.tenPullCost)} C</span>
               </div>
             </button>
           ))}
@@ -540,7 +541,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
                     className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white text-xs font-black shadow-lg disabled:opacity-50"
                   >
                     🎰 ใช้ {item.name} ×{Math.max(1, Number(item.quantity) || 1)}
-                    <span className="block text-[10px] text-purple-200">เรท ×{Number(item.gachaRateMultiplier).toLocaleString()}</span>
+                    <span className="block text-[10px] text-purple-200">เรท ×{formatCoins(item.gachaRateMultiplier)}</span>
                   </button>
                 ))}
               </div>
@@ -557,7 +558,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-sm shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <Sparkles className="w-4 h-4" />
-            <span>สุ่ม 1 ครั้ง ({pullCost.toLocaleString()} C)</span>
+            <span>สุ่ม 1 ครั้ง ({formatCoins(pullCost)} C)</span>
           </button>
           <button
             id="btn-gacha-ten"
@@ -566,7 +567,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-sm shadow-[0_0_25px_rgba(245,158,11,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <Gift className="w-4 h-4 text-slate-950" />
-            <span>สุ่ม 10 ครั้ง ({tenPullCost.toLocaleString()} C)</span>
+            <span>สุ่ม 10 ครั้ง ({formatCoins(tenPullCost)} C)</span>
             <span className="text-[10px] bg-slate-950 text-amber-300 px-1.5 py-0.5 rounded font-bold ml-1">
               ประหยัด {((pullCost * 10) - tenPullCost).toLocaleString()} C
             </span>
@@ -589,7 +590,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
                       className="px-4 py-2 rounded-xl border border-fuchsia-400/60 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white text-xs font-black shadow-lg transition-all cursor-pointer disabled:opacity-50"
                     >
                       ✨ สุ่ม {count.toLocaleString()} ครั้ง
-                      <span className="block text-[10px] text-amber-200 mt-0.5">{cost.toLocaleString()} C</span>
+                      <span className="block text-[10px] text-amber-200 mt-0.5">{formatCoins(cost)} C</span>
                     </button>
                   );
                 })}
@@ -598,7 +599,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             <button type="button" id="btn-gacha-multi-pull" onClick={() => handlePull(activeMultiPullCount)}
               disabled={isPulling || isActivatingGachaBoost || !activeBanner}
               className="mt-3 w-full px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-black text-sm shadow-xl transition-all cursor-pointer disabled:opacity-50">
-              <Sparkles className="w-4 h-4 inline-block mr-1" />เลือกสุ่ม {activeMultiPullCount.toLocaleString()} ครั้ง ({multiPullCost.toLocaleString()} C)
+              <Sparkles className="w-4 h-4 inline-block mr-1" />เลือกสุ่ม {activeMultiPullCount.toLocaleString()} ครั้ง ({formatCoins(multiPullCost)} C)
             </button>
           </div>
         </div>
@@ -660,7 +661,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
                 <div key={item.type + item.name} className="rounded-xl bg-slate-800/80 border border-slate-700 px-3 py-2">
                   <div className="text-xs font-black text-white">{item.name}</div>
                   <div className="text-[11px] text-emerald-300 mt-0.5">
-                    × {item.count}{item.type === 'coin' && item.coinAmount > 0 ? ` = ${item.coinAmount.toLocaleString()} C` : ''}
+                    × {item.count}{item.type === 'coin' && item.coinAmount > 0 ? ` = ${formatCoins(item.coinAmount)} C` : ''}
                   </div>
                 </div>
               ))}
