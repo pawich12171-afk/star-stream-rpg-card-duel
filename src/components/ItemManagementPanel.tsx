@@ -156,6 +156,20 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     e.preventDefault();
     if (!name.trim()) { alert('กรุณากรอกชื่อไอเทม'); return; }
     const old = editingId ? shopItems.find(i => i.id === editingId) : undefined;
+    const n = (value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER) => {
+      const x = Number(value);
+      return Number.isFinite(x) ? Math.min(max, Math.max(min, x)) : 0;
+    };
+    const cleanPassiveEffects: ItemPassiveEffect[] = passiveEffects.filter(Boolean).slice(0, 50).map((p, index) => ({
+      ...p,
+      id: String(p.id || `item-passive-${Date.now()}-${index}`),
+      name: safeText(p.name, 'Passive'),
+      value: n(p.value, 0, 1000000),
+      chance: n(p.chance, 0, 100),
+      duration: Math.floor(n(p.duration, 0, 1000)),
+      maxStacks: Math.max(1, Math.floor(n(p.maxStacks, 1, 1000))),
+      stackKey: safeText(p.stackKey, String(p.id || `item-passive-${index}`)),
+    }));
     const item: Item = {
       ...(old || {}),
       id: editingId || `item-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
@@ -167,13 +181,13 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
       healPercent: effectType === 'heal_hp' && healPercent > 0 ? healPercent : undefined,
       skillEnhanceTarget: effectType === 'enhance_skill' ? skillTarget : undefined,
       skillEnhanceDesc: effectType === 'enhance_skill' ? skillDesc : undefined,
-      battleDamagePercent: battleDamagePercent || undefined, battleDamageDuration: battleDamageDuration || undefined,
-      battleCriticalChancePercent: battleCriticalChancePercent || undefined, battleRepeatAttackChancePercent: battleRepeatAttackChancePercent || undefined,
+      battleDamagePercent: category === 'consumable' && battleDamagePercent > 0 ? n(battleDamagePercent, 0, 1000) : undefined, battleDamageDuration: category === 'consumable' && battleDamagePercent > 0 ? Math.max(1, Math.floor(n(battleDamageDuration))) : undefined,
+      battleCriticalChancePercent: category === 'consumable' && battleCriticalChancePercent > 0 ? n(battleCriticalChancePercent, 0, 100) : undefined, battleRepeatAttackChancePercent: category === 'consumable' && battleRepeatAttackChancePercent > 0 ? n(battleRepeatAttackChancePercent, 0, 100) : undefined,
       battleLuckMultiplier: battleLuckMultiplier || undefined, battleLuckDuration: battleLuckDuration || undefined, battlePassiveChanceMultiplier: battlePassiveChanceMultiplier || undefined,
       revivePercent: revivePercent || undefined, reviveAlly: reviveAlly || undefined, cleanseNegative: cleanseNegative || undefined, shieldPercent: shieldPercent || undefined, shieldDuration: shieldDuration || undefined,
       damageReductionPercent: damageReductionPercent || undefined, damageReductionDuration: damageReductionDuration || undefined, dodgeChancePercent: dodgeChancePercent || undefined, lifestealPercent: lifestealPercent || undefined,
 cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: stunDuration || undefined, statusImmunityDuration: statusImmunityDuration || undefined,
-      passiveEffects: passiveEffects.length ? passiveEffects : undefined,
+      passiveEffects: cleanPassiveEffects.length ? cleanPassiveEffects : undefined,
       equipmentStrengthBonus: category === 'equipment' ? Math.max(0, equipmentStrengthBonus) : undefined,
       equipmentDurabilityBonus: category === 'equipment' ? Math.max(0, equipmentDurabilityBonus) : undefined,
       equipmentAgilityBonus: category === 'equipment' ? Math.max(0, equipmentAgilityBonus) : undefined,
