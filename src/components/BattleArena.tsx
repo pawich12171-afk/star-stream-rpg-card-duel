@@ -57,7 +57,15 @@ function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): Batt
       stackKey: effect.stackKey || `skill:${skill.id}:${effect.id}`,
     })));
   const allPassives = [...equippedPassives, ...skillPassives];
-  const stats = { ...character.stats };
+  // Normalize legacy character data before battle calculations.
+  // Older saved characters may have a missing/partial stats object.
+  const rawStats = character.stats || {};
+  const stats = {
+    strength: Number(rawStats.strength) || 0,
+    durability: Number(rawStats.durability) || 0,
+    agility: Number(rawStats.agility) || 0,
+    magic: Number(rawStats.magic) || 0,
+  };
   // Direct stat bonuses configured on equipped items are active in battle.
   (character.inventory || [])
     .filter(item => item.isEquipped && item.category === 'equipment')
