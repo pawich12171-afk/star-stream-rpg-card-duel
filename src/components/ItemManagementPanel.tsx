@@ -38,6 +38,14 @@ const getItemExtraDetails = (item: Partial<Item>) => {
   if (item.cooldownReductionPercent) d.push('ลดคูลดาวน์ ' + item.cooldownReductionPercent + '%');
   if (item.statusImmunityDuration) d.push('ต้านสถานะ ' + item.statusImmunityDuration + ' เทิร์น');
   if (item.stunDuration) d.push('ชะงัก ' + item.stunDuration + ' เทิร์น');
+  if (item.equipmentStrengthBonus) d.push('สวมใส่ STR +' + item.equipmentStrengthBonus);
+  if (item.equipmentDurabilityBonus) d.push('สวมใส่ DUR +' + item.equipmentDurabilityBonus);
+  if (item.equipmentAgilityBonus) d.push('สวมใส่ AGI +' + item.equipmentAgilityBonus);
+  if (item.equipmentMagicBonus) d.push('สวมใส่ MAG +' + item.equipmentMagicBonus);
+  if (item.equipmentMaxHpBonus) d.push('สวมใส่ Max HP +' + item.equipmentMaxHpBonus);
+  if (item.equipmentAttackPercent) d.push('พลังโจมตี +' + item.equipmentAttackPercent + '%' + (item.equipmentAttackDuration ? ' / ' + item.equipmentAttackDuration + ' เทิร์น' : ''));
+  if (item.equipmentDefensePercent) d.push('พลังป้องกัน +' + item.equipmentDefensePercent + '%' + (item.equipmentDefenseDuration ? ' / ' + item.equipmentDefenseDuration + ' เทิร์น' : ''));
+  if (item.equipmentMagicPercent) d.push('พลังเวท +' + item.equipmentMagicPercent + '%' + (item.equipmentMagicDuration ? ' / ' + item.equipmentMagicDuration + ' เทิร์น' : ''));
   if (item.passiveEffects?.length) d.push('Passive ' + item.passiveEffects.length + ' อัน');
   return d;
 };
