@@ -114,7 +114,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   );
 
   const handleUseGachaBoost = async (invItem: InventoryItem) => {
-    const multiplier = Math.max(1, Math.min(20, Number(invItem.gachaRateMultiplier) || 1));
+    const multiplier = Math.max(1, Math.min(1000, Number(invItem.gachaRateMultiplier) || 1));
     if (multiplier <= 1) return;
 
     const currentCharacter = characterRef.current;
@@ -256,6 +256,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         String(item.effectValue ?? ''),
         String(item.hpBonus ?? ''),
         String(item.gachaRateMultiplier ?? ''),
+        String(item.gachaRateMinRarity ?? 'rare'),
       ].join('|');
 
       const inventoryMap = new Map<string, InventoryItem>();
