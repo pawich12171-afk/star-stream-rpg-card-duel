@@ -260,7 +260,7 @@ export default function App() {
     const id = String(character.id || '').trim().toLowerCase();
     const username = String(character.username || '').trim().toLowerCase();
     const displayName = String(character.displayName || '').trim().toLowerCase();
-    return id === '001' || id === 'momi' || username === 'momi' || displayName === 'momi' || displayName === 'โมมิ' || displayName.includes('(momi)');
+    return id === '001' || username === '001' || id === 'momi' || username === 'momi' || displayName === 'momi' || displayName === 'โมมิ' || displayName.includes('(momi)');
   };
   const canUseAdminMode = isMomiProfile(currentUser) || currentUser.role === 'admin';
 
