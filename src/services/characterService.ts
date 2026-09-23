@@ -1170,13 +1170,14 @@ export async function addShopItem(item: Item): Promise<void> {
   saveLocalAll();
   broadcast?.postMessage({ type: 'SHOP_UPDATE' });
 
-  try {
-    // Admin forms intentionally leave unrelated effect fields undefined.
-    // Firestore rejects undefined values, so sanitize before writing.
-    await enqueuePersistenceWrite(`shop:${id}`, () =>
-      setDoc(doc(db, SHOP_ITEMS_COLLECTION, id), sanitizeForFirestore(fullItem))
-    );
-  } catch (err) {
+  // Keep the Admin UI responsive: commit the optimistic item immediately and
+  // persist in the background. Waiting for a Firestore write here could leave
+  // the whole Admin form stuck on a loading screen when the network is slow.
+  void enqueuePersistenceWrite(`shop:${id}`, () =>
+    setDoc(doc(db, SHOP_ITEMS_COLLECTION, id), sanitizeForFirestore(fullItem))
+  ).then(() => {
+    pendingShopItems.delete(id);
+  }).catch((err) => {
     pendingShopItems.delete(id);
     localShopItems = previousItem
       ? [previousItem, ...localShopItems.filter(existing => existing.id !== id)]
@@ -1184,8 +1185,7 @@ export async function addShopItem(item: Item): Promise<void> {
     saveLocalAll();
     broadcast?.postMessage({ type: 'SHOP_UPDATE' });
     console.error("Error adding shop item to Firestore:", err);
-    throw err;
-  }
+  });
 }
 
 // Delete Shop item (Admin)
