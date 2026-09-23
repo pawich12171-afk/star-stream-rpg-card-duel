@@ -490,7 +490,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
                     key={item.instanceId || item.id}
                     type="button"
                     onClick={() => void handleUseGachaBoost(item)}
-                    disabled={isPulling || activeGachaRateMultiplier > 1}
+                    disabled={isPulling}
                     className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white text-xs font-black shadow-lg disabled:opacity-50"
                   >
                     🎰 ใช้ {item.name} ×{Math.max(1, Number(item.quantity) || 1)}
