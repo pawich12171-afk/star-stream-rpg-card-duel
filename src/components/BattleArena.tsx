@@ -411,13 +411,19 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     if (!room || room.status !== 'active') return;
     const actor = [...(room.teamA || []), ...(room.teamB || [])].find(unit => unit.id === room.turnActorId);
     if (!actor || actor.type !== 'player' || actor.sourceId !== currentUser.id) return;
-    usingBattleItemRef.current = true;
-    const liveRoom = rooms.find(candidate => candidate.id === room.id) || room;
     const requestedItemId = String(item?.instanceId || item?.id || '').trim();
     if (!requestedItemId) {
       alert('ไอเทมนี้ไม่มีรหัสสำหรับใช้งาน กรุณารีเฟรชกระเป๋าแล้วลองใหม่');
       return;
     }
+    // Validate the selected object before taking the synchronous lock.
+    // A bad legacy item must never leave the action lock permanently stuck.
+    if (!item || item.category !== 'consumable' || Number(item.quantity) <= 0) {
+      alert('ไอเทมนี้ไม่สามารถใช้ระหว่างการต่อสู้ได้');
+      return;
+    }
+    usingBattleItemRef.current = true;
+    const liveRoom = rooms.find(candidate => candidate.id === room.id) || room;
     setUsingBattleItemId(requestedItemId);
     try {
       // useBattleItem is the single source of truth for the bag: it reads the
@@ -832,7 +838,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
                   </div>
 
                   <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                    <select aria-label="เลือกไอเทมสำหรับใช้ระหว่างการต่อสู้" value={selectedBattleItemId} onChange={event => {
+                    <select disabled={usingBattleItemId !== ''} aria-label="เลือกไอเทมสำหรับใช้ระหว่างการต่อสู้" value={selectedBattleItemId} onChange={event => {
                         const value = String(event.target.value || '');
                         if (!value) {
                           setSelectedBattleItemId('');
