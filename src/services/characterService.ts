@@ -50,9 +50,15 @@ const MARKETPLACE_LISTINGS_COLLECTION = "marketplace_listings";
 const CHAT_MESSAGES_COLLECTION = "chat_messages";
 
 // Cross-tab broadcast channel for instant local reactivity
-const broadcast = typeof window !== 'undefined' && 'BroadcastChannel' in window 
-  ? new BroadcastChannel('star_stream_realtime_channel') 
-  : null;
+let broadcast: BroadcastChannel | null = null;
+if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+  try {
+    broadcast = new BroadcastChannel('star_stream_realtime_channel');
+  } catch (error) {
+    console.warn('[realtime] BroadcastChannel unavailable:', error);
+    broadcast = null;
+  }
+}
 
 // Local storage is only an offline fallback. Preserve an intentionally empty
 // collection; otherwise deleted server records are resurrected after reload.
