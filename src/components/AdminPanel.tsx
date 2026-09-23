@@ -357,6 +357,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editingSkillDrawbacksText, setEditingSkillDrawbacksText] = useState('[]');
   const [editingSkillEffectsText, setEditingSkillEffectsText] = useState('[]');
   const [editingSkillPassivesText, setEditingSkillPassivesText] = useState('[]');
+  const [editingSkillAdvancedMode, setEditingSkillAdvancedMode] = useState<'form' | 'json'>('form');
+  const [editingDrawbackKind, setEditingDrawbackKind] = useState<BattleExtraEffect['kind']>('bleeding');
+  const [editingDrawbackValue, setEditingDrawbackValue] = useState(10);
+  const [editingDrawbackDuration, setEditingDrawbackDuration] = useState(1);
+  const [editingDrawbackChance, setEditingDrawbackChance] = useState(100);
+  const [editingEffectKind, setEditingEffectKind] = useState<BattleExtraEffect['kind']>('poison');
+  const [editingEffectValue, setEditingEffectValue] = useState(10);
+  const [editingEffectDuration, setEditingEffectDuration] = useState(1);
+  const [editingEffectChance, setEditingEffectChance] = useState(100);
+  const [editingEffectTarget, setEditingEffectTarget] = useState<'self' | 'enemy'>('enemy');
+  const [editingPassiveName, setEditingPassiveName] = useState('Passive ของสกิล');
+  const [editingPassiveTrigger, setEditingPassiveTrigger] = useState<ItemPassiveEffect['trigger']>('turn_start');
+  const [editingPassiveKind, setEditingPassiveKind] = useState<ItemPassiveEffect['kind']>('stack');
+  const [editingPassiveValue, setEditingPassiveValue] = useState(1);
+  const [editingPassiveMaxStacks, setEditingPassiveMaxStacks] = useState(6);
+  const [editingPassiveChance, setEditingPassiveChance] = useState(100);
+  const [editingPassiveDuration, setEditingPassiveDuration] = useState(1);
+  const [editingPassiveStackKey, setEditingPassiveStackKey] = useState('flower');
+  const [editingPassiveTargetStat, setEditingPassiveTargetStat] = useState<'strength' | 'durability' | 'agility' | 'magic'>('strength');
+  const [editingSkillEffectsText, setEditingSkillEffectsText] = useState('[]');
+  const [editingSkillPassivesText, setEditingSkillPassivesText] = useState('[]');
   const [newRewardCooldownTurns, setNewRewardCooldownTurns] = useState(0);
   const [newRewardDrawbacks, setNewRewardDrawbacks] = useState<BattleExtraEffect[]>([]);
   const [newDrawbackKind, setNewDrawbackKind] = useState<BattleExtraEffect['kind']>('bleeding');
@@ -626,16 +647,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setEditingSkillDrawbacksText(JSON.stringify(skill.battleDrawbacks || [], null, 2));
     setEditingSkillEffectsText(JSON.stringify(skill.battleEffects || [], null, 2));
     setEditingSkillPassivesText(JSON.stringify(skill.passiveEffects || [], null, 2));
+    setEditingSkillAdvancedMode('form');
   };
 
   const saveEditedSkill = async () => {
     const reward = gachaRewards.find(item => item.id === editingSkillRewardId);
     if (!reward?.skillData) return;
     const oldSkill = reward.skillData;
-    let parsedDrawbacks: BattleExtraEffect[] = []; let parsedEffects: BattleExtraEffect[] = []; let parsedPassives: ItemPassiveEffect[] = [];
-    try { parsedDrawbacks = JSON.parse(editingSkillDrawbacksText || '[]'); if (!Array.isArray(parsedDrawbacks)) throw new Error(); } catch { alert('JSON ข้อเสียไม่ถูกต้อง'); return; }
-    try { parsedEffects = JSON.parse(editingSkillEffectsText || '[]'); if (!Array.isArray(parsedEffects)) throw new Error(); } catch { alert('JSON เอฟเฟกต์ไม่ถูกต้อง'); return; }
-    try { parsedPassives = JSON.parse(editingSkillPassivesText || '[]'); if (!Array.isArray(parsedPassives)) throw new Error(); } catch { alert('JSON Passive ไม่ถูกต้อง'); return; }
+    let parsedDrawbacks: BattleExtraEffect[] = [];
+    let parsedEffects: BattleExtraEffect[] = [];
+    let parsedPassives: ItemPassiveEffect[] = [];
+    try {
+      if (editingSkillAdvancedMode === 'form') {
+        parsedDrawbacks = JSON.parse(editingSkillDrawbacksText || '[]');
+        parsedEffects = JSON.parse(editingSkillEffectsText || '[]');
+        parsedPassives = JSON.parse(editingSkillPassivesText || '[]');
+      } else {
+        parsedDrawbacks = JSON.parse(editingSkillDrawbacksText || '[]');
+        parsedEffects = JSON.parse(editingSkillEffectsText || '[]');
+        parsedPassives = JSON.parse(editingSkillPassivesText || '[]');
+      }
+      if (!Array.isArray(parsedDrawbacks)) throw new Error('drawbacks');
+      if (!Array.isArray(parsedEffects)) throw new Error('effects');
+      if (!Array.isArray(parsedPassives)) throw new Error('passives');
+    } catch (error) {
+      const message = String(error);
+      if (message.includes('drawbacks')) alert('JSON ข้อเสียไม่ถูกต้อง');
+      else if (message.includes('effects')) alert('JSON เอฟเฟกต์ไม่ถูกต้อง');
+      else if (message.includes('passives')) alert('JSON Passive ไม่ถูกต้อง');
+      else alert('JSON ของสกิลไม่ถูกต้อง');
+      return;
+    }
     const skill: Skill = {
       ...oldSkill,
       name: editingSkillName.trim() || oldSkill.name,
@@ -2637,15 +2679,85 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </label>
                 <div className="text-[10px] text-slate-500 pt-5">Copy / Immortal / Damage Reduction / สถานะหลัก ใช้ระยะเวลานี้</div>
               </div>
-              <label className="text-[10px] text-rose-200 block">⚠️ ข้อเสีย (JSON) — บันทึกและทำงานจริง
-                <textarea value={editingSkillDrawbacksText} onChange={e=>setEditingSkillDrawbacksText(e.target.value)} rows={4} className="mt-1 w-full rounded-xl border border-rose-500/20 bg-slate-800 px-2 py-2 text-[10px] text-rose-100 font-mono" placeholder='[{"kind":"bleeding","value":10,"duration":2,"target":"self"}]'/>
-              </label>
-              <label className="text-[10px] text-cyan-200 block">เอฟเฟกต์เพิ่มเติม (JSON)
-                <textarea value={editingSkillEffectsText} onChange={e=>setEditingSkillEffectsText(e.target.value)} rows={4} className="mt-1 w-full rounded-xl border border-cyan-500/20 bg-slate-800 px-2 py-2 text-[10px] text-cyan-100 font-mono" placeholder='[{"kind":"poison","value":10,"duration":3,"chance":100,"target":"enemy"}]'/>
-              </label>
-              <label className="text-[10px] text-fuchsia-200 block">Passive ของสกิล (JSON)
-                <textarea value={editingSkillPassivesText} onChange={e=>setEditingSkillPassivesText(e.target.value)} rows={4} className="mt-1 w-full rounded-xl border border-fuchsia-500/20 bg-slate-800 px-2 py-2 text-[10px] text-fuchsia-100 font-mono" placeholder='[{"id":"p1","name":"Passive","trigger":"turn_start","kind":"stack","value":1,"maxStacks":6,"duration":1}]'/>
-              </label>
+              <div className="sm:col-span-2 rounded-xl border border-violet-500/25 bg-violet-950/10 p-3 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-[11px] font-black text-violet-200">🧩 ข้อเสีย / เอฟเฟกต์เพิ่มเติม / Passive</div>
+                    <div className="text-[10px] text-slate-400">เลือกได้ว่าจะใช้แบบฟอร์มสำเร็จรูปเหมือนตอนสร้างสกิล หรือแก้ JSON โดยตรง</div>
+                  </div>
+                  <div className="flex rounded-lg border border-slate-700 bg-slate-900 p-1">
+                    <button type="button" onClick={() => setEditingSkillAdvancedMode('form')} className={`rounded-md px-3 py-1 text-[10px] font-black ${editingSkillAdvancedMode === 'form' ? 'bg-violet-600 text-white' : 'text-slate-400'}`}>🧩 แบบเลือก</button>
+                    <button type="button" onClick={() => setEditingSkillAdvancedMode('json')} className={`rounded-md px-3 py-1 text-[10px] font-black ${editingSkillAdvancedMode === 'json' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>{"</>"} JSON</button>
+                  </div>
+                </div>
+                {editingSkillAdvancedMode === 'form' ? (
+                  <div className="space-y-3">
+                    <div className="rounded-xl border border-rose-500/20 bg-rose-950/10 p-3 space-y-2">
+                      <div className="text-[10px] font-black text-rose-200">⚠️ ข้อเสียของสกิล</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <select value={editingDrawbackKind} onChange={e=>setEditingDrawbackKind(e.target.value as BattleExtraEffect['kind'])} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white">
+                          <option value="bleeding">เสียเลือดต่อเทิร์น</option><option value="burn">เผาไหม้ตัวเอง</option><option value="poison">พิษตัวเอง</option><option value="stun">สตันตัวเอง</option><option value="damage_percent">เพิ่มดาเมจที่ได้รับ %</option><option value="damage_reduction">ลดความเสียหายตัวเอง</option><option value="reduce_defense_percent">ลดป้องกันตัวเอง %</option>
+                        </select>
+                        <input type="number" min={0} value={editingDrawbackValue} onChange={e=>setEditingDrawbackValue(Number(e.target.value))} placeholder="ค่า" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
+                        <input type="number" min={1} max={10} value={editingDrawbackDuration} onChange={e=>setEditingDrawbackDuration(Number(e.target.value))} placeholder="เทิร์น" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
+                        <input type="number" min={0} max={100} value={editingDrawbackChance} onChange={e=>setEditingDrawbackChance(Number(e.target.value))} placeholder="โอกาส %" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
+                      </div>
+                      <button type="button" onClick={()=>{const e={kind:editingDrawbackKind,value:Math.max(0,Number(editingDrawbackValue)||0),duration:Math.max(1,Math.min(10,Math.round(Number(editingDrawbackDuration)||1))),chance:Math.max(0,Math.min(100,Number(editingDrawbackChance)||0)),target:'self'}; setEditingSkillDrawbacksText(JSON.stringify([...JSON.parse(editingSkillDrawbacksText||'[]'),e],null,2));}} className="rounded-lg bg-rose-500/20 px-3 py-2 text-[10px] font-black text-rose-100">＋ เพิ่มข้อเสีย</button>
+                      <pre className="max-h-24 overflow-auto rounded-lg bg-black/20 p-2 text-[9px] text-rose-200">{editingSkillDrawbacksText}</pre>
+                    </div>
+
+                    <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-3 space-y-2">
+                      <div className="text-[10px] font-black text-cyan-200">✨ เอฟเฟกต์เพิ่มเติม</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                        <select value={editingEffectKind} onChange={e=>setEditingEffectKind(e.target.value as BattleExtraEffect['kind'])} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white">
+                          <option value="bleeding">เลือดออก</option><option value="burn">เผาไหม้</option><option value="poison">พิษ</option><option value="freeze">แช่แข็ง</option><option value="stun">สตัน</option><option value="reduce_max_hp_percent">ลด Max HP %</option><option value="reduce_defense_percent">ลดป้องกัน %</option><option value="damage_percent">Damage %</option><option value="heal_percent">Heal %</option><option value="shield">Shield</option><option value="reflect">Reflect</option><option value="damage_reduction">ลดความเสียหาย</option>
+                        </select>
+                        <input type="number" min={0} value={editingEffectValue} onChange={e=>setEditingEffectValue(Number(e.target.value))} placeholder="ค่า" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
+                        <input type="number" min={1} max={10} value={editingEffectDuration} onChange={e=>setEditingEffectDuration(Number(e.target.value))} placeholder="เทิร์น" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
+                        <input type="number" min={0} max={100} value={editingEffectChance} onChange={e=>setEditingEffectChance(Number(e.target.value))} placeholder="โอกาส %" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
+                        <select value={editingEffectTarget} onChange={e=>setEditingEffectTarget(e.target.value as 'self'|'enemy')} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"><option value="enemy">ศัตรู</option><option value="self">ตัวเอง</option></select>
+                      </div>
+                      <button type="button" onClick={()=>{const e={kind:editingEffectKind,value:Math.max(0,Number(editingEffectValue)||0),duration:Math.max(1,Math.min(10,Math.round(Number(editingEffectDuration)||1))),chance:Math.max(0,Math.min(100,Number(editingEffectChance)||0)),target:editingEffectTarget}; setEditingSkillEffectsText(JSON.stringify([...JSON.parse(editingSkillEffectsText||'[]'),e],null,2));}} className="rounded-lg bg-cyan-500/20 px-3 py-2 text-[10px] font-black text-cyan-100">＋ เพิ่มเอฟเฟกต์</button>
+                      <pre className="max-h-24 overflow-auto rounded-lg bg-black/20 p-2 text-[9px] text-cyan-200">{editingSkillEffectsText}</pre>
+                    </div>
+
+                    <div className="rounded-xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-3 space-y-2">
+                      <div className="text-[10px] font-black text-fuchsia-200">✨ Passive ของสกิล</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <input value={editingPassiveName} onChange={e=>setEditingPassiveName(e.target.value)} placeholder="ชื่อ Passive" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
+                        <select value={editingPassiveKind} onChange={e=>setEditingPassiveKind(e.target.value as ItemPassiveEffect['kind'])} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white">
+                          <option value="stack">🌸 สะสม Stack</option><option value="true_damage_at_max_stacks">💥 ครบ Stack → True Damage</option><option value="true_damage_per_stack">💠 True Damage ต่อ Stack</option><option value="damage">⚔️ Damage</option><option value="damage_percent">⚔️ Damage %</option><option value="heal">❤️ Heal</option><option value="heal_percent">❤️ Heal %</option><option value="buff_stat">📈 Buff Stat</option><option value="shield">🛡️ Shield</option><option value="reflect">↩️ Reflect %</option><option value="repeat_attack_chance">🔁 Repeat Attack %</option><option value="critical_chance">🎯 Critical %</option>
+                        </select>
+                        <select value={editingPassiveTrigger} onChange={e=>setEditingPassiveTrigger(e.target.value as ItemPassiveEffect['trigger'])} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"><option value="turn_start">ทุกต้นเทิร์น</option><option value="attack">ทุกครั้งที่โจมตี</option></select>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <input type="number" min={0} step={0.1} value={editingPassiveValue} onChange={e=>setEditingPassiveValue(Number(e.target.value))} placeholder="ค่า" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
+                        <input type="number" min={1} value={editingPassiveMaxStacks} onChange={e=>setEditingPassiveMaxStacks(Number(e.target.value))} placeholder="Max Stack" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
+                        <input type="number" min={0} max={100} value={editingPassiveChance} onChange={e=>setEditingPassiveChance(Number(e.target.value))} placeholder="โอกาส %" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
+                        <input type="number" min={1} max={10} value={editingPassiveDuration} onChange={e=>setEditingPassiveDuration(Number(e.target.value))} placeholder="เทิร์น" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <input value={editingPassiveStackKey} onChange={e=>setEditingPassiveStackKey(e.target.value)} placeholder="Stack Key เช่น flower" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
+                        <select value={editingPassiveTargetStat} onChange={e=>setEditingPassiveTargetStat(e.target.value as any)} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"><option value="strength">STR</option><option value="durability">DUR</option><option value="agility">AGI</option><option value="magic">MAG</option></select>
+                        <button type="button" onClick={()=>{const e={id:`skill-passive-edit-${Date.now()}`,name:editingPassiveName.trim()||'Skill Passive',trigger:editingPassiveTrigger,kind:editingPassiveKind,value:Math.max(0,Number(editingPassiveValue)||0),chance:Math.max(0,Math.min(100,Number(editingPassiveChance)||0)),maxStacks:Math.max(1,Math.round(Number(editingPassiveMaxStacks)||1)),stackKey:editingPassiveStackKey.trim()||'flower',duration:Math.max(1,Math.round(Number(editingPassiveDuration)||1)),targetStat:editingPassiveKind==='buff_stat'?editingPassiveTargetStat:undefined}; setEditingSkillPassivesText(JSON.stringify([...JSON.parse(editingSkillPassivesText||'[]'),e],null,2));}} className="rounded-lg bg-fuchsia-500/20 px-3 py-2 text-[10px] font-black text-fuchsia-100">＋ เพิ่ม Passive</button>
+                      </div>
+                      <pre className="max-h-32 overflow-auto rounded-lg bg-black/20 p-2 text-[9px] text-fuchsia-200">{editingSkillPassivesText}</pre>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="text-[10px] text-rose-200 block">⚠️ ข้อเสีย (JSON)
+                      <textarea value={editingSkillDrawbacksText} onChange={e=>setEditingSkillDrawbacksText(e.target.value)} rows={5} className="mt-1 w-full rounded-xl border border-rose-500/20 bg-slate-800 px-2 py-2 text-[10px] text-rose-100 font-mono"/>
+                    </label>
+                    <label className="text-[10px] text-cyan-200 block">เอฟเฟกต์เพิ่มเติม (JSON)
+                      <textarea value={editingSkillEffectsText} onChange={e=>setEditingSkillEffectsText(e.target.value)} rows={5} className="mt-1 w-full rounded-xl border border-cyan-500/20 bg-slate-800 px-2 py-2 text-[10px] text-cyan-100 font-mono"/>
+                    </label>
+                    <label className="text-[10px] text-fuchsia-200 block">Passive ของสกิล (JSON)
+                      <textarea value={editingSkillPassivesText} onChange={e=>setEditingSkillPassivesText(e.target.value)} rows={5} className="mt-1 w-full rounded-xl border border-fuchsia-500/20 bg-slate-800 px-2 py-2 text-[10px] text-fuchsia-100 font-mono"/>
+                    </label>
+                  </div>
+                )}
+              </div>
             </div>
               <label className="text-[10px] text-slate-400">โอกาสตีซ้ำ %<input type="number" min={0} max={100} step={0.1} value={editingSkillRepeatChance} onChange={e => setEditingSkillRepeatChance(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
               <label className="text-[10px] text-slate-400">ตีซ้ำสูงสุด<input type="number" min={1} max={20} value={editingSkillMaxRepeats} onChange={e => setEditingSkillMaxRepeats(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
