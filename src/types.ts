@@ -136,6 +136,19 @@ export interface Item {
   /** ระดับความหายากขั้นต่ำที่ได้รับโบนัสเรทกาชา เช่น rare = Rare ขึ้นไป */
   gachaRateMinRarity?: GachaRarity;
   hpBonus?: number;
+  /** โบนัสค่าสเตตัสที่ได้รับทันทีเมื่อสวมใส่อุปกรณ์ */
+  equipmentStrengthBonus?: number;
+  equipmentDurabilityBonus?: number;
+  equipmentAgilityBonus?: number;
+  equipmentMagicBonus?: number;
+  equipmentMaxHpBonus?: number;
+  /** โบนัสการต่อสู้ของอุปกรณ์เมื่อสวมใส่ */
+  equipmentAttackPercent?: number;
+  equipmentDefensePercent?: number;
+  equipmentMagicPercent?: number;
+  equipmentAttackDuration?: number;
+  equipmentDefenseDuration?: number;
+  equipmentMagicDuration?: number;
   targetStat?: keyof CharacterStats;
   skillEnhanceTarget?: string;
   skillEnhanceDesc?: string;
