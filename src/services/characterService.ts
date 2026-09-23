@@ -338,7 +338,9 @@ function isCustomProfileAvatar(value: unknown): boolean {
   const avatar = String(value || '').trim();
   if (!avatar) return false;
   if (avatar.startsWith('data:image/')) return true;
-  if (/^blob:/i.test(avatar)) return true;
+  // Object URLs are temporary browser memory references and become invalid
+  // after a refresh. They must never be treated as a persistent custom avatar.
+  if (/^blob:/i.test(avatar)) return false;
   return !/^\/avatars\/(system|chaewon|hayeon|miyeon|sera)\.svg$/i.test(avatar);
 }
 
