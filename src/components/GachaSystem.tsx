@@ -153,7 +153,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
           read: false,
           type: 'gacha' as const,
         },
-        ...(currentCharacter.notifications || []),
+        ...(latestCharacter.notifications || []),
       ],
       lastUpdated: Math.max(Date.now(), Number(currentCharacter.lastUpdated || 0) + 1),
     };
@@ -226,6 +226,11 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     }
 
     setTimeout(() => {
+      // Use the latest character snapshot when committing the result.
+      // Other screens/devices may have changed coins, inventory, skills, or
+      // profile data while the gacha animation was running. Using the stale
+      // pre-animation snapshot here could overwrite those newer changes.
+      const latestCharacter = characterRef.current;
       const results: GachaReward[] = [];
       let totalCoinReward = 0;
       const newItemsToAdd: InventoryItem[] = [];
@@ -278,7 +283,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       }
 
       const netCoinChange = totalCoinReward - cost;
-      const updatedCoins = Math.max(0, currentCharacter.coins + netCoinChange);
+      const updatedCoins = Math.max(0, latestCharacter.coins + netCoinChange);
 
       // Merge legacy records and every new reward using the SAME identity
       // as the inventory/shop stacker. This is what makes equipment stack too,
@@ -295,7 +300,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       ].join('|');
 
       const inventoryMap = new Map<string, InventoryItem>();
-      (currentCharacter.inventory || []).forEach((raw, index) => {
+      (latestCharacter.inventory || []).forEach((raw, index) => {
         const item: InventoryItem = {
           ...raw,
           instanceId: raw.instanceId || `legacy-stack-${raw.id}-${index}`,
@@ -349,7 +354,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       // inserted into inventoryMap would not appear in the saved inventory.
       const existingInventory = Array.from(inventoryMap.values());
 
-      const existingSkills = [...(currentCharacter.skills || [])];
+      const existingSkills = [...(latestCharacter.skills || [])];
       newSkillsToAdd.forEach(newSkill => {
         const existingSkill = existingSkills.find(s => s.name === newSkill.name);
         if (existingSkill) {
@@ -376,7 +381,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         }
       });
 
-      const existingCharacteristics = [...(currentCharacter.characteristics || [])];
+      const existingCharacteristics = [...(latestCharacter.characteristics || [])];
       newCharacteristicsToAdd.forEach(newCharacteristic => {
         const alreadyHasCharacteristic = existingCharacteristics.some(
           characteristic => characteristic.trim().toLowerCase() === newCharacteristic.toLowerCase()
@@ -398,15 +403,15 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       ];
 
       const updatedCharacter: CharacterProfile = {
-        ...characterAfterBoostConsumed,
+        ...latestCharacter,
+        pendingGachaRateMultiplier: 1,
+        pendingGachaRateMinRarity: 'rare',
         coins: updatedCoins,
         inventory: existingInventory,
         skills: existingSkills,
         characteristics: existingCharacteristics,
         notifications: updatedNotifications,
-        pendingGachaRateMultiplier: undefined,
-        pendingGachaRateMinRarity: undefined,
-        lastUpdated: Math.max(Date.now(), Number(currentCharacter.lastUpdated || 0) + 1),
+        lastUpdated: Math.max(Date.now(), Number(latestCharacter.lastUpdated || 0) + 1),
       };
 
       characterRef.current = updatedCharacter;
