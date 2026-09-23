@@ -896,6 +896,7 @@ export default function App() {
             onUpdateCharacterCoins={handleUpdateCharacterCoins}
             onSetCharacterCoins={handleSetCharacterCoins}
             onAddShopItem={handleAddShopItem}
+            onUpdateShopItem={handleUpdateShopItem}
             onDeleteShopItem={handleDeleteShopItem}
             onGrantItem={handleGrantItemToPlayer}
             onRemoveItem={handleRemoveItemFromPlayer}
