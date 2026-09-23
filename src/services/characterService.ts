@@ -2874,8 +2874,13 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
   const currentUses = Math.max(0, Number(normalizedRoom.battleItemUses) || 0);
   if (currentUses >= 2) throw new Error('เกมนี้ใช้ไอเทมครบ 2 ครั้งแล้ว');
 
-  const character = localCharacters.find(item => item.id === playerId);
-  if (!character) throw new Error('ไม่พบตัวละครผู้ใช้');
+  // Always read the newest shared character before consuming an item.
+  // Do not rely on localCharacters here: the battle UI can be one polling
+  // cycle behind, and using that stale inventory could make the item button
+  // appear to work while writing an older bag back to the backend.
+  const latestSnapshot = await getDoc(doc(db, CHARACTERS_COLLECTION, playerId));
+  if (!latestSnapshot.exists()) throw new Error('ไม่พบตัวละครผู้ใช้');
+  const character = { ...latestSnapshot.data(), id: latestSnapshot.id } as CharacterProfile;
 
   const requestedId = String(itemInstanceId || '').trim();
   if (!requestedId) throw new Error('ไม่พบรหัสไอเทม');
@@ -2892,10 +2897,17 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
   }
 
   const inventory = (character.inventory || [])
-    .map(inv => (
-      String(inv.instanceId || '') === String(item.instanceId || '') ||
-      (!inv.instanceId && String(inv.id || '') === String(item.id || ''))
-    ) ? { ...inv, quantity: Math.max(0, Number(inv.quantity) - 1) } : inv)
+    .map(inv => {
+      const sameInstance = item.instanceId
+        ? String(inv.instanceId || '') === String(item.instanceId)
+        : false;
+      const sameLegacyId = !item.instanceId && !inv.instanceId
+        ? String(inv.id || '') === String(item.id || '')
+        : false;
+      return (sameInstance || sameLegacyId)
+        ? { ...inv, quantity: Math.max(0, Number(inv.quantity) - 1) }
+        : inv;
+    })
     .filter(inv => Math.max(0, Number(inv.quantity) || 0) > 0);
 
   let hp = Math.max(0, Number(character.hp) || 0);
