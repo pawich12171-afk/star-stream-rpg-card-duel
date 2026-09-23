@@ -209,7 +209,9 @@ export const ProfileCustomizerModal: React.FC<ProfileCustomizerModalProps> = ({
       ...character,
       displayName: displayName.trim() || character.displayName,
       nickname: nickname.trim(),
-      avatarUrl: avatarUrl.trim() || character.avatarUrl,
+      // Keep exactly the avatar currently selected in this editor. Never
+      // reinsert a bundled/default avatar when the user has cleared the field.
+      avatarUrl: avatarUrl.trim(),
       constellation: constellation.trim(),
       badgeTitle: badgeTitle.trim() || '',
       quote: quote.trim(),
