@@ -27,6 +27,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   onUpdateCharacter,
 }) => {
   const [isPulling, setIsPulling] = useState(false);
+  const [isActivatingGachaBoost, setIsActivatingGachaBoost] = useState(false);
   const [pullResults, setPullResults] = useState<GachaReward[] | null>(null);
   const [filterRarity, setFilterRarity] = useState<string>('all');
   const [selectedMultiPullCount, setSelectedMultiPullCount] = useState<number>(20);
@@ -114,8 +115,13 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   );
 
   const handleUseGachaBoost = async (invItem: InventoryItem) => {
+    if (isActivatingGachaBoost || isPulling) return;
+    setIsActivatingGachaBoost(true);
     const multiplier = Math.max(1, Math.min(1000, Number(invItem.gachaRateMultiplier) || 1));
-    if (multiplier <= 1) return;
+    if (multiplier <= 1) {
+      setIsActivatingGachaBoost(false);
+      return;
+    }
 
     const currentCharacter = characterRef.current;
     const currentInventory = [...(currentCharacter.inventory || [])];
@@ -124,6 +130,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     );
     if (itemIndex < 0) {
       alert('ไม่พบไอเทมเพิ่มเรทกาชาในกระเป๋า กรุณารีเฟรชแล้วลองใหม่');
+      setIsActivatingGachaBoost(false);
       return;
     }
 
@@ -160,6 +167,8 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     } catch (error) {
       console.error('Failed to activate gacha boost:', error);
       alert('ใช้ไอเทมเพิ่มเรทกาชาไม่สำเร็จ กรุณาลองใหม่');
+    } finally {
+      setIsActivatingGachaBoost(false);
     }
   };
 
@@ -175,8 +184,10 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     }
     const currentCharacter = characterRef.current;
     const cost = getPullCost(count);
-    const gachaRateMultiplier = Math.max(1, Math.min(1000, Number(currentCharacter.pendingGachaRateMultiplier) || Number(activeGachaRateMultiplier) || 1));
-    const gachaRateMinRarity = currentCharacter.pendingGachaRateMinRarity || activeGachaRateMinRarity || 'rare';
+    // The boost is a one-pull effect. Read the already-activated local state
+    // so a stale character prop can never resurrect an old boost during a pull.
+    const gachaRateMultiplier = Math.max(1, Math.min(1000, Number(activeGachaRateMultiplier) || 1));
+    const gachaRateMinRarity = activeGachaRateMinRarity || 'rare';
     if (currentCharacter.coins < cost) {
       alert(`เหรียญไม่เพียงพอ ต้องการ ${cost.toLocaleString()} C แต่คุณมี ${character.coins.toLocaleString()} C`);
       return;
@@ -507,7 +518,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
           <button
             id="btn-gacha-single"
             onClick={() => handlePull(1)}
-            disabled={isPulling || !activeBanner || character.coins < pullCost}
+            disabled={isPulling || isActivatingGachaBoost || !activeBanner || character.coins < pullCost}
             className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-sm shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <Sparkles className="w-4 h-4" />
@@ -516,7 +527,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
           <button
             id="btn-gacha-ten"
             onClick={() => handlePull(10)}
-            disabled={isPulling || !activeBanner || character.coins < tenPullCost}
+            disabled={isPulling || isActivatingGachaBoost || !activeBanner || character.coins < tenPullCost}
             className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-sm shadow-[0_0_25px_rgba(245,158,11,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <Gift className="w-4 h-4 text-slate-950" />
@@ -539,7 +550,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
                       key={count}
                       type="button"
                       onClick={() => handlePull(count)}
-                      disabled={isPulling || !activeBanner}
+                      disabled={isPulling || isActivatingGachaBoost || !activeBanner}
                       className="px-4 py-2 rounded-xl border border-fuchsia-400/60 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white text-xs font-black shadow-lg transition-all cursor-pointer disabled:opacity-50"
                     >
                       ✨ สุ่ม {count.toLocaleString()} ครั้ง
@@ -550,7 +561,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
               </div>
             </div>
             <button type="button" id="btn-gacha-multi-pull" onClick={() => handlePull(activeMultiPullCount)}
-              disabled={isPulling || !activeBanner}
+              disabled={isPulling || isActivatingGachaBoost || !activeBanner}
               className="mt-3 w-full px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-black text-sm shadow-xl transition-all cursor-pointer disabled:opacity-50">
               <Sparkles className="w-4 h-4 inline-block mr-1" />เลือกสุ่ม {activeMultiPullCount.toLocaleString()} ครั้ง ({multiPullCost.toLocaleString()} C)
             </button>
