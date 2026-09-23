@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Item, GachaRarity } from '../types';
-import { Package, Search, Store, Gift, Layers, Edit3, Trash2, Save, X } from 'lucide-react';
+import { Package, Search, Store, Gift, Layers, Edit3, Trash2, Save, X, UploadCloud } from 'lucide-react';
 
 interface ItemManagementPanelProps {
   shopItems: Item[];
@@ -24,6 +24,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const [effectType, setEffectType] = useState<'heal_hp'|'boost_max_hp'|'buff_stat'|'enhance_skill'|'custom'>('heal_hp');
   const [effectValue, setEffectValue] = useState(10);
   const [icon, setIcon] = useState('HeartPulse');
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [targetStat, setTargetStat] = useState<'strength'|'durability'|'agility'|'magic'>('strength');
   const [inShop, setInShop] = useState(false);
   const [rewardEligible, setRewardEligible] = useState(true);
@@ -32,7 +33,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const reset = () => {
     setEditingId(null); setName(''); setDescription(''); setPrice(0);
     setCategory('consumable'); setRarity('common'); setEffectType('heal_hp');
-    setEffectValue(10); setIcon('HeartPulse'); setTargetStat('strength');
+    setEffectValue(10); setIcon('HeartPulse'); setIconPreview(null); setTargetStat('strength');
     setInShop(false); setRewardEligible(true); setStackable(true);
   };
 
@@ -40,7 +41,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     setEditingId(item.id); setName(item.name); setDescription(item.description || '');
     setPrice(item.price || 0); setCategory(item.category); setRarity(item.rarity as GachaRarity);
     setEffectType(item.effectType || 'custom'); setEffectValue(item.effectValue || 0);
-    setIcon(item.icon || 'Package'); setTargetStat(item.targetStat || 'strength');
+    setIcon(item.icon || 'Package'); setIconPreview(item.icon && (item.icon.startsWith('data:') || item.icon.startsWith('http')) ? item.icon : null); setTargetStat(item.targetStat || 'strength');
     setInShop(item.inShop === true && !item.adminOnly);
     setRewardEligible(item.rewardEligible !== false); setStackable(item.stackable !== false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -59,7 +60,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
       id: editingId || `item-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
       name: name.trim(), description: description.trim() || 'ไอเทม Star Stream',
       price: Math.max(0, price), category, rarity, effectType, effectValue: Math.max(0, effectValue),
-      icon, targetStat: effectType === 'buff_stat' ? targetStat : undefined,
+      icon: iconPreview || icon, targetStat: effectType === 'buff_stat' ? targetStat : undefined,
       usableByPlayers: true, adminOnly: !inShop, inShop, rewardEligible, stackable,
       equipped: old?.equipped || false,
     };
@@ -98,7 +99,25 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
             <select className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white text-sm" value={rarity} onChange={e=>setRarity(e.target.value as GachaRarity)}><option value="common">Common</option><option value="rare">Rare</option><option value="epic">Epic</option><option value="legendary">Legendary</option><option value="mythic">Mythic</option></select>
             <select className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white text-sm" value={effectType} onChange={e=>setEffectType(e.target.value as any)}><option value="heal_hp">ฟื้น HP</option><option value="boost_max_hp">เพิ่ม Max HP</option><option value="buff_stat">เพิ่มสเตตัส</option><option value="enhance_skill">เสริมสกิล</option><option value="custom">กำหนดเอง</option></select>
             {effectType === 'buff_stat' && <select className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white text-sm" value={targetStat} onChange={e=>setTargetStat(e.target.value as any)}><option value="strength">STR</option><option value="durability">DUR</option><option value="agility">AGI</option><option value="magic">MAG</option></select>}
-            <select className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white text-sm" value={icon} onChange={e=>setIcon(e.target.value)}>{icons.map(x=><option key={x} value={x}>{x}</option>)}</select>
+            <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-3 space-y-2">
+              <div className="flex items-center justify-between"><span className="text-xs font-bold text-white">ไอคอนไอเทม</span>{iconPreview && <button type="button" onClick={()=>setIconPreview(null)} className="text-[10px] text-rose-300">ใช้ไอคอนเดิม</button>}</div>
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-xl border border-slate-700 bg-slate-950 flex items-center justify-center overflow-hidden">
+                  {iconPreview ? <img src={iconPreview} alt="" className="w-full h-full object-cover" /> : <Package className="w-6 h-6 text-slate-500" />}
+                </div>
+                <label className="flex-1 cursor-pointer rounded-xl border border-dashed border-fuchsia-500/40 bg-fuchsia-500/5 p-3 text-center text-xs text-fuchsia-200 hover:bg-fuchsia-500/10">
+                  <UploadCloud className="w-4 h-4 mx-auto mb-1" />เลือกรูปจากเครื่อง
+                  <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={e=>{
+                    const file=e.target.files?.[0]; if(!file) return;
+                    if(file.size>1024*1024){alert('รูปไอคอนต้องไม่เกิน 1MB'); e.currentTarget.value=''; return;}
+                    const reader=new FileReader();
+                    reader.onload=()=>setIconPreview(String(reader.result));
+                    reader.readAsDataURL(file);
+                  }}/>
+                </label>
+              </div>
+              <select className="w-full rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-sm" value={iconPreview ? '__uploaded__' : icon} onChange={e=>{if(e.target.value!=='__uploaded__') {setIcon(e.target.value); setIconPreview(null);}}}>{icons.map(x=><option key={x} value={x}>{x}</option>)}{iconPreview && <option value="__uploaded__">รูปที่อัปโหลด</option>}</select>
+            </div>
             <div className="space-y-2">
               <label className="flex justify-between items-center rounded-xl border border-slate-700 p-3 text-xs text-white"><span className="flex gap-2"><Store className="w-4 h-4"/>เพิ่มเข้าร้านค้า</span><input type="checkbox" checked={inShop} onChange={e=>setInShop(e.target.checked)}/></label>
               <label className="flex justify-between items-center rounded-xl border border-slate-700 p-3 text-xs text-white"><span className="flex gap-2"><Gift className="w-4 h-4"/>ใช้เป็นรางวัล</span><input type="checkbox" checked={rewardEligible} onChange={e=>setRewardEligible(e.target.checked)}/></label>
