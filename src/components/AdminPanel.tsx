@@ -2559,6 +2559,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     placeholder="เขียนบรรยายของรางวัล..."
                     className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none"
                   />
+                </div>
 
                 <button
                   type="submit"
