@@ -2940,6 +2940,36 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     throw new Error('ไอเทมนี้ใช้ระหว่างการต่อสู้ไม่ได้');
   }
 
+  // Normalize admin-created item data before it reaches the battle engine.
+  const safeNum = (value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER) => {
+    const x = Number(value);
+    return Number.isFinite(x) ? Math.min(max, Math.max(min, x)) : 0;
+  };
+  const normalizedItem = {
+    ...item,
+    effectValue: safeNum(item.effectValue, 0, 1000000000),
+    healPercent: safeNum(item.healPercent, 0, 100),
+    battleDamagePercent: safeNum(item.battleDamagePercent, 0, 1000),
+    battleDamageDuration: Math.floor(safeNum(item.battleDamageDuration, 0, 1000)),
+    battleCriticalChancePercent: safeNum(item.battleCriticalChancePercent, 0, 100),
+    battleRepeatAttackChancePercent: safeNum(item.battleRepeatAttackChancePercent, 0, 100),
+    battleLuckMultiplier: Math.max(1, safeNum(item.battleLuckMultiplier, 1, 20)),
+    battleLuckDuration: Math.floor(safeNum(item.battleLuckDuration, 0, 1000)),
+    battlePassiveChanceMultiplier: Math.max(1, safeNum(item.battlePassiveChanceMultiplier, 1, 20)),
+    damageReductionPercent: safeNum(item.damageReductionPercent, 0, 100),
+    damageReductionDuration: Math.floor(safeNum(item.damageReductionDuration, 0, 1000)),
+    passiveEffects: Array.isArray(item.passiveEffects) ? item.passiveEffects.filter(Boolean).slice(0, 50).map((p, index) => ({
+      ...p,
+      id: String(p.id || `item-passive-${item.id}-${index}`),
+      name: String(p.name || 'Passive'),
+      value: safeNum(p.value, 0, 1000000),
+      chance: safeNum(p.chance, 0, 100),
+      duration: Math.floor(safeNum(p.duration, 0, 1000)),
+      maxStacks: Math.max(1, Math.floor(safeNum(p.maxStacks, 1, 1000))),
+      stackKey: String(p.stackKey || p.id || `item-passive-${index}`),
+    })) : [],
+  };
+
   const inventory = (character.inventory || [])
     .map(inv => {
       const sameInstance = item.instanceId
@@ -2966,14 +2996,14 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
 
   // Basic item effects.
   if (item.effectType === 'heal_hp') {
-    const flatHeal = Math.max(0, Number(item.effectValue) || 0);
-    const percentHeal = Math.min(100, Math.max(0, Number(item.healPercent) || 0));
+    const flatHeal = Math.max(0, Number(normalizedItem.effectValue) || 0);
+    const percentHeal = Math.min(100, Math.max(0, Number(normalizedItem.healPercent) || 0));
     hp = Math.min(maxHp, hp + flatHeal + Math.round(maxHp * percentHeal / 100));
-  } else if (item.effectType === 'buff_stat' && item.targetStat) {
-    const stat = String(item.targetStat);
-    if (stat in stats) stats[stat] = Math.max(0, Number(stats[stat]) || 0) + Math.max(0, Number(item.effectValue) || 0);
+  } else if (item.effectType === 'buff_stat' && normalizedItem.targetStat) {
+    const stat = String(normalizedItem.targetStat);
+    if (stat in stats) stats[stat] = Math.max(0, Number(stats[stat]) || 0) + Math.max(0, Number(normalizedItem.effectValue) || 0);
   } else if (item.effectType === 'boost_max_hp') {
-    const bonus = Math.max(0, Number(item.effectValue) || 0);
+    const bonus = Math.max(0, Number(normalizedItem.effectValue) || 0);
     maxHp += bonus;
     hp = Math.min(maxHp, hp + bonus);
   }
@@ -2984,15 +3014,15 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     stats,
     hp: Math.min(maxHp, hp),
     maxHp,
-    itemDamagePercent: Math.min(1000, Math.max(0, Number(item.battleDamagePercent) || 0)),
-    itemDamageTurns: Math.max(0, Math.floor(Number(item.battleDamageDuration) || 0)),
-    itemLuckMultiplier: Math.max(1, Math.min(20, Number(item.battleLuckMultiplier) || 1)),
-    itemLuckTurns: Math.max(0, Math.floor(Number(item.battleLuckDuration) || 0)),
-    itemCriticalChancePercent: Math.max(0, Math.min(100, Number(item.battleCriticalChancePercent) || 0)),
-    itemRepeatAttackChancePercent: Math.max(0, Math.min(100, Number(item.battleRepeatAttackChancePercent) || 0)),
-    itemPassiveChanceMultiplier: Math.max(1, Math.min(20, Number(item.battlePassiveChanceMultiplier) || 1)),
-    damageReductionPercent: Math.max(0, Math.min(100, Number(item.damageReductionPercent) || 0)),
-    damageReductionTurns: Math.max(0, Math.floor(Number(item.damageReductionDuration) || 0)),
+    itemDamagePercent: Math.min(1000, Math.max(0, Number(normalizedItem.battleDamagePercent) || 0)),
+    itemDamageTurns: Math.max(0, Math.floor(Number(normalizedItem.battleDamageDuration) || 0)),
+    itemLuckMultiplier: Math.max(1, Math.min(20, Number(normalizedItem.battleLuckMultiplier) || 1)),
+    itemLuckTurns: Math.max(0, Math.floor(Number(normalizedItem.battleLuckDuration) || 0)),
+    itemCriticalChancePercent: Math.max(0, Math.min(100, Number(normalizedItem.battleCriticalChancePercent) || 0)),
+    itemRepeatAttackChancePercent: Math.max(0, Math.min(100, Number(normalizedItem.battleRepeatAttackChancePercent) || 0)),
+    itemPassiveChanceMultiplier: Math.max(1, Math.min(20, Number(normalizedItem.battlePassiveChanceMultiplier) || 1)),
+    damageReductionPercent: Math.max(0, Math.min(100, Number(normalizedItem.damageReductionPercent) || 0)),
+    damageReductionTurns: Math.max(0, Math.floor(Number(normalizedItem.damageReductionDuration) || 0)),
   };
 
   // Store the item-use result in the same room state that the next turn uses.
