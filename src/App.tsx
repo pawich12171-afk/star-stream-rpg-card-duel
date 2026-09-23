@@ -502,7 +502,7 @@ export default function App() {
         return;
       }
       confetti({ particleCount: 60, spread: 50 });
-      alert(result.message || `โอนเหรียญ ${amount.toLocaleString()} Coins สำเร็จแล้ว!`);
+      alert(result.message || `โอนเหรียญ ${formatCoins(amount)} Coins สำเร็จแล้ว!`);
     } catch (err: any) {
       alert(err.message || 'เกิดข้อผิดพลาดในการโอนเหรียญ');
     }
@@ -516,7 +516,7 @@ export default function App() {
     <div className="star-shell min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
       {/* Top Main Navigation Bar */}
       <header className="star-topbar sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 md:px-8 py-3">
-        <div className="max-w-7xl mx-auto flex w-full min-w-0 items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto flex w-full min-w-0 flex-wrap items-center justify-between gap-2 sm:gap-3">
           {/* Logo and System Title */}
           <div className="flex items-center gap-3">
             <div className="star-brand-mark w-10 h-10 rounded-2xl p-0.5 flex items-center justify-center">
@@ -540,16 +540,16 @@ export default function App() {
           {/* Character Quick Switcher & Admin Switch */}
           <div className="flex items-center gap-3">
             {/* Coin Pill */}
-            <div className="flex max-w-[42vw] min-w-0 items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs font-mono font-bold shadow-sm">
+            <div className="flex min-w-0 max-w-[36vw] shrink items-center gap-1 px-1.5 sm:max-w-[42vw] sm:gap-1.5 sm:px-3 py-1.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs font-mono font-bold shadow-sm">
               <Coins className="w-3.5 h-3.5 text-amber-400" />
-              <span className="truncate">{formatCoins(currentUser.coins)} C</span>
+              <span className="min-w-0 truncate">{formatCoins(currentUser.coins)} C</span>
             </div>
 
             {/* Character Selector Button */}
             <button
               id="btn-character-switcher"
               onClick={() => setIsCharSelectOpen(true)}
-              className="flex min-w-0 max-w-[48vw] items-center gap-2 px-2 sm:px-3 py-1.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all cursor-pointer shadow"
+              className="flex min-w-0 max-w-[42vw] items-center sm:max-w-[48vw]" gap-2 px-2 sm:px-3 py-1.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all cursor-pointer shadow"
             >
               <img
                 src={currentUser.avatarUrl}
