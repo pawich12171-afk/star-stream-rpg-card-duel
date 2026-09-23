@@ -944,10 +944,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <Store className="w-4 h-4" />
           จัดการร้านค้า (เพิ่ม/ลบของ)
         </button>
-        <button type="button" onClick={() => setActiveTab('admin_items')} className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${activeTab === 'admin_items' ? 'bg-fuchsia-500 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'}`}>
-          <Package className="w-4 h-4 text-fuchsia-300" />
-          จัดการไอเทม
-        </button>
+
         <button
           onClick={() => setActiveTab('inventory_spawner')}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
@@ -1683,123 +1680,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       )}
 
       {/* ==================== TAB 3: INVENTORY SPAWNER & MANAGER ==================== */}
-      {activeTab === 'admin_items' && (
-        <div className="space-y-6">
-          <div className="rounded-3xl border border-fuchsia-500/30 bg-slate-900 shadow-xl overflow-hidden">
-            <div className="p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-3">
-                  <div className="p-3 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/30"><Package className="w-6 h-6 text-fuchsia-300" /></div>
-                  <div>
-                    <h3 className="text-lg font-black text-white">จัดการไอเทมทั้งหมด</h3>
-                    <p className="text-xs text-slate-400 mt-1">คลังไอเทมกลางของเว็บ — สร้างครั้งเดียว แล้วกำหนดว่าจะใช้ในร้านค้า / รางวัล / ระบบอื่น</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="px-3 py-1.5 rounded-full bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-500/30">ทั้งหมด {shopItems.length}</span>
-                <span className="px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">ร้านค้า {shopItems.filter(i => i.inShop === true && !i.adminOnly).length}</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                const name = shopItemName.trim();
-                if (!name) { alert('กรุณากรอกชื่อไอเทม'); return; }
-                const existing = editingItemId ? shopItems.find(i => i.id === editingItemId) : undefined;
-                const item: Item = {
-                  ...(existing || {}),
-                  id: editingItemId || `item-${Date.now()}`,
-                  name,
-                  price: Math.max(0, Number(shopItemPrice) || 0),
-                  category: shopItemCategory,
-                  rarity: shopItemRarity,
-                  description: shopItemDesc.trim() || 'ไอเทม Star Stream',
-                  icon: shopItemIcon,
-                  effectType: shopItemEffectType,
-                  effectValue: Math.max(0, Number(shopItemEffectVal) || 0),
-                  hpBonus: (shopItemEffectType === 'heal_hp' || shopItemEffectType === 'boost_max_hp' || shopItemCategory === 'equipment') ? Math.max(0, Number(shopItemHpBonus) || 0) : undefined,
-                  targetStat: shopItemEffectType === 'buff_stat' ? shopItemTargetStat : undefined,
-                  skillEnhanceTarget: shopItemEffectType === 'enhance_skill' ? shopItemSkillTarget : undefined,
-                  usableByPlayers: true,
-                  equipped: existing?.equipped || false,
-                  adminOnly: !shopItemInShop,
-                  inShop: shopItemInShop,
-                  rewardEligible: shopItemRewardEligible,
-                  stackable: shopItemStackable,
-                };
-                try {
-                  if (editingItemId) await onUpdateShopItem(item);
-                  else await onAddShopItem(item);
-                  setEditingItemId(null);
-                  setShopItemName(''); setShopItemDesc(''); setShopItemPrice(0);
-                  setShopItemInShop(false); setShopItemRewardEligible(true); setShopItemStackable(true);
-                  alert(editingItemId ? 'บันทึกการแก้ไขไอเทมแล้ว' : 'สร้างไอเทมกลางแล้ว');
-                } catch (err) {
-                  console.error(err);
-                  alert('บันทึกไอเทมไม่สำเร็จ');
-                }
-              }} className="lg:col-span-1 bg-slate-950/60 border border-slate-800 rounded-3xl p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-black text-white">{editingItemId ? 'แก้ไขไอเทม' : 'สร้างไอเทมใหม่'}</h4>
-                  {editingItemId && <button type="button" onClick={() => { setEditingItemId(null); setShopItemName(''); setShopItemDesc(''); }} className="text-xs text-slate-400 hover:text-white">ยกเลิก</button>}
-                </div>
-                <input className={inputClass} placeholder="ชื่อไอเทม" value={shopItemName} onChange={e=>setShopItemName(e.target.value)} />
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="text-[11px] text-slate-400">ราคา<input className={inputClass+' mt-1'} type="number" min="0" value={shopItemPrice} onChange={e=>setShopItemPrice(Number(e.target.value))}/></label>
-                  <label className="text-[11px] text-slate-400">จำนวนผล<input className={inputClass+' mt-1'} type="number" min="0" value={shopItemEffectVal} onChange={e=>setShopItemEffectVal(Number(e.target.value))}/></label>
-                </div>
-                <label className="text-[11px] text-slate-400 block">ประเภท<select className={inputClass+' mt-1'} value={shopItemCategory} onChange={e=>setShopItemCategory(e.target.value as any)}><option value="consumable">ของใช้</option><option value="equipment">อุปกรณ์</option></select></label>
-                <label className="text-[11px] text-slate-400 block">ความหายาก<select className={inputClass+' mt-1'} value={shopItemRarity} onChange={e=>setShopItemRarity(e.target.value as GachaRarity)}><option value="common">Common</option><option value="rare">Rare</option><option value="epic">Epic</option><option value="legendary">Legendary</option><option value="mythic">Mythic</option></select></label>
-                <label className="text-[11px] text-slate-400 block">ผลของไอเทม<select className={inputClass+' mt-1'} value={shopItemEffectType} onChange={e=>setShopItemEffectType(e.target.value as any)}><option value="heal_hp">ฟื้น HP</option><option value="boost_max_hp">เพิ่ม Max HP</option><option value="buff_stat">เพิ่มสเตตัส</option><option value="enhance_skill">เสริมสกิล</option><option value="custom">กำหนดเอง</option></select></label>
-                {shopItemEffectType === 'buff_stat' && <label className="text-[11px] text-slate-400 block">สเตตัส<select className={inputClass+' mt-1'} value={shopItemTargetStat} onChange={e=>setShopItemTargetStat(e.target.value as any)}><option value="strength">STR</option><option value="durability">DUR</option><option value="agility">AGI</option><option value="magic">MAG</option></select></label>}
-                <label className="text-[11px] text-slate-400 block">ไอคอน<select className={inputClass+' mt-1'} value={shopItemIcon} onChange={e=>setShopItemIcon(e.target.value)}>{AVAILABLE_SHOP_ICONS.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
-                <textarea className={inputClass+' min-h-20'} placeholder="คำอธิบายไอเทม" value={shopItemDesc} onChange={e=>setShopItemDesc(e.target.value)} />
-                <div className="space-y-2">
-                  <label className="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs text-white"><span>นำไปแสดงในร้านค้า</span><input type="checkbox" checked={shopItemInShop} onChange={e=>setShopItemInShop(e.target.checked)} /></label>
-                  <label className="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs text-white"><span>อนุญาตให้ใช้เป็นรางวัล</span><input type="checkbox" checked={shopItemRewardEligible} onChange={e=>setShopItemRewardEligible(e.target.checked)} /></label>
-                  <label className="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs text-white"><span>รวมจำนวนเป็น Stack</span><input type="checkbox" checked={shopItemStackable} onChange={e=>setShopItemStackable(e.target.checked)} /></label>
-                </div>
-                <button type="submit" className="w-full py-3 rounded-xl bg-fuchsia-500 hover:bg-fuchsia-400 text-slate-950 font-black">{editingItemId ? 'บันทึกการแก้ไข' : '＋ สร้างไอเทม'}</button>
-              </form>
-
-              <div className="lg:col-span-2 bg-slate-950/60 border border-slate-800 rounded-3xl p-5">
-                <div className="flex flex-col sm:flex-row gap-3 justify-between mb-4">
-                  <div><h4 className="text-sm font-black text-white">คลังไอเทมกลาง</h4><p className="text-[11px] text-slate-500">ไอเทมที่สร้างที่นี่จะยังไม่เข้าร้านค้าจนกว่าจะเปิดใช้งาน</p></div>
-                  <input className={inputClass+' sm:max-w-xs'} placeholder="ค้นหาไอเทม..." value={shopSearch} onChange={e=>setShopSearch(e.target.value)} />
-                </div>
-                <div className="space-y-2 max-h-[620px] overflow-y-auto pr-1">
-                  {shopItems.filter(i => !shopSearch.trim() || i.name.toLowerCase().includes(shopSearch.toLowerCase())).map(item => (
-                    <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          {renderAdminItemIcon(item.icon, item.category, item.effectType)}
-                          <div className="min-w-0">
-                            <div className="font-black text-white truncate">{item.name}</div>
-                            <div className="text-[10px] text-slate-500 mt-1">ID: {item.id}</div>
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] border ${item.inShop && !item.adminOnly ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>{item.inShop && !item.adminOnly ? 'SHOP' : 'ไม่ลง SHOP'}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] border ${item.rewardEligible !== false ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>{item.rewardEligible !== false ? 'ใช้เป็นรางวัล' : 'ไม่ใช้เป็นรางวัล'}</span>
-                              <span className="px-2 py-0.5 rounded-full text-[9px] bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-500/30">{item.stackable === false ? 'ไม่ Stack' : 'Stack'}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 shrink-0">
-                          <button type="button" onClick={() => { setEditingItemId(item.id); setShopItemName(item.name); setShopItemPrice(item.price || 0); setShopItemCategory(item.category); setShopItemRarity(item.rarity as GachaRarity); setShopItemEffectType(item.effectType || 'custom'); setShopItemEffectVal(item.effectValue || 0); setShopItemHpBonus(item.hpBonus || 0); setShopItemTargetStat(item.targetStat || 'strength'); setShopItemSkillTarget(item.skillEnhanceTarget || ''); setShopItemIcon(item.icon || 'Package'); setShopItemDesc(item.description || ''); setShopItemInShop(item.inShop === true && !item.adminOnly); setShopItemRewardEligible(item.rewardEligible !== false); setShopItemStackable(item.stackable !== false); }} className="px-3 py-1.5 rounded-lg bg-cyan-950/50 text-cyan-300 text-xs font-black">แก้ไข</button>
-                          <button type="button" onClick={() => { if (confirm(`ลบ "${item.name}" ออกจากคลังไอเทมหรือไม่?`)) onDeleteShopItem(item.id); }} className="px-3 py-1.5 rounded-lg bg-rose-950/50 text-rose-300 text-xs font-black">ลบ</button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {shopItems.length === 0 && <div className="py-16 text-center text-slate-500 text-sm">ยังไม่มีไอเทมในคลังกลาง</div>}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {activeTab === 'inventory_spawner' && (
         <div className="space-y-6">
           {/* Target Player Bar */}
