@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Item, GachaRarity } from '../types';
+import { Item, GachaRarity, ItemPassiveEffect } from '../types';
 import { Package, Search, Store, Gift, Layers, Edit3, Trash2, Save, X, UploadCloud } from 'lucide-react';
 
 interface ItemManagementPanelProps {
@@ -53,8 +53,6 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const [damageReductionDuration, setDamageReductionDuration] = useState(0);
   const [dodgeChancePercent, setDodgeChancePercent] = useState(0);
   const [lifestealPercent, setLifestealPercent] = useState(0);
-  const [manaRestorePercent, setManaRestorePercent] = useState(0);
-  const [manaRestoreFlat, setManaRestoreFlat] = useState(0);
   const [cooldownReductionPercent, setCooldownReductionPercent] = useState(0);
   const [stunDuration, setStunDuration] = useState(0);
   const [statusImmunityDuration, setStatusImmunityDuration] = useState(0);
@@ -74,7 +72,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     setEffectValue(10); setIcon('HeartPulse'); setIconPreview(null); setTargetStat('strength');
     setItemClass('normal'); setLimitedStock(0); setHealPercent(0); setHpBonus(0); setSkillTarget(''); setSkillDesc('');
     setBattleDamagePercent(0); setBattleDamageDuration(0); setBattleCriticalChancePercent(0); setBattleRepeatAttackChancePercent(0); setBattleLuckMultiplier(0); setBattleLuckDuration(0); setGachaRateMultiplier(0); setBattlePassiveChanceMultiplier(0);
-    setRevivePercent(0); setReviveAlly(false); setCleanseNegative(false); setShieldPercent(0); setShieldDuration(0); setDamageReductionPercent(0); setDamageReductionDuration(0); setDodgeChancePercent(0); setLifestealPercent(0); setManaRestorePercent(0); setManaRestoreFlat(0); setCooldownReductionPercent(0); setStunDuration(0); setStatusImmunityDuration(0); setPassiveEffects([]);
+    setRevivePercent(0); setReviveAlly(false); setCleanseNegative(false); setShieldPercent(0); setShieldDuration(0); setDamageReductionPercent(0); setDamageReductionDuration(0); setDodgeChancePercent(0); setLifestealPercent(0); setCooldownReductionPercent(0); setStunDuration(0); setStatusImmunityDuration(0); setPassiveEffects([]);
     setInShop(false); setRewardEligible(true); setStackable(true);
   };
 
@@ -88,7 +86,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     setItemClass(item.itemClass || 'normal'); setLimitedStock(item.limitedStock || 0); setHealPercent(item.healPercent || 0); setHpBonus(item.hpBonus || 0);
     setSkillTarget(item.skillEnhanceTarget || ''); setSkillDesc(item.skillEnhanceDesc || ''); setBattleDamagePercent(item.battleDamagePercent || 0); setBattleDamageDuration(item.battleDamageDuration || 0);
     setBattleCriticalChancePercent(item.battleCriticalChancePercent || 0); setBattleRepeatAttackChancePercent(item.battleRepeatAttackChancePercent || 0); setBattleLuckMultiplier(item.battleLuckMultiplier || 0); setBattleLuckDuration(item.battleLuckDuration || 0); setGachaRateMultiplier(item.gachaRateMultiplier || 0); setGachaRateMinRarity(item.gachaRateMinRarity || 'rare'); setBattlePassiveChanceMultiplier(item.battlePassiveChanceMultiplier || 0);
-    setRevivePercent(item.revivePercent || 0); setReviveAlly(item.reviveAlly === true); setCleanseNegative(item.cleanseNegative === true); setShieldPercent(item.shieldPercent || 0); setShieldDuration(item.shieldDuration || 0); setDamageReductionPercent(item.damageReductionPercent || 0); setDamageReductionDuration(item.damageReductionDuration || 0); setDodgeChancePercent(item.dodgeChancePercent || 0); setLifestealPercent(item.lifestealPercent || 0); setManaRestorePercent(item.manaRestorePercent || 0); setManaRestoreFlat(item.manaRestoreFlat || 0); setCooldownReductionPercent(item.cooldownReductionPercent || 0); setStunDuration(item.stunDuration || 0); setStatusImmunityDuration(item.statusImmunityDuration || 0); setPassiveEffects(item.passiveEffects || []);
+    setRevivePercent(item.revivePercent || 0); setReviveAlly(item.reviveAlly === true); setCleanseNegative(item.cleanseNegative === true); setShieldPercent(item.shieldPercent || 0); setShieldDuration(item.shieldDuration || 0); setDamageReductionPercent(item.damageReductionPercent || 0); setDamageReductionDuration(item.damageReductionDuration || 0); setDodgeChancePercent(item.dodgeChancePercent || 0); setLifestealPercent(item.lifestealPercent || 0); setCooldownReductionPercent(item.cooldownReductionPercent || 0); setStunDuration(item.stunDuration || 0); setStatusImmunityDuration(item.statusImmunityDuration || 0); setPassiveEffects(item.passiveEffects || []);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -116,7 +114,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
       battleLuckMultiplier: battleLuckMultiplier || undefined, battleLuckDuration: battleLuckDuration || undefined, battlePassiveChanceMultiplier: battlePassiveChanceMultiplier || undefined,
       revivePercent: revivePercent || undefined, reviveAlly: reviveAlly || undefined, cleanseNegative: cleanseNegative || undefined, shieldPercent: shieldPercent || undefined, shieldDuration: shieldDuration || undefined,
       damageReductionPercent: damageReductionPercent || undefined, damageReductionDuration: damageReductionDuration || undefined, dodgeChancePercent: dodgeChancePercent || undefined, lifestealPercent: lifestealPercent || undefined,
-      manaRestorePercent: manaRestorePercent || undefined, manaRestoreFlat: manaRestoreFlat || undefined, cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: stunDuration || undefined, statusImmunityDuration: statusImmunityDuration || undefined,
+cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: stunDuration || undefined, statusImmunityDuration: statusImmunityDuration || undefined,
       passiveEffects: passiveEffects.length ? passiveEffects : undefined,
       gachaRateMultiplier: gachaRateMultiplier || undefined, gachaRateMinRarity: gachaRateMultiplier > 0 ? gachaRateMinRarity : undefined,
       usableByPlayers: true, adminOnly: !inShop, inShop, rewardEligible, stackable,
@@ -189,8 +187,8 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
                 <input className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" type="number" min="0" max="100" placeholder="ลดความเสียหาย %" value={damageReductionPercent} onChange={e=>setDamageReductionPercent(Number(e.target.value))}/>
                 <input className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" type="number" min="0" max="100" placeholder="หลบหลีก %" value={dodgeChancePercent} onChange={e=>setDodgeChancePercent(Number(e.target.value))}/>
                 <input className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" type="number" min="0" max="100" placeholder="ดูดเลือด %" value={lifestealPercent} onChange={e=>setLifestealPercent(Number(e.target.value))}/>
-                <input className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" type="number" min="0" max="100" placeholder="ฟื้น MP %" value={manaRestorePercent} onChange={e=>setManaRestorePercent(Number(e.target.value))}/>
-                <input className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" type="number" min="0" placeholder="ฟื้น MP หน่วย" value={manaRestoreFlat} onChange={e=>setManaRestoreFlat(Number(e.target.value))}/>
+                
+                
                 <input className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" type="number" min="0" max="100" placeholder="ลด Cooldown %" value={cooldownReductionPercent} onChange={e=>setCooldownReductionPercent(Number(e.target.value))}/>
                 <input className="rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-white text-xs" type="number" min="0" placeholder="ต้านสถานะ (เทิร์น)" value={statusImmunityDuration} onChange={e=>setStatusImmunityDuration(Number(e.target.value))}/>
                 <label className="col-span-2 flex items-center gap-2 rounded-xl bg-slate-950 border border-slate-700 p-2.5 text-xs text-white"><input type="checkbox" checked={cleanseNegative} onChange={e=>setCleanseNegative(e.target.checked)}/> ล้างสถานะผิดปกติเมื่อใช้</label>
