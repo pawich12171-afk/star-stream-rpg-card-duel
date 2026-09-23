@@ -462,7 +462,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       await onAddShopItem({ ...item, price });
       setEditingPriceId(null);
       setEditingPrice('');
-      alert(`แก้ราคา "${item.name}" เป็น ${price.toLocaleString()} Coins แล้ว`);
+      alert(`แก้ราคา "${item.name}" เป็น ${formatCoins(price)} Coins แล้ว`);
     } catch (error) {
       console.error('Failed to update shop item price:', error);
       alert('แก้ราคาไม่สำเร็จ กรุณาลองใหม่');
@@ -1032,7 +1032,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1 text-amber-400 font-black text-sm">
                           <Coins className="w-4 h-4" />
-                          <span>{item.price.toLocaleString()}</span>
+                          <span>{formatCoins(item.price)}</span>
                           <span className="text-[10px] text-slate-400 font-normal">Coins</span>
                         </div>
                         {isAdmin && item.category === 'consumable' && (
