@@ -3155,6 +3155,28 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
   }
   const remainingOpponent = opponentTeam.filter(item => item.hp > 0);
   if (remainingOpponent.length === 0) {
+    // Random PVE is a three-stage gauntlet. Defeating an enemy does NOT
+    // complete the room until all three prepared enemies are defeated.
+    // The reward settlement watcher only sees a completed room, so this also
+    // guarantees that losing at any stage yields no reward.
+    if (nextRoom.mode === "random" && actor.team === "a" && (nextRoom.randomBattleQueue || []).length > 0) {
+      const queue = [...(nextRoom.randomBattleQueue || [])];
+      const nextEnemy = queue.shift()!;
+      const stage = Math.max(1, Number(nextRoom.randomBattleStage) || 1) + 1;
+      nextRoom.randomBattleQueue = queue;
+      nextRoom.randomBattleStage = stage;
+      nextRoom.teamB = [nextEnemy];
+      nextRoom.status = "active";
+      nextRoom.winnerTeam = undefined;
+      nextRoom.turnActorId = current.id;
+      nextRoom.log.unshift({
+        id: "battle-log-" + Date.now(),
+        timestamp: Date.now(),
+        actorName: "SYSTEM",
+        message: "🎲 ชนะศัตรูตัวที่ " + (stage - 1) + "/3 แล้ว — เตรียมพบ " + nextEnemy.name + " ตัวที่ " + stage + "/3!",
+      });
+      return { room: nextRoom, result };
+    }
     nextRoom.status = "completed";
     nextRoom.winnerTeam = actor.team;
     nextRoom.turnActorId = current.id;
