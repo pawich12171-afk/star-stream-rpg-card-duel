@@ -18,6 +18,7 @@ interface GachaSystemProps {
   gachaConfig: GachaConfig;
   gachaBanners: GachaBanner[];
   onUpdateCharacter: (updated: CharacterProfile) => void;
+  shopItems?: Item[];
 }
 
 export const GachaSystem: React.FC<GachaSystemProps> = ({
@@ -26,6 +27,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   gachaConfig,
   gachaBanners,
   onUpdateCharacter,
+  shopItems = [],
 }) => {
   const [isPulling, setIsPulling] = useState(false);
   const [isActivatingGachaBoost, setIsActivatingGachaBoost] = useState(false);
@@ -244,9 +246,12 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
 
         if (reward.type === 'coin' && reward.coinAmount) {
           totalCoinReward += reward.coinAmount;
-        } else if (reward.type === 'item' && reward.itemData) {
+        } else if (reward.type === 'item' && (reward.itemData || reward.itemId)) {
+          const centralItem = reward.itemId ? shopItems.find(item => item.id === reward.itemId) : undefined;
+          const resolvedItem = centralItem || reward.itemData;
+          if (!resolvedItem) continue;
           newItemsToAdd.push({
-            ...reward.itemData,
+            ...resolvedItem,
             quantity: 1,
             instanceId: `inv-gacha-${Date.now()}-${i}`,
             isEquipped: false,
