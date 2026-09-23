@@ -1173,7 +1173,9 @@ export async function addShopItem(item: Item): Promise<void> {
   // Keep the Admin UI responsive: commit the optimistic item immediately and
   // persist in the background. Waiting for a Firestore write here could leave
   // the whole Admin form stuck on a loading screen when the network is slow.
-  void enqueuePersistenceWrite(`shop:${id}`, () =>
+  // Persist in the background, but keep the returned Promise tied to the
+  // database write so AdminPanel can report a real save failure.
+  return enqueuePersistenceWrite(`shop:${id}`, () =>
     setDoc(doc(db, SHOP_ITEMS_COLLECTION, id), sanitizeForFirestore(fullItem))
   ).then(() => {
     pendingShopItems.delete(id);
@@ -1185,6 +1187,7 @@ export async function addShopItem(item: Item): Promise<void> {
     saveLocalAll();
     broadcast?.postMessage({ type: 'SHOP_UPDATE' });
     console.error("Error adding shop item to Firestore:", err);
+    throw err;
   });
 }
 
