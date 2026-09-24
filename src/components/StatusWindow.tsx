@@ -210,13 +210,15 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         if (value >= 2) { phase = 0; value = 0; }
         continue;
       }
-      const gain = value <= 0 ? firsts[phase] : Math.min(maxes[phase], value * 2);
-      value = gain;
+      const gain = value <= 0
+        ? firsts[phase]
+        : Math.min(Math.max(0, maxes[phase] - value), value * 2);
       if (phase === 0) hp += gain;
       else if (phase === 1) durability += gain;
       else if (phase === 2) strength += gain;
       else if (phase === 3) agility += gain;
       else if (phase === 4) magic += gain;
+      value += gain;
       if (value >= maxes[phase]) { phase += 1; value = 0; }
     }
     return [
@@ -432,14 +434,21 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         }
         continue;
       }
-      const next = progress.rewardValue <= 0 ? firsts[phase] : Math.min(maxes[phase], progress.rewardValue * 2);
-      if (phase === 0) { progress.hpBonus += next; hpGained += next; }
-      else if (phase === 1) { progress.durability += next; durabilityGained += next; }
-      else if (phase === 2) { progress.strength += next; strengthGained += next; }
-      else if (phase === 3) { progress.agility += next; agilityGained += next; }
-      else if (phase === 4) { progress.magic += next; magicGained += next; }
-      progress.rewardValue = next;
-      if (next >= maxes[phase]) { progress.rewardPhase = phase + 1; progress.rewardValue = 0; }
+      const currentPhaseValue = Math.max(0, Number(progress.rewardValue) || 0);
+      const nextGain = currentPhaseValue <= 0
+        ? firsts[phase]
+        : Math.min(Math.max(0, maxes[phase] - currentPhaseValue), currentPhaseValue * 2);
+      if (phase === 0) { progress.hpBonus += nextGain; hpGained += nextGain; }
+      else if (phase === 1) { progress.durability += nextGain; durabilityGained += nextGain; }
+      else if (phase === 2) { progress.strength += nextGain; strengthGained += nextGain; }
+      else if (phase === 3) { progress.agility += nextGain; agilityGained += nextGain; }
+      else if (phase === 4) { progress.magic += nextGain; magicGained += nextGain; }
+      progress.rewardValue = currentPhaseValue + nextGain;
+      if (progress.rewardValue >= maxes[phase]) {
+        progress.rewardValue = maxes[phase];
+        progress.rewardPhase = phase + 1;
+        progress.rewardValue = 0;
+      }
     }
 
     const newStats = {
