@@ -723,11 +723,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
 
-    if (gachaRewards.length >= MAX_GACHA_REWARDS) {
-      alert(`ตู้กาชาเต็มแล้ว เพิ่มได้สูงสุด ${MAX_GACHA_REWARDS} รายการ`);
-      return;
-    }
-
     let itemData: Item | undefined = undefined;
     if (newRewardType === 'item') {
       const foundItem = shopItems.find(i => i.id === newRewardSelectedShopItemId);
@@ -2268,7 +2263,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <Plus className="w-4 h-4 text-amber-400" />
                 เพิ่มของรางวัลใหม่ในตู้กาชา
-                <span className="ml-auto text-[10px] text-slate-400">{gachaRewards.length}/{MAX_GACHA_REWARDS}</span>
+                <span className="ml-auto text-[10px] text-slate-400">{gachaRewards.length} รายการ</span>
               </h3>
               <form onSubmit={handleCreateReward} className="space-y-3">
                 <div>
