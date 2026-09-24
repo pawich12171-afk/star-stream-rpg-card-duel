@@ -1,5 +1,6 @@
 import React from 'react';
 import { CharacterProfile } from '../types';
+import { formatCoins } from '../utils/formatNumber';
 import { Trophy, Coins, Zap, Star } from 'lucide-react';
 
 interface LeaderboardProps {
@@ -86,7 +87,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
               <div className="flex items-center gap-6 justify-between sm:justify-end border-t sm:border-t-0 border-slate-800 pt-2 sm:pt-0">
                 <div className="flex items-center gap-1.5 text-xs text-amber-400 font-mono">
                   <Coins className="w-3.5 h-3.5" />
-                  <span>{char.coins.toLocaleString()} C</span>
+                  <span>{formatCoins(char.coins)} C</span>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] text-slate-400 block">พลังรบรวม</span>
