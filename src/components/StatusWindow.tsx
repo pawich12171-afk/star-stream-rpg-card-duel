@@ -1045,7 +1045,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                         disabled={!canAfford || isUpgradingSkill}
                         className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${canAfford && !isUpgradingSkill ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
                         <ArrowUpCircle className="w-4 h-4" />
-                        {skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`}
+                        {skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`} • ${formatCoins(skillBatchCost)} C
                       </button>
                     </div>
                     <button type="button"
