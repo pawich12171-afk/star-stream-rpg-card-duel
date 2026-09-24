@@ -2643,20 +2643,26 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
       const label = drop.type === 'coin'
         ? `${Number(drop.amount).toLocaleString()} Coins`
         : `${drop.name || drop.itemData?.name || 'ไอเทม'} ×${Number(drop.amount)}`;
-      return awardedDropKeys.has(key) ? `✅ ได้ ${label}` : `❌ ไม่ได้ ${label} (โอกาสดรอป ${Number(drop.dropChancePercent ?? 100)}%)`;
+      return awardedDropKeys.has(key)
+        ? `✅ ได้ ${label}`
+        : `❌ ไม่ได้ ${label} (โอกาสดรอป ${Number(drop.dropChancePercent ?? 100)}%)`;
     });
+    const dropSummary = configuredDrops.length === 0
+      ? '❌ ของ Drop ไม่ออก — มอน/บอสตัวนี้ไม่มีรายการ Drop ที่ตั้งค่าไว้'
+      : awardedDrops.length === 0
+        ? '❌ ของ Drop ไม่ออก'
+        : dropMessages.join(' · ');
     updated.notifications.unshift({
       id: `notif-battle-reward-${room.id}-${playerId}`,
       title: 'ผลของดรอปจากการต่อสู้',
       message: [
         reward > 0 ? `💰 ได้ ${reward.toLocaleString()} Coins` : '',
-        ...dropMessages,
-      ].filter(Boolean).join(' · ') || 'ไม่มีของดรอปจากการต่อสู้',
+        dropSummary,
+      ].filter(Boolean).join(' · '),
       timestamp: Date.now(),
       read: false,
       type: 'game',
     });
-
     await updateCharacterData(updated);
   }
 
