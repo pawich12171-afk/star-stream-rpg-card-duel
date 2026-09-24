@@ -2572,12 +2572,12 @@ export async function createBattleRoomWithEntryFee(room: BattleRoom, playerId: s
   return id;
 }
 
-export async function settleBattleVictoryReward(room: BattleRoom, playerId: string): Promise<number> {
-  if ((room.mode !== "pve" && room.mode !== "random") || room.status !== "completed" || room.winnerTeam !== "a") return 0;
+export async function settleBattleVictoryReward(room: BattleRoom, playerId: string): Promise<{ paid: number; awardedDrops: BattleBotDrop[] }> {
+  if ((room.mode !== "pve" && room.mode !== "random") || room.status !== "completed" || room.winnerTeam !== "a") return { paid: 0, awardedDrops: [] };
   const randomReward = room.mode === 'random' ? room.randomReward : undefined;
   const reward = Math.max(0, Math.floor(Number(room.victoryRewardCoins) || 0));
-  if (room.mode === 'random' && !randomReward) return 0;
-  if (room.mode !== 'random' && reward <= 0 && !(room.battleDrops || []).length) return 0;
+  if (room.mode === 'random' && !randomReward) return { paid: 0, awardedDrops: [] };
+  if (room.mode !== 'random' && reward <= 0 && !(room.battleDrops || []).length) return { paid: 0, awardedDrops: [] };
 
   const response = await fetch('/api/database?action=claim_battle_reward', {
     method: 'POST',
@@ -2592,7 +2592,7 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body?.error || 'ไม่สามารถรับรางวัลการต่อสู้ได้');
-  if (!body?.paid) return 0;
+  if (!body?.paid) return { paid: 0, awardedDrops: [] };
   const awardedDrops = Array.isArray(body?.awardedDrops) ? body.awardedDrops : (Array.isArray(room.battleDrops) ? room.battleDrops : []);
 
   // The battle UI currently uses Firestore as the character source of truth.
@@ -2672,7 +2672,7 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
   saveBattleLocal();
   notifyBattleRooms();
 
-  return reward;
+  return { paid: reward, awardedDrops };
 }
 
 export async function updateBattleRoom(room: BattleRoom): Promise<void> {
