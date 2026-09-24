@@ -383,7 +383,7 @@ async function claimBattleRewardDirect(body) {
     throw error;
   }
 
-  return true;
+  return { paid: true, awardedDrops: drops };
 }
 
 export default async function handler(req, res) {
@@ -398,8 +398,8 @@ export default async function handler(req, res) {
       return json(res, 200, { ok: true });
     }
     if (req.method === 'POST' && url.searchParams.get('action') === 'claim_battle_reward') {
-      const paid = await claimBattleRewardDirect(req.body || {});
-      return json(res, 200, { ok: true, paid });
+      const result = await claimBattleRewardDirect(req.body || {});
+      return json(res, 200, { ok: true, ...(typeof result === 'object' ? result : { paid: result }) });
     }
     const collection = url.searchParams.get('collection') || '';
     const id = url.searchParams.get('id') || '';
