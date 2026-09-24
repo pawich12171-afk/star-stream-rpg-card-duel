@@ -1,6 +1,21 @@
 export type CoinDisplayMode = 'compact' | 'full';
 
 const COMPACT_UNITS = [
+  { value: 1e108, suffix: 'Trg' },
+  { value: 1e105, suffix: 'Qag' },
+  { value: 1e102, suffix: 'Qig' },
+  { value: 1e99, suffix: 'Sxg' },
+  { value: 1e96, suffix: 'Spg' },
+  { value: 1e93, suffix: 'Ocg' },
+  { value: 1e90, suffix: 'Nog' },
+  { value: 1e87, suffix: 'Dcg' },
+  { value: 1e84, suffix: 'UnVg' },
+  { value: 1e81, suffix: 'DuVg' },
+  { value: 1e78, suffix: 'TrVg' },
+  { value: 1e75, suffix: 'QaVg' },
+  { value: 1e72, suffix: 'QiVg' },
+  { value: 1e69, suffix: 'SxVg' },
+  { value: 1e66, suffix: 'SpVg' },
   { value: 1e63, suffix: 'Vg' },
   { value: 1e60, suffix: 'Nd' },
   { value: 1e57, suffix: 'Od' },
