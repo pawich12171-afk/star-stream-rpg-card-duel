@@ -177,7 +177,14 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const healthData = calculateCharacterHealth(character);
 
   const getSkillRewardPreview = (skill: Skill, count: number) => {
-    const source = skill.skillUpgradeProgress || { hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0, rewardPhase: 0, rewardValue: 0 };
+    // เก็บความคืบหน้าแยกตามสกิล และรองรับข้อมูลเก่าที่เคยเก็บไว้ระดับตัวละคร
+    // เพื่อไม่ให้สกิลที่อัปไปก่อนเปลี่ยนระบบถูกตัดความคืบหน้าทิ้ง
+    const legacy = character.skillUpgradeProgress;
+    const source = skill.skillUpgradeProgress || (
+      skill.upgradeCount && skill.upgradeCount > 0 && legacy
+        ? legacy
+        : { hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0, rewardPhase: 0, rewardValue: 0 }
+    );
     let phase = Math.max(0, Math.min(5, Math.floor(Number(source.rewardPhase) || 0)));
     let value = Math.max(0, Number(source.rewardValue) || 0);
     let hp = 0, durability = 0, strength = 0, agility = 0, magic = 0, slots = 0;
@@ -205,7 +212,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       agility ? `ความเร็ว +${agility.toFixed(2)}` : '',
       magic ? `เวท +${magic.toFixed(2)}` : '',
       slots ? `ช่องอุปกรณ์ +${slots}` : '',
-    ].filter(Boolean).join(' • ') || '🔁 วนรอบใหม่ — เพิ่ม HP ต่อจากค่าปัจจุบัน';
+    ].filter(Boolean).join(' • ') || 'ถัดไป: HP +1';
   };
 
   const equippedItems = character.inventory?.filter(i => i.isEquipped || (Number(i.equippedQuantity) || 0) > 0) || [];
@@ -1107,18 +1114,22 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                       </span>
                       <span className="font-bold font-mono text-emerald-400 text-right">
                         {(() => {
-                          const p = skill.skillUpgradeProgress;
-                          const hp = Math.max(0, Math.min(20000, Number(p?.hpBonus) || 0));
-                          const durability = Math.max(0, Math.min(100, Number(p?.durability) || 0));
-                          const strength = Math.max(0, Math.min(100, Number(p?.strength) || 0));
-                          const agility = Math.max(0, Math.min(100, Number(p?.agility) || 0));
-                          const magic = Math.max(0, Math.min(100, Number(p?.magic) || 0));
-                          if (hp < 20000) return `❤️ HP ${hp.toLocaleString()}/20,000`;
-                          if (durability < 100) return `🛡️ ทนทาน ${durability.toFixed(2)}/100`;
-                          if (strength < 100) return `💪 STR ${strength.toFixed(2)}/100`;
-                          if (agility < 100) return `⚡ ความเร็ว ${agility.toFixed(2)}/100`;
-                          if (magic < 100) return `✨ เวท ${magic.toFixed(2)}/100`;
-                          return `🎒 ช่อง +${Math.max(0, Math.min(2, Math.floor(Number(p?.equipmentSlots) || 0)))}/2`;
+                          const p = skill.skillUpgradeProgress || (
+                            skill.upgradeCount && skill.upgradeCount > 0 ? character.skillUpgradeProgress : undefined
+                          );
+                          const hp = Math.max(0, Number(p?.hpBonus) || 0);
+                          const durability = Math.max(0, Number(p?.durability) || 0);
+                          const strength = Math.max(0, Number(p?.strength) || 0);
+                          const agility = Math.max(0, Number(p?.agility) || 0);
+                          const magic = Math.max(0, Number(p?.magic) || 0);
+                          const slots = Math.max(0, Number(p?.equipmentSlots) || 0);
+                          if (hp > 0) return `❤️ HP +${hp.toLocaleString()}`;
+                          if (durability > 0) return `🛡️ ทนทาน +${durability.toFixed(2)}`;
+                          if (strength > 0) return `💪 STR +${strength.toFixed(2)}`;
+                          if (agility > 0) return `⚡ ความเร็ว +${agility.toFixed(2)}`;
+                          if (magic > 0) return `✨ เวท +${magic.toFixed(2)}`;
+                          if (slots > 0) return `🎒 ช่อง +${Math.floor(slots)}`;
+                          return 'ยังไม่มีโบนัสสะสม';
                         })()}
                       </span>
                     </div>
@@ -1140,8 +1151,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                       </span>
                     </div>
                     <div className="text-[11px] font-mono text-right shrink-0">
-                      <span className="text-emerald-300 font-semibold">
-                        รางวัลครั้งนี้: {getSkillRewardPreview(skill, 1)}
+                      <span className="text-emerald-300 font-semibold text-[10px]">
+                        ถัดไป: {getSkillRewardPreview(skill, 1)}
                       </span>
                     </div>
                   </div>
@@ -1178,8 +1189,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                         />
                         <span className="text-[10px] text-slate-500 whitespace-nowrap">ขั้น (1–1,000)</span>
                       </div>
-                      <div className="mt-2 rounded-xl border border-emerald-500/20 bg-emerald-950/20 px-2.5 py-2 text-[10px] font-mono text-emerald-200">
-                        <span className="text-slate-500">อัป {skillBatchCount} ขั้นนี้จะเพิ่ม: </span>{getSkillRewardPreview(skillBatchCount)}
+                      <div className="mt-2 rounded-xl border border-emerald-500/20 bg-emerald-950/20 px-2 py-1.5 text-[10px] font-mono text-emerald-200 leading-tight">
+                        <span className="text-slate-500">+{skillBatchCount} ขั้น: </span>{getSkillRewardPreview(skill, skillBatchCount)}
                       </div>
                       <div className="flex min-w-0 gap-2">
                         <div className="min-w-0 flex-1 rounded-xl border border-amber-500/20 bg-slate-950/70 px-2.5 py-1.5 text-[10px] font-mono overflow-hidden">
