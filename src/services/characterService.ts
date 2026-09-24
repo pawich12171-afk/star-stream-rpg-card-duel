@@ -2622,11 +2622,10 @@ function applyItemPassiveEffects(
     const passiveRoll = Math.random() * 100;
     const chanceLabel = Number.isInteger(chance) ? String(chance) : String(Number(chance.toFixed(2)));
     if (passiveRoll >= chance) {
-      if (chance < 100) result.message += ` • ❌ PASSIVE ไม่ทำงาน: ${passive.name} — โอกาส ${chanceLabel}%`;
+      if (chance < 100) result.message += ` • ❌ ${passive.name} ไม่ทำงาน (${chanceLabel}%)`;
       continue;
     }
     const value = Math.max(0, Number(passive.value) || 0);
-    result.message += ` • 🌸 PASSIVE ทำงาน: ${passive.name} — ${passive.description || passive.kind} — โอกาส ${chanceLabel}%`;
     const maxStacks = Math.max(1, Math.min(999, Math.round(Number(passive.maxStacks) || 999)));
     const stackKey = passive.stackKey || passive.id;
     let stacks = Math.max(0, Number(attacker.passiveStacks?.[stackKey]) || 0);
@@ -2654,7 +2653,7 @@ function applyItemPassiveEffects(
           if (thresholdDamage <= 0) continue;
 
           result.trueDamage = (result.trueDamage || 0) + thresholdDamage;
-          result.message += ` • 💠 ${threshold.name}: ครบ ${maxStacks} Stack → True Damage +${thresholdDamage}`;
+          result.message += ` • 💠 True Damage +${thresholdDamage} — ${threshold.name} (ครบ ${maxStacks} Stack)`;
           attacker.passiveStacks = { ...(attacker.passiveStacks || {}), [stackKey]: 0 };
         }
       }
@@ -2669,7 +2668,7 @@ function applyItemPassiveEffects(
         const trueDamage = Math.max(0, Math.round(value));
         if (trueDamage > 0) {
           result.trueDamage = (result.trueDamage || 0) + trueDamage;
-          result.message += ` • 💠 ${passive.name}: ครบ ${maxStacks} Stack → True Damage +${trueDamage}`;
+          result.message += ` • 💠 True Damage +${trueDamage} — ${passive.name} (ครบ ${maxStacks} Stack)`;
           attacker.passiveStacks = { ...(attacker.passiveStacks || {}), [stackKey]: 0 };
         }
       }
@@ -3360,7 +3359,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
             result.message += ` • 🔁 ตีซ้ำรอบที่ ${repeatsDone + 1} (${repeatChance}%) +${repeat.damage} ดาเมจ`;
           }
           if (repeatsDone === 0) {
-            result.message += ` • ❌ Passive ${skillName} ล้มเหลว: โอกาส ${repeatChance}% ไม่ออก`;
+            result.message += ` • ❌ ตีซ้ำไม่ทำงาน (${Number(repeatChance.toFixed(1))}%)`;
           }
         }
         const configuredCooldown = getSkillStat(skill, 'cooldown_turns') || skillProfile.cooldownTurns;
@@ -3414,7 +3413,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
           result.message += ` • 🔁 ไอเทมติดตัวตีซ้ำรอบที่ ${repeatsDone + 1} (${repeatChance}%) +${repeat.damage} ดาเมจ`;
         }
         if (repeatsDone === 0) {
-          result.message += ` • ❌ Passive ตีซ้ำ ล้มเหลว: โอกาส ${repeatChance}% ไม่ออก`;
+          result.message += ` • ❌ ตีซ้ำไม่ทำงาน (${Number(repeatChance.toFixed(1))}%)`;
         }
       }
     }
