@@ -592,7 +592,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
 
             if (!botNow || botNow.type !== 'bot') break;
 
-            const botResolved = resolveBattleTurn(botRoom, config);
+            const botResolved = resolveBattleTurn(botRoom, config, chooseBotSkill(botNow));
 
             if (!botResolved.result &&
                 botResolved.room.turnActorId === botRoom.turnActorId &&
@@ -644,12 +644,14 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       cooldownTurns: Math.max(0, Math.floor(Number(botSkillCooldown) || 0)),
       aiChancePercent: Math.max(0, Math.min(100, Number(botSkillChance) || 0)),
       damageScaling: 'fixed',
-      battleEffect: 'damage',
+      battleEffect: botSkillEffect,
+      ...(botSkillEffect === 'summon' ? { summonName: botSummonName.trim() || 'ลูกน้อง', summonMaxCount: Math.max(1, Math.min(20, Math.round(Number(botSummonMaxCount) || 1))), summonHp: Math.max(1, Math.round(Number(botSummonHp) || 1)), summonDamage: Math.max(1, Math.round(Number(botSummonDamage) || 1)), summonAgility: Math.max(0, Math.round(Number(botSummonAgility) || 1)), summonSkills: (() => { try { const v = JSON.parse(botSummonSkillsText || '[]'); return Array.isArray(v) ? v as BattleBotSkill[] : []; } catch { return []; } })() } : {}),
     };
     setBotForm(prev => ({ ...prev, skills: [...prev.skills, skill] }));
     setBotSkillName('');
     setBotSkillDescription('');
     setBotSkillDraftId('');
+    setBotSkillEffect('damage'); setBotSummonName('ลูกน้อง'); setBotSummonMaxCount('1'); setBotSummonHp('20'); setBotSummonDamage('5'); setBotSummonAgility('1'); setBotSummonSkillsText('[]');
   };
 
   const removeBotSkill = (skillId: string) => {
@@ -795,7 +797,16 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     <input className={inputClass} value={botSkillDescription} onChange={event => setBotSkillDescription(event.target.value)} placeholder="คำอธิบายสกิล" />
     <input className={inputClass} type="number" min="0" value={botSkillPower} onChange={event => setBotSkillPower(event.target.value)} placeholder="พลัง/ดาเมจ" />
     <input className={inputClass} type="number" min="0" value={botSkillCooldown} onChange={event => setBotSkillCooldown(event.target.value)} placeholder="คูลดาวน์ (เทิร์น)" />
-    <input className={inputClass} type="number" min="0" max="100" value={botSkillChance} onChange={event => setBotSkillChance(event.target.value)} placeholder="โอกาสใช้ %" />
+    <select className={inputClass} value={botSkillEffect} onChange={event => setBotSkillEffect(event.target.value as NonNullable<Skill['battleEffect']>)}><option value="damage">โจมตี / ดาเมจ</option><option value="heal">ฟื้นฟู</option><option value="defense">ป้องกัน</option><option value="stun">สตัน</option><option value="damage_reduction">ลดดาเมจ</option><option value="summon">🧿 เสกลูกน้อง</option></select>
+        <input className={inputClass} type="number" min="0" max="100" value={botSkillChance} onChange={event => setBotSkillChance(event.target.value)} placeholder="โอกาสใช้ %" />
+    {botSkillEffect === 'summon' && <div className="sm:col-span-2 grid grid-cols-1 gap-2 sm:grid-cols-2 rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-2">
+      <input className={inputClass} value={botSummonName} onChange={event=>setBotSummonName(event.target.value)} placeholder="ชื่อลูกน้อง" />
+      <input className={inputClass} type="number" min="1" max="20" value={botSummonMaxCount} onChange={event=>setBotSummonMaxCount(event.target.value)} placeholder="เสกได้สูงสุดกี่ตัว" />
+      <input className={inputClass} type="number" min="1" value={botSummonHp} onChange={event=>setBotSummonHp(event.target.value)} placeholder="HP ลูกน้อง" />
+      <input className={inputClass} type="number" min="1" value={botSummonDamage} onChange={event=>setBotSummonDamage(event.target.value)} placeholder="Damage ลูกน้อง" />
+      <input className={inputClass} type="number" min="0" value={botSummonAgility} onChange={event=>setBotSummonAgility(event.target.value)} placeholder="Speed / AGI ลูกน้อง" />
+      <textarea className="sm:col-span-2 min-h-20 rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-white" value={botSummonSkillsText} onChange={event=>setBotSummonSkillsText(event.target.value)} placeholder='JSON สกิลลูกน้อง เช่น [{"id":"m1","name":"โจมตี","level":1,"multiplier":1,"description":"โจมตี","battleEffect":"damage","battlePower":5,"aiChancePercent":100}]' />
+    </div>
     <button type="button" className={buttonClass + " bg-fuchsia-500 text-white"} onClick={addBotSkill}>+ สร้างสกิลเฉพาะ</button>
   </div>
   <div className="mt-2 space-y-1">
