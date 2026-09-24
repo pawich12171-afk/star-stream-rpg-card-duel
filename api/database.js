@@ -243,7 +243,11 @@ async function claimBattleRewardDirect(body) {
   // battle client as a compatibility fallback.
   const persistedDrops = Array.isArray(roomData.battleDrops) ? roomData.battleDrops : [];
   const requestDrops = Array.isArray(body.drops) ? body.drops : [];
-  const drops = persistedDrops.length > 0 ? persistedDrops : requestDrops;
+  const drops = (persistedDrops.length > 0 ? persistedDrops : requestDrops).filter(rawDrop => {
+    if (!rawDrop || typeof rawDrop !== 'object') return false;
+    const chance = rawDrop.dropChancePercent == null ? 100 : Math.max(0, Math.min(100, Number(rawDrop.dropChancePercent) || 0));
+    return Math.random() * 100 < chance;
+  });
 
   const winningPlayers = Array.isArray(roomData.teamA)
     ? roomData.teamA.filter(unit => unit?.type === 'player' && String(unit?.sourceId || ''))
