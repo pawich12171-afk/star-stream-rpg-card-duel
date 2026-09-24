@@ -177,55 +177,35 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const healthData = calculateCharacterHealth(character);
 
   const getSkillRewardPreview = (skill: Skill, count: number) => {
-    const source = skill.skillUpgradeProgress || {
-      hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0,
-      equipmentSlots: 0,
-      totalUpgrades: 0,
-    };
-    const progress = {
-      hpBonus: Math.max(0, Math.min(20000, Number(source.hpBonus) || 0)),
-      durability: Math.max(0, Math.min(100, Number(source.durability) || 0)),
-      strength: Math.max(0, Math.min(100, Number(source.strength) || 0)),
-      agility: Math.max(0, Math.min(100, Number(source.agility) || 0)),
-      magic: Math.max(0, Math.min(100, Number(source.magic) || 0)),
-      equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(source.equipmentSlots) || 0))),
-    };
+    const source = skill.skillUpgradeProgress || { hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0, rewardPhase: 0, rewardValue: 0 };
+    let phase = Math.max(0, Math.min(5, Math.floor(Number(source.rewardPhase) || 0)));
+    let value = Math.max(0, Number(source.rewardValue) || 0);
     let hp = 0, durability = 0, strength = 0, agility = 0, magic = 0, slots = 0;
-    const doubleReward = (current: number, first: number, max: number) =>
-      current <= 0 ? first : Math.min(max, current * 2);
-
+    const maxes = [20000, 100, 100, 100, 100, 2];
+    const firsts = [1, 0.01, 0.01, 0.01, 0.01, 1];
     for (let i = 0; i < count; i += 1) {
-      if (progress.hpBonus < 20000) {
-        const gain = doubleReward(progress.hpBonus, 1, 20000) - progress.hpBonus;
-        progress.hpBonus += gain; hp += gain;
-      } else if (progress.durability < 100) {
-        const next = doubleReward(progress.durability, 0.01, 100);
-        durability += next - progress.durability; progress.durability = next;
-      } else if (progress.strength < 100) {
-        const next = doubleReward(progress.strength, 0.01, 100);
-        strength += next - progress.strength; progress.strength = next;
-      } else if (progress.agility < 100) {
-        const next = doubleReward(progress.agility, 0.01, 100);
-        agility += next - progress.agility; progress.agility = next;
-      } else if (progress.magic < 100) {
-        const next = doubleReward(progress.magic, 0.01, 100);
-        magic += next - progress.magic; progress.magic = next;
-      } else if (progress.equipmentSlots < 2) {
-        progress.equipmentSlots += 1; slots += 1;
-      } else {
-        progress.hpBonus = 0; progress.durability = 0; progress.strength = 0;
-        progress.agility = 0; progress.magic = 0; progress.equipmentSlots = 0;
+      if (phase === 5) {
+        slots += 1; value += 1;
+        if (value >= 2) { phase = 0; value = 0; }
+        continue;
       }
+      const gain = value <= 0 ? firsts[phase] : Math.min(maxes[phase], value * 2);
+      value = gain;
+      if (phase === 0) hp += gain;
+      else if (phase === 1) durability += gain;
+      else if (phase === 2) strength += gain;
+      else if (phase === 3) agility += gain;
+      else if (phase === 4) magic += gain;
+      if (value >= maxes[phase]) { phase += 1; value = 0; }
     }
-    const parts = [
+    return [
       hp ? `HP +${hp.toLocaleString()}` : '',
       durability ? `ทนทาน +${durability.toFixed(2)}` : '',
       strength ? `STR +${strength.toFixed(2)}` : '',
       agility ? `ความเร็ว +${agility.toFixed(2)}` : '',
       magic ? `เวท +${magic.toFixed(2)}` : '',
-      slots ? `ช่องไอเทม +${slots}` : '',
-    ].filter(Boolean);
-    return parts.length ? parts.join(' • ') : '🔁 ครบรอบแล้ว — เริ่มรอบใหม่ที่ HP';
+      slots ? `ช่องอุปกรณ์ +${slots}` : '',
+    ].filter(Boolean).join(' • ') || '🔁 วนรอบใหม่ — เพิ่ม HP ต่อจากค่าปัจจุบัน';
   };
 
   const equippedItems = character.inventory?.filter(i => i.isEquipped || (Number(i.equippedQuantity) || 0) > 0) || [];
@@ -353,70 +333,53 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0,
     };
     const progress = {
-      hpBonus: Math.max(0, Math.min(20000, Number(previousProgress.hpBonus) || 0)),
-      durability: Math.max(0, Math.min(100, Number(previousProgress.durability) || 0)),
-      strength: Math.max(0, Math.min(100, Number(previousProgress.strength) || 0)),
-      agility: Math.max(0, Math.min(100, Number(previousProgress.agility) || 0)),
-      magic: Math.max(0, Math.min(100, Number(previousProgress.magic) || 0)),
-      equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(previousProgress.equipmentSlots) || 0))),
+      hpBonus: Math.max(0, Number(previousProgress.hpBonus) || 0),
+      durability: Math.max(0, Number(previousProgress.durability) || 0),
+      strength: Math.max(0, Number(previousProgress.strength) || 0),
+      agility: Math.max(0, Number(previousProgress.agility) || 0),
+      magic: Math.max(0, Number(previousProgress.magic) || 0),
+      equipmentSlots: Math.max(0, Number(previousProgress.equipmentSlots) || 0),
+      rewardPhase: Math.max(0, Math.min(5, Math.floor(Number(previousProgress.rewardPhase) || 0))),
+      rewardValue: Math.max(0, Number(previousProgress.rewardValue) || 0),
+      totalUpgrades: Math.max(0, Math.floor(Number(previousProgress.totalUpgrades) || 0)),
+      cycleCount: Math.max(0, Math.floor(Number(previousProgress.cycleCount) || 0)),
     };
 
-    // รางวัลจากการอัปสกิลเป็นการทวีคูณ: HP 1→2→4→8..., แล้วแต่ละสเตตัสเริ่ม 0.01→0.02→0.04...
-    let hpGained = 0;
-    let durabilityGained = 0;
-    let strengthGained = 0;
-    let agilityGained = 0;
-    let magicGained = 0;
-    let slotUnlocked = 0;
+    let hpGained = 0, durabilityGained = 0, strengthGained = 0, agilityGained = 0, magicGained = 0, slotUnlocked = 0;
     let completedCycles = 0;
-    const doubleReward = (current: number, first: number, max: number) =>
-      current <= 0 ? first : Math.min(max, current * 2);
+    const maxes = [20000, 100, 100, 100, 100, 2];
+    const firsts = [1, 0.01, 0.01, 0.01, 0.01, 1];
 
     for (let i = 0; i < requestedTimes; i += 1) {
-      if (progress.hpBonus < 20000) {
-        const next = doubleReward(progress.hpBonus, 1, 20000);
-        hpGained += next - progress.hpBonus;
-        progress.hpBonus = next;
-      } else if (progress.durability < 100) {
-        const next = doubleReward(progress.durability, 0.01, 100);
-        durabilityGained += next - progress.durability;
-        progress.durability = next;
-      } else if (progress.strength < 100) {
-        const next = doubleReward(progress.strength, 0.01, 100);
-        strengthGained += next - progress.strength;
-        progress.strength = next;
-      } else if (progress.agility < 100) {
-        const next = doubleReward(progress.agility, 0.01, 100);
-        agilityGained += next - progress.agility;
-        progress.agility = next;
-      } else if (progress.magic < 100) {
-        const next = doubleReward(progress.magic, 0.01, 100);
-        magicGained += next - progress.magic;
-        progress.magic = next;
-      } else if (progress.equipmentSlots < 2) {
+      const phase = progress.rewardPhase;
+      if (phase === 5) {
         progress.equipmentSlots += 1;
         slotUnlocked += 1;
-        if (progress.equipmentSlots >= 2) {
+        progress.rewardValue += 1;
+        if (progress.rewardValue >= 2) {
+          progress.rewardPhase = 0;
+          progress.rewardValue = 0;
           progress.cycleCount += 1;
           completedCycles += 1;
-          // รอบถัดไปจะเริ่มด้วย HP +1 ในการอัปครั้งถัดไป
         }
-      } else {
-        progress.hpBonus = 0;
-        progress.durability = 0;
-        progress.strength = 0;
-        progress.agility = 0;
-        progress.magic = 0;
-        progress.equipmentSlots = 0;
+        continue;
       }
+      const next = progress.rewardValue <= 0 ? firsts[phase] : Math.min(maxes[phase], progress.rewardValue * 2);
+      if (phase === 0) { progress.hpBonus += next; hpGained += next; }
+      else if (phase === 1) { progress.durability += next; durabilityGained += next; }
+      else if (phase === 2) { progress.strength += next; strengthGained += next; }
+      else if (phase === 3) { progress.agility += next; agilityGained += next; }
+      else if (phase === 4) { progress.magic += next; magicGained += next; }
+      progress.rewardValue = next;
+      if (next >= maxes[phase]) { progress.rewardPhase = phase + 1; progress.rewardValue = 0; }
     }
 
     const newStats = {
       ...base.stats,
-      durability: Math.min(100, Number(base.stats.durability || 0) + durabilityGained),
-      strength: Math.min(100, Number(base.stats.strength || 0) + strengthGained),
-      agility: Math.min(100, Number(base.stats.agility || 0) + agilityGained),
-      magic: Math.min(100, Number(base.stats.magic || 0) + magicGained),
+      durability: Number(base.stats.durability || 0) + durabilityGained,
+      strength: Number(base.stats.strength || 0) + strengthGained,
+      agility: Number(base.stats.agility || 0) + agilityGained,
+      magic: Number(base.stats.magic || 0) + magicGained,
     };
 
     progress.totalUpgrades = progress.totalUpgrades + requestedTimes;
