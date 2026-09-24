@@ -2207,6 +2207,8 @@ export async function addCharacterToDB(char: CharacterProfile): Promise<void> {
 
   const created: CharacterProfile = {
     ...char,
+    // New characters always start with 50,000 Coins.
+    coins: 50000,
     skills: [...(char.skills || [])],
     inventory: [...(char.inventory || [])],
     quests: [...(char.quests || [])],
