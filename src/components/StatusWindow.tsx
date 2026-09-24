@@ -280,7 +280,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     const base = latestCharacterRef.current;
     const targetSkill = (base.skills || []).find(s => s.id === skillId);
     if (!targetSkill) return;
-    const requestedTimes = Math.max(1, Math.min(1000, Math.floor(Number(skillBatchCounts[skillId]) || 1)));
+    const requestedTimes = Math.max(1, Math.min(100, Math.floor(Number(skillBatchCounts[skillId]) || 1)));
     const startUpgradeCount = Math.max(0, Math.floor(Number(targetSkill.upgradeCount ?? (targetSkill.level - 1)) || 0));
     let totalCost = 0;
     for (let i = 0; i < requestedTimes; i += 1) totalCost += calculateSkillUpgradeCost({ ...targetSkill, upgradeCount: startUpgradeCount + i });
@@ -299,13 +299,90 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     }
     const oldHpBonus = getSkillHpBonus(targetSkill);
     const newHpBonus = getSkillHpBonus(finalSkill);
+    const previousProgress = base.skillUpgradeProgress || {
+      hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0,
+      equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(base.equipmentSlotUpgrades) || 0))),
+    };
+    const progress = {
+      hpBonus: Math.max(0, Math.min(20000, Number(previousProgress.hpBonus) || 0)),
+      durability: Math.max(0, Math.min(100, Number(previousProgress.durability) || 0)),
+      strength: Math.max(0, Math.min(100, Number(previousProgress.strength) || 0)),
+      agility: Math.max(0, Math.min(100, Number(previousProgress.agility) || 0)),
+      magic: Math.max(0, Math.min(100, Number(previousProgress.magic) || 0)),
+      equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(previousProgress.equipmentSlots ?? base.equipmentSlotUpgrades) || 0))),
+    };
+
+    // ทุกการอัปสกิลให้รางวัลตามลำดับ: HP -> ทนทาน -> STR -> ความเร็ว -> เวท -> ช่อง +2 -> ตัน
+    let hpGained = 0;
+    let durabilityGained = 0;
+    let strengthGained = 0;
+    let agilityGained = 0;
+    let magicGained = 0;
+    let slotUnlocked = 0;
+    for (let i = 0; i < requestedTimes; i += 1) {
+      if (progress.hpBonus < 20000) {
+        progress.hpBonus = Math.min(20000, progress.hpBonus + 1);
+        hpGained += 1;
+      } else if (progress.durability < 100) {
+        progress.durability = Math.min(100, Number((progress.durability + 0.01).toFixed(2)));
+        durabilityGained += 0.01;
+      } else if (progress.strength < 100) {
+        progress.strength = Math.min(100, Number((progress.strength + 0.01).toFixed(2)));
+        strengthGained += 0.01;
+      } else if (progress.agility < 100) {
+        progress.agility = Math.min(100, Number((progress.agility + 0.01).toFixed(2)));
+        agilityGained += 0.01;
+      } else if (progress.magic < 100) {
+        progress.magic = Math.min(100, Number((progress.magic + 0.01).toFixed(2)));
+        magicGained += 0.01;
+      } else if (progress.equipmentSlots < 2) {
+        progress.equipmentSlots = Math.min(2, progress.equipmentSlots + 1);
+        slotUnlocked += 1;
+      } else {
+        break;
+      }
+    }
+
+    const newStats = {
+      ...base.stats,
+      durability: Math.min(100, Number(base.stats.durability || 0) + durabilityGained),
+      strength: Math.min(100, Number(base.stats.strength || 0) + strengthGained),
+      agility: Math.min(100, Number(base.stats.agility || 0) + agilityGained),
+      magic: Math.min(100, Number(base.stats.magic || 0) + magicGained),
+    };
+
+    const progressionApplied = hpGained + durabilityGained + strengthGained + agilityGained + magicGained + slotUnlocked;
+    if (progressionApplied <= 0) {
+      alert('ความคืบหน้ารางวัลจากการอัปสกิลเต็มแล้ว: HP 20,000 → ทนทาน 100 → STR 100 → ความเร็ว 100 → เวท 100 → ช่องสวมใส่ +2');
+      return;
+    }
+
     const now = Date.now();
+    const progressMessage = [
+      hpGained ? `HP +${hpGained}` : '',
+      durabilityGained ? `ทนทาน +${durabilityGained.toFixed(2)}` : '',
+      strengthGained ? `STR +${strengthGained.toFixed(2)}` : '',
+      agilityGained ? `ความเร็ว +${agilityGained.toFixed(2)}` : '',
+      magicGained ? `เวท +${magicGained.toFixed(2)}` : '',
+      slotUnlocked ? `ช่องสวมใส่ +${slotUnlocked}` : '',
+    ].filter(Boolean).join(' • ');
+
     const updatedChar: CharacterProfile = {
       ...base,
       coins: currentCoins - totalCost,
       skills: (base.skills || []).map(skill => skill.id === skillId ? finalSkill : skill),
+      stats: newStats,
+      equipmentSlotUpgrades: progress.equipmentSlots,
+      skillUpgradeProgress: progress,
       lastUpdated: Math.max(now, Number(base.lastUpdated || 0) + 1),
-      notifications: [{ id: `notif-skill-up-${now}-${startUpgradeCount + requestedTimes}`, title: ascensionCount ? 'สกิลจุติสวรรค์ (Ascension)!' : 'อัปเกรดสกิลสำเร็จ', message: `อัปเกรด "${targetSkill.name}" +${requestedTimes} ขั้น → Lv.${finalSkill.level} • ใช้ ${formatCoins(totalCost)} Coins${ascensionCount ? ` • จุติ ${ascensionCount} ครั้ง → x${finalSkill.multiplier}` : ''}${newHpBonus > oldHpBonus ? ` • HP +${newHpBonus - oldHpBonus}` : ''}`, timestamp: now, read: false, type: 'system' }, ...(base.notifications || [])],
+      notifications: [{
+        id: `notif-skill-up-${now}-${startUpgradeCount + requestedTimes}`,
+        title: ascensionCount ? 'สกิลจุติสวรรค์ (Ascension)!' : 'อัปเกรดสกิลสำเร็จ',
+        message: `อัปเกรด "${targetSkill.name}" +${requestedTimes} ขั้น → Lv.${finalSkill.level} • ${progressMessage} • ใช้ ${formatCoins(totalCost)} Coins${ascensionCount ? ` • จุติ ${ascensionCount} ครั้ง → x${finalSkill.multiplier}` : ''}${newHpBonus > oldHpBonus ? ` • โบนัสสกิลเดิม HP +${newHpBonus - oldHpBonus}` : ''}`,
+        timestamp: now,
+        read: false,
+        type: 'system',
+      }, ...(base.notifications || [])],
     };
     setIsUpgradingSkill(true);
     latestCharacterRef.current = updatedChar;
@@ -732,7 +809,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                           value={transcendenceBatchCounts[statKey]}
                           onChange={(e) => setTranscendenceBatchCounts(prev => ({
                             ...prev,
-                            [statKey]: Math.max(1, Math.min(1000, Math.floor(Number(e.target.value) || 1))),
+                            [statKey]: Math.max(1, Math.min(100, Math.floor(Number(e.target.value) || 1))),
                           }))}
                           disabled={isSavingStats}
                           className="mt-1 w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-amber-500/30 text-white font-mono font-bold outline-none focus:border-amber-400"
@@ -778,6 +855,22 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
             พละกำลัง ({character.stats.strength}/100) | ความทนทาน ({character.stats.durability}/100) | ความว่องไว ({character.stats.agility}/100) | พลังเวท ({character.stats.magic}/100)
           </div>
         )}
+      </div>
+
+      <div className="mb-5 rounded-3xl border border-cyan-500/30 bg-cyan-950/20 p-4 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-black text-cyan-200">เส้นทางรางวัลจากการอัปสกิล</h3>
+          <span className="text-[10px] font-mono text-slate-400">เลือกอัปได้สูงสุด 100 ขั้น/ครั้ง</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-[10px] font-mono">
+          <div className="rounded-xl bg-slate-950/70 p-2">❤️ HP<br/><b className="text-rose-300">{Math.floor(Number(character.skillUpgradeProgress?.hpBonus) || 0)}/20,000</b></div>
+          <div className="rounded-xl bg-slate-950/70 p-2">🛡️ ทนทาน<br/><b className="text-amber-300">{Number(character.skillUpgradeProgress?.durability || 0).toFixed(2)}/100</b></div>
+          <div className="rounded-xl bg-slate-950/70 p-2">💪 STR<br/><b className="text-orange-300">{Number(character.skillUpgradeProgress?.strength || 0).toFixed(2)}/100</b></div>
+          <div className="rounded-xl bg-slate-950/70 p-2">⚡ ความเร็ว<br/><b className="text-cyan-300">{Number(character.skillUpgradeProgress?.agility || 0).toFixed(2)}/100</b></div>
+          <div className="rounded-xl bg-slate-950/70 p-2">✨ เวท<br/><b className="text-purple-300">{Number(character.skillUpgradeProgress?.magic || 0).toFixed(2)}/100</b></div>
+          <div className="rounded-xl bg-slate-950/70 p-2">🎒 ช่องไอเทม<br/><b className="text-emerald-300">{Math.floor(Number(character.skillUpgradeProgress?.equipmentSlots ?? character.equipmentSlotUpgrades) || 0)}/2</b></div>
+        </div>
+        <div className="text-[10px] text-slate-500">ลำดับ: HP 20,000 → ทนทาน 100 → STR 100 → ความเร็ว 100 → เวท 100 → เพิ่มช่องสวมใส่ 2 ช่อง → ตัน</div>
       </div>
 
       {/* Grid: Core Stats & Stories */}
@@ -940,7 +1033,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
           {character.skills?.map((skill) => {
             const orvRankInfo = getSkillORVRank(skill);
             const upgradePreview = getUpgradePreview(skill);
-            const skillBatchCount = Math.max(1, Math.min(1000, Math.floor(Number(skillBatchCounts[skill.id]) || 1)));
+            const skillBatchCount = Math.max(1, Math.min(100, Math.floor(Number(skillBatchCounts[skill.id]) || 1)));
             const skillBatchCost = Array.from({ length: skillBatchCount }, (_, index) =>
               calculateSkillUpgradeCost({ ...skill, upgradeCount: Math.max(0, Math.floor(Number(skill.upgradeCount ?? (skill.level - 1)) || 0)) + index })
             ).reduce((sum, cost) => sum + cost, 0);
@@ -1052,8 +1145,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                     </div>
                     <div className="grid grid-cols-[auto_1fr] gap-2 min-w-0 w-full">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <input type="number" min={1} max={1000} value={skillBatchCounts[skill.id] || 1}
-                          onChange={(e) => setSkillBatchCounts(prev => ({ ...prev, [skill.id]: Math.max(1, Math.min(1000, Math.floor(Number(e.target.value) || 1))) }))}
+                        <input type="number" min={1} max={100} value={skillBatchCounts[skill.id] || 1}
+                          onChange={(e) => setSkillBatchCounts(prev => ({ ...prev, [skill.id]: Math.max(1, Math.min(100, Math.floor(Number(e.target.value) || 1))) }))}
                           disabled={isUpgradingSkill}
                           className="w-16 sm:w-20 min-w-0 px-2 py-2 rounded-xl bg-slate-950 border border-cyan-500/30 text-white text-xs font-mono font-bold"
                         />
