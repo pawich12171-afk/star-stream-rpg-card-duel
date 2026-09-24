@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, Check, Crown, Dice5, Heart, Package, Plus, Settings2, Shield, Skull, Sparkles, Swords, Target, Trash2, UsersRound, Zap } from 'lucide-react';
-import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRandomReward, BattleRoom, CharacterProfile, Skill, BattleBotSkill, Item } from '../types';
+import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRandomReward, BattleBotDrop, BattleRoom, CharacterProfile, Skill, BattleBotSkill, Item } from '../types';
 import {
   DEFAULT_BATTLE_CONFIG,
   createBattleRoom,
@@ -222,7 +222,10 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   // Lock room creation synchronously on the first click. This prevents rapid clicks
   // from entering the async flow multiple times before React can re-render.
   const creatingRoomRef = useRef(false);
-  const [botForm, setBotForm] = useState({ name: '', description: '', hp: '30', strength: '9', durability: '6', agility: '5', magic: '0', isBoss: false, avatarUrl: '/avatars/system.svg', avatarFileName: '', encounterChancePercent: '10', skills: [] as BattleBotSkill[] });
+  const [botForm, setBotForm] = useState({ name: '', description: '', hp: '30', strength: '9', durability: '6', agility: '5', magic: '0', isBoss: false, avatarUrl: '/avatars/system.svg', avatarFileName: '', encounterChancePercent: '10', skills: [] as BattleBotSkill[], drops: [] as BattleBotDrop[] });
+  const [botDropType, setBotDropType] = useState<'coin' | 'item'>('coin');
+  const [botDropAmount, setBotDropAmount] = useState('1000');
+  const [botDropItemId, setBotDropItemId] = useState('');
   const [editingBotId, setEditingBotId] = useState('');
   const [victoryImageFileName, setVictoryImageFileName] = useState('');
   const [victoryVideoFileName, setVictoryVideoFileName] = useState('');
@@ -348,6 +351,9 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     const selectedBots = (mode === 'pve' || mode === 'random') ? enemies.slice(0, 3).map(bot => bot as BattleBot) : [];
     const teamB = (mode === 'pve' || mode === 'random') ? [makeBotCombatant(selectedBots[0], 'b')] : enemies.slice(0, 3).map(character => makePlayerCombatant(character as CharacterProfile, 'b'));
     const randomBattleQueue = mode === 'random' ? selectedBots.slice(1).map(bot => makeBotCombatant(bot, 'b')) : undefined;
+    const battleDrops = (mode === 'pve' || mode === 'random')
+      ? selectedBots.flatMap(bot => (bot.drops || []).map(drop => ({ ...drop, itemData: drop.itemData ? { ...drop.itemData } : undefined })))
+      : undefined;
     const isPveBoss = selectedBots.some(bot => bot.isBoss);
     let randomReward: BattleRandomReward | undefined;
     if (mode === 'random') {
@@ -376,7 +382,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
         ]),
         { id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pve' || mode === 'random' ? `เริ่มการต่อสู้ — หักค่าเข้า ${(mode === 'random' ? RANDOM_BATTLE_ENTRY_FEE : BATTLE_ENTRY_FEE).toLocaleString()} Coins · รางวัลสุ่ม ${victoryReward.toLocaleString()} Coins` : 'เริ่มการต่อสู้ — Passive/TRAIT พร้อมทำงาน · เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' },
       ],
-      entryFeeCoins: mode === 'random' ? RANDOM_BATTLE_ENTRY_FEE : (mode === 'pve' ? BATTLE_ENTRY_FEE : 0), victoryRewardCoins: victoryReward, randomReward, randomBattleQueue, randomBattleStage: mode === 'random' ? 1 : undefined, createdAt: now, updatedAt: now
+      entryFeeCoins: mode === 'random' ? RANDOM_BATTLE_ENTRY_FEE : (mode === 'pve' ? BATTLE_ENTRY_FEE : 0), victoryRewardCoins: victoryReward, randomReward, battleDrops, randomBattleQueue, randomBattleStage: mode === 'random' ? 1 : undefined, createdAt: now, updatedAt: now
     };
       await (mode === 'pve' || mode === 'random' ? createBattleRoomWithEntryFee(room, currentUser.id, mode === 'random' ? RANDOM_BATTLE_ENTRY_FEE : BATTLE_ENTRY_FEE) : createBattleRoom(room));
       setSelectedBotIds([]);
@@ -674,14 +680,34 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const removeRandomReward = (id: string) => setConfig(prev => ({ ...prev, randomBattleRewards: (prev.randomBattleRewards || []).filter(reward => reward.id !== id) }));
   const saveVictoryMedia = async (file: File | undefined, kind: 'image' | 'video') => { if (!file) return; const ok = kind === 'image' ? file.type.startsWith('image/') : file.type.startsWith('video/'); if (!ok) return alert(kind === 'image' ? 'กรุณาเลือกไฟล์รูปภาพ' : 'กรุณาเลือกไฟล์วิดีโอ'); const limit = kind === 'image' ? 4 : 8; if (file.size > limit * 1024 * 1024) return alert(`ไฟล์ต้องไม่เกิน ${limit}MB`); const dataUrl = await fileToDataUrl(file); setConfig(prev => ({ ...prev, ...(kind === 'image' ? { victoryImageUrl: dataUrl, victoryImageFileName: file.name } : { victoryVideoUrl: dataUrl, victoryVideoFileName: file.name }) })); if (kind === 'image') setVictoryImageFileName(file.name); else setVictoryVideoFileName(file.name); };
 
+  const addBotDrop = () => {
+    const amount = Math.max(1, Math.floor(Number(botDropAmount) || 0));
+    const item = shopItems.find(value => value.id === botDropItemId);
+    if (botDropType === 'item' && !item) return alert('กรุณาเลือกไอเทมที่จะดรอป');
+    const drop: BattleBotDrop = {
+      id: 'bot-drop-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+      type: botDropType,
+      name: botDropType === 'coin' ? amount.toLocaleString() + ' Coins' : (item?.name || 'ไอเทม'),
+      amount,
+      itemData: botDropType === 'item' ? { ...item! } : undefined,
+    };
+    setBotForm(prev => ({ ...prev, drops: [...(prev.drops || []), drop] }));
+    setBotDropAmount('1000');
+    setBotDropItemId('');
+  };
+
+  const removeBotDrop = (id: string) => {
+    setBotForm(prev => ({ ...prev, drops: (prev.drops || []).filter(drop => drop.id !== id) }));
+  };
+
   const createBot = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!botForm.name.trim()) return;
     const now = Date.now();
     const hp = Math.max(1, Number(botForm.hp) || 1);
     try {
-      await saveBattleBot({ id: editingBotId || 'bot-' + now, name: botForm.name.trim(), description: botForm.description.trim() || 'นักสู้ที่ถูกสร้างโดยแอดมิน', avatarUrl: botForm.avatarUrl || '/avatars/system.svg', avatarFileName: botForm.avatarFileName || undefined, isBoss: botForm.isBoss, stats: { strength: Math.max(0, Number(botForm.strength) || 0), durability: Math.max(0, Number(botForm.durability) || 0), agility: Math.max(0, Number(botForm.agility) || 0), magic: Math.max(0, Number(botForm.magic) || 0) }, hp, maxHp: hp, aiProfile: botForm.isBoss ? 'aggressive' : 'balanced', encounterChancePercent: Math.max(0, Math.min(100, Number(botForm.encounterChancePercent) || 0)), skills: botForm.skills.map(skill => ({ ...skill })), createdAt: now, updatedAt: now });
-      setBotForm({ name: '', description: '', hp: '30', strength: '9', durability: '6', agility: '5', magic: '0', isBoss: false, avatarUrl: '/avatars/system.svg', avatarFileName: '', encounterChancePercent: '10', skills: [] }); setEditingBotId('');
+      await saveBattleBot({ id: editingBotId || 'bot-' + now, name: botForm.name.trim(), description: botForm.description.trim() || 'นักสู้ที่ถูกสร้างโดยแอดมิน', avatarUrl: botForm.avatarUrl || '/avatars/system.svg', avatarFileName: botForm.avatarFileName || undefined, isBoss: botForm.isBoss, stats: { strength: Math.max(0, Number(botForm.strength) || 0), durability: Math.max(0, Number(botForm.durability) || 0), agility: Math.max(0, Number(botForm.agility) || 0), magic: Math.max(0, Number(botForm.magic) || 0) }, hp, maxHp: hp, aiProfile: botForm.isBoss ? 'aggressive' : 'balanced', encounterChancePercent: Math.max(0, Math.min(100, Number(botForm.encounterChancePercent) || 0)), skills: botForm.skills.map(skill => ({ ...skill })), drops: (botForm.drops || []).map(drop => ({ ...drop, itemData: drop.itemData ? { ...drop.itemData } : undefined })), createdAt: now, updatedAt: now });
+      setBotForm({ name: '', description: '', hp: '30', strength: '9', durability: '6', agility: '5', magic: '0', isBoss: false, avatarUrl: '/avatars/system.svg', avatarFileName: '', encounterChancePercent: '10', skills: [], drops: [] }); setEditingBotId('');
     } catch (error) { alert('สร้างบอทไม่สำเร็จ'); }
   };
 
@@ -715,6 +741,35 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
 </div>
 <div className="text-[10px] text-slate-500">ระบบใช้เฉพาะ Reward Pool ของโหมดนี้ — Coins แสดงเป็นจำนวน Coins, Item แสดงชื่อ Item, Skill แสดงเฉพาะรายการที่ Admin เพิ่มเป็น Skill เท่านั้น</div>
 </div><div className="space-y-3 rounded-2xl border border-emerald-500/20 bg-emerald-950/10 p-3"><h4 className="font-black text-emerald-200">🏆 หน้าชนะการต่อสู้</h4><p className="text-[10px] text-slate-500">ใส่ URL รูปหรือวิดีโอได้ เมื่อจบศึกจะแสดงชื่อผู้เล่น/ผู้ชนะพร้อมสื่อที่ตั้งไว้</p><input className={inputClass} value={config.victoryTitle || ''} onChange={event => setConfig(prev => ({ ...prev, victoryTitle: event.target.value }))} placeholder="หัวข้อ เช่น VICTORY" /><input className={inputClass} value={config.victoryMessage || ''} onChange={event => setConfig(prev => ({ ...prev, victoryMessage: event.target.value }))} placeholder="ข้อความชนะ" /><input className={inputClass} value={config.victoryImageUrl?.startsWith("data:") ? "" : (config.victoryImageUrl || "")} onChange={event => setConfig(prev => ({ ...prev, victoryImageUrl: event.target.value, victoryImageFileName: "" }))} placeholder="URL รูปภาพตอนชนะ (ถ้าต้องการใช้ URL)" /><label className="flex cursor-pointer items-center justify-between rounded-xl border border-emerald-400/20 bg-slate-950/50 px-3 py-2 text-xs text-slate-300"><span>🖼️ เลือกไฟล์รูป {victoryImageFileName ? `· ${victoryImageFileName}` : ""}</span><input type="file" accept="image/*" className="hidden" onChange={e=>void saveVictoryMedia(e.target.files?.[0],"image")} /></label><input className={inputClass} value={config.victoryVideoUrl?.startsWith("data:") ? "" : (config.victoryVideoUrl || "")} onChange={event => setConfig(prev => ({ ...prev, victoryVideoUrl: event.target.value, victoryVideoFileName: "" }))} placeholder="URL วิดีโอตอนชนะ (ถ้าต้องการใช้ URL)" /><label className="flex cursor-pointer items-center justify-between rounded-xl border border-emerald-400/20 bg-slate-950/50 px-3 py-2 text-xs text-slate-300"><span>🎬 เลือกไฟล์วิดีโอ {victoryVideoFileName ? `· ${victoryVideoFileName}` : ""}</span><input type="file" accept="video/*" className="hidden" onChange={e=>void saveVictoryMedia(e.target.files?.[0],"video")} /></label></div></div><form onSubmit={createBot} className="space-y-4 rounded-2xl border border-rose-500/20 bg-rose-950/10 p-4"><div className="flex items-center gap-2"><Bot className="h-5 w-5 text-rose-300" /><h4 className="font-black text-rose-200">สร้างบอท / บอส</h4></div><div className="grid gap-3 sm:grid-cols-2"><input className={inputClass} value={botForm.name} onChange={event => setBotForm(prev => ({ ...prev, name: event.target.value }))} placeholder="ชื่อบอทหรือบอส" required /><div className="space-y-2"><input className={inputClass} value={botForm.avatarUrl.startsWith("data:") ? "" : botForm.avatarUrl} onChange={event => setBotForm(prev => ({ ...prev, avatarUrl: event.target.value, avatarFileName: "" }))} placeholder="URL รูป avatar (หรือเลือกไฟล์)" /><label className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-300"><span>🖼️ รูปโปรไฟล์ {botForm.avatarFileName ? `· ${botForm.avatarFileName}` : ""}</span><input type="file" accept="image/*" className="hidden" onChange={async e => { const f=e.target.files?.[0]; if(!f)return; if(f.size>4*1024*1024)return alert("รูปโปรไฟล์ต้องไม่เกิน 4MB"); const d=await fileToDataUrl(f); setBotForm(p=>({...p,avatarUrl:d,avatarFileName:f.name})); }} /></label></div></div><input className={inputClass} value={botForm.description} onChange={event => setBotForm(prev => ({ ...prev, description: event.target.value }))} placeholder="คำอธิบาย AI / กลไกบอส" /><div className="grid grid-cols-2 gap-3 sm:grid-cols-5">{[['hp', 'HP'], ['strength', 'พลัง'], ['durability', 'ทนทาน'], ['agility', 'ว่องไว'], ['magic', 'เวท']].map(([key, label]) => <label key={key} className="text-[10px] text-slate-500">{label}<input className={inputClass + ' mt-1'} type="number" min={key === 'hp' ? '1' : '0'} value={botForm[key as keyof typeof botForm] as string} onChange={event => setBotForm(prev => ({ ...prev, [key]: event.target.value }))} /></label>)}</div><label className="flex items-center gap-2 text-xs text-rose-100"><input type="checkbox" checked={botForm.isBoss} onChange={event => setBotForm(prev => ({ ...prev, isBoss: event.target.checked }))} /> <Crown className="h-4 w-4 text-amber-300" /> ตั้งเป็น Boss</label><div className="grid gap-2 sm:grid-cols-2"><label className="text-[10px] text-slate-500">โอกาสถูกสุ่มเจอ (%)<input className={inputClass + ' mt-1'} type="number" min="0" max="100" value={botForm.encounterChancePercent} onChange={event => setBotForm(prev => ({ ...prev, encounterChancePercent: event.target.value }))} /></label><div className="text-[10px] text-slate-500 rounded-xl border border-amber-500/20 bg-amber-950/10 p-2">โหมดสุ่มจะใช้ค่านี้เป็นน้ำหนักการออกของมอน/บอส</div></div>
+<div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/10 p-3">
+  <div className="mb-2 text-xs font-black text-emerald-200">🎁 ของดรอปเมื่อชนะมอน / บอส</div>
+  <div className="grid gap-2 sm:grid-cols-[7rem_1fr_6rem_auto]">
+    <select className={inputClass} value={botDropType} onChange={event => setBotDropType(event.target.value as 'coin' | 'item')}>
+      <option value="coin">💰 Coins</option>
+      <option value="item">📦 ไอเทม</option>
+    </select>
+    {botDropType === 'coin' ? (
+      <input className={inputClass} type="number" min="1" value={botDropAmount} onChange={event => setBotDropAmount(event.target.value)} placeholder="จำนวน Coins" />
+    ) : (
+      <select className={inputClass} value={botDropItemId} onChange={event => setBotDropItemId(event.target.value)}>
+        <option value="">เลือกไอเทมที่จะดรอป</option>
+        {shopItems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+      </select>
+    )}
+    <input className={inputClass} type="number" min="1" value={botDropAmount} onChange={event => setBotDropAmount(event.target.value)} placeholder="จำนวน" />
+    <button type="button" className={buttonClass + ' bg-emerald-500 text-slate-950'} onClick={addBotDrop}>+ เพิ่ม</button>
+  </div>
+  <div className="mt-2 space-y-1">
+    {(botForm.drops || []).map(drop => (
+      <div key={drop.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs">
+        <span>{drop.type === 'coin' ? '💰' : '📦'} {drop.type === 'coin' ? Number(drop.amount).toLocaleString() + ' Coins' : drop.name + ' ×' + Number(drop.amount)}</span>
+        <button type="button" className="text-rose-300" onClick={() => removeBotDrop(drop.id)}>ลบ</button>
+      </div>
+    ))}
+    {!(botForm.drops || []).length && <div className="text-[10px] text-slate-500">ยังไม่ได้ตั้งของดรอป</div>}
+  </div>
+  <p className="mt-2 text-[10px] text-slate-500">มอนหรือบอสแต่ละตัวสามารถกำหนดได้หลายรายการ</p>
+</div>
 <div className="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-3">
   <div className="mb-2 text-xs font-black text-fuchsia-200">🧠 สกิลของมอน / บอส</div>
   <div className="grid gap-2 sm:grid-cols-[1fr_6rem_auto]">
@@ -729,7 +784,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     {botForm.skills.map(skill => <div key={getSkillId(skill)} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs"><span>{skill.name} · โอกาสใช้ {Number(skill.aiChancePercent ?? 0)}%</span><button type="button" className="text-rose-300" onClick={() => removeBotSkill(getSkillId(skill))}>ลบ</button></div>)}
     {!botForm.skills.length && <div className="text-[10px] text-slate-500">ยังไม่มีสกิล — มอนจะโจมตีปกติ</div>}
   </div>
-</div><button type="submit" className={buttonClass + ' w-full bg-rose-500 text-white hover:bg-rose-400'}><Plus className="mr-1 inline h-4 w-4" />{editingBotId ? "บันทึกการแก้ไขบอท" : "สร้างบอท"}</button></form></div>{bots.length > 0 && <div className="mt-6 grid gap-3 md:grid-cols-2">{bots.map(bot => <div key={bot.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/50 p-3"><div className="flex min-w-0 items-center gap-3"><img src={bot.avatarUrl} alt="" className="h-10 w-10 rounded-xl border border-slate-700 object-cover" /><div className="min-w-0"><div className="flex items-center gap-2 truncate font-bold text-white">{bot.isBoss && <Crown className="h-3.5 w-3.5 text-amber-300" />}{bot.name}</div><div className="text-[11px] text-slate-500">HP {bot.maxHp} · พลัง {bot.stats.strength} · {bot.description}</div></div></div><button type="button" onClick={() => { setEditingBotId(bot.id); setBotForm({ name: bot.name, description: bot.description, hp: String(bot.maxHp), strength: String(bot.stats.strength), durability: String(bot.stats.durability), agility: String(bot.stats.agility), magic: String(bot.stats.magic), isBoss: bot.isBoss, avatarUrl: bot.avatarUrl, avatarFileName: bot.avatarFileName || '', encounterChancePercent: String(bot.encounterChancePercent ?? 10), skills: (bot.skills || []).map(skill => ({ ...skill })) }); }} className="rounded-lg p-2 text-sky-300 hover:bg-sky-500/15">✏️</button><button type="button" onClick={() => void deleteBattleBot(bot.id)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/15 hover:text-rose-300"><Trash2 className="h-4 w-4" /></button></div>)}</div>}</section>}
+</div><button type="submit" className={buttonClass + ' w-full bg-rose-500 text-white hover:bg-rose-400'}><Plus className="mr-1 inline h-4 w-4" />{editingBotId ? "บันทึกการแก้ไขบอท" : "สร้างบอท"}</button></form></div>{bots.length > 0 && <div className="mt-6 grid gap-3 md:grid-cols-2">{bots.map(bot => <div key={bot.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/50 p-3"><div className="flex min-w-0 items-center gap-3"><img src={bot.avatarUrl} alt="" className="h-10 w-10 rounded-xl border border-slate-700 object-cover" /><div className="min-w-0"><div className="flex items-center gap-2 truncate font-bold text-white">{bot.isBoss && <Crown className="h-3.5 w-3.5 text-amber-300" />}{bot.name}</div><div className="text-[11px] text-slate-500">HP {bot.maxHp} · พลัง {bot.stats.strength} · {bot.description}</div></div></div><button type="button" onClick={() => { setEditingBotId(bot.id); setBotForm({ name: bot.name, description: bot.description, hp: String(bot.maxHp), strength: String(bot.stats.strength), durability: String(bot.stats.durability), agility: String(bot.stats.agility), magic: String(bot.stats.magic), isBoss: bot.isBoss, avatarUrl: bot.avatarUrl, avatarFileName: bot.avatarFileName || '', encounterChancePercent: String(bot.encounterChancePercent ?? 10), skills: (bot.skills || []).map(skill => ({ ...skill })), drops: (bot.drops || []).map(drop => ({ ...drop, itemData: drop.itemData ? { ...drop.itemData } : undefined })) }); }} className="rounded-lg p-2 text-sky-300 hover:bg-sky-500/15">✏️</button><button type="button" onClick={() => void deleteBattleBot(bot.id)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/15 hover:text-rose-300"><Trash2 className="h-4 w-4" /></button></div>)}</div>}</section>}
 
     <section className={panelClass + ' p-5 md:p-6'}><div className="mb-5 flex items-center gap-2"><Target className="h-5 w-5 text-cyan-300" /><h3 className="text-lg font-black text-white">สร้างศึกใหม่</h3></div><div className="grid gap-6 xl:grid-cols-2"><div className="space-y-4"><div className="grid grid-cols-3 gap-2"><button type="button" onClick={() => setMode('pve')} className={buttonClass + ' ' + (mode === 'pve' ? 'bg-violet-500 text-white' : 'bg-slate-800 text-slate-400')}><Bot className="mr-1 inline h-4 w-4" />ตีบอท / บอส</button><button type="button" onClick={() => setMode('random')} className={buttonClass + ' ' + (mode === 'random' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400')}><Dice5 className="mr-1 inline h-4 w-4" />สุ่มมอน / บอส</button><button type="button" onClick={() => setMode('pvp')} className={buttonClass + ' ' + (mode === 'pvp' ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-400')}><UsersRound className="mr-1 inline h-4 w-4" />สู้ผู้เล่น</button></div><div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3"><div className="mb-2 text-xs font-bold text-slate-300">ทีมของคุณ <span className="text-slate-500">(เลือกได้สูงสุด 3 คน)</span></div><div className="space-y-2">{allCharacters.map(character => <label key={character.id} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/50 p-2 text-sm"><input type="checkbox" checked={selectedTeamIds.includes(character.id)} disabled={character.id === currentUser.id} onChange={() => toggleTeamMember(character.id)} /><img src={character.avatarUrl} alt="" className="h-7 w-7 rounded-lg object-cover" /><span className={character.id === currentUser.id ? 'font-bold text-white' : 'text-slate-300'}>{character.displayName}</span><span className="ml-auto text-[10px] text-slate-500">STR {character.stats.strength}</span></label>)}</div></div></div><div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/35 p-3">
         <div className="text-xs font-bold text-slate-300">ฝ่ายตรงข้าม</div>
