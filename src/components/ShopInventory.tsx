@@ -758,8 +758,9 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     Math.max(0, Number(char.stats?.agility) || 0) +
     Math.max(0, Number(char.stats?.magic) || 0);
 
+  // ช่องสวมใส่อุปกรณ์เริ่มต้น 20 ช่อง และเพิ่มทีละ 1 ช่องตามเงื่อนไขค่าสเตตเดิม
   const getEquipmentSlots = (char: CharacterProfile = character) =>
-    1 + Math.max(0, Math.floor(Number(char.equipmentSlotUpgrades) || 0));
+    20 + Math.max(0, Math.floor(Number(char.equipmentSlotUpgrades) || 0));
 
   const getNextEquipmentSlotRequirement = (char: CharacterProfile = character) => {
     const upgrades = Math.max(0, Math.floor(Number(char.equipmentSlotUpgrades) || 0));
@@ -781,7 +782,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         {
           id: `notif-equip-slot-${Date.now()}`,
           title: 'เพิ่มช่องสวมใส่',
-          message: `ปลดล็อกช่องสวมใส่เพิ่ม 1 ช่อง (รวม ${upgrades + 2} ช่อง)`,
+          message: `ปลดล็อกช่องสวมใส่เพิ่ม 1 ช่อง (รวม ${upgrades + 21} ช่อง)`,
           timestamp: Date.now(),
           read: false,
           type: 'system',
@@ -1300,7 +1301,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                     {stackedInventory.reduce((total, item) => total + Math.max(1, Number(item.quantity) || 1), 0)} ชิ้น
                   </span>
                 </h2>
-                <p className="text-[10px] text-slate-500 mt-1">ของเยอะก็จัดเป็นการ์ดให้ดูง่าย • อุปกรณ์สวมใส่ทั่วไปสูงสุด 20 ชิ้น • ดาบ Arya สูงสุด 1 ชิ้น</p>
+                <p className="text-[10px] text-slate-500 mt-1">ของเยอะก็จัดเป็นการ์ดให้ดูง่าย • อุปกรณ์สวมใส่เริ่มต้น 20 ช่อง • เพิ่มช่องได้ตามค่าสเตต • ดาบ Arya สูงสุด 1 ชิ้น</p>
                 <div className="mt-3 flex flex-col sm:flex-row gap-2">
                   <div className="relative flex-1 min-w-0">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-400 pointer-events-none" />
@@ -1322,7 +1323,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                 </div>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-mono">
-                <span className="px-2.5 py-1.5 rounded-xl bg-violet-950/50 border border-violet-500/30 text-violet-300">⚔️ ทั่วไป {stackedInventory.filter(i => i.category === 'equipment' && !isAryaEquipment(i)).reduce((sum, i) => sum + getEquippedQuantity(i), 0)}/20</span>
+                <span className="px-2.5 py-1.5 rounded-xl bg-violet-950/50 border border-violet-500/30 text-violet-300">⚔️ อุปกรณ์ {stackedInventory.filter(i => i.category === 'equipment' && !isAryaEquipment(i)).reduce((sum, i) => sum + getEquippedQuantity(i), 0)}/{equipmentSlots}</span>
                 <span className="px-2.5 py-1.5 rounded-xl bg-amber-950/50 border border-amber-500/30 text-amber-300">🗡️ Arya {stackedInventory.filter(i => isAryaEquipment(i)).reduce((sum, i) => sum + getEquippedQuantity(i), 0)}/1</span>
               </div>
             </div>
