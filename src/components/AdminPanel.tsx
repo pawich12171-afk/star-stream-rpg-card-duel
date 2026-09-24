@@ -1,6 +1,6 @@
 import { formatCoins } from '../utils/formatNumber';
 import React, { useEffect, useState } from 'react';
-import { CharacterProfile, Item, Skill, Quest, GachaReward, GachaBanner, GachaConfig, GachaRarity, MAX_GACHA_REWARDS, BattleExtraEffect, BattleSkillStat, ItemPassiveEffect } from '../types';
+import { CharacterProfile, Item, Skill, Quest, GachaReward, GachaBanner, GachaConfig, GachaRarity, BattleExtraEffect, BattleSkillStat, ItemPassiveEffect } from '../types';
 import { 
   ShieldCheck, 
   Coins, 
@@ -2609,7 +2609,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <button
                   type="submit"
-                  disabled={gachaRewards.length >= MAX_GACHA_REWARDS}
                   className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-950 font-black text-xs shadow cursor-pointer transition-all"
                 >
                   เพิ่มของรางวัลลงตู้กาชา
