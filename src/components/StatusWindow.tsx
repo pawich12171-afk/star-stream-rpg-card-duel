@@ -668,7 +668,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               {isAllStats100 ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2 min-w-0">
                 <h3 className="text-base font-extrabold text-white">
                   ระบบอัปเกรดสเตตัสทะลุขีดจำกัด (Stat Transcendence 100+)
                 </h3>
@@ -1041,7 +1041,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                     >
                       ✏️ แก้ไข
                     </button>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 min-w-0 w-full lg:w-auto">
                       <div className="flex items-center gap-1.5">
                         <input type="number" min={1} max={1000} value={skillBatchCounts[skill.id] || 1}
                           onChange={(e) => setSkillBatchCounts(prev => ({ ...prev, [skill.id]: Math.max(1, Math.min(1000, Math.floor(Number(e.target.value) || 1))) }))}
@@ -1050,14 +1050,14 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                         />
                         <span className="text-[10px] text-slate-500">ขั้น</span>
                       </div>
-                      <div className="rounded-xl border border-amber-500/20 bg-slate-950/70 px-2.5 py-1.5 text-[10px] font-mono whitespace-nowrap">
+                      <div className="rounded-xl border border-amber-500/20 bg-slate-950/70 px-2.5 py-1.5 text-[10px] font-mono whitespace-nowrap max-w-full overflow-hidden">
                         <span className="text-slate-500">อัป {skillBatchCount} ขั้น = </span><strong className="text-amber-300">{formatCoins(skillBatchCost)} Coins</strong>
                       </div>
                       <button type="button" id={`btn-upgrade-skill-${skill.id}`} onClick={() => handleUpgradeSkill(skill.id)}
                         disabled={!canAfford || isUpgradingSkill}
-                        className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${canAfford && !isUpgradingSkill ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
+                        className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md max-w-full min-w-0 ${canAfford && !isUpgradingSkill ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
                         <ArrowUpCircle className="w-4 h-4" />
-                        {skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`} • {formatCoins(skillBatchCost)} Coins
+                        <span className="truncate">{skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`} • {formatCoins(skillBatchCost)} Coins</span>
                       </button>
                     </div>
                     <button type="button"
