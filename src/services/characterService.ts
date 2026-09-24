@@ -3382,7 +3382,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
             id: summonId,
             sourceId: summonId,
             name: `${summonName} #${currentCount + 1}`,
-            avatarUrl: current.avatarUrl || '/avatars/system.svg',
+            avatarUrl: skill?.summonAvatarUrl || current.avatarUrl || '/avatars/system.svg',
             type: 'bot',
             team: current.team,
             stats: {
