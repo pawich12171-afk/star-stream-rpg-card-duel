@@ -183,10 +183,25 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     const source = skill.skillUpgradeProgress || (
       skill.upgradeCount && skill.upgradeCount > 0 && legacy
         ? legacy
-        : { hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0, rewardPhase: 0, rewardValue: 0 }
+        : { hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0 }
     );
-    let phase = Math.max(0, Math.min(5, Math.floor(Number(source.rewardPhase) || 0)));
-    let value = Math.max(0, Number(source.rewardValue) || 0);
+    const sourceHp = Math.max(0, Number(source.hpBonus) || 0);
+    const sourceDurability = Math.max(0, Number(source.durability) || 0);
+    const sourceStrength = Math.max(0, Number(source.strength) || 0);
+    const sourceAgility = Math.max(0, Number(source.agility) || 0);
+    const sourceMagic = Math.max(0, Number(source.magic) || 0);
+    const hasStoredPhase = Number.isFinite(Number(source.rewardPhase));
+    let phase = hasStoredPhase
+      ? Math.max(0, Math.min(5, Math.floor(Number(source.rewardPhase))))
+      : sourceHp < 20000 ? 0
+      : sourceDurability < 100 ? 1
+      : sourceStrength < 100 ? 2
+      : sourceAgility < 100 ? 3
+      : sourceMagic < 100 ? 4 : 5;
+    const phaseValues = [sourceHp, sourceDurability, sourceStrength, sourceAgility, sourceMagic, Math.max(0, Number(source.equipmentSlots) || 0)];
+    let value = Number.isFinite(Number(source.rewardValue))
+      ? Math.max(0, Number(source.rewardValue))
+      : Math.max(0, phaseValues[phase] || 0);
     let hp = 0, durability = 0, strength = 0, agility = 0, magic = 0, slots = 0;
     const maxes = [20000, 100, 100, 100, 100, 2];
     const firsts = [1, 0.01, 0.01, 0.01, 0.01, 1];
