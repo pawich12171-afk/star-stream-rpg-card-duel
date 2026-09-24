@@ -209,7 +209,9 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
       reset();
       alert(wasEditing ? 'บันทึกไอเทมแล้ว' : 'สร้างไอเทมแล้ว');
     } catch (error) {
-      console.error(error); alert('บันทึกไอเทมไม่สำเร็จ');
+      console.error('[ItemManagement] save failed:', error);
+      const message = error instanceof Error ? error.message : String(error || '');
+      alert('บันทึกไอเทมไม่สำเร็จ' + (message ? '\\n\\nรายละเอียด: ' + message : ''));
     }
   };
 
