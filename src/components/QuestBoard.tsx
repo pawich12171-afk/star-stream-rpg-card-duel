@@ -124,7 +124,10 @@ export const QuestBoard: React.FC<QuestBoardProps> = ({ character, shopItems, on
       ...character,
       coins: character.coins + Math.max(0, quest.rewardCoins || 0),
       inventory: rewardItemInstance ? [...(character.inventory || []), rewardItemInstance] : character.inventory,
-      quests: (character.quests || []).map(item => item.id === quest.id ? { ...quest, isClaimed: true } : item),
+      // Remove the quest from the active list immediately after the reward
+      // is granted. This prevents a claimed admin quest from remaining stuck
+      // on the player's board or being claimed again.
+      quests: (character.quests || []).filter(item => item.id !== quest.id),
       notifications: [
         {
           id: 'notif-quest-reward-' + Date.now(),
