@@ -176,10 +176,10 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
   const healthData = calculateCharacterHealth(character);
 
-  const getSkillRewardPreview = (count: number) => {
-    const source = character.skillUpgradeProgress || {
+  const getSkillRewardPreview = (skill: Skill, count: number) => {
+    const source = skill.skillUpgradeProgress || {
       hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0,
-      equipmentSlots: Math.max(0, Math.floor(Number(character.equipmentSlotUpgrades) || 0)),
+      equipmentSlots: 0,
       totalUpgrades: 0,
     };
     const progress = {
@@ -1149,7 +1149,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                     {skill.description}
                   </p>
 
-                  {/* Skill Potency & HP Bonus Status */}
+                  {/* Skill-specific exponential bonus status */}
                   <div className="mt-2.5 grid grid-cols-2 gap-2 text-[11px]">
                     <div className="p-2 rounded-xl bg-cyan-950/60 border border-cyan-800/50 text-cyan-300 flex items-center justify-between">
                       <span className="text-slate-400 flex items-center gap-1">
@@ -1162,24 +1162,22 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                     </div>
                     <div className="p-2 rounded-xl bg-rose-950/50 border border-rose-800/50 text-rose-300 flex items-center justify-between">
                       <span className="text-slate-400 flex items-center gap-1">
-                        <Heart className="w-3 h-3 text-rose-400" /> รางวัลอัปสกิล:
+                        <Heart className="w-3 h-3 text-rose-400" /> โบนัสของสกิล:
                       </span>
                       <span className="font-bold font-mono text-emerald-400 text-right">
                         {(() => {
-                          const p = character.skillUpgradeProgress;
+                          const p = skill.skillUpgradeProgress;
                           const hp = Math.max(0, Math.min(20000, Number(p?.hpBonus) || 0));
                           const durability = Math.max(0, Math.min(100, Number(p?.durability) || 0));
                           const strength = Math.max(0, Math.min(100, Number(p?.strength) || 0));
                           const agility = Math.max(0, Math.min(100, Number(p?.agility) || 0));
                           const magic = Math.max(0, Math.min(100, Number(p?.magic) || 0));
-                          const slots = Math.max(0, Math.min(2, Math.floor(Number(p?.equipmentSlots ?? character.equipmentSlotUpgrades) || 0)));
                           if (hp < 20000) return `❤️ HP ${hp.toLocaleString()}/20,000`;
                           if (durability < 100) return `🛡️ ทนทาน ${durability.toFixed(2)}/100`;
                           if (strength < 100) return `💪 STR ${strength.toFixed(2)}/100`;
                           if (agility < 100) return `⚡ ความเร็ว ${agility.toFixed(2)}/100`;
                           if (magic < 100) return `✨ เวท ${magic.toFixed(2)}/100`;
-                          if (slots < 2) return `🎒 ช่อง +${slots}/2`;
-                          return `🔁 เริ่มรอบใหม่ที่ HP`;
+                          return `🎒 ช่อง +${Math.max(0, Math.min(2, Math.floor(Number(p?.equipmentSlots) || 0)))}/2`;
                         })()}
                       </span>
                     </div>
@@ -1202,7 +1200,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                     </div>
                     <div className="text-[11px] font-mono text-right shrink-0">
                       <span className="text-emerald-300 font-semibold">
-                        รางวัลครั้งนี้: {getSkillRewardPreview(1)}
+                        รางวัลครั้งนี้: {getSkillRewardPreview(skill, 1)}
                       </span>
                     </div>
                   </div>
