@@ -3017,6 +3017,7 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
       hp: Math.max(0, Number(unit.hp) || 0),
       maxHp: Math.max(1, Number(unit.maxHp) || 1),
       skillCooldowns: { ...(unit.skillCooldowns || {}) },
+      skillUses: { ...(unit.skillUses || {}) },
     })),
     log: [...(room.log || [])],
   };
