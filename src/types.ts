@@ -448,6 +448,14 @@ export interface BattleRandomReward {
   skillData?: Skill;
 }
 
+export interface BattleBotDrop {
+  id: string;
+  type: 'coin' | 'item';
+  name: string;
+  amount: number;
+  itemData?: Item;
+}
+
 export interface BattleConfig {
   id: string;
   enabled: boolean;
@@ -485,6 +493,8 @@ export interface BattleBot {
   aiProfile?: 'balanced' | 'aggressive' | 'defensive';
   /** สกิลที่แอดมินยัดให้มอน/บอส และโอกาสที่ AI จะเลือกใช้ */
   skills?: BattleBotSkill[];
+  /** ของดรอปเมื่อชนะมอน/บอสตัวนี้ */
+  drops?: BattleBotDrop[];
   /** น้ำหนัก/โอกาสที่มอนหรือบอสตัวนี้จะถูกสุ่มเจอในโหมดสุ่ม (%) */
   encounterChancePercent?: number;
   createdAt: number;
@@ -567,8 +577,10 @@ export interface BattleRoom {
   winnerTeam?: 'a' | 'b' | 'draw';
   entryFeeCoins?: number;
   victoryRewardCoins?: number;
-  /** รางวัลที่สุ่มได้ตั้งแต่ตอนสร้างห้อง เพื่อให้ทุกคนเห็นผลเดียวกัน */
+  /** รางวัลสุ่มของโหมดสุ่มที่เลือกตั้งแต่สร้างห้อง */
   randomReward?: BattleRandomReward;
+  /** ของดรอปที่ล็อกไว้จากมอน/บอสทั้งหมดในห้อง */
+  battleDrops?: BattleBotDrop[];
   /** คิวศัตรูที่เหลือของโหมดสุ่ม หลังจากชนะตัวปัจจุบัน */
   randomBattleQueue?: BattleCombatant[];
   /** ลำดับศัตรูปัจจุบันในโหมดสุ่ม (1-3) */
