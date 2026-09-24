@@ -3009,6 +3009,20 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
   }
 
   const itemKey = String(item.instanceId || item.id || requestedId);
+
+  // Ally revive is a targeted battle effect. The battle item menu currently
+  // selects the item (not a separate target), so use the first defeated ally
+  // deterministically. Never try to revive an enemy or the acting character.
+  const allyToRevive = normalizedItem.reviveAlly
+    ? [...(normalizedRoom.teamA.filter(u => u.team === actor.team)), ...(normalizedRoom.teamB.filter(u => u.team === actor.team))]
+        .filter(u => u.id !== actor.id && u.hp <= 0)
+        .sort((a, b) => String(a.id).localeCompare(String(b.id)))[0]
+    : undefined;
+  const revivePercent = Math.min(100, Math.max(1, Number(normalizedItem.revivePercent) || 30));
+  const revivedAllyHp = allyToRevive
+    ? Math.max(1, Math.round(Math.max(1, Number(allyToRevive.maxHp) || 1) * revivePercent / 100))
+    : 0;
+
   const actorPatch: BattleCombatant = {
     ...actor,
     stats,
@@ -3028,14 +3042,25 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
   // Store the item-use result in the same room state that the next turn uses.
   const nextRoom: BattleRoom = {
     ...normalizedRoom,
-    teamA: normalizedRoom.teamA.map(unit => unit.id === actor.id ? actorPatch : { ...unit }),
-    teamB: normalizedRoom.teamB.map(unit => ({ ...unit })),
+    teamA: normalizedRoom.teamA.map(unit => {
+      if (unit.id === actor.id) return actorPatch;
+      if (allyToRevive && unit.id === allyToRevive.id) {
+        return { ...unit, hp: revivedAllyHp, maxHp: Math.max(1, Number(unit.maxHp) || 1) };
+      }
+      return { ...unit };
+    }),
+    teamB: normalizedRoom.teamB.map(unit => {
+      if (allyToRevive && unit.id === allyToRevive.id) {
+        return { ...unit, hp: revivedAllyHp, maxHp: Math.max(1, Number(unit.maxHp) || 1) };
+      }
+      return { ...unit };
+    }),
     battleItemUses: currentUses + 1,
     log: [{
       id: 'battle-log-item-' + Date.now() + '-' + itemKey,
       timestamp: Date.now(),
       actorName: actor.name,
-      message: `🧪 ${actor.name} ใช้ไอเทม "${item.name}"${item.healPercent ? ` · ฟื้น ${item.healPercent}% Max HP` : ''}${item.battleDamagePercent ? ` · ดาเมจ +${item.battleDamagePercent}% ${item.battleDamageDuration || 0} เทิร์น` : ''}${item.battleLuckMultiplier && item.battleLuckMultiplier > 1 ? ` · 🍀 โชค ×${item.battleLuckMultiplier} ${item.battleLuckDuration || 0} เทิร์น` : ''}${item.battleCriticalChancePercent ? ` · 💥 คริ +${item.battleCriticalChancePercent}%` : ''}${item.battleRepeatAttackChancePercent ? ` · 🔁 ตีซ้ำ +${item.battleRepeatAttackChancePercent}%` : ''} · โควตาไอเทม ${currentUses + 1}/2 ครั้งในเกมนี้`,
+      message: `🧪 ${actor.name} ใช้ไอเทม "${item.name}"${allyToRevive ? ` · 🤝 ชุบ ${allyToRevive.name} ฟื้น ${revivedAllyHp} HP` : ''}${item.healPercent ? ` · ฟื้น ${item.healPercent}% Max HP` : ''}${item.battleDamagePercent ? ` · ดาเมจ +${item.battleDamagePercent}% ${item.battleDamageDuration || 0} เทิร์น` : ''}${item.battleLuckMultiplier && item.battleLuckMultiplier > 1 ? ` · 🍀 โชค ×${item.battleLuckMultiplier} ${item.battleLuckDuration || 0} เทิร์น` : ''}${item.battleCriticalChancePercent ? ` · 💥 คริ +${item.battleCriticalChancePercent}%` : ''}${item.battleRepeatAttackChancePercent ? ` · 🔁 ตีซ้ำ +${item.battleRepeatAttackChancePercent}%` : ''} · โควตาไอเทม ${currentUses + 1}/2 ครั้งในเกมนี้`,
     }, ...(normalizedRoom.log || [])],
     updatedAt: Date.now(),
   };
@@ -3052,6 +3077,13 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     maxHp: actorPatch.maxHp,
     stats,
   });
+
+  if (allyToRevive && allyToRevive.type === 'player' && allyToRevive.sourceId) {
+    await updateCharacterFields(allyToRevive.sourceId, {
+      hp: revivedAllyHp,
+      maxHp: Math.max(1, Number(allyToRevive.maxHp) || 1),
+    });
+  }
 
   await updateBattleRoom(nextRoom);
   return nextRoom;
