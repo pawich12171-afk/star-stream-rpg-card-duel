@@ -1201,37 +1201,37 @@ export async function addShopItem(item: Item): Promise<void> {
 export async function updateShopItem(item: Item): Promise<void> {
   const previousItem = localShopItems.find(existing => existing.id === item.id);
   const cleanItem = sanitizeForFirestore(item);
+
+  // Keep the edited item visible immediately, but do not treat the local
+  // update as the database save.
   localShopItems = [item, ...localShopItems.filter(existing => existing.id !== item.id)];
   pendingShopItems.set(item.id, item);
   saveLocalAll();
   broadcast?.postMessage({ type: 'SHOP_UPDATE' });
 
   try {
-    await enqueuePersistenceWrite(`shop:${item.id}`, async () => {
-      const ref = doc(db, SHOP_ITEMS_COLLECTION, item.id);
-      // Upsert instead of updateDoc: legacy items may not have a Firestore
-      // document even though they are present in the admin catalog.
-      await setDoc(ref, cleanItem, { merge: true });
+    // The project now uses /api/database -> Supabase, not Firebase.
+    // PUT is an UPSERT, so it works for both old and new shop items.
+    await enqueuePersistenceWrite(`shop:${item.id}`, () =>
+      setDoc(doc(db, SHOP_ITEMS_COLLECTION, item.id), cleanItem)
+    );
 
-      // Verify the actual database write before reporting success.
-      const saved = await getDoc(ref);
-      if (!saved.exists()) {
-        throw new Error('Firestore ไม่พบไอเทมหลังบันทึก');
-      }
-      const savedData = saved.data() || {};
-      if (String(savedData.name ?? '') !== String(cleanItem.name ?? '')) {
-        throw new Error('Firestore ยืนยันชื่อไอเทมที่แก้ไขไม่ตรงกับข้อมูลล่าสุด');
-      }
-    });
+    // setDoc only resolves after the backend has returned HTTP 200.
+    // Do not perform an extra read here: a realtime/polling snapshot can
+    // legitimately lag the write and must not turn a successful save into
+    // a false "save failed" message.
     pendingShopItems.delete(item.id);
   } catch (err) {
     pendingShopItems.delete(item.id);
+
+    // Revert the optimistic UI only when the actual backend write failed.
     localShopItems = previousItem
       ? [previousItem, ...localShopItems.filter(existing => existing.id !== item.id)]
       : localShopItems.filter(existing => existing.id !== item.id);
     saveLocalAll();
     broadcast?.postMessage({ type: 'SHOP_UPDATE' });
-    console.error('Error updating shop item in Firestore:', err);
+
+    console.error('[ShopItem] Firestore/Supabase save failed:', err);
     throw err;
   }
 }
