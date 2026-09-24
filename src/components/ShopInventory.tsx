@@ -752,6 +752,51 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     )
   );
 
+  const getEquipmentStatTotal = (char: CharacterProfile = character) =>
+    Math.max(0, Number(char.stats?.strength) || 0) +
+    Math.max(0, Number(char.stats?.durability) || 0) +
+    Math.max(0, Number(char.stats?.agility) || 0) +
+    Math.max(0, Number(char.stats?.magic) || 0);
+
+  const getEquipmentSlots = (char: CharacterProfile = character) =>
+    1 + Math.max(0, Math.floor(Number(char.equipmentSlotUpgrades) || 0));
+
+  const getNextEquipmentSlotRequirement = (char: CharacterProfile = character) => {
+    const upgrades = Math.max(0, Math.floor(Number(char.equipmentSlotUpgrades) || 0));
+    return Math.ceil(50 * Math.pow(1.1, upgrades));
+  };
+
+  const handleUpgradeEquipmentSlot = async () => {
+    const statTotal = getEquipmentStatTotal();
+    const requirement = getNextEquipmentSlotRequirement();
+    if (statTotal <= requirement) {
+      alert(`ค่าสเตตรวมต้องมากกว่า ${requirement} จึงจะอัพช่องสวมใส่ได้\nปัจจุบัน: ${statTotal}`);
+      return;
+    }
+    const upgrades = Math.max(0, Math.floor(Number(character.equipmentSlotUpgrades) || 0));
+    const updatedChar: CharacterProfile = {
+      ...character,
+      equipmentSlotUpgrades: upgrades + 1,
+      notifications: [
+        {
+          id: `notif-equip-slot-${Date.now()}`,
+          title: 'เพิ่มช่องสวมใส่',
+          message: `ปลดล็อกช่องสวมใส่เพิ่ม 1 ช่อง (รวม ${upgrades + 2} ช่อง)`,
+          timestamp: Date.now(),
+          read: false,
+          type: 'system',
+        },
+        ...(character.notifications || []),
+      ],
+    };
+    try {
+      await onUpdateCharacter(updatedChar);
+    } catch (error) {
+      console.error('Failed to upgrade equipment slot:', error);
+      alert('อัพช่องสวมใส่ไม่สำเร็จ กรุณาลองใหม่');
+    }
+  };
+
   const handleToggleEquip = (invItem: InventoryItem) => {
     const total = Math.max(1, Number(invItem.quantity) || 1);
     const current = getEquippedQuantity(invItem);
@@ -763,7 +808,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
       .reduce((sum, item) => sum + getEquippedQuantity(item), 0);
     const slots = isAryaEquipment(invItem)
       ? Math.max(0, 1 - aryaTotal + current)
-      : Math.max(0, 20 - generalTotal + current);
+      : Math.max(0, getEquipmentSlots() - generalTotal + current);
     const max = Math.min(total, slots);
     const answer = window.prompt(
       `สวมใส่ "${invItem.name}" กี่อัน?\\nมีทั้งหมด ${total} อัน\\nปัจจุบันสวมใส่ ${current} อัน\\nเลือกได้ 0-${max} อัน`,
@@ -803,6 +848,10 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     updatedChar = syncCharacterHealth(updatedChar);
     onUpdateCharacter(updatedChar);
   };
+
+  const equipmentStatTotal = getEquipmentStatTotal();
+  const equipmentSlots = getEquipmentSlots();
+  const nextSlotRequirement = getNextEquipmentSlotRequirement();
 
   // Admin create new item in shop
   const handleAdminSubmitItem = async (e: React.FormEvent) => {
@@ -1299,7 +1348,17 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                 <button type="button" onClick={() => setInventorySearch('')} className="mt-3 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer">ล้างการค้นหา</button>
               </div>
             ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[72vh] overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
+            <div className="mb-3 rounded-2xl border border-cyan-500/20 bg-cyan-950/10 p-3 min-w-0">
+  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="min-w-0">
+      <div className="text-sm font-black text-cyan-200">🛡️ ช่องสวมใส่อุปกรณ์</div>
+      <div className="text-xs text-slate-400">ใช้ไปแล้ว {stackedInventory.filter(item => item.category === 'equipment' && !isAryaEquipment(item)).reduce((sum, item) => sum + getEquippedQuantity(item), 0)}/<span className="font-bold text-cyan-300">{equipmentSlots}</span> ช่อง · ค่าสเตตรวม {equipmentStatTotal}</div>
+      <div className="text-[10px] text-slate-500">อัพช่องถัดไปเมื่อค่าสเตตรวมมากกว่า {nextSlotRequirement} · เงื่อนไขเพิ่มขึ้น 10% ทุกครั้ง</div>
+    </div>
+    <button type="button" onClick={handleUpgradeEquipmentSlot} className="shrink-0 rounded-xl border border-cyan-400/40 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-500/20">+ เพิ่มช่อง ({equipmentSlots})</button>
+  </div>
+</div>
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[72vh] overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
               {filteredInventory.map((invItem, index) => {
                 const inventoryKey = invItem.instanceId || `legacy-${invItem.id}-${index}`;
                 const rarityInfo = getRarityBadge(invItem.rarity);
