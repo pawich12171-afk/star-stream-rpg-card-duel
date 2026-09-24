@@ -1243,6 +1243,5 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
         );
       })}
     </section>
-  </div>
   </div>;
 }
