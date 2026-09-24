@@ -3164,38 +3164,15 @@ function getBattleCombatants(room: BattleRoom): BattleCombatant[] {
   return [...room.teamA, ...room.teamB];
 }
 function getNextBattleActor(room: BattleRoom, actorId: string): BattleCombatant | undefined {
-  const all = getBattleCombatants(room);
-  const current = all.find(item => item.id === actorId);
-  if (!current) return all.find(item => item.hp > 0);
-
-  // Turns alternate between teams, but each team also rotates through its
-  // living members. The old implementation always picked team[0] after an
-  // enemy turn, which made the same player attack repeatedly (A -> Boss ->
-  // A -> Boss). Use battle-log history to remember who on the target team
-  // acted most recently, then advance to the next living member.
-  const nextTeam = current.team === 'a' ? room.teamB : room.teamA;
-  const lastActorOnNextTeam = [...(room.log || [])]
-    .map(entry => nextTeam.find(unit => unit.name === entry.actorName))
-    .find(Boolean);
-
-  const startIndex = lastActorOnNextTeam
-    ? nextTeam.findIndex(unit => unit.id === lastActorOnNextTeam.id)
-    : -1;
-
-  for (let step = 1; step <= nextTeam.length; step += 1) {
-    const candidate = nextTeam[(startIndex + step + nextTeam.length) % nextTeam.length];
-    if (candidate && candidate.hp > 0) return candidate;
-  }
-
-  // If the opposing side has no living member, continue on the current side
-  // after the actor who just finished.
-  const currentTeam = current.team === 'a' ? room.teamA : room.teamB;
-  const currentIndex = Math.max(0, currentTeam.findIndex(item => item.id === actorId));
-  for (let step = 1; step <= currentTeam.length; step += 1) {
-    const candidate = currentTeam[(currentIndex + step) % currentTeam.length];
-    if (candidate && candidate.hp > 0) return candidate;
-  }
-  return undefined;
+  const living = getBattleCombatants(room).filter(unit => unit.hp > 0);
+  if (!living.length) return undefined;
+  // AGILITY is the battle SPEED stat. Highest Agility always acts next.
+  const candidates = living.filter(unit => unit.id !== actorId || living.length === 1);
+  return candidates.sort((a, b) => {
+    const speedDiff = (Number(b.stats?.agility) || 0) - (Number(a.stats?.agility) || 0);
+    if (speedDiff !== 0) return speedDiff;
+    return String(a.id).localeCompare(String(b.id));
+  })[0];
 }
 
 export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?: Skill): { room: BattleRoom; result: BattleRollResult | null } {
@@ -3210,7 +3187,10 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
   const actor = all.find(item => item.id === nextRoom.turnActorId) || all.find(item => item.hp > 0);
   if (!actor || actor.hp <= 0) return { room, result: null };
   const opponentTeam = actor.team === "a" ? nextRoom.teamB : nextRoom.teamA;
-  const defender = opponentTeam.find(item => item.hp > 0);
+  const livingOpponents = opponentTeam.filter(item => item.hp > 0);
+  const defender = livingOpponents.length
+    ? livingOpponents[Math.floor(Math.random() * livingOpponents.length)]
+    : undefined;
   if (!defender) return { room: { ...nextRoom, status: "completed", winnerTeam: actor.team }, result: null };
   const current = all.find(item => item.id === actor.id) as BattleCombatant;
   // Duration is consumed on the owner's next turn, not at the end of the
