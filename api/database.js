@@ -238,7 +238,12 @@ async function claimBattleRewardDirect(body) {
   // Never depend on the browser sending the drop list back during claim;
   // otherwise a stale client or a room snapshot without the field can make
   // a correctly configured drop disappear at reward time.
-  const drops = Array.isArray(roomData.battleDrops) ? roomData.battleDrops : [];
+  // Prefer the drops persisted with the room. For legacy rooms created
+  // before battleDrops was persisted, accept the room snapshot sent by the
+  // battle client as a compatibility fallback.
+  const persistedDrops = Array.isArray(roomData.battleDrops) ? roomData.battleDrops : [];
+  const requestDrops = Array.isArray(body.drops) ? body.drops : [];
+  const drops = persistedDrops.length > 0 ? persistedDrops : requestDrops;
 
   const winningPlayers = Array.isArray(roomData.teamA)
     ? roomData.teamA.filter(unit => unit?.type === 'player' && String(unit?.sourceId || ''))
