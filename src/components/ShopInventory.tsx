@@ -49,19 +49,24 @@ interface ShopInventoryProps {
 
 // Helper functions for items
 const renderItemIcon = (iconName?: string, category?: string, effectType?: string, className = "w-5 h-5") => {
-  if (iconName === 'HeartPulse' || effectType === 'heal_hp') return <HeartPulse className={`${className} text-rose-400`} />;
-  if (iconName === 'Heart' || effectType === 'boost_max_hp') return <Heart className={`${className} text-rose-500`} />;
-  if (iconName === 'Shield' || category === 'equipment') return <Shield className={`${className} text-blue-400`} />;
-  if (iconName === 'Sword') return <Sword className={`${className} text-amber-300`} />;
-  if (iconName === 'Flame') return <Flame className={`${className} text-orange-400`} />;
-  if (iconName === 'Flower2') return <Flower2 className={`${className} text-emerald-400`} />;
-  if (iconName === 'Droplets') return <Droplets className={`${className} text-cyan-400`} />;
-  if (iconName === 'Zap') return <Zap className={`${className} text-yellow-300`} />;
-  if (iconName === 'Gem') return <Gem className={`${className} text-purple-400`} />;
-  if (iconName === 'Scroll') return <Scroll className={`${className} text-amber-200`} />;
-  if (iconName === 'Crown') return <Crown className={`${className} text-yellow-400`} />;
-  if (iconName === 'Sparkles') return <Sparkles className={`${className} text-amber-300`} />;
-  return <Package className={`${className} text-cyan-400`} />;
+  // Uploaded item artwork can be stored in the icon field as a data URI or URL.
+  const icon = String(iconName || '').trim();
+  const isImageIcon = /^data:image\\//i.test(icon) || /^https?:\\/\\//i.test(icon) || /^blob:/i.test(icon);
+  if (isImageIcon) {
+    return <img src={icon} alt="" className={className + " rounded-lg object-cover"} />;
+  }
+  if (iconName === 'HeartPulse' || effectType === 'heal_hp') return <HeartPulse className={className + " text-rose-400"} />;
+  if (iconName === 'Heart' || effectType === 'boost_max_hp') return <Heart className={className + " text-rose-500"} />;
+  if (iconName === 'Shield' || category === 'equipment') return <Shield className={className + " text-blue-400"} />;
+  if (iconName === 'Sword') return <Sword className={className + " text-amber-300"} />;
+  if (iconName === 'Flame') return <Flame className={className + " text-orange-400"} />;
+  if (iconName === 'Flower2') return <Flower2 className={className + " text-emerald-400"} />;
+  if (iconName === 'Droplets') return <Droplets className={className + " text-cyan-400"} />;
+  if (iconName === 'Zap') return <Zap className={className + " text-yellow-300"} />;
+  if (iconName === 'Gem') return <Gem className={className + " text-purple-400"} />;
+  if (iconName === 'Scroll') return <Scroll className={className + " text-amber-200"} />;
+  if (iconName === 'Crown') return <Crown className={className + " text-yellow-400"} />;
+  return <Sparkles className={className + " text-amber-300"} />;
 };
 
 const getRarityBadge = (rarity?: string) => {
