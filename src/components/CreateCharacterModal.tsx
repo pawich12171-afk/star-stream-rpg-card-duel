@@ -22,7 +22,7 @@ import { processImageFile, DEFAULT_AVATAR_FALLBACK } from '../utils/imageUtils';
 interface CreateCharacterModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (newChar: CharacterProfile) => void;
+  onCreate: (newChar: CharacterProfile) => void | Promise<void>;
 }
 
 const SUGGESTED_CONSTELLATIONS = [
@@ -66,7 +66,7 @@ export const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!displayName.trim()) return;
 
@@ -131,7 +131,14 @@ export const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
       statUpgradeCount: 0,
     };
 
-    onCreate(newChar);
+    try {
+      await onCreate(newChar);
+    } catch (error: any) {
+      console.error('Failed to create character:', error);
+      setUploadStatus(null);
+      alert(error?.message || 'สร้างตัวละครไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+      return;
+    }
     confetti({
       particleCount: 80,
       spread: 70,
