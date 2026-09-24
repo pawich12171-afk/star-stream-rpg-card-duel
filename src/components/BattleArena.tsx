@@ -210,6 +210,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const [selectedOpponentId, setSelectedOpponentId] = useState('');
   const [selectedBotIds, setSelectedBotIds] = useState<string[]>([]);
   const [selectedSkillId, setSelectedSkillId] = useState('');
+  const [selectedBattleTargetIds, setSelectedBattleTargetIds] = useState<Record<string, string>>({});
   const [botSkillDraftId, setBotSkillDraftId] = useState('');
   const [botSkillChance, setBotSkillChance] = useState('25');
   const [botSkillName, setBotSkillName] = useState('');
@@ -637,7 +638,9 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
         };
       }
 
-      const resolved = resolveBattleTurn(room, config, resolvedSkill);
+      const livingTargets = (actor.team === 'a' ? room.teamB : room.teamA).filter(unit => unit.hp > 0);
+      const selectedTargetId = selectedBattleTargetIds[room.id] || livingTargets[0]?.id;
+      const resolved = resolveBattleTurn(room, config, resolvedSkill, selectedTargetId);
 
       // A valid turn must always move the actor. Persist it first.
       if (resolved.result || resolved.room.status !== room.status || resolved.room.turnActorId !== room.turnActorId) {
@@ -1159,7 +1162,11 @@ setBotSummonName(skill.summonName||'ลูกน้อง');setBotSummonMaxCount
                   </div>
                   <div className="space-y-2">
                     {(team === 'a' ? room.teamA : room.teamB).map(unit => (
-                      <div key={unit.id} className={'flex items-center gap-2 rounded-xl border p-2 ' + (actor?.id === unit.id ? 'border-cyan-300/60 bg-cyan-400/10 animate-pulse' : 'border-transparent')}>
+                      <div key={unit.id} onClick={() => {
+                        if (canAct && team === 'b' && unit.hp > 0) {
+                          setSelectedBattleTargetIds(prev => ({ ...prev, [room.id]: unit.id }));
+                        }
+                      }} className={'flex items-center gap-2 rounded-xl border p-2 ' + (actor?.id === unit.id ? 'border-cyan-300/60 bg-cyan-400/10 animate-pulse' : (canAct && team === 'b' && unit.hp > 0 && (selectedBattleTargetIds[room.id] || room.teamB.find(u => u.hp > 0)?.id) === unit.id) ? 'border-amber-300/70 bg-amber-400/10 ring-1 ring-amber-300/30 cursor-pointer' : (canAct && team === 'b' && unit.hp > 0 ? 'border-transparent cursor-pointer hover:border-amber-400/40' : 'border-transparent'))}>
                         <img src={unit.avatarUrl} alt="" className="h-8 w-8 rounded-lg object-cover" />
                         <div className="min-w-0 flex-1">
                           <div className="flex justify-between gap-2 text-xs">
@@ -1181,6 +1188,19 @@ setBotSummonName(skill.summonName||'ลูกน้อง');setBotSummonMaxCount
                 </div>
               ))}
             </div>
+
+            {canAct && room.teamB.filter(unit => unit.hp > 0).length > 1 && (
+              <div className="mx-4 mb-1 rounded-xl border border-amber-400/20 bg-amber-500/5 p-3 text-xs">
+                <div className="mb-2 font-black text-amber-200">🎯 เลือกเป้าหมายที่จะโจมตี</div>
+                <div className="flex flex-wrap gap-2">
+                  {room.teamB.filter(unit => unit.hp > 0).map(unit => (
+                    <button key={unit.id} type="button" onClick={() => setSelectedBattleTargetIds(prev => ({ ...prev, [room.id]: unit.id }))} className={'rounded-lg px-3 py-2 font-bold ' + ((selectedBattleTargetIds[room.id] || room.teamB.find(u => u.hp > 0)?.id) === unit.id ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-300 hover:bg-slate-700')}>
+                      🎯 {unit.name} · HP {unit.hp}/{unit.maxHp}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="border-t border-slate-800 bg-slate-950/20 px-4 py-3 text-xs text-slate-300">
               <span className="mr-2 rounded-lg bg-slate-800 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-200">ล่าสุด</span>
