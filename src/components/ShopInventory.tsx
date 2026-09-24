@@ -756,9 +756,11 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     const text = String(item.name || '').toLowerCase();
     const category = String(item.category || '').toLowerCase();
     const combined = text + ' ' + category;
-    if (/e\.g\.o\s*weapon|ego\s*weapon/.test(combined)) return 'E.G.O Weapon';
-    if (/e\.g\.o\s*gift|ego\s*gift/.test(combined)) return 'E.G.O Gift';
-    if (/e\.g\.o\s*suit|ego\s*suit/.test(combined)) return 'E.G.O Suit';
+    // Any item whose name starts with E.G.O Weapon/Gift/Suit belongs to that
+    // one-slot group, e.g. "E.G.O Suit — Red Mist".
+    if (/^e\.g\.o\s+weapon\b|^ego\s+weapon\b/.test(text)) return 'E.G.O Weapon';
+    if (/^e\.g\.o\s+gift\b|^ego\s+gift\b/.test(text)) return 'E.G.O Gift';
+    if (/^e\.g\.o\s+suit\b|^ego\s+suit\b/.test(text)) return 'E.G.O Suit';
     return null;
   };
 
@@ -791,7 +793,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
 
   const getSpecialLimitLabel = (item: InventoryItem) => {
     const type = getSpecialEquipmentType(item);
-    return type ? `ใส่ได้สูงสุด 1 ชิ้น • ${type}` : null;
+    return type ? `ใส่ได้สูงสุด 1 ชิ้น • ${type} • 1/1` : null;
   };
 
   const getEquipmentLimitLabel = (item: InventoryItem) => {
