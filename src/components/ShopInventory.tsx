@@ -834,14 +834,11 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     Math.max(0, Number(char.stats?.agility) || 0) +
     Math.max(0, Number(char.stats?.magic) || 0);
 
-  // ช่องสวมใส่อุปกรณ์เริ่มต้น 20 ช่อง และเพิ่มทีละ 1 ช่องตามเงื่อนไขค่าสเตตเดิม
+  // ช่องสวมใส่พื้นฐาน 20 ช่อง และเส้นทางอัปสกิลปลดล็อกเพิ่มได้สูงสุดอีก 2 ช่องเท่านั้น
   const getEquipmentSlots = (char: CharacterProfile = character) =>
-    20 + Math.max(0, Math.floor(Number(char.equipmentSlotUpgrades) || 0));
+    20 + Math.max(0, Math.min(2, Math.floor(Number(char.equipmentSlotUpgrades) || 0)));
 
-  const getNextEquipmentSlotRequirement = (char: CharacterProfile = character) => {
-    const upgrades = Math.max(0, Math.floor(Number(char.equipmentSlotUpgrades) || 0));
-    return Math.ceil(50 * Math.pow(1.1, upgrades));
-  };
+  const getNextEquipmentSlotRequirement = (_char: CharacterProfile = character) => 100;
 
   const canEquipSpecialType = (item: InventoryItem) => {
     const type = getSpecialEquipmentType(item);
@@ -863,16 +860,23 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   };
 
   const handleUpgradeEquipmentSlot = async () => {
-    const statTotal = getEquipmentStatTotal();
-    const requirement = getNextEquipmentSlotRequirement();
-    if (statTotal <= requirement) {
-      alert(`ค่าสเตตรวมต้องมากกว่า ${requirement} จึงจะอัพช่องสวมใส่ได้\nปัจจุบัน: ${statTotal}`);
+    const upgrades = Math.max(0, Math.min(2, Math.floor(Number(character.equipmentSlotUpgrades) || 0)));
+    const progress = character.skillUpgradeProgress;
+    if (upgrades >= 2) {
+      alert('ช่องสวมใส่จากเส้นทางอัปสกิลครบ +2 ช่องแล้ว และไม่สามารถอัปเพิ่มได้');
       return;
     }
-    const upgrades = Math.max(0, Math.floor(Number(character.equipmentSlotUpgrades) || 0));
+    if (!progress || Number(progress.magic || 0) < 100) {
+      alert('ต้องอัปสกิลตามลำดับจนค่าเวทครบ 100 ก่อน จึงจะปลดล็อกช่องสวมใส่ +2 ช่อง');
+      return;
+    }
     const updatedChar: CharacterProfile = {
       ...character,
       equipmentSlotUpgrades: upgrades + 1,
+      skillUpgradeProgress: {
+        ...(progress || { hpBonus: 20000, durability: 100, strength: 100, agility: 100, magic: 100, equipmentSlots: upgrades }),
+        equipmentSlots: upgrades + 1,
+      },
       notifications: [
         {
           id: `notif-equip-slot-${Date.now()}`,
@@ -1457,9 +1461,9 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     <div className="min-w-0">
       <div className="text-sm font-black text-cyan-200">🛡️ ช่องสวมใส่อุปกรณ์</div>
       <div className="text-xs text-slate-400">ใช้ไปแล้ว {stackedInventory.filter(item => item.category === 'equipment' && !isAryaEquipment(item)).reduce((sum, item) => sum + getEquippedQuantity(item), 0)}/<span className="font-bold text-cyan-300">{equipmentSlots}</span> ช่อง · ค่าสเตตรวม {equipmentStatTotal}</div>
-      <div className="text-[10px] text-slate-500">อัพช่องถัดไปเมื่อค่าสเตตรวมมากกว่า {nextSlotRequirement} · เงื่อนไขเพิ่มขึ้น 10% ทุกครั้ง</div>
+      <div className="text-[10px] text-slate-500">{equipmentSlots >= 22 ? 'ปลดล็อกครบ 2 ช่องแล้ว • อัปเพิ่มไม่ได้' : (character.skillUpgradeProgress?.magic || 0) >= 100 ? 'พร้อมปลดล็อกช่องจากเส้นทางอัปสกิล' : 'ปลดล็อกหลังอัปสกิลจนค่าเวทครบ 100'}</div>
     </div>
-    <button type="button" onClick={handleUpgradeEquipmentSlot} className="shrink-0 rounded-xl border border-cyan-400/40 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-500/20">+ เพิ่มช่อง ({equipmentSlots})</button>
+    <button type="button" onClick={handleUpgradeEquipmentSlot} disabled={equipmentSlots >= 22 || Number(character.skillUpgradeProgress?.magic || 0) < 100} className="shrink-0 rounded-xl border border-cyan-400/40 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40 disabled:cursor-not-allowed">+ เพิ่มช่อง ({equipmentSlots}/22)</button>
   </div>
 </div>
 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[72vh] overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
