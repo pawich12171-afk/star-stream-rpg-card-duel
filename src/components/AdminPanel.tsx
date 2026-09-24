@@ -1036,13 +1036,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <label className="text-xs text-slate-300 block mb-1">จำนวนเหรียญ:</label>
                 <input
                   type="text"
-                  inputMode="decimal"
-                  placeholder="เช่น 1m หรือ 1,000,000"
+                  inputMode="text"
+                  placeholder="เช่น 1m, 1.5m หรือ 1,000,000"
                   value={coinInput}
                   onChange={(e) => setCoinInput(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono font-bold outline-none focus:border-amber-400"
                 />
-                <div className="text-[10px] text-slate-500">รองรับ 1,000,000 = 1m · 1b = 1,000,000,000 · 1t = 1,000,000,000,000</div>
+                <div className="text-[10px] text-slate-500">รองรับ 1,000,000 = 1m · 1b = 1,000,000,000 · 1t = 1,000,000,000,000 · พิมพ์ตัวอักษร K/M/B/T ได้</div>
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {[1000, 5000, 10000, 50000, 100000].map(amt => (
                     <button
