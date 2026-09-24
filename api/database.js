@@ -351,6 +351,41 @@ async function claimBattleRewardDirect(body) {
     nextData.coins += dropCoinTotal;
   }
 
+  // Store a server-generated reward notification with the exact drops that
+  // were actually rolled. The client only displays this result and never
+  // writes the reward again.
+  const configuredDrops = Array.isArray(roomData.battleDrops) ? roomData.battleDrops : requestDrops;
+  const awardedDropKeys = new Set(drops.map(drop => String(drop?.id || `${drop?.type}:${drop?.itemData?.id || drop?.name || drop?.amount}`)));
+  const dropMessages = configuredDrops.map(drop => {
+    const key = String(drop?.id || `${drop?.type}:${drop?.itemData?.id || drop?.name || drop?.amount}`);
+    const label = drop?.type === 'coin'
+      ? `${Number(drop?.amount || 0).toLocaleString()} Coins`
+      : `${drop?.name || drop?.itemData?.name || 'ไอเทม'} ×${Number(drop?.amount || 0)}`;
+    return awardedDropKeys.has(key)
+      ? `✅ ได้ ${label}`
+      : `❌ ไม่ได้ ${label} (โอกาสดรอป ${Number(drop?.dropChancePercent ?? 100)}%)`;
+  });
+  const dropSummary = configuredDrops.length === 0
+    ? '❌ ของ Drop ไม่ออก — มอน/บอสตัวนี้ไม่มีรายการ Drop ที่ตั้งค่าไว้'
+    : drops.length === 0
+      ? '❌ ของ Drop ไม่ออก'
+      : dropMessages.join(' · ');
+  const notifications = Array.isArray(nextData.notifications) ? [...nextData.notifications] : [];
+  notifications.unshift({
+    id: `notif-battle-reward-${roomId}-${playerId}`,
+    title: 'ผลของดรอปจากการต่อสู้',
+    message: [
+      reward > 0 ? `💰 ได้ ${reward.toLocaleString()} Coins` : '',
+      rewardData?.type === 'item' && rewardData.itemData ? `🎁 ได้ไอเทมสุ่ม: ${rewardData.itemData.name || 'ไอเทม'} ×1` : '',
+      rewardData?.type === 'skill' && rewardData.skillData ? `✨ ได้สกิลสุ่ม: ${rewardData.skillData.name || 'สกิล'}` : '',
+      dropSummary,
+    ].filter(Boolean).join(' · '),
+    timestamp: Date.now(),
+    read: false,
+    type: 'game',
+  });
+  nextData.notifications = notifications.slice(0, 100);
+
   try {
     await supabase(`star_stream_documents?${charFilter}`, {
       method: 'PATCH',
