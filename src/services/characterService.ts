@@ -2189,7 +2189,50 @@ export async function settleCard21Bet(
 export const subscribeToShopItems = subscribeToShop;
 export const updateCharacter = updateCharacterData;
 export const updateCharacterInDB = updateCharacterData;
-export const addCharacterToDB = updateCharacterData;
+export async function addCharacterToDB(char: CharacterProfile): Promise<void> {
+  const id = String(char.id || '').trim();
+  if (!id) throw new Error('ไม่พบ ID ตัวละครใหม่');
+
+  // Creating a character must CREATE the Firestore document.
+  // Do not route creation through updateCharacterData(), because that
+  // intentionally rejects missing documents to protect normal updates.
+  const created: CharacterProfile = {
+    ...char,
+    skills: [...(char.skills || [])],
+    inventory: [...(char.inventory || [])],
+    quests: [...(char.quests || [])],
+    notifications: [...(char.notifications || [])],
+    characteristics: [...(char.characteristics || [])],
+    lastUpdated: Math.max(Date.now(), Number(char.lastUpdated || 0)),
+  };
+
+  const previous = localCharacters.find(c => c.id === id);
+  localCharacters = [...localCharacters.filter(c => c.id !== id), created];
+  pendingCharacterUpdates.set(id, created);
+  saveLocalAll();
+  broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
+
+  try {
+    await enqueueCharacterWrite(id, async () => {
+      const ref = doc(db, CHARACTERS_COLLECTION, id);
+      const existing = await getDoc(ref);
+      if (existing.exists()) {
+        throw new Error('CHARACTER_ID_ALREADY_EXISTS');
+      }
+      await setDoc(ref, sanitizeForFirestore(created));
+    });
+    pendingCharacterUpdates.delete(id);
+  } catch (err) {
+    pendingCharacterUpdates.delete(id);
+    localCharacters = previous
+      ? [...localCharacters.filter(c => c.id !== id), previous]
+      : localCharacters.filter(c => c.id !== id);
+    saveLocalAll();
+    broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
+    console.error('Error creating character in Firestore:', err);
+    throw err;
+  }
+}
 export const transferCoinsBetweenCharacters = transferCoins;
 export const saveShopItem = addShopItem;
 export const addShopItemToDB = addShopItem;
