@@ -1146,14 +1146,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                         {(skill.multiplier || 1) > 1 && ` [x${skill.multiplier}]`}
                       </span>
                     </div>
-                    <div className="p-2 rounded-xl bg-rose-950/50 border border-rose-800/50 text-rose-300 flex items-center justify-between">
-                      <span className="text-slate-400 flex items-center gap-1">
-                        <Heart className="w-3 h-3 text-rose-400" /> บัฟเลือด:
-                      </span>
-                      <span className="font-bold font-mono text-emerald-400">
-                        +{upgradePreview.currentHpBonus} HP
-                      </span>
-                    </div>
+                    <div className="p-2 rounded-xl bg-rose-950/50 border border-rose-800/50 text-rose-300 flex items-center justify-between">\n                      <span className="text-slate-400 flex items-center gap-1">\n                        <Heart className="w-3 h-3 text-rose-400" /> รางวัลอัปสกิล:\n                      </span>\n                      <span className="font-bold font-mono text-emerald-400 text-right">\n                        {(() => {\n                          const p = character.skillUpgradeProgress;\n                          const hp = Math.max(0, Math.min(20000, Number(p?.hpBonus) || 0));\n                          const durability = Math.max(0, Math.min(100, Number(p?.durability) || 0));\n                          const strength = Math.max(0, Math.min(100, Number(p?.strength) || 0));\n                          const agility = Math.max(0, Math.min(100, Number(p?.agility) || 0));\n                          const magic = Math.max(0, Math.min(100, Number(p?.magic) || 0));\n                          const slots = Math.max(0, Math.min(2, Math.floor(Number(p?.equipmentSlots ?? character.equipmentSlotUpgrades) || 0)));\n                          if (hp < 20000) return `❤️ HP ${hp.toLocaleString()}/20,000`;\n                          if (durability < 100) return `🛡️ ทนทาน ${durability.toFixed(2)}/100`;\n                          if (strength < 100) return `💪 STR ${strength.toFixed(2)}/100`;\n                          if (agility < 100) return `⚡ ความเร็ว ${agility.toFixed(2)}/100`;\n                          if (magic < 100) return `✨ เวท ${magic.toFixed(2)}/100`;\n                          if (slots < 2) return `🎒 ช่อง +${slots}/2`;\n                          return `🔁 เริ่มรอบใหม่ที่ HP`;\n                        })()}\n                      </span>\n                    </div>
                   </div>
 
                   <div className="mt-2.5 p-2.5 rounded-2xl bg-slate-900/80 border border-slate-800 text-xs text-slate-400">
@@ -1171,17 +1164,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                           : `อัปเกรดสู่ Lv.${skill.level + 1}: ความสามารถ +10%`}
                       </span>
                     </div>
-                    <div className="text-[11px] font-mono text-right shrink-0">
-                      {upgradePreview.nextHpBonus > upgradePreview.currentHpBonus ? (
-                        <span className="text-rose-300 font-semibold">
-                          เลือด +{upgradePreview.currentHpBonus} ➔ <strong className="text-emerald-300 font-bold">+{upgradePreview.nextHpBonus} HP</strong> (+{upgradePreview.nextHpBonus - upgradePreview.currentHpBonus})
-                        </span>
-                      ) : upgradePreview.nextHpBonus > 0 ? (
-                        <span className="text-rose-300">เลือด +{upgradePreview.nextHpBonus} HP</span>
-                      ) : (
-                        <span className="text-cyan-400 font-mono">+10% อานุภาพ</span>
-                      )}
-                    </div>
+                    <div className="text-[11px] font-mono text-right shrink-0">\n                      <span className="text-emerald-300 font-semibold">\n                        รางวัลครั้งนี้: {getSkillRewardPreview(1)}\n                      </span>\n                    </div>
                   </div>
                 </div>
 
