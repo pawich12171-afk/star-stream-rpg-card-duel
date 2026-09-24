@@ -279,8 +279,21 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       room.teamA.some(unit => unit.type === 'player' && unit.sourceId === currentUser.id)
     );
     completed.forEach(room => {
-      void settleBattleVictoryReward(room, currentUser.id).then(paid => {
-        if (paid > 0) alert(`ทีมชนะ! ได้รับรางวัล +${paid.toLocaleString()} Coins`);
+      void settleBattleVictoryReward(room, currentUser.id).then(result => {
+        const paid = Number(result?.paid) || 0;
+        const awardedDrops = Array.isArray(result?.awardedDrops) ? result.awardedDrops : [];
+        const rewardLines = [
+          paid > 0 ? `💰 รางวัลชนะ +${paid.toLocaleString()} Coins` : '',
+          ...awardedDrops.map(drop => {
+            const amount = Math.max(0, Math.floor(Number(drop.amount) || 0));
+            return drop.type === 'coin'
+              ? `🪙 Drop Coins +${amount.toLocaleString()}`
+              : `🎁 Drop ไอเทม: ${drop.name || drop.itemData?.name || 'ไอเทม'} ×${amount}`;
+          }),
+        ].filter(Boolean);
+        if (rewardLines.length > 0) {
+          alert(`🏆 ชนะการต่อสู้!\\n\\n${rewardLines.join('\\n')}`);
+        }
       }).catch(error => console.warn('ไม่สามารถจ่ายรางวัลการต่อสู้ได้', error));
     });
   }, [rooms, currentUser.id]);
