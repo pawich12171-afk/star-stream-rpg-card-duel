@@ -1511,6 +1511,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                 );
               })}
             </div>
+            </>
             )}
             </>
           )}
@@ -2186,7 +2187,6 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
             </div>
 
           </div>
-              </>
         </div>
       )}
     </div>
