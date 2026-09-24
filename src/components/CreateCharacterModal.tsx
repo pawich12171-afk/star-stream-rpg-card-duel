@@ -77,7 +77,7 @@ export const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
       nickname: nickname.trim() || 'ผู้อวตารคนใหม่',
       avatarUrl: avatarUrl.trim() || DEFAULT_AVATAR_FALLBACK,
       constellation: constellation.trim() || 'ไม่มีผู้สนับสนุน (ผู้อวตารอิสระ)',
-      coins: 1000,
+      coins: 50000,
       hp: 20,
       maxHp: 20,
       powerScore: 1200,
@@ -119,7 +119,7 @@ export const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
         {
           id: `notif-welcome-${Date.now()}`,
           title: 'ยินดีต้อนรับสู่ Star Stream System',
-          message: `ตัวละคร "${displayName.trim()}" ได้รับการบันทึกลงสารบบแล้ว รับเหรียญสนับสนุนเริ่มต้น 1,000 Coins`,
+          message: `ตัวละคร "${displayName.trim()}" ได้รับการบันทึกลงสารบบแล้ว รับเหรียญสนับสนุนเริ่มต้น 50,000 Coins`,
           timestamp: Date.now(),
           read: false,
           type: 'system',
@@ -348,7 +348,7 @@ export const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
           <div className="p-3 rounded-2xl bg-cyan-950/30 border border-cyan-900/50 flex items-center justify-between text-[11px] text-cyan-300">
             <div className="flex items-center gap-1.5">
               <Coins className="w-4 h-4 text-amber-400" />
-              <span>เงินสนับสนุนเริ่มต้น: <strong>1,000 Coins</strong></span>
+              <span>เงินสนับสนุนเริ่มต้น: <strong>50,000 Coins</strong></span>
             </div>
             <div className="flex items-center gap-1.5">
               <Heart className="w-4 h-4 text-rose-400" />
