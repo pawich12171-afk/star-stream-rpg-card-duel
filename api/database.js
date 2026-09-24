@@ -247,29 +247,40 @@ async function claimBattleRewardDirect(body) {
   const rooms = await supabase(`star_stream_documents?select=data&${roomFilter}`);
   const roomData = rooms?.[0]?.data || {};
 
+  const winningPlayers = Array.isArray(roomData.teamA)
+    ? roomData.teamA.filter(unit => unit?.type === 'player' && String(unit?.sourceId || ''))
+    : [];
+  const isWinningTeammate = winningPlayers.some(unit => String(unit.sourceId) === playerId);
+
   if (
     roomData.status !== 'completed' ||
     (roomData.mode !== 'pve' && roomData.mode !== 'random') ||
     roomData.winnerTeam !== 'a' ||
-    roomData.rewardClaimedBy
+    !isWinningTeammate
   ) {
     return false;
   }
 
+  const rewardClaims = roomData.rewardClaims && typeof roomData.rewardClaims === 'object'
+    ? { ...roomData.rewardClaims }
+    : {};
+  if (rewardClaims[playerId]) return false;
+
   const claimData = {
     ...roomData,
+    rewardClaims: { ...rewardClaims, [playerId]: Date.now() },
     rewardClaimedBy: playerId,
     updatedAt: Date.now(),
   };
 
-  const claimed = await supabase(`star_stream_documents?${roomFilter}&data->>rewardClaimedBy=is.null`, {
+  const claimFilter = 'star_stream_documents?' + roomFilter + '&data->rewardClaims->>' + encodeURIComponent(playerId) + '=is.null';
+  const claimed = await supabase(claimFilter, {
     method: 'PATCH',
     headers: { Prefer: 'return=representation' },
     body: JSON.stringify({ data: claimData, updated_at: Date.now() }),
   });
 
   if (!claimed?.length) return false;
-
   const charFilter = `collection=eq.characters&id=eq.${encodeURIComponent(playerId)}`;
   const chars = await supabase(`star_stream_documents?select=data&${charFilter}`);
   if (!chars?.length) throw new Error('Player not found');
