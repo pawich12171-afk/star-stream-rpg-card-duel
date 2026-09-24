@@ -580,7 +580,10 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const chooseBotSkill = (bot: BattleCombatant, room: BattleRoom): Skill | undefined => {
     const candidates = (bot.skills || []).filter(skill => {
       const id = getSkillId(skill);
-      return (Number(bot.skillCooldowns?.[id] || 0) <= 0)
+      const useLimitReached = (skill as BattleBotSkill).battleUseLimit === 'once_per_battle'
+        && Number(bot.skillUses?.[id] || 0) >= 1;
+      return !useLimitReached
+        && (Number(bot.skillCooldowns?.[id] || 0) <= 0)
         && (Number((skill as BattleBotSkill).aiChancePercent ?? 0) > 0)
         && skillConditionsMet(skill, bot, [...room.teamA, ...room.teamB].find(unit => unit.team !== bot.team && unit.hp > 0), room);
     });
