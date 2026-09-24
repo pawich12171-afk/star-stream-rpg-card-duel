@@ -223,11 +223,12 @@ async function claimBattleRewardDirect(body) {
   const playerId = String(body.playerId || '');
   const reward = Math.max(0, Math.floor(Number(body.reward) || 0));
   const rewardData = body.rewardData && typeof body.rewardData === 'object' ? body.rewardData : null;
+  const drops = Array.isArray(body.drops) ? body.drops : [];
 
   if (!validId(roomId) || !validId(playerId)) throw new Error('Invalid reward reference');
 
   try {
-    if (!rewardData) {
+    if (!rewardData && drops.length === 0) {
     const result = await supabase('rpc/claim_battle_reward', {
       method: 'POST',
       body: JSON.stringify({
@@ -297,6 +298,44 @@ async function claimBattleRewardDirect(body) {
     const skills = Array.isArray(nextData.skills) ? [...nextData.skills] : [];
     if (!skills.some(existing => existing.name === skill.name)) skills.push(skill);
     nextData.skills = skills;
+  }
+
+  // Monster/Boss-specific drops are locked into the battle room when it is
+  // created. Apply them only after the final victory claim so a lost run gives
+  // nothing and the same room cannot be claimed twice.
+  let dropCoinTotal = 0;
+  for (const rawDrop of drops) {
+    if (!rawDrop || typeof rawDrop !== 'object') continue;
+    const amount = Math.max(0, Math.floor(Number(rawDrop.amount) || 0));
+    if (amount <= 0) continue;
+    if (rawDrop.type === 'coin') {
+      dropCoinTotal += amount;
+      continue;
+    }
+    if (rawDrop.type === 'item' && rawDrop.itemData && typeof rawDrop.itemData === 'object') {
+      const item = { ...rawDrop.itemData };
+      const inventory = Array.isArray(nextData.inventory) ? [...nextData.inventory] : [];
+      const existing = inventory.find(entry =>
+        entry.id === item.id &&
+        entry.name === item.name &&
+        entry.category === item.category &&
+        entry.effectType === item.effectType
+      );
+      if (existing) {
+        existing.quantity = Math.max(0, Number(existing.quantity) || 0) + amount;
+      } else {
+        inventory.push({
+          ...item,
+          instanceId: `battle-drop-${roomId}-${rawDrop.id || Date.now()}`,
+          quantity: amount,
+          isEquipped: false,
+        });
+      }
+      nextData.inventory = inventory;
+    }
+  }
+  if (dropCoinTotal > 0) {
+    nextData.coins += dropCoinTotal;
   }
 
   await supabase(`star_stream_documents?${charFilter}`, {
