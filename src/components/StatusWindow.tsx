@@ -407,14 +407,6 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       magic: Math.min(100, Number(base.stats.magic || 0) + magicGained),
     };
 
-    const newStats = {
-      ...base.stats,
-      durability: Math.min(100, Number(base.stats.durability || 0) + durabilityGained),
-      strength: Math.min(100, Number(base.stats.strength || 0) + strengthGained),
-      agility: Math.min(100, Number(base.stats.agility || 0) + agilityGained),
-      magic: Math.min(100, Number(base.stats.magic || 0) + magicGained),
-    };
-
     progress.totalUpgrades = progress.totalUpgrades + requestedTimes;
 
     const progressionApplied = hpGained + durabilityGained + strengthGained + agilityGained + magicGained + slotUnlocked;
