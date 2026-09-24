@@ -550,12 +550,13 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     }
   };
 
-  const skillConditionsMet = (skill: Skill, actor: BattleCombatant, target: BattleCombatant | undefined, room: BattleRoom, rollChance = true) => {
+  const skillConditionsMet = (skill: Skill, actor: BattleCombatant, target: BattleCombatant | undefined, room?: BattleRoom, rollChance = true) => {
     const conditions = Array.isArray((skill as BattleBotSkill).conditions)
       ? (skill as BattleBotSkill).conditions!.filter(condition => condition?.enabled !== false)
       : [];
     if (!conditions.length) return true;
-    const summonCount = [...room.teamA, ...room.teamB].filter(unit =>
+    if (!room) return true;
+    const summonCount = [...(room.teamA || []), ...(room.teamB || [])].filter(unit =>
       unit.type === 'bot' && unit.team === actor.team && String(unit.sourceId || '').startsWith(`summon:${actor.id}:`)
     ).length;
     return conditions.every(condition => {
@@ -577,7 +578,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     });
   };
 
-  const chooseBotSkill = (bot: BattleCombatant, room: BattleRoom): Skill | undefined => {
+  const chooseBotSkill = (bot: BattleCombatant, room?: BattleRoom): Skill | undefined => {
     const candidates = (bot.skills || []).filter(skill => {
       const id = getSkillId(skill);
       const useLimitReached = (skill as BattleBotSkill).battleUseLimit === 'once_per_battle'
@@ -585,7 +586,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       return !useLimitReached
         && (Number(bot.skillCooldowns?.[id] || 0) <= 0)
         && (Number((skill as BattleBotSkill).aiChancePercent ?? 0) > 0)
-        && skillConditionsMet(skill, bot, [...room.teamA, ...room.teamB].find(unit => unit.team !== bot.team && unit.hp > 0), room);
+        && skillConditionsMet(skill, bot, [...(room?.teamA || []), ...(room?.teamB || [])].find(unit => unit.team !== bot.team && unit.hp > 0), room);
     });
     if (!candidates.length) return undefined;
     const total = candidates.reduce((sum, skill) => sum + Math.max(0, Math.min(100, Number((skill as BattleBotSkill).aiChancePercent) || 0)), 0);
