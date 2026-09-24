@@ -342,6 +342,15 @@ export interface CharacterProfile {
   passiveStacks?: Record<string, number>;
   /** จำนวนครั้งที่อัพช่องสวมใส่อุปกรณ์ทั่วไป */
   equipmentSlotUpgrades?: number;
+  /** ความคืบหน้าโบนัสที่ได้จากการอัปเกรดสกิล: HP ก่อน แล้วจึงไล่สเตตัสตามลำดับ */
+  skillUpgradeProgress?: {
+    hpBonus: number;
+    durability: number;
+    strength: number;
+    agility: number;
+    magic: number;
+    equipmentSlots: number;
+  };
   /** Character Traits shown and activated for the battle UI. */
   traits?: string[];
   /** ตัวคูณเรทกาชาที่เปิดใช้ไว้ รอการสุ่มครั้งถัดไป */
