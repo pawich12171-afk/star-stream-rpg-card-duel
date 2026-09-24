@@ -114,6 +114,59 @@ const getRarityBadge = (rarity?: string) => {
   }
 };
 
+const getItemDetailLines = (item: Item): string[] => {
+  const lines: string[] = [];
+  const n = (value: unknown) => Number(value);
+  const add = (condition: unknown, text: string) => { if (condition) lines.push(text); };
+
+  add(item.effectType === 'heal_hp' && n(item.effectValue) > 0, `ฟื้น HP +${n(item.effectValue)} หน่วย`);
+  add(n(item.healPercent) > 0, `ฟื้น HP ${n(item.healPercent)}% ของ Max HP`);
+  add(item.effectType === 'boost_max_hp' && n(item.effectValue) > 0, `เพิ่ม Max HP ถาวร +${n(item.effectValue)}`);
+  add(n(item.hpBonus) > 0, `เพิ่ม Max HP +${n(item.hpBonus)}`);
+  add(item.targetStat && n(item.effectValue) !== 0, `เพิ่ม ${String(item.targetStat).toUpperCase()} +${n(item.effectValue)}`);
+
+  const statLabels: Record<string, string> = { strength: 'Strength', durability: 'Durability', agility: 'Agility', magic: 'Magic' };
+  add(n(item.equipmentStrengthBonus) !== 0, `สวมใส่: Strength ${n(item.equipmentStrengthBonus) > 0 ? '+' : ''}${n(item.equipmentStrengthBonus)}`);
+  add(n(item.equipmentDurabilityBonus) !== 0, `สวมใส่: Durability ${n(item.equipmentDurabilityBonus) > 0 ? '+' : ''}${n(item.equipmentDurabilityBonus)}`);
+  add(n(item.equipmentAgilityBonus) !== 0, `สวมใส่: Agility ${n(item.equipmentAgilityBonus) > 0 ? '+' : ''}${n(item.equipmentAgilityBonus)}`);
+  add(n(item.equipmentMagicBonus) !== 0, `สวมใส่: Magic ${n(item.equipmentMagicBonus) > 0 ? '+' : ''}${n(item.equipmentMagicBonus)}`);
+  add(n(item.equipmentMaxHpBonus) !== 0, `สวมใส่: Max HP ${n(item.equipmentMaxHpBonus) > 0 ? '+' : ''}${n(item.equipmentMaxHpBonus)}`);
+  add(n(item.equipmentAttackPercent) !== 0, `สวมใส่: พลังโจมตี ${n(item.equipmentAttackPercent) > 0 ? '+' : ''}${n(item.equipmentAttackPercent)}%${n(item.equipmentAttackDuration) > 0 ? ` นาน ${n(item.equipmentAttackDuration)} เทิร์น` : ''}`);
+  add(n(item.equipmentDefensePercent) !== 0, `สวมใส่: พลังป้องกัน ${n(item.equipmentDefensePercent) > 0 ? '+' : ''}${n(item.equipmentDefensePercent)}%${n(item.equipmentDefenseDuration) > 0 ? ` นาน ${n(item.equipmentDefenseDuration)} เทิร์น` : ''}`);
+  add(n(item.equipmentMagicPercent) !== 0, `สวมใส่: พลังเวท ${n(item.equipmentMagicPercent) > 0 ? '+' : ''}${n(item.equipmentMagicPercent)}%${n(item.equipmentMagicDuration) > 0 ? ` นาน ${n(item.equipmentMagicDuration)} เทิร์น` : ''}`);
+
+  add(n(item.battleDamagePercent) !== 0, `เพิ่มดาเมจ ${n(item.battleDamagePercent)}%${n(item.battleDamageDuration) > 0 ? ` นาน ${n(item.battleDamageDuration)} เทิร์น` : ''}`);
+  add(n(item.battleLuckMultiplier) > 1, `โชคต่อสู้ ×${n(item.battleLuckMultiplier)}${n(item.battleLuckDuration) > 0 ? ` นาน ${n(item.battleLuckDuration)} เทิร์น` : ''}`);
+  add(n(item.battleCriticalChancePercent) !== 0, `โอกาสคริติคอล ${n(item.battleCriticalChancePercent)}%`);
+  add(n(item.battleRepeatAttackChancePercent) !== 0, `โอกาสตีซ้ำ ${n(item.battleRepeatAttackChancePercent)}%`);
+  add(n(item.battlePassiveChanceMultiplier) > 1, `โอกาสทำงาน Passive/Effect ×${n(item.battlePassiveChanceMultiplier)}`);
+  add(n(item.damageReductionPercent) !== 0, `ลดความเสียหายที่ได้รับ ${n(item.damageReductionPercent)}%${n(item.damageReductionDuration) > 0 ? ` นาน ${n(item.damageReductionDuration)} เทิร์น` : ''}`);
+  add(n(item.dodgeChancePercent) !== 0, `โอกาสหลบหลีก ${n(item.dodgeChancePercent)}%`);
+  add(n(item.lifestealPercent) !== 0, `ดูดเลือด ${n(item.lifestealPercent)}%`);
+  add(n(item.cooldownReductionPercent) !== 0, `ลดคูลดาวน์ ${n(item.cooldownReductionPercent)}%`);
+  add(n(item.statusImmunityDuration) > 0, `ต้านทานสถานะผิดปกติ ${n(item.statusImmunityDuration)} เทิร์น`);
+  add(n(item.stunDuration) > 0, `ทำให้เป้าหมายชะงัก ${n(item.stunDuration)} เทิร์น`);
+  add(n(item.shieldPercent) > 0, `สร้างโล่ ${n(item.shieldPercent)}%${n(item.shieldDuration) > 0 ? ` นาน ${n(item.shieldDuration)} เทิร์น` : ''}`);
+  add(n(item.revivePercent) > 0, `ชุบชีวิต ${n(item.revivePercent)}% ของ Max HP`);
+  add(item.reviveAlly === true, 'สามารถชุบเพื่อน/สมาชิกทีมได้');
+  add(item.cleanseNegative === true, 'ล้างสถานะผิดปกติด้านลบ');
+  add(n(item.gachaRateMultiplier) > 1, `เพิ่มเรทกาชา ×${n(item.gachaRateMultiplier)}${item.gachaRateMinRarity ? ` สำหรับ ${item.gachaRateMinRarity} ขึ้นไป` : ''}`);
+
+  if (item.effectType === 'enhance_skill' && (item.skillEnhanceTarget || item.skillEnhanceDesc)) {
+    lines.push(`เสริมสกิล: ${item.skillEnhanceTarget || 'สกิลที่กำหนด'}${item.skillEnhanceDesc ? ` — ${item.skillEnhanceDesc}` : ''}`);
+  }
+  (item.passiveEffects || []).forEach(passive => {
+    if (!passive) return;
+    const target = passive.targetStat ? ` → ${statLabels[String(passive.targetStat)] || String(passive.targetStat)}` : '';
+    const chance = n(passive.chance) > 0 && n(passive.chance) !== 100 ? ` (${n(passive.chance)}%)` : '';
+    const duration = n(passive.duration) > 0 ? ` ${n(passive.duration)} เทิร์น` : '';
+    const stacks = n(passive.maxStacks) > 0 ? ` สูงสุด ${n(passive.maxStacks)} สแต็ก` : '';
+    lines.push(`Passive: ${passive.name || passive.kind} +${n(passive.value)}${target}${chance}${duration}${stacks}${passive.description ? ` — ${passive.description}` : ''}`);
+  });
+
+  return lines;
+};
+
 const AVAILABLE_ICONS = [
   { id: 'HeartPulse', name: 'โอสถฟื้นฟู', icon: HeartPulse },
   { id: 'Heart', name: 'หัวใจชีพจร', icon: Heart },
@@ -1061,8 +1114,18 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                     </div>
 
                     <p className="text-xs text-slate-300 mt-2.5 leading-relaxed">
-                      {item.description}
+                      {item.description || 'ไม่มีคำอธิบายไอเทม'}
                     </p>
+                    <div className="mt-3 rounded-2xl border border-fuchsia-500/20 bg-slate-950/70 p-3">
+                      <div className="text-[11px] font-black text-fuchsia-200 mb-1">📋 คุณสมบัติทั้งหมด</div>
+                      {getItemDetailLines(item).length > 0 ? (
+                        <ul className="space-y-1 text-[11px] text-slate-300">
+                          {getItemDetailLines(item).map((line, i) => <li key={i} className="break-words">• {line}</li>)}
+                        </ul>
+                      ) : (
+                        <div className="text-[11px] text-slate-500">ยังไม่ได้ระบุคุณสมบัติเพิ่มเติม</div>
+                      )}
+                    </div>
 
                     {/* Effect Badges */}
                     <div className="mt-3 flex flex-wrap gap-1.5">
@@ -1458,8 +1521,18 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                       </div>
 
                       <p className="text-xs text-slate-300 mt-2.5 leading-relaxed">
-                        {invItem.description}
+                        {invItem.description || 'ไม่มีคำอธิบายไอเทม'}
                       </p>
+                      <div className="mt-3 rounded-2xl border border-cyan-500/20 bg-slate-950/70 p-3">
+                        <div className="text-[11px] font-black text-cyan-200 mb-1">📋 คุณสมบัติทั้งหมด</div>
+                        {getItemDetailLines(invItem).length > 0 ? (
+                          <ul className="space-y-1 text-[11px] text-slate-300">
+                            {getItemDetailLines(invItem).map((line, i) => <li key={i} className="break-words">• {line}</li>)}
+                          </ul>
+                        ) : (
+                          <div className="text-[11px] text-slate-500">ยังไม่ได้ระบุคุณสมบัติเพิ่มเติม</div>
+                        )}
+                      </div>
 
                       {/* Badges in inventory */}
                       <div className="mt-3 flex flex-wrap gap-1.5">
