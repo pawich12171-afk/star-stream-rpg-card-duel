@@ -531,6 +531,13 @@ export interface BattleCombatant {
   immortalTurns?: number;
   damageReductionPercent?: number;
   damageReductionTurns?: number;
+  /** เอฟเฟกต์จากไอเทมใช้ระหว่างต่อสู้ */
+  dodgeChancePercent?: number;
+  lifestealPercent?: number;
+  cooldownReductionPercent?: number;
+  statusImmunityTurns?: number;
+  shieldPercent?: number;
+  shieldTurns?: number;
   copiedAbility?: Skill;
   copiedAbilityTurns?: number;
   skills?: Skill[];
