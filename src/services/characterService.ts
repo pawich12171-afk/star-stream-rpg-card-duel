@@ -3101,12 +3101,6 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     statusImmunityTurns: Math.max(0, Math.floor(Number(normalizedItem.statusImmunityDuration) || 0)),
     shieldPercent: Math.max(0, Math.min(100, Number(normalizedItem.shieldPercent) || 0)),
     shieldTurns: Math.max(0, Math.floor(Number(normalizedItem.shieldDuration) || 0)),
-    dodgeChancePercent: Math.max(0, Math.min(100, Number(normalizedItem.dodgeChancePercent) || 0)),
-    lifestealPercent: Math.max(0, Math.min(100, Number(normalizedItem.lifestealPercent) || 0)),
-    cooldownReductionPercent: Math.max(0, Math.min(100, Number(normalizedItem.cooldownReductionPercent) || 0)),
-    statusImmunityTurns: Math.max(0, Math.floor(Number(normalizedItem.statusImmunityDuration) || 0)),
-    shieldPercent: Math.max(0, Math.min(100, Number(normalizedItem.shieldPercent) || 0)),
-    shieldTurns: Math.max(0, Math.floor(Number(normalizedItem.shieldDuration) || 0)),
   };
 
   // Store the item-use result in the same room state that the next turn uses.
