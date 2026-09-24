@@ -3269,7 +3269,7 @@ function getNextBattleActor(room: BattleRoom, actorId: string): BattleCombatant 
   })[0];
 }
 
-export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?: Skill): { room: BattleRoom; result: BattleRollResult | null } {
+export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?: Skill, targetId?: string): { room: BattleRoom; result: BattleRollResult | null } {
   if (room.status !== "active") return { room, result: null };
   const nextRoom: BattleRoom = {
     ...room,
@@ -3282,9 +3282,10 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
   if (!actor || actor.hp <= 0) return { room, result: null };
   const opponentTeam = actor.team === "a" ? nextRoom.teamB : nextRoom.teamA;
   const livingOpponents = opponentTeam.filter(item => item.hp > 0);
-  const defender = livingOpponents.length
+  const requestedTarget = targetId ? livingOpponents.find(item => item.id === targetId) : undefined;
+  const defender = requestedTarget || (livingOpponents.length
     ? livingOpponents[Math.floor(Math.random() * livingOpponents.length)]
-    : undefined;
+    : undefined);
   if (!defender) return { room: { ...nextRoom, status: "completed", winnerTeam: actor.team }, result: null };
   const current = all.find(item => item.id === actor.id) as BattleCombatant;
   // Duration is consumed on the owner's next turn, not at the end of the
