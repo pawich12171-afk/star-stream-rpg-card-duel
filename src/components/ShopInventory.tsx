@@ -1340,7 +1340,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
               </button>
             </div>
           ) : (
-            <>
+            <div className="contents">
             {filteredInventory.length === 0 ? (
               <div className="text-center py-16 bg-slate-900/60 rounded-3xl border border-slate-800">
                 <Search className="w-10 h-10 text-slate-600 mx-auto mb-2" />
@@ -1348,7 +1348,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                 <button type="button" onClick={() => setInventorySearch('')} className="mt-3 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer">ล้างการค้นหา</button>
               </div>
             ) : (
-              <>
+              <div className="contents">
             <div className="mb-3 rounded-2xl border border-cyan-500/20 bg-cyan-950/10 p-3 min-w-0">
   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
     <div className="min-w-0">
@@ -1511,9 +1511,9 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                 );
               })}
             </div>
-            </>
+             </div>
             )}
-            </>
+             </div>
           )}
         </div>
       )}
