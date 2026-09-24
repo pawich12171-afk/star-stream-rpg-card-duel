@@ -568,7 +568,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
         case 'turn_at_least': return Number(room.round || 1) >= Math.max(1, Math.floor(value));
         case 'summon_count_below': return summonCount < Math.max(0, Math.floor(value));
         case 'summon_count_at_least': return summonCount >= Math.max(0, Math.floor(value));
-        case 'chance_percent': return !rollChance || Math.random() * 100 < Math.max(0, Math.min(100, value));
+        case 'chance_percent': return true;
         default: return true;
       }
     });
