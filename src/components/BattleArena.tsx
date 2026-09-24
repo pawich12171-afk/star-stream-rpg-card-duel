@@ -901,6 +901,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       <div className="mt-3 space-y-2">{botSummonUnits.map((m,idx)=><div key={m.id} className="rounded-xl border border-slate-700 bg-slate-950/60 p-3"><div className="flex items-center gap-3"><img src={m.avatarUrl||'/avatars/system.svg'} alt="" className="h-10 w-10 rounded-lg object-cover"/><div className="flex-1"><div className="font-bold text-white">{idx+1}. {m.name}</div><div className="text-[10px] text-slate-400">HP {m.hp} · STR {m.strength} · DEF {m.durability} · SPD {m.agility} · MAG {m.magic} · สกิล {m.skills?.length||0}</div></div><button type="button" className="text-rose-300" onClick={()=>setBotSummonUnits(prev=>prev.filter(x=>x.id!==m.id))}>ลบ</button></div></div>)}</div>
       
     </div>}
+  </div>
     <button type="button" className={buttonClass+" sm:col-span-2 bg-fuchsia-500 text-white"} onClick={addBotSkill}>+ สร้างสกิลมอน / บอส</button>
   </div>
   <div className="mt-3 space-y-2">{botForm.skills.map(skill=><div key={getSkillId(skill)} className="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs"><div className="font-bold text-white">✨ {skill.name}</div><div className="mt-1 text-slate-400">{skill.description}</div><div className="mt-1 text-[10px] text-fuchsia-300">พลัง {Number(skill.battlePower??0)} · โอกาสใช้ {Number(skill.aiChancePercent??0)}%</div><button type="button" className="mt-1 text-rose-300" onClick={()=>removeBotSkill(getSkillId(skill))}>ลบ</button></div>)}</div>
