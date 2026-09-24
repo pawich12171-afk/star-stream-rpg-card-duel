@@ -3357,6 +3357,41 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         current.damageReductionPercent = Math.min(100, skillProfile.power);
         current.damageReductionTurns = skillProfile.duration;
         result.message += ` • ใช้สกิล ${skillName} — ลดความเสียหาย ${current.damageReductionPercent}% เป็นเวลา ${skillProfile.duration} เทิร์น`;
+      } else if (skillProfile.effect === "summon") {
+        const summonName = String(skill?.summonName || 'ลูกน้อง').trim() || 'ลูกน้อง';
+        const maxCount = Math.max(1, Math.min(20, Math.round(Number(skill?.summonMaxCount) || 1)));
+        const prefix = `summon:${current.id}:${String(skill.id || skill.name || 'skill')}`;
+        const currentCount = getBattleCombatants(nextRoom).filter(unit => unit.type === 'bot' && unit.team === current.team && String(unit.sourceId || '').startsWith(prefix + ':')).length;
+        if (currentCount >= maxCount) {
+          result.message += ` • 🧿 ${skillName} เรียกลูกน้องไม่ได้ — ครบจำนวนสูงสุด ${maxCount} ตัวแล้ว`;
+        } else {
+          const summonHp = Math.max(1, Math.round(Number(skill?.summonHp) || 10));
+          const summonDamage = Math.max(1, Math.round(Number(skill?.summonDamage) || skillProfile.power || 1));
+          const summonAgility = Math.max(0, Math.round(Number(skill?.summonAgility) || 1));
+          const summonSkills = Array.isArray(skill?.summonSkills) ? skill.summonSkills.map(item => ({ ...item })) : [];
+          const summonId = `${prefix}:${currentCount + 1}`;
+          const summoned: BattleCombatant = {
+            id: summonId,
+            sourceId: summonId,
+            name: `${summonName} #${currentCount + 1}`,
+            avatarUrl: current.avatarUrl || '/avatars/system.svg',
+            type: 'bot',
+            team: current.team,
+            stats: {
+              strength: summonDamage,
+              durability: 0,
+              agility: summonAgility,
+              magic: 0,
+            },
+            hp: summonHp,
+            maxHp: summonHp,
+            isBoss: false,
+            skillCooldowns: {},
+            skills: summonSkills,
+          } as BattleCombatant & { skills?: BattleBotSkill[] };
+          if (current.team === 'a') nextRoom.teamA.push(summoned); else nextRoom.teamB.push(summoned);
+          result.message += ` • 🧿 ${current.name} เสก ${summoned.name} (HP ${summonHp} / DMG ${summonDamage}) ${currentCount + 1}/${maxCount}`;
+        }
       } else if (skillProfile.effect === "copy_ability") {
         const sourceSkill = defender.skills?.[0];
         if (sourceSkill) {
