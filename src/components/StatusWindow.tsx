@@ -194,7 +194,16 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       else if (progress.agility < 100) { progress.agility = Math.min(100, Number((progress.agility + 0.01).toFixed(2))); agility += 0.01; }
       else if (progress.magic < 100) { progress.magic = Math.min(100, Number((progress.magic + 0.01).toFixed(2))); magic += 0.01; }
       else if (progress.equipmentSlots < 2) { progress.equipmentSlots += 1; slots += 1; }
-      else break;
+      else {
+        progress.hpBonus = 0;
+        progress.durability = 0;
+        progress.strength = 0;
+        progress.agility = 0;
+        progress.magic = 0;
+        progress.equipmentSlots = 0;
+        progress.hpBonus = 1;
+        hp += 1;
+      }
     }
     const parts = [
       hp ? `HP +${hp.toLocaleString()}` : '',
