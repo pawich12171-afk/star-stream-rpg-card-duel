@@ -187,8 +187,8 @@ export const TransferModal: React.FC<TransferModalProps> = ({
             <div className="relative">
               <input
                 type="text"
-                inputMode="decimal"
-                placeholder="เช่น 1m หรือ 1,000,000"
+                inputMode="text"
+                placeholder="เช่น 1m, 1.5m หรือ 1,000,000"
                 value={amountInput}
                 onChange={(e) => setAmountInput(e.target.value)}
                 required
@@ -200,7 +200,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
             </div>
 
             <div className="text-[10px] leading-relaxed text-slate-500">
-              พิมพ์ได้ทั้ง <span className="text-amber-300">1,000,000</span>, <span className="text-amber-300">1m</span>, <span className="text-amber-300">1.5m</span> หรือ <span className="text-amber-300">2b</span>
+              พิมพ์ได้ทั้ง <span className="text-amber-300">1,000,000</span>, <span className="text-amber-300">1m</span>, <span className="text-amber-300">1.5m</span> หรือ <span className="text-amber-300">2b</span> • ใช้ K/M/B/T และหน่วยใหญ่ได้
             </div>
                         {/* Quick Adjustment Pills */}
             <div className="flex flex-wrap gap-1.5 pt-1">
