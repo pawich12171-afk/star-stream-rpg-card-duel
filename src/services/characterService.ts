@@ -1202,7 +1202,7 @@ export async function updateShopItem(item: Item): Promise<void> {
   const previousItem = localShopItems.find(existing => existing.id === item.id);
   const cleanItem = sanitizeForFirestore(item);
   localShopItems = [item, ...localShopItems.filter(existing => existing.id !== item.id)];
-  pendingShopItems.add(item.id);
+  pendingShopItems.set(item.id, item);
   saveLocalAll();
   broadcast?.postMessage({ type: 'SHOP_UPDATE' });
 
