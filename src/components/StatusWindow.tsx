@@ -1033,39 +1033,44 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                     <Coins className="w-3.5 h-3.5 text-amber-400" />
                     <span>ราคา 1 ขั้น: <strong className="text-amber-300">{formatCoins(upgradePreview.cost)} Coins</strong></span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openSkillEditor(skill)}
-                      className="px-3 py-2 text-xs font-bold rounded-xl bg-violet-600/20 hover:bg-violet-600/35 text-violet-200 border border-violet-500/40 cursor-pointer"
-                    >
-                      ✏️ แก้ไข
-                    </button>
-                    <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 min-w-0 w-full lg:w-auto">
-                      <div className="flex items-center gap-1.5">
+                  <div className="flex flex-col gap-2 min-w-0 w-full">
+                    <div className="flex items-center gap-2 min-w-0 w-full">
+                      <button
+                        type="button"
+                        onClick={() => openSkillEditor(skill)}
+                        className="px-3 py-2 text-xs font-bold rounded-xl bg-violet-600/20 hover:bg-violet-600/35 text-violet-200 border border-violet-500/40 cursor-pointer shrink-0"
+                      >
+                        ✏️ แก้ไข
+                      </button>
+                      <button type="button"
+                        onClick={() => handleDeleteSkill(skill.id)}
+                        className="ml-auto p-2 rounded-xl bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer shrink-0"
+                        aria-label="ลบสกิล"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-[auto_1fr] gap-2 min-w-0 w-full">
+                      <div className="flex items-center gap-1.5 min-w-0">
                         <input type="number" min={1} max={1000} value={skillBatchCounts[skill.id] || 1}
                           onChange={(e) => setSkillBatchCounts(prev => ({ ...prev, [skill.id]: Math.max(1, Math.min(1000, Math.floor(Number(e.target.value) || 1))) }))}
                           disabled={isUpgradingSkill}
-                          className="w-20 px-2 py-2 rounded-xl bg-slate-950 border border-cyan-500/30 text-white text-xs font-mono font-bold"
+                          className="w-16 sm:w-20 min-w-0 px-2 py-2 rounded-xl bg-slate-950 border border-cyan-500/30 text-white text-xs font-mono font-bold"
                         />
-                        <span className="text-[10px] text-slate-500">ขั้น</span>
+                        <span className="text-[10px] text-slate-500 whitespace-nowrap">ขั้น</span>
                       </div>
-                      <div className="rounded-xl border border-amber-500/20 bg-slate-950/70 px-2.5 py-1.5 text-[10px] font-mono whitespace-nowrap max-w-full overflow-hidden">
-                        <span className="text-slate-500">อัป {skillBatchCount} ขั้น = </span><strong className="text-amber-300">{formatCoins(skillBatchCost)} Coins</strong>
+                      <div className="flex min-w-0 gap-2">
+                        <div className="min-w-0 flex-1 rounded-xl border border-amber-500/20 bg-slate-950/70 px-2.5 py-1.5 text-[10px] font-mono overflow-hidden">
+                          <span className="text-slate-500">อัป {skillBatchCount} ขั้น = </span><strong className="text-amber-300">{formatCoins(skillBatchCost)} Coins</strong>
+                        </div>
+                        <button type="button" id={`btn-upgrade-skill-${skill.id}`} onClick={() => handleUpgradeSkill(skill.id)}
+                          disabled={!canAfford || isUpgradingSkill}
+                          className={`flex-1 min-w-0 max-w-full px-3 sm:px-4 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md overflow-hidden ${canAfford && !isUpgradingSkill ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
+                          <ArrowUpCircle className="w-4 h-4 shrink-0" />
+                          <span className="truncate">{skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`} • {formatCoins(skillBatchCost)} Coins</span>
+                        </button>
                       </div>
-                      <button type="button" id={`btn-upgrade-skill-${skill.id}`} onClick={() => handleUpgradeSkill(skill.id)}
-                        disabled={!canAfford || isUpgradingSkill}
-                        className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md max-w-full min-w-0 ${canAfford && !isUpgradingSkill ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
-                        <ArrowUpCircle className="w-4 h-4" />
-                        <span className="truncate">{skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`} • {formatCoins(skillBatchCost)} Coins</span>
-                      </button>
                     </div>
-                    <button type="button"
-                      onClick={() => handleDeleteSkill(skill.id)}
-                      className="p-2 rounded-xl bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </div>
                 </div>
               </div>
