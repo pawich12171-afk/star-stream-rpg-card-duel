@@ -3009,6 +3009,7 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
       hp: Math.max(0, Number(unit.hp) || 0),
       maxHp: Math.max(1, Number(unit.maxHp) || 1),
       skillCooldowns: { ...(unit.skillCooldowns || {}) },
+      skillUses: { ...(unit.skillUses || {}) },
     })),
     teamB: (room.teamB || []).map(unit => ({
       ...unit,
@@ -3305,6 +3306,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       faces: config.faces,
     };
     const cooldowns = { ...(current.skillCooldowns || {}) };
+    const skillUses = { ...(current.skillUses || {}) };
     const skillProfile = skill ? getBattleSkillProfile(skill) : null;
     const skillConditions = skill && Array.isArray((skill as BattleBotSkill).conditions)
       ? (skill as BattleBotSkill).conditions!.filter(condition => condition?.enabled !== false)
@@ -3345,7 +3347,17 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
     if (skill && skillProfile && (cooldowns[skillId] || 0) > 0) {
       return { room, result: null };
     }
+    if (skill && skill.battleUseLimit === 'once_per_battle' && Number(skillUses[skillId] || 0) >= 1) {
+      nextRoom.log.unshift({
+        id: "battle-log-" + Date.now(),
+        timestamp: Date.now(),
+        actorName: current.name,
+        message: current.name + " ใช้สกิล " + skill.name + " ครบโควตา 1 ครั้งต่อเกมแล้ว",
+      });
+      return { room: nextRoom, result: null };
+    }
     current.skillCooldowns = cooldowns;
+    current.skillUses = skillUses;
     // Skill-specific stats must be read from battleStats before applying the skill effect.
     // Without these local values, defense skills such as Zero Echo could throw
     // "defensePower is not defined" when the shield is created.
@@ -3501,6 +3513,8 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
             result.message += ` • ❌ ตีซ้ำไม่ทำงาน (${Number(repeatChance.toFixed(1))}%)`;
           }
         }
+        skillUses[skillId] = Math.max(0, Number(skillUses[skillId] || 0)) + 1;
+        current.skillUses = skillUses;
         const configuredCooldown = getSkillStat(skill, 'cooldown_turns') || skillProfile.cooldownTurns;
         const speed = Math.max(0, getSkillStat(skill, 'speed'));
         const cooldown = Math.max(0, Math.min(99, Math.round(configuredCooldown - speed / 10)));
