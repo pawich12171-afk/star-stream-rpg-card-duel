@@ -62,6 +62,19 @@ export interface Skill {
   summonSkills?: BattleBotSkill[];
   summonAvatarUrl?: string;
   summonAvatarFileName?: string;
+  /** ลูกน้องแต่ละตัวสามารถมีค่าสเตตัส/สกิล/รูปแตกต่างกันได้ */
+  summonUnits?: Array<{
+    id: string;
+    name: string;
+    hp: number;
+    strength: number;
+    durability: number;
+    agility: number;
+    magic: number;
+    avatarUrl?: string;
+    avatarFileName?: string;
+    skills?: BattleBotSkill[];
+  }>;
 }
 
 export interface EquippedBonus {
