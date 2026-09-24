@@ -350,6 +350,8 @@ export interface CharacterProfile {
     agility: number;
     magic: number;
     equipmentSlots: number;
+    /** จำนวนครั้งที่อัปสกิลทั้งหมดสำหรับเส้นทางรางวัลนี้ */
+    totalUpgrades?: number;
   };
   /** Character Traits shown and activated for the battle UI. */
   traits?: string[];
