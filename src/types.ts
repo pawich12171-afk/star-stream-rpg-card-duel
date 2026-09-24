@@ -586,6 +586,8 @@ export interface BattleRoom {
   /** ลำดับศัตรูปัจจุบันในโหมดสุ่ม (1-3) */
   randomBattleStage?: number;
   rewardClaimedBy?: string;
+  /** ผู้ชนะฝ่ายทีม A ที่รับรางวัลไปแล้ว แยกตามผู้เล่น */
+  rewardClaims?: Record<string, number>;
   /** จำนวนครั้งที่ผู้เล่นใช้ไอเทมระหว่างการต่อสู้ครั้งนี้ */
   battleItemUses?: number;
   createdAt: number;
