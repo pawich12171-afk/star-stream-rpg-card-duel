@@ -53,6 +53,13 @@ export interface Skill {
   /** ข้อเสีย/ผลย้อนกลับของสกิลที่ผู้สร้างกำหนด และมีผลจริงในสนามรบ */
   battleDrawbacks?: BattleExtraEffect[];
   battleStats?: BattleSkillStat[];
+  /** ตั้งค่าสำหรับสกิลเสกลูกน้องของมอน/บอส */
+  summonName?: string;
+  summonMaxCount?: number;
+  summonHp?: number;
+  summonDamage?: number;
+  summonAgility?: number;
+  summonSkills?: BattleBotSkill[];
 }
 
 export interface EquippedBonus {
@@ -415,7 +422,7 @@ export interface CardDuelRoom {
 }
 
 export type BattleMode = 'pvp' | 'pve' | 'random';
-export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect' | 'stun' | 'copy_ability' | 'immortal' | 'damage_reduction';
+export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect' | 'stun' | 'copy_ability' | 'immortal' | 'damage_reduction' | 'summon';
 
 export type BattleExtraEffectKind = 'bleeding' | 'burn' | 'poison' | 'freeze' | 'stun' | 'reduce_max_hp_percent' | 'reduce_defense_percent' | 'damage_percent' | 'heal_percent' | 'shield' | 'reflect' | 'damage_reduction';
 
