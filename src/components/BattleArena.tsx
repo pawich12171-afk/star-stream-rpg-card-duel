@@ -809,7 +809,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       <input className={inputClass} type="number" min="1" value={botSummonDamage} onChange={event=>setBotSummonDamage(event.target.value)} placeholder="Damage ลูกน้อง" />
       <input className={inputClass} type="number" min="0" value={botSummonAgility} onChange={event=>setBotSummonAgility(event.target.value)} placeholder="Speed / AGI ลูกน้อง" />
       <textarea className="sm:col-span-2 min-h-20 rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-white" value={botSummonSkillsText} onChange={event=>setBotSummonSkillsText(event.target.value)} placeholder='JSON สกิลลูกน้อง เช่น [{"id":"m1","name":"โจมตี","level":1,"multiplier":1,"description":"โจมตี","battleEffect":"damage","battlePower":5,"aiChancePercent":100}]' />
-    </div>
+    </div>}
     <button type="button" className={buttonClass + " bg-fuchsia-500 text-white"} onClick={addBotSkill}>+ สร้างสกิลเฉพาะ</button>
   </div>
   <div className="mt-2 space-y-1">
