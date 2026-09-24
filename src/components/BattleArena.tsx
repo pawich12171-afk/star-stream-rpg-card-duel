@@ -216,6 +216,13 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const [botSkillDescription, setBotSkillDescription] = useState('');
   const [botSkillPower, setBotSkillPower] = useState('10');
   const [botSkillCooldown, setBotSkillCooldown] = useState('2');
+  const [botSkillEffect, setBotSkillEffect] = useState<NonNullable<Skill['battleEffect']>>('damage');
+  const [botSummonName, setBotSummonName] = useState('ลูกน้อง');
+  const [botSummonMaxCount, setBotSummonMaxCount] = useState('1');
+  const [botSummonHp, setBotSummonHp] = useState('20');
+  const [botSummonDamage, setBotSummonDamage] = useState('5');
+  const [botSummonAgility, setBotSummonAgility] = useState('1');
+  const [botSummonSkillsText, setBotSummonSkillsText] = useState('[]');
   const [selectedBattleItemId, setSelectedBattleItemId] = useState('');
   const [usingBattleItemId, setUsingBattleItemId] = useState('');
   // Synchronous action lock: React state alone updates after the click event,
