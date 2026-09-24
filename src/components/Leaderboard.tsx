@@ -1,7 +1,7 @@
 import React from 'react';
 import { CharacterProfile } from '../types';
 import { formatCoins } from '../utils/formatNumber';
-import { Trophy, Coins, Zap, Star } from 'lucide-react';
+import { Trophy, Coins, Zap, Star, ShieldCheck } from 'lucide-react';
 
 interface LeaderboardProps {
   characters: CharacterProfile[];
@@ -84,17 +84,39 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-6 justify-between sm:justify-end border-t sm:border-t-0 border-slate-800 pt-2 sm:pt-0">
-                <div className="flex items-center gap-1.5 text-xs text-amber-400 font-mono">
-                  <Coins className="w-3.5 h-3.5" />
-                  <span>{formatCoins(char.coins)} C</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block">พลังรบรวม</span>
-                  <span className="text-base font-black text-white font-mono flex items-center gap-1">
-                    <Zap className="w-3.5 h-3.5 text-cyan-400" />
-                    {char.powerScore?.toLocaleString() || 0}
+              <div className="flex flex-col sm:flex-row sm:items-end gap-3 justify-between sm:justify-end border-t sm:border-t-0 border-slate-800 pt-2 sm:pt-0 min-w-0 sm:max-w-[58%]">
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] text-slate-400 flex items-center gap-1 mb-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                    อุปกรณ์ที่สวมใส่อยู่ตอนนี้
                   </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {char.inventory.filter(item => item.category === 'equipment' && (item.isEquipped || item.equipped)).length > 0 ? (
+                      char.inventory
+                        .filter(item => item.category === 'equipment' && (item.isEquipped || item.equipped))
+                        .map(item => (
+                          <span key={item.instanceId || item.id} className="inline-flex items-center gap-1 max-w-[180px] rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-200 truncate" title={item.name}>
+                            {item.icon || '🛡️'} {item.name}
+                            {Number(item.equippedQuantity || 1) > 1 && <span>×{Number(item.equippedQuantity)}</span>}
+                          </span>
+                        ))
+                    ) : (
+                      <span className="text-[10px] text-slate-600">ไม่ได้สวมใส่อุปกรณ์</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-6 justify-between sm:justify-end shrink-0">
+                  <div className="flex items-center gap-1.5 text-xs text-amber-400 font-mono">
+                    <Coins className="w-3.5 h-3.5" />
+                    <span>{formatCoins(char.coins)} C</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-400 block">พลังรบรวม</span>
+                    <span className="text-base font-black text-white font-mono flex items-center gap-1">
+                      <Zap className="w-3.5 h-3.5 text-cyan-400" />
+                      {char.powerScore?.toLocaleString() || 0}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
