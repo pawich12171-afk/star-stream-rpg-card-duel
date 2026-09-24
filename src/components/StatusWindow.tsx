@@ -684,7 +684,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
                 {isAllStats100 
-                  ? `อัปเกรดสเตตัสได้ไม่จำกัดโดยใช้เหรียญ Coins แบบดอกเบี้ยทบต้น 20% ต่อครั้ง`
+                  ? `อัปเกรดสเตตัสได้ไม่จำกัดโดยใช้เหรียญ Coins แบบดอกเบี้ยทบต้น 5% ต่อครั้ง`
                   : `เมื่อสเตตัสทั้ง 4 ค่าแตะ 100 จะสามารถอัปเกรดทะลุขีดจำกัดได้`}
               </p>
             </div>
@@ -693,7 +693,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
           {isAllStats100 && (
             <div className="bg-slate-950/80 px-3.5 py-2 rounded-2xl border border-amber-500/40 flex items-center gap-3">
               <div>
-                <span className="text-[10px] text-slate-400 block">ราคาอัปเกรด:</span>
+                <span className="text-[10px] text-slate-400 block">ราคาต่อ 1 ขั้น:</span>
                 <span className="text-sm font-black text-amber-300 font-mono">
                   {formatCoins(currentStatUpgradeCost)} Coins
                 </span>
@@ -738,6 +738,14 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                           className="mt-1 w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-amber-500/30 text-white font-mono font-bold outline-none focus:border-amber-400"
                         />
                       </label>
+                      <div className="text-[10px] text-amber-300 font-mono">
+                        {(() => {
+                          const count = Math.max(1, Math.min(1000, Math.floor(Number(transcendenceBatchCounts[statKey]) || 1)));
+                          const start = Math.max(0, Math.floor(Number(character.statUpgradeCount) || 0));
+                          const total = Array.from({ length: count }, (_, index) => calculateStatUpgradeCost(start + index)).reduce((sum, cost) => sum + cost, 0);
+                          return `รวม ${formatCoins(total)} C`;
+                        })()}
+                      </div>
                       <button
                         type="button"
                         onClick={() => handleUpgradeTranscendenceStat(statKey)}
@@ -920,7 +928,11 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
           {character.skills?.map((skill) => {
             const orvRankInfo = getSkillORVRank(skill);
             const upgradePreview = getUpgradePreview(skill);
-            const canAfford = character.coins >= upgradePreview.cost;
+            const skillBatchCount = Math.max(1, Math.min(1000, Math.floor(Number(skillBatchCounts[skill.id]) || 1)));
+            const skillBatchCost = Array.from({ length: skillBatchCount }, (_, index) =>
+              calculateSkillUpgradeCost({ ...skill, upgradeCount: Math.max(0, Math.floor(Number(skill.upgradeCount ?? (skill.level - 1)) || 0)) + index })
+            ).reduce((sum, cost) => sum + cost, 0);
+            const canAfford = character.coins >= skillBatchCost;
             const perk10 = getLevel10Perk(skill);
             return (
               <div
@@ -1025,6 +1037,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                           className="w-20 px-2 py-2 rounded-xl bg-slate-950 border border-cyan-500/30 text-white text-xs font-mono font-bold"
                         />
                         <span className="text-[10px] text-slate-500">ขั้น</span>
+                      </div>
+                      <div className="text-[10px] text-amber-300 font-mono whitespace-nowrap">
+                        รวม {formatCoins(skillBatchCost)} C
                       </div>
                       <button type="button" id={`btn-upgrade-skill-${skill.id}`} onClick={() => handleUpgradeSkill(skill.id)}
                         disabled={!canAfford || isUpgradingSkill}
