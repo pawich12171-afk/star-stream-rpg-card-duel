@@ -2579,15 +2579,22 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
       }
     }
 
+    const configuredDrops = Array.isArray(room.battleDrops) ? room.battleDrops : [];
+    const awardedDropKeys = new Set(awardedDrops.map(drop => String(drop.id || `${drop.type}:${drop.itemData?.id || drop.name || drop.amount}`)));
+    const dropMessages = configuredDrops.map(drop => {
+      const key = String(drop.id || `${drop.type}:${drop.itemData?.id || drop.name || drop.amount}`);
+      const label = drop.type === 'coin'
+        ? `${Number(drop.amount).toLocaleString()} Coins`
+        : `${drop.name || drop.itemData?.name || 'ไอเทม'} ×${Number(drop.amount)}`;
+      return awardedDropKeys.has(key) ? `✅ ได้ ${label}` : `❌ ไม่ได้ ${label} (โอกาสดรอป ${Number(drop.dropChancePercent ?? 100)}%)`;
+    });
     updated.notifications.unshift({
       id: `notif-battle-reward-${room.id}-${playerId}`,
-      title: 'ได้รับรางวัลการต่อสู้',
+      title: 'ผลของดรอปจากการต่อสู้',
       message: [
-        reward > 0 ? `+ ${reward.toLocaleString()} Coins` : '',
-        ...(room.battleDrops || []).map(drop => drop.type === 'coin'
-          ? `+ ${Number(drop.amount).toLocaleString()} Coins`
-          : `+ ${drop.name} ×${Number(drop.amount)}`),
-      ].filter(Boolean).join(' · ') || 'ได้รับรางวัลจากการต่อสู้',
+        reward > 0 ? `💰 ได้ ${reward.toLocaleString()} Coins` : '',
+        ...dropMessages,
+      ].filter(Boolean).join(' · ') || 'ไม่มีของดรอปจากการต่อสู้',
       timestamp: Date.now(),
       read: false,
       type: 'game',
