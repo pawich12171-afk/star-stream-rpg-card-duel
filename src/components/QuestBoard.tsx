@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CharacterProfile, InventoryItem, Item, Quest } from '../types';
-import { CheckCircle2, Circle, Coins, Gift, ImagePlus, Loader2, ScrollText, Send, Sparkles } from 'lucide-react';
+import { CheckCircle2, Circle, Coins, Gift, ImagePlus, Loader2, ScrollText, Send, Sparkles, Trash2 } from 'lucide-react';
 
 interface QuestBoardProps {
   character: CharacterProfile;
@@ -107,6 +107,15 @@ export const QuestBoard: React.FC<QuestBoardProps> = ({ character, shopItems, on
     }
   };
 
+  const handleDismissQuest = (quest: Quest) => {
+    if (!window.confirm('ต้องการลบภารกิจ “' + quest.title + '” ออกจากรายการหรือไม่?')) return;
+    onUpdateCharacter({
+      ...character,
+      quests: (character.quests || []).filter(item => item.id !== quest.id),
+      lastUpdated: Date.now(),
+    });
+  };
+
   const handleClaimQuest = (quest: Quest) => {
     if (!quest.isCompleted || quest.isClaimed) return;
     const rewardItem = quest.rewardItemName ? shopItems.find(item => item.name === quest.rewardItemName) : undefined;
@@ -198,7 +207,7 @@ export const QuestBoard: React.FC<QuestBoardProps> = ({ character, shopItems, on
                 )}
 
                 <div className="flex flex-wrap items-center gap-2 text-[11px]"><span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/10 text-amber-200 border border-amber-500/20"><Coins className="w-3.5 h-3.5" />{Math.max(0, quest.rewardCoins || 0).toLocaleString()} Coins</span>{quest.rewardItemName && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-purple-500/10 text-purple-200 border border-purple-500/20"><Sparkles className="w-3.5 h-3.5" />{quest.rewardItemName}</span>}</div>
-                <button type="button" disabled={!quest.isCompleted || quest.isClaimed} onClick={() => handleClaimQuest(quest)} className="w-full py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 bg-amber-500 hover:bg-amber-400 text-slate-950">{quest.isClaimed ? 'รับรางวัลเรียบร้อยแล้ว' : quest.isCompleted ? 'รับรางวัลภารกิจ' : 'ทำภารกิจให้ครบก่อนรับรางวัล'}</button>
+                <div className="flex gap-2"><button type="button" onClick={() => handleDismissQuest(quest)} className="px-3 py-2.5 rounded-xl text-xs font-bold border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"><Trash2 className="w-3.5 h-3.5 inline mr-1" />ลบภารกิจ</button><button type="button" disabled={!quest.isCompleted || quest.isClaimed} onClick={() => handleClaimQuest(quest)} className="flex-1 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 bg-amber-500 hover:bg-amber-400 text-slate-950">{quest.isClaimed ? 'รับรางวัลเรียบร้อยแล้ว' : quest.isCompleted ? 'รับรางวัลภารกิจ' : 'ทำภารกิจให้ครบก่อนรับรางวัล'}</button></div>
               </div>
             );
           })}
