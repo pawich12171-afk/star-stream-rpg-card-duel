@@ -225,6 +225,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const [editGachaRateMinRarity, setEditGachaRateMinRarity] = useState<GachaRarity>('rare');
   const [selectedInventoryKeys, setSelectedInventoryKeys] = useState<string[]>([]);
   const [inventorySearch, setInventorySearch] = useState('');
+  const [expandedItemDetails, setExpandedItemDetails] = useState<Record<string, boolean>>({});
 
   // Serialize purchases so rapid clicks cannot calculate from the same stale character.
   const characterRef = useRef(character);
@@ -1116,16 +1117,13 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                     <p className="text-xs text-slate-300 mt-2.5 leading-relaxed">
                       {item.description || 'ไม่มีคำอธิบายไอเทม'}
                     </p>
-                    <div className="mt-3 rounded-2xl border border-fuchsia-500/20 bg-slate-950/70 p-3">
+                    <button type="button" className="mt-3 w-full rounded-xl border border-fuchsia-400/30 bg-fuchsia-950/30 px-3 py-2 text-left text-xs font-black text-fuchsia-200" onClick={() => setExpandedItemDetails(prev => ({ ...prev, ['shop:' + String(item.id)]: !prev['shop:' + String(item.id)] }))}>
+                      {expandedItemDetails['shop:' + String(item.id)] ? '▲ ซ่อนคุณสมบัติไอเทม' : '▼ ดูคุณสมบัติไอเทมทั้งหมด'}
+                    </button>
+                    {expandedItemDetails['shop:' + String(item.id)] && <div className="mt-2 rounded-2xl border border-fuchsia-500/20 bg-slate-950/70 p-3">
                       <div className="text-[11px] font-black text-fuchsia-200 mb-1">📋 คุณสมบัติทั้งหมด</div>
-                      {getItemDetailLines(item).length > 0 ? (
-                        <ul className="space-y-1 text-[11px] text-slate-300">
-                          {getItemDetailLines(item).map((line, i) => <li key={i} className="break-words">• {line}</li>)}
-                        </ul>
-                      ) : (
-                        <div className="text-[11px] text-slate-500">ยังไม่ได้ระบุคุณสมบัติเพิ่มเติม</div>
-                      )}
-                    </div>
+                      {getItemDetailLines(item).length > 0 ? <ul className="space-y-1 text-[11px] text-slate-300">{getItemDetailLines(item).map((line, i) => <li key={i} className="break-words">• {line}</li>)}</ul> : <div className="text-[11px] text-slate-500">ยังไม่ได้ระบุคุณสมบัติเพิ่มเติม</div>}
+                    </div>}
 
                     {/* Effect Badges */}
                     <div className="mt-3 flex flex-wrap gap-1.5">
@@ -1523,16 +1521,13 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                       <p className="text-xs text-slate-300 mt-2.5 leading-relaxed">
                         {invItem.description || 'ไม่มีคำอธิบายไอเทม'}
                       </p>
-                      <div className="mt-3 rounded-2xl border border-cyan-500/20 bg-slate-950/70 p-3">
+                      <button type="button" className="mt-3 w-full rounded-xl border border-cyan-400/30 bg-cyan-950/30 px-3 py-2 text-left text-xs font-black text-cyan-200" onClick={() => setExpandedItemDetails(prev => ({ ...prev, [String(invItem.instanceId || invItem.id)]: !prev[String(invItem.instanceId || invItem.id)] }))}>
+                        {expandedItemDetails[String(invItem.instanceId || invItem.id)] ? '▲ ซ่อนคุณสมบัติไอเทม' : '▼ ดูคุณสมบัติไอเทมทั้งหมด'}
+                      </button>
+                      {expandedItemDetails[String(invItem.instanceId || invItem.id)] && <div className="mt-2 rounded-2xl border border-cyan-500/20 bg-slate-950/70 p-3">
                         <div className="text-[11px] font-black text-cyan-200 mb-1">📋 คุณสมบัติทั้งหมด</div>
-                        {getItemDetailLines(invItem).length > 0 ? (
-                          <ul className="space-y-1 text-[11px] text-slate-300">
-                            {getItemDetailLines(invItem).map((line, i) => <li key={i} className="break-words">• {line}</li>)}
-                          </ul>
-                        ) : (
-                          <div className="text-[11px] text-slate-500">ยังไม่ได้ระบุคุณสมบัติเพิ่มเติม</div>
-                        )}
-                      </div>
+                        {getItemDetailLines(invItem).length > 0 ? <ul className="space-y-1 text-[11px] text-slate-300">{getItemDetailLines(invItem).map((line, i) => <li key={i} className="break-words">• {line}</li>)}</ul> : <div className="text-[11px] text-slate-500">ยังไม่ได้ระบุคุณสมบัติเพิ่มเติม</div>}
+                      </div>}
 
                       {/* Badges in inventory */}
                       <div className="mt-3 flex flex-wrap gap-1.5">
