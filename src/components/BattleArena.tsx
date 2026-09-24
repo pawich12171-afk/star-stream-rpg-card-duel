@@ -371,9 +371,12 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     }
     const victoryReward = mode === 'random' ? Math.max(0, Number(randomReward?.coinAmount) || 0) : (mode === 'pve' ? (isPveBoss ? BOSS_VICTORY_REWARD : BOT_VICTORY_REWARD) : 0);
     const now = Date.now();
+    const firstActor = [...teamA, ...teamB]
+      .filter(unit => unit.hp > 0)
+      .sort((a, b) => (Number(b.stats?.agility) || 0) - (Number(a.stats?.agility) || 0))[0] || teamA[0];
     const room: BattleRoom = {
       id: 'battle-' + now, mode, status: 'active', createdBy: currentUser.id, createdByName: currentUser.displayName,
-      teamA, teamB, turnActorId: teamA[0].id, round: 1,
+      teamA, teamB, turnActorId: firstActor.id, round: 1,
       log: [
         ...teamA.flatMap(unit => [
           ...(unit.traits || []).length ? [{ id: `battle-trait-${unit.id}-${now}`, timestamp: now, actorName: unit.name, message: `🧬 TRAIT: ${unit.traits!.join(' · ')}` }] : [],
