@@ -785,11 +785,11 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
                 {bot.isBoss ? <span className="ml-auto flex items-center gap-1 text-[10px] font-black text-amber-300"><Skull className="h-3 w-3" />BOSS</span> : <span className="ml-auto text-[10px] text-slate-500">HP {bot.maxHp}</span>}
               </label>
             ))}
-            <button type="button" disabled={isCreatingRoom} onClick={() => void createRoom()} className={buttonClass + ' mt-2 w-full bg-emerald-500 text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50'}>
-              <Plus className="mr-1 inline h-4 w-4" />{isCreatingRoom ? '⏳ กำลังสร้างห้อง...' : mode === 'pve' || mode === 'random' ? 'เริ่มต่อสู้' : 'เปิดห้องรบ'}
-            </button>
           </div>
         )}
+        <button type="button" disabled={isCreatingRoom} onClick={() => void createRoom()} className={buttonClass + ' mt-3 w-full bg-emerald-500 text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50'}>
+          <Plus className="mr-1 inline h-4 w-4" />{isCreatingRoom ? '⏳ กำลังสร้างห้อง...' : mode === 'pve' || mode === 'random' ? 'เริ่มต่อสู้' : 'เปิดห้องรบ'}
+        </button>
       </div></div></section>    <section className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-lg font-black text-white">
