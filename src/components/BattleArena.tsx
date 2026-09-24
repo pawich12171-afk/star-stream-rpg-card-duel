@@ -246,10 +246,15 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   useEffect(() => { if (!selectedTeamIds.includes(currentUser.id)) setSelectedTeamIds([currentUser.id]); }, [currentUser.id, selectedTeamIds]);
   useEffect(() => { if (!isAdmin) setShowAdmin(false); }, [isAdmin]);
   useEffect(() => {
-    const completed = rooms.filter(room => (room.mode === 'pve' || room.mode === 'random') && room.status === 'completed' && room.createdBy === currentUser.id && room.winnerTeam === 'a' && !room.rewardClaimedBy);
+    const completed = rooms.filter(room =>
+      (room.mode === 'pve' || room.mode === 'random') &&
+      room.status === 'completed' &&
+      room.winnerTeam === 'a' &&
+      room.teamA.some(unit => unit.type === 'player' && unit.sourceId === currentUser.id)
+    );
     completed.forEach(room => {
       void settleBattleVictoryReward(room, currentUser.id).then(paid => {
-        if (paid > 0) alert(`ชนะการต่อสู้! ได้รับรางวัล +${paid.toLocaleString()} Coins`);
+        if (paid > 0) alert(`ทีมชนะ! ได้รับรางวัล +${paid.toLocaleString()} Coins`);
       }).catch(error => console.warn('ไม่สามารถจ่ายรางวัลการต่อสู้ได้', error));
     });
   }, [rooms, currentUser.id]);
