@@ -529,6 +529,8 @@ export interface BattleCombatant {
   reflectPercent?: number;
   reflectTurns?: number;
   skillCooldowns?: Record<string, number>;
+  /** สกิลของลูกน้องที่ถูกเสกโดยมอน/บอส */
+  skills?: BattleBotSkill[];
   adminStatusEffects?: AdminStatusEffect[];
   equippedPassives?: ItemPassiveEffect[];
   activeSkillPassives?: ItemPassiveEffect[];
