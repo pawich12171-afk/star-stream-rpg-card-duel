@@ -315,6 +315,8 @@ export interface CharacterProfile {
   adminStatusEffects?: AdminStatusEffect[];
   equippedPassives?: ItemPassiveEffect[];
   passiveStacks?: Record<string, number>;
+  /** จำนวนครั้งที่อัพช่องสวมใส่อุปกรณ์ทั่วไป */
+  equipmentSlotUpgrades?: number;
   /** Character Traits shown and activated for the battle UI. */
   traits?: string[];
   /** ตัวคูณเรทกาชาที่เปิดใช้ไว้ รอการสุ่มครั้งถัดไป */
