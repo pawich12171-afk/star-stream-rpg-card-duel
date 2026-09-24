@@ -751,12 +751,26 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       </div>;
     });
   })() : <div className="text-[11px] text-rose-200">ยังไม่มีรางวัลที่แอดมินตั้งค่า</div>}
-</div></div> : <div className="space-y-2">{activeBots.length === 0 && <div className="rounded-xl border border-dashed border-slate-700 p-4 text-center text-xs text-slate-500">ยังไม่มีบอท — ให้แอดมินสร้างก่อน</div>}{activeBots.map(bot => <label key={bot.id} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-2 text-sm"><input type="checkbox" checked={selectedBotIds.includes(bot.id)} onChange={() => toggleBot(bot.id)} /><img src={bot.avatarUrl} alt="" className="h-8 w-8 rounded-lg object-cover" /><span className="font-bold text-white">{bot.name}</span>{bot.isBoss ? <span className="ml-auto flex items-center gap-1 text-[10px] font-black text-amber-300"><Skull className="h-3 w-3" />BOSS</span> : <span className="ml-auto text-[10px] text-slate-500">HP {bot.maxHp}</span>}</label>)}<div className="rounded-2xl border-2 border-amber-400/50 bg-amber-500/10 p-4 shadow-lg shadow-amber-500/10">
-  <div className="text-base font-black text-amber-100">🎲 โหมดสุ่มมอน / Boss</div>
-  <div className="mt-2 text-lg font-black text-yellow-300">💰 ค่าเข้า: {mode === "random" ? RANDOM_BATTLE_ENTRY_FEE.toLocaleString() : "5,000"} Coins</div>
-  {mode === "random" && <div className="mt-1 text-xs font-bold text-slate-200">💳 Coin ของคุณ: {Math.max(0, Math.floor(Number(currentUser.coins) || 0)).toLocaleString()} Coins</div>}
-  <div className="mt-2 text-xs text-amber-200/80">{mode === "random" ? "ตรวจ Coin ก่อนเริ่ม และหัก 15,000 Coins เมื่อเริ่มสำเร็จ" : `เริ่มต่อสู้จะหัก 5,000 Coins · มอนทั่วไปชนะรับ ${BOT_VICTORY_REWARD.toLocaleString()} · BOSS ชนะรับ ${BOSS_VICTORY_REWARD.toLocaleString()} Coins`}</div>
-</div></div>}<button type="button" disabled={isCreatingRoom} onClick={() => void createRoom()} className={buttonClass + ' mt-2 w-full bg-emerald-500 text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50'}><Plus className="mr-1 inline h-4 w-4" />{isCreatingRoom ? '⏳ กำลังสร้างห้อง...' : mode === 'pve' || mode === 'random' ? 'เริ่มต่อสู้' : 'เปิดห้องรบ'}</button></div></div></section>
+</div></div> : <div className="space-y-2">{activeBots.length === 0 && <div className="rounded-xl border border-dashed border-slate-700 p-4 text-center text-xs text-slate-500">ยังไม่มีบอท — ให้แอดมินสร้างก่อน</div>}{activeBots.map(bot => <label key={bot.id} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-2 text-sm"><input type="checkbox" checked={selectedBotIds.includes(bot.id)} onChange={() => toggleBot(bot.id)} /><img src={bot.avatarUrl} alt="" className="h-8 w-8 rounded-lg object-cover" /><span className="font-bold text-white">{bot.name}</span>{bot.isBoss ? <span className="ml-auto flex items-center gap-1 text-[10px] font-black text-amber-300"><Skull className="h-3 w-3" />BOSS</span> : <span className="ml-auto text-[10px] text-slate-500">HP {bot.maxHp}</span>}</label>)}}{mode === 'random' && (
+  <div className="mb-3 rounded-2xl border-2 border-amber-400/50 bg-amber-500/10 p-4 shadow-lg shadow-amber-500/10">
+    <div className="text-base font-black text-amber-100">🎲 โหมดสุ่มมอน / Boss</div>
+    <div className="mt-2 text-xl font-black text-yellow-300">💰 ค่าเข้า: 15,000 Coins</div>
+    <div className="mt-1 text-xs font-bold text-slate-200">💳 Coin ของคุณ: {Math.max(0, Math.floor(Number(currentUser.coins) || 0)).toLocaleString()} Coins</div>
+    <div className="mt-2 text-xs font-bold text-amber-200/90">⚠️ ต้องมีอย่างน้อย 15,000 Coins เพื่อเริ่ม ระบบจะตรวจ Coin ก่อนเริ่มและหัก 15,000 Coins เมื่อเริ่มสำเร็จ</div>
+    <div className="mt-3 rounded-xl border border-amber-300/20 bg-slate-950/40 p-3">
+      <div className="text-xs font-black text-white">🎁 Reward Pool</div>
+      <div className="mt-2 space-y-1">
+        {validRandomRewards.length ? validRandomRewards.map(reward => (
+          <div key={reward.id} className="flex justify-between gap-2 text-xs text-slate-200">
+            <span>{reward.type === 'item' ? reward.itemData?.name : reward.type === 'skill' ? reward.skillData?.name : (Number(reward.coinAmount || 0).toLocaleString() + ' Coins')}</span>
+            <span className="text-amber-300">{Number(reward.rate)}%</span>
+          </div>
+        )) : <div className="text-xs text-rose-300">ยังไม่มีรางวัลที่ตั้งค่าไว้</div>}
+      </div>
+    </div>
+  </div>
+)}
+<button type="button" disabled={isCreatingRoom} onClick={() => void createRoom()} className={buttonClass + ' mt-2 w-full bg-emerald-500 text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50'}><Plus className="mr-1 inline h-4 w-4" />{isCreatingRoom ? '⏳ กำลังสร้างห้อง...' : mode === 'pve' || mode === 'random' ? 'เริ่มต่อสู้' : 'เปิดห้องรบ'}</button></div></div></section>
 
     <section className="space-y-4">
       <div className="flex items-center justify-between">
