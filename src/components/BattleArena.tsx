@@ -233,6 +233,10 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const [botSummonSkillEffect, setBotSummonSkillEffect] = useState<NonNullable<Skill['battleEffect']>>('damage');
   const [botSummonAvatarUrl, setBotSummonAvatarUrl] = useState('');
   const [botSummonAvatarFileName, setBotSummonAvatarFileName] = useState('');
+  type ConfiguredMinion = NonNullable<Skill['summonUnits']>[number];
+  const [botSummonUnits, setBotSummonUnits] = useState<ConfiguredMinion[]>([]);
+  const [minionDraft, setMinionDraft] = useState({name:'', hp:'20', strength:'5', durability:'1', agility:'1', magic:'0', avatarUrl:'', avatarFileName:'', skillsText:'[]'});
+
   const [selectedBattleItemId, setSelectedBattleItemId] = useState('');
   const [usingBattleItemId, setUsingBattleItemId] = useState('');
   // Synchronous action lock: React state alone updates after the click event,
@@ -650,40 +654,67 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const addBotSkill = () => {
     const name = botSkillName.trim();
     if (!name) return alert('กรุณาตั้งชื่อสกิลมอน/บอส');
-    const minionSkills: BattleBotSkill[] = botSkillEffect !== 'summon' ? [] : botSummonSkillMode === 'json'
-      ? (() => { try { const value = JSON.parse(botSummonSkillsText || '[]'); return Array.isArray(value) ? value as BattleBotSkill[] : []; } catch { alert('JSON สกิลลูกน้องไม่ถูกต้อง'); return []; } })()
-      : botSummonSkillName.trim() ? [{
-          id: 'minion-skill-' + Date.now(), name: botSummonSkillName.trim(), level: 1, multiplier: 1, type: 'monster-minion',
-          description: botSummonSkillDescription.trim() || 'สกิลของลูกน้อง',
-          battlePower: Math.max(0, Number(botSummonSkillPower) || 0),
-          cooldownTurns: Math.max(0, Math.floor(Number(botSummonSkillCooldown) || 0)),
-          aiChancePercent: Math.max(0, Math.min(100, Number(botSummonSkillChance) || 0)),
-          damageScaling: 'fixed', battleEffect: botSummonSkillEffect,
-        }] : [];
+    let minionSkills: BattleBotSkill[] = [];
+    if (botSkillEffect === 'summon') {
+      if (botSummonSkillMode === 'json') {
+        try {
+          const parsed = JSON.parse(botSummonSkillsText || '[]');
+          if (!Array.isArray(parsed)) throw new Error();
+          minionSkills = parsed as BattleBotSkill[];
+        } catch { alert('JSON สกิลลูกน้องไม่ถูกต้อง'); return; }
+      } else if (botSummonSkillName.trim()) {
+        minionSkills = [{
+          id:'minion-skill-'+Date.now(), name:botSummonSkillName.trim(), level:1, multiplier:1, type:'monster-minion',
+          description:botSummonSkillDescription.trim() || 'สกิลเฉพาะของลูกน้อง',
+          battlePower:Math.max(0,Number(botSummonSkillPower)||0),
+          cooldownTurns:Math.max(0,Math.floor(Number(botSummonSkillCooldown)||0)),
+          aiChancePercent:Math.max(0,Math.min(100,Number(botSummonSkillChance)||0)),
+          damageScaling:'fixed', battleEffect:botSummonSkillEffect,
+        }];
+      }
+    }
+    const units = botSkillEffect === 'summon' ? botSummonUnits : [];
     const skill: BattleBotSkill = {
-      id: 'bot-skill-' + Date.now(), name, level: 1, multiplier: 1, type: 'monster',
-      description: botSkillDescription.trim() || 'สกิลเฉพาะของมอน/บอส',
-      battlePower: Math.max(0, Number(botSkillPower) || 0),
-      cooldownTurns: Math.max(0, Math.floor(Number(botSkillCooldown) || 0)),
-      aiChancePercent: Math.max(0, Math.min(100, Number(botSkillChance) || 0)),
-      damageScaling: 'fixed', battleEffect: botSkillEffect,
+      id:'bot-skill-'+Date.now(), name, level:1, multiplier:1, type:'monster',
+      description:botSkillDescription.trim() || 'สกิลเฉพาะของมอน/บอส',
+      battlePower:Math.max(0,Number(botSkillPower)||0),
+      cooldownTurns:Math.max(0,Math.floor(Number(botSkillCooldown)||0)),
+      aiChancePercent:Math.max(0,Math.min(100,Number(botSkillChance)||0)),
+      damageScaling:'fixed', battleEffect:botSkillEffect,
       ...(botSkillEffect === 'summon' ? {
-        summonName: botSummonName.trim() || 'ลูกน้อง',
-        summonMaxCount: Math.max(1, Math.min(20, Math.round(Number(botSummonMaxCount) || 1))),
-        summonHp: Math.max(1, Math.round(Number(botSummonHp) || 1)),
-        summonDamage: Math.max(1, Math.round(Number(botSummonDamage) || 1)),
-        summonAgility: Math.max(0, Math.round(Number(botSummonAgility) || 1)),
-        summonAvatarUrl: botSummonAvatarUrl || undefined,
-        summonAvatarFileName: botSummonAvatarFileName || undefined,
-        summonSkills: minionSkills,
+        summonName:botSummonName.trim() || 'ลูกน้อง',
+        summonMaxCount:Math.max(1,Math.min(20,Math.round(Number(botSummonMaxCount)||1))),
+        summonHp:Math.max(1,Math.round(Number(botSummonHp)||1)),
+        summonDamage:Math.max(1,Math.round(Number(botSummonDamage)||1)),
+        summonAgility:Math.max(0,Math.round(Number(botSummonAgility)||1)),
+        summonAvatarUrl:botSummonAvatarUrl || undefined,
+        summonAvatarFileName:botSummonAvatarFileName || undefined,
+        summonSkills:minionSkills,
+        summonUnits:units,
       } : {}),
     };
-    setBotForm(prev => ({ ...prev, skills: [...prev.skills, skill] }));
+    setBotForm(prev=>({...prev,skills:[...prev.skills,skill]}));
     setBotSkillName(''); setBotSkillDescription(''); setBotSkillDraftId(''); setBotSkillEffect('damage');
     setBotSummonName('ลูกน้อง'); setBotSummonMaxCount('1'); setBotSummonHp('20'); setBotSummonDamage('5'); setBotSummonAgility('1');
     setBotSummonSkillsText('[]'); setBotSummonSkillName(''); setBotSummonSkillDescription(''); setBotSummonSkillPower('5');
     setBotSummonSkillChance('100'); setBotSummonSkillCooldown('0'); setBotSummonSkillEffect('damage'); setBotSummonSkillMode('normal');
-    setBotSummonAvatarUrl(''); setBotSummonAvatarFileName('');
+    setBotSummonAvatarUrl(''); setBotSummonAvatarFileName(''); setBotSummonUnits([]);
+  };
+
+  const addConfiguredMinion = async () => {
+    const name=minionDraft.name.trim();
+    if(!name) return alert('กรุณาตั้งชื่อลูกน้อง');
+    let skills: BattleBotSkill[]=[];
+    try { const parsed=JSON.parse(minionDraft.skillsText||'[]'); if(!Array.isArray(parsed)) throw new Error(); skills=parsed; }
+    catch { return alert('JSON สกิลของลูกน้องตัวนี้ไม่ถูกต้อง'); }
+    setBotSummonUnits(prev=>[...prev,{
+      id:'minion-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), name,
+      hp:Math.max(1,Number(minionDraft.hp)||1), strength:Math.max(0,Number(minionDraft.strength)||0),
+      durability:Math.max(0,Number(minionDraft.durability)||0), agility:Math.max(0,Number(minionDraft.agility)||0),
+      magic:Math.max(0,Number(minionDraft.magic)||0), avatarUrl:minionDraft.avatarUrl||undefined,
+      avatarFileName:minionDraft.avatarFileName||undefined, skills
+    }]);
+    setMinionDraft({name:'',hp:'20',strength:'5',durability:'1',agility:'1',magic:'0',avatarUrl:'',avatarFileName:'',skillsText:'[]'});
   };
 
   const removeBotSkill = (skillId: string) => {
@@ -825,39 +856,36 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   <p className="mt-2 text-[10px] text-slate-500">มอนหรือบอสแต่ละตัวสามารถกำหนดได้หลายรายการ</p>
 </div>
 <div className="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-3">
-  <div className="mb-1 text-sm font-black text-fuchsia-200">🧠 สกิลของมอน / บอส</div><p className="mb-3 text-[11px] text-slate-400">สร้างสกิลเฉพาะ พร้อมคำอธิบาย ไม่ดึงสกิลของผู้เล่นมาใช้</p>
+  <div className="mb-1 text-sm font-black text-fuchsia-200">🧠 สกิลเฉพาะของมอน / บอส</div>
+  <p className="mb-3 text-[11px] leading-relaxed text-slate-400">ทุกช่องมีคำอธิบายชัดเจน และลูกน้องแต่ละตัวตั้งค่าแยกกันได้ ไม่ใช้ค่าสเตตรวมกัน</p>
   <div className="grid gap-2 sm:grid-cols-2">
-    <input className={inputClass} value={botSkillName} onChange={event => setBotSkillName(event.target.value)} placeholder="ชื่อสกิลมอน/บอส" />
-    <input className={inputClass} value={botSkillDescription} onChange={event => setBotSkillDescription(event.target.value)} placeholder="คำอธิบายสกิล" />
-    <input className={inputClass} type="number" min="0" value={botSkillPower} onChange={event => setBotSkillPower(event.target.value)} placeholder="พลัง/ดาเมจ" />
-    <input className={inputClass} type="number" min="0" value={botSkillCooldown} onChange={event => setBotSkillCooldown(event.target.value)} placeholder="คูลดาวน์ (เทิร์น)" />
-    <select className={inputClass} value={botSkillEffect} onChange={event => setBotSkillEffect(event.target.value as NonNullable<Skill['battleEffect']>)}><option value="damage">โจมตี / ดาเมจ</option><option value="heal">ฟื้นฟู</option><option value="defense">ป้องกัน</option><option value="stun">สตัน</option><option value="damage_reduction">ลดดาเมจ</option><option value="summon">🧿 เสกลูกน้อง</option></select>
-        <input className={inputClass} type="number" min="0" max="100" value={botSkillChance} onChange={event => setBotSkillChance(event.target.value)} placeholder="โอกาสใช้ %" />
-    {botSkillEffect === 'summon' && <div className="sm:col-span-2 grid grid-cols-1 gap-2 sm:grid-cols-2 rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-2">
-      <input className={inputClass} value={botSummonName} onChange={event=>setBotSummonName(event.target.value)} placeholder="ชื่อลูกน้อง" />
-      <input className={inputClass} type="number" min="1" max="20" value={botSummonMaxCount} onChange={event=>setBotSummonMaxCount(event.target.value)} placeholder="เสกได้สูงสุดกี่ตัว" />
-      <input className={inputClass} type="number" min="1" value={botSummonHp} onChange={event=>setBotSummonHp(event.target.value)} placeholder="HP ลูกน้อง" />
-      <input className={inputClass} type="number" min="1" value={botSummonDamage} onChange={event=>setBotSummonDamage(event.target.value)} placeholder="Damage ลูกน้อง" />
-      <input className={inputClass} type="number" min="0" value={botSummonAgility} onChange={event=>setBotSummonAgility(event.target.value)} placeholder="Speed / AGI ลูกน้อง" /><label className="text-[11px] text-slate-400">รูปลูกน้อง<input className="mt-1 block w-full text-xs" type="file" accept="image/*" onChange={async event=>{const file=event.target.files?.[0];if(!file)return;if(file.size>4*1024*1024)return alert("รูปต้องไม่เกิน 4MB");setBotSummonAvatarUrl(await fileToDataUrl(file));setBotSummonAvatarFileName(file.name);}} /></label>
-      <div className="sm:col-span-2 rounded-xl border border-slate-700 bg-slate-950/40 p-3">
-  <div className="mb-2 flex flex-wrap gap-2"><button type="button" className={buttonClass+" "+(botSummonSkillMode==='normal'?'bg-cyan-500 text-slate-950':'bg-slate-800 text-slate-300')} onClick={()=>setBotSummonSkillMode('normal')}>✨ สร้างสกิลปกติ</button><button type="button" className={buttonClass+" "+(botSummonSkillMode==='json'?'bg-violet-500 text-white':'bg-slate-800 text-slate-300')} onClick={()=>setBotSummonSkillMode('json')}>⚙️ ใส่ JSON ขั้นสูง</button></div>
-  {botSummonSkillMode==='normal' ? <div className="grid gap-2 sm:grid-cols-2">
-    <input className={inputClass} value={botSummonSkillName} onChange={event=>setBotSummonSkillName(event.target.value)} placeholder="ชื่อสกิลลูกน้อง" />
-    <textarea className={inputClass+" min-h-16"} value={botSummonSkillDescription} onChange={event=>setBotSummonSkillDescription(event.target.value)} placeholder="คำอธิบายสกิลลูกน้อง" />
-    <input className={inputClass} type="number" min="0" value={botSummonSkillPower} onChange={event=>setBotSummonSkillPower(event.target.value)} placeholder="พลัง / ดาเมจ" />
-    <input className={inputClass} type="number" min="0" max="100" value={botSummonSkillChance} onChange={event=>setBotSummonSkillChance(event.target.value)} placeholder="โอกาสใช้ %" />
-    <input className={inputClass} type="number" min="0" value={botSummonSkillCooldown} onChange={event=>setBotSummonSkillCooldown(event.target.value)} placeholder="คูลดาวน์" />
-    <select className={inputClass} value={botSummonSkillEffect} onChange={event=>setBotSummonSkillEffect(event.target.value as NonNullable<Skill['battleEffect']>)}><option value="damage">⚔️ ดาเมจ</option><option value="heal">❤️ ฟื้นฟู</option><option value="defense">🛡️ ป้องกัน</option><option value="stun">💫 สตัน</option></select>
-  </div> : <textarea className="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" value={botSummonSkillsText} onChange={event=>setBotSummonSkillsText(event.target.value)} placeholder='ใส่ JSON สกิลลูกน้อง...' />}
-</div>
+    <label className="text-[11px] text-slate-400">ชื่อสกิล<input className={inputClass+" mt-1"} value={botSkillName} onChange={e=>setBotSkillName(e.target.value)} placeholder="ชื่อที่จะแสดงในสนามรบ" /></label>
+    <label className="text-[11px] text-slate-400">คำอธิบายสกิล<textarea className={inputClass+" mt-1 min-h-16"} value={botSkillDescription} onChange={e=>setBotSkillDescription(e.target.value)} placeholder="บอกว่าสกิลนี้ทำอะไร" /></label>
+    <label className="text-[11px] text-slate-400">พลัง/ดาเมจ<input className={inputClass+" mt-1"} type="number" value={botSkillPower} onChange={e=>setBotSkillPower(e.target.value)} /></label>
+    <label className="text-[11px] text-slate-400">คูลดาวน์ (เทิร์น)<input className={inputClass+" mt-1"} type="number" min="0" value={botSkillCooldown} onChange={e=>setBotSkillCooldown(e.target.value)} /></label>
+    <label className="text-[11px] text-slate-400">เอฟเฟกต์<select className={inputClass+" mt-1"} value={botSkillEffect} onChange={e=>setBotSkillEffect(e.target.value as NonNullable<Skill['battleEffect']>)}><option value="damage">⚔️ โจมตี/ทำดาเมจ</option><option value="heal">❤️ ฟื้นฟู HP</option><option value="defense">🛡️ เพิ่มการป้องกัน</option><option value="stun">💫 ทำให้ติดสตัน</option><option value="damage_reduction">🔻 ลดดาเมจเป้าหมาย</option><option value="summon">🧿 เสกลูกน้อง</option></select></label>
+    <label className="text-[11px] text-slate-400">โอกาสใช้สกิล (%)<input className={inputClass+" mt-1"} type="number" min="0" max="100" value={botSkillChance} onChange={e=>setBotSkillChance(e.target.value)} /></label>
+    {botSkillEffect==='summon' && <div className="sm:col-span-2 rounded-2xl border border-cyan-500/20 bg-cyan-950/20 p-3">
+      <div className="font-black text-cyan-200">🧿 ลูกน้องแบบแยกรายตัว</div>
+      <p className="mt-1 mb-3 text-[11px] text-slate-400">ตัวอย่าง: ลูกน้อง A STR 50 แต่ลูกน้อง B STR 40 ได้ และแต่ละตัวมี HP, DEF, Speed, Magic, รูป และสกิลของตัวเอง</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="text-[11px] text-slate-400">ชื่อลูกน้อง<input className={inputClass+" mt-1"} value={minionDraft.name} onChange={e=>setMinionDraft({...minionDraft,name:e.target.value})} placeholder="เช่น นักรบเงา A" /></label>
+        <label className="text-[11px] text-slate-400">HP ของตัวนี้<input className={inputClass+" mt-1"} type="number" min="1" value={minionDraft.hp} onChange={e=>setMinionDraft({...minionDraft,hp:e.target.value})} /></label>
+        <label className="text-[11px] text-slate-400">STR — พลังโจมตี<input className={inputClass+" mt-1"} type="number" min="0" value={minionDraft.strength} onChange={e=>setMinionDraft({...minionDraft,strength:e.target.value})} /></label>
+        <label className="text-[11px] text-slate-400">DEF — ลดความเสียหาย<input className={inputClass+" mt-1"} type="number" min="0" value={minionDraft.durability} onChange={e=>setMinionDraft({...minionDraft,durability:e.target.value})} /></label>
+        <label className="text-[11px] text-slate-400">SPD — ลำดับการโจมตี<input className={inputClass+" mt-1"} type="number" min="0" value={minionDraft.agility} onChange={e=>setMinionDraft({...minionDraft,agility:e.target.value})} /></label>
+        <label className="text-[11px] text-slate-400">MAG — พลังเวท<input className={inputClass+" mt-1"} type="number" min="0" value={minionDraft.magic} onChange={e=>setMinionDraft({...minionDraft,magic:e.target.value})} /></label>
+        <label className="text-[11px] text-slate-400">รูปของลูกน้อง<input className="mt-1 block w-full text-xs" type="file" accept="image/*" onChange={async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>4*1024*1024)return alert('รูปต้องไม่เกิน 4MB');setMinionDraft({...minionDraft,avatarUrl:await fileToDataUrl(f),avatarFileName:f.name});}} /></label>
+        <label className="text-[11px] text-slate-400 sm:col-span-2">สกิลของลูกน้องตัวนี้ (JSON ขั้นสูง — ปล่อย [] ได้)<textarea className={inputClass+" mt-1 min-h-20"} value={minionDraft.skillsText} onChange={e=>setMinionDraft({...minionDraft,skillsText:e.target.value})} placeholder='[{"name":"กรงเล็บ","description":"โจมตีด้วยกรงเล็บ","battlePower":10,"battleEffect":"damage","aiChancePercent":100}]' /></label>
+      </div>
+      <button type="button" className={buttonClass+" mt-2 bg-cyan-500 text-slate-950"} onClick={addConfiguredMinion}>+ เพิ่มลูกน้องตัวนี้</button>
+      <div className="mt-3 space-y-2">{botSummonUnits.map((m,idx)=><div key={m.id} className="rounded-xl border border-slate-700 bg-slate-950/60 p-3"><div className="flex items-center gap-3"><img src={m.avatarUrl||'/avatars/system.svg'} alt="" className="h-10 w-10 rounded-lg object-cover"/><div className="flex-1"><div className="font-bold text-white">{idx+1}. {m.name}</div><div className="text-[10px] text-slate-400">HP {m.hp} · STR {m.strength} · DEF {m.durability} · SPD {m.agility} · MAG {m.magic} · สกิล {m.skills?.length||0}</div></div><button type="button" className="text-rose-300" onClick={()=>setBotSummonUnits(prev=>prev.filter(x=>x.id!==m.id))}>ลบ</button></div></div>)}</div>
+      <div className="mt-3 border-t border-slate-700 pt-3"><div className="mb-2 text-xs font-bold text-slate-300">สกิลลูกน้องแบบสร้างปกติ / JSON</div><div className="grid gap-2 sm:grid-cols-2"><input className={inputClass} value={botSummonSkillName} onChange={e=>setBotSummonSkillName(e.target.value)} placeholder="ชื่อสกิลลูกน้อง (แบบปกติ)" /><textarea className={inputClass+" min-h-16"} value={botSummonSkillDescription} onChange={e=>setBotSummonSkillDescription(e.target.value)} placeholder="คำอธิบายสกิลลูกน้อง" /></div></div>
     </div>}
-    <button type="button" className={buttonClass + " bg-fuchsia-500 text-white"} onClick={addBotSkill}>+ สร้างสกิลเฉพาะ</button>
+    <button type="button" className={buttonClass+" sm:col-span-2 bg-fuchsia-500 text-white"} onClick={addBotSkill}>+ สร้างสกิลมอน / บอส</button>
   </div>
-  <div className="mt-2 space-y-1">
-    {botForm.skills.map(skill => <div key={getSkillId(skill)} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs"><span>{skill.name} · โอกาสใช้ {Number(skill.aiChancePercent ?? 0)}%</span><button type="button" className="text-rose-300" onClick={() => removeBotSkill(getSkillId(skill))}>ลบ</button></div>)}
-    {!botForm.skills.length && <div className="text-[10px] text-slate-500">ยังไม่มีสกิล — มอนจะโจมตีปกติ</div>}
-  </div>
-</div><button type="submit" className={buttonClass + ' w-full bg-rose-500 text-white hover:bg-rose-400'}><Plus className="mr-1 inline h-4 w-4" />{editingBotId ? "บันทึกการแก้ไขบอท" : "สร้างบอท"}</button></form></div>{bots.length > 0 && <div className="mt-6 grid gap-3 md:grid-cols-2">{bots.map(bot => <div key={bot.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/50 p-3"><div className="flex min-w-0 items-center gap-3"><img src={bot.avatarUrl} alt="" className="h-10 w-10 rounded-xl border border-slate-700 object-cover" /><div className="min-w-0"><div className="flex items-center gap-2 truncate font-bold text-white">{bot.isBoss && <Crown className="h-3.5 w-3.5 text-amber-300" />}{bot.name}</div><div className="text-[11px] text-slate-500">HP {bot.maxHp} · พลัง {bot.stats.strength} · {bot.description}</div></div></div><button type="button" onClick={() => { setEditingBotId(bot.id); setBotForm({ name: bot.name, description: bot.description, hp: String(bot.maxHp), strength: String(bot.stats.strength), durability: String(bot.stats.durability), agility: String(bot.stats.agility), magic: String(bot.stats.magic), isBoss: bot.isBoss, avatarUrl: bot.avatarUrl, avatarFileName: bot.avatarFileName || '', encounterChancePercent: String(bot.encounterChancePercent ?? 10), skills: (bot.skills || []).map(skill => ({ ...skill })), drops: (bot.drops || []).map(drop => ({ ...drop, itemData: drop.itemData ? { ...drop.itemData } : undefined })) }); setBotDropChance('100'); }} className="rounded-lg p-2 text-sky-300 hover:bg-sky-500/15">✏️</button><button type="button" onClick={() => void deleteBattleBot(bot.id)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/15 hover:text-rose-300"><Trash2 className="h-4 w-4" /></button></div>)}</div>}</section>}
+  <div className="mt-3 space-y-2">{botForm.skills.map(skill=><div key={getSkillId(skill)} className="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs"><div className="font-bold text-white">✨ {skill.name}</div><div className="mt-1 text-slate-400">{skill.description}</div><div className="mt-1 text-[10px] text-fuchsia-300">พลัง {Number(skill.battlePower??0)} · โอกาสใช้ {Number(skill.aiChancePercent??0)}%</div><button type="button" className="mt-1 text-rose-300" onClick={()=>removeBotSkill(getSkillId(skill))}>ลบ</button></div>)}</div>
+</div></div><button type="submit" className={buttonClass + ' w-full bg-rose-500 text-white hover:bg-rose-400'}><Plus className="mr-1 inline h-4 w-4" />{editingBotId ? "บันทึกการแก้ไขบอท" : "สร้างบอท"}</button></form></div>{bots.length > 0 && <div className="mt-6 grid gap-3 md:grid-cols-2">{bots.map(bot => <div key={bot.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/50 p-3"><div className="flex min-w-0 items-center gap-3"><img src={bot.avatarUrl} alt="" className="h-10 w-10 rounded-xl border border-slate-700 object-cover" /><div className="min-w-0"><div className="flex items-center gap-2 truncate font-bold text-white">{bot.isBoss && <Crown className="h-3.5 w-3.5 text-amber-300" />}{bot.name}</div><div className="text-[11px] text-slate-500">HP {bot.maxHp} · พลัง {bot.stats.strength} · {bot.description}</div></div></div><button type="button" onClick={() => { setEditingBotId(bot.id); setBotForm({ name: bot.name, description: bot.description, hp: String(bot.maxHp), strength: String(bot.stats.strength), durability: String(bot.stats.durability), agility: String(bot.stats.agility), magic: String(bot.stats.magic), isBoss: bot.isBoss, avatarUrl: bot.avatarUrl, avatarFileName: bot.avatarFileName || '', encounterChancePercent: String(bot.encounterChancePercent ?? 10), skills: (bot.skills || []).map(skill => ({ ...skill })), drops: (bot.drops || []).map(drop => ({ ...drop, itemData: drop.itemData ? { ...drop.itemData } : undefined })) }); setBotDropChance('100'); }} className="rounded-lg p-2 text-sky-300 hover:bg-sky-500/15">✏️</button><button type="button" onClick={() => void deleteBattleBot(bot.id)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/15 hover:text-rose-300"><Trash2 className="h-4 w-4" /></button></div>)}</div>}</section>}
 
     <section className={panelClass + ' p-5 md:p-6'}><div className="mb-5 flex items-center gap-2"><Target className="h-5 w-5 text-cyan-300" /><h3 className="text-lg font-black text-white">สร้างศึกใหม่</h3></div><div className="grid gap-6 xl:grid-cols-2"><div className="space-y-4"><div className="grid grid-cols-3 gap-2"><button type="button" onClick={() => setMode('pve')} className={buttonClass + ' ' + (mode === 'pve' ? 'bg-violet-500 text-white' : 'bg-slate-800 text-slate-400')}><Bot className="mr-1 inline h-4 w-4" />ตีบอท / บอส</button><button type="button" onClick={() => setMode('random')} className={buttonClass + ' ' + (mode === 'random' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400')}><Dice5 className="mr-1 inline h-4 w-4" />สุ่มมอน / บอส</button><button type="button" onClick={() => setMode('pvp')} className={buttonClass + ' ' + (mode === 'pvp' ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-400')}><UsersRound className="mr-1 inline h-4 w-4" />สู้ผู้เล่น</button></div><div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3"><div className="mb-2 text-xs font-bold text-slate-300">ทีมของคุณ <span className="text-slate-500">(เลือกได้สูงสุด 3 คน)</span></div><div className="space-y-2">{allCharacters.map(character => <label key={character.id} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/50 p-2 text-sm"><input type="checkbox" checked={selectedTeamIds.includes(character.id)} disabled={character.id === currentUser.id} onChange={() => toggleTeamMember(character.id)} /><img src={character.avatarUrl} alt="" className="h-7 w-7 rounded-lg object-cover" /><span className={character.id === currentUser.id ? 'font-bold text-white' : 'text-slate-300'}>{character.displayName}</span><span className="ml-auto text-[10px] text-slate-500">STR {character.stats.strength}</span></label>)}</div></div></div><div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/35 p-3">
         <div className="text-xs font-bold text-slate-300">ฝ่ายตรงข้าม</div>
