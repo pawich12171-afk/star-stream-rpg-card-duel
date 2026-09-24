@@ -2821,6 +2821,17 @@ function advanceAdminStatusEffects(unit: BattleCombatant) {
     if (unit.itemDamageTurns === 0) unit.itemDamagePercent = 0;
   }
   if (unit.immortalTurns && unit.immortalTurns > 0) unit.immortalTurns = Math.max(0, unit.immortalTurns - 1);
+  if (unit.shieldTurns && unit.shieldTurns > 0) {
+    unit.shieldTurns = Math.max(0, unit.shieldTurns - 1);
+    if (unit.shieldTurns === 0) {
+      unit.shieldPercent = 0;
+      unit.defenseValue = 0;
+      unit.defenseTurns = 0;
+    }
+  }
+  if (unit.statusImmunityTurns && unit.statusImmunityTurns > 0) {
+    unit.statusImmunityTurns = Math.max(0, unit.statusImmunityTurns - 1);
+  }
   if (unit.damageReductionTurns && unit.damageReductionTurns > 0) {
     unit.damageReductionTurns = Math.max(0, unit.damageReductionTurns - 1);
     if (unit.damageReductionTurns === 0) unit.damageReductionPercent = 0;
@@ -2958,6 +2969,16 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     battlePassiveChanceMultiplier: Math.max(1, safeNum(item.battlePassiveChanceMultiplier, 1, 20)),
     damageReductionPercent: safeNum(item.damageReductionPercent, 0, 100),
     damageReductionDuration: Math.floor(safeNum(item.damageReductionDuration, 0, 1000)),
+    revivePercent: safeNum(item.revivePercent, 0, 100),
+    reviveAlly: Boolean(item.reviveAlly),
+    cleanseNegative: Boolean(item.cleanseNegative),
+    shieldPercent: safeNum(item.shieldPercent, 0, 100),
+    shieldDuration: Math.floor(safeNum(item.shieldDuration, 0, 1000)),
+    dodgeChancePercent: safeNum(item.dodgeChancePercent, 0, 100),
+    lifestealPercent: safeNum(item.lifestealPercent, 0, 100),
+    cooldownReductionPercent: safeNum(item.cooldownReductionPercent, 0, 100),
+    statusImmunityDuration: Math.floor(safeNum(item.statusImmunityDuration, 0, 1000)),
+    stunDuration: Math.floor(safeNum(item.stunDuration, 0, 1000)),
     passiveEffects: Array.isArray(item.passiveEffects) ? item.passiveEffects.filter(Boolean).slice(0, 50).map((p, index) => ({
       ...p,
       id: String(p.id || `item-passive-${item.id}-${index}`),
@@ -3023,6 +3044,38 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     ? Math.max(1, Math.round(Math.max(1, Number(allyToRevive.maxHp) || 1) * revivePercent / 100))
     : 0;
 
+  const targetOpponent = [...normalizedRoom.teamA, ...normalizedRoom.teamB]
+    .filter(unit => unit.team !== actor.team && unit.hp > 0)
+    .sort((a, b) => String(a.id).localeCompare(String(b.id)))[0];
+
+  // Item utility effects are applied here so the values saved to BattleRoom
+  // are the exact values consumed by the battle engine.
+  if (normalizedItem.cleanseNegative) {
+    actor.adminStatusEffects = (actor.adminStatusEffects || [])
+      .filter(effect => effect.mode !== 'nerf');
+    actor.stunnedTurns = 0;
+    actor.frozenTurns = 0;
+  }
+  if (normalizedItem.shieldPercent > 0) {
+    actor.defenseValue = Math.max(actor.defenseValue || 0, Math.round(actor.maxHp * normalizedItem.shieldPercent / 100));
+    actor.defenseTurns = Math.max(actor.defenseTurns || 0, Math.max(1, normalizedItem.shieldDuration || 1));
+  }
+  if (normalizedItem.statusImmunityDuration > 0) {
+    actor.statusImmunityTurns = Math.max(actor.statusImmunityTurns || 0, normalizedItem.statusImmunityDuration);
+  }
+  if (normalizedItem.stunDuration > 0 && targetOpponent) {
+    targetOpponent.stunnedTurns = Math.max(targetOpponent.stunnedTurns || 0, normalizedItem.stunDuration);
+  }
+  if (normalizedItem.cooldownReductionPercent > 0) {
+    const factor = 1 - normalizedItem.cooldownReductionPercent / 100;
+    actor.skillCooldowns = Object.fromEntries(
+      Object.entries(actor.skillCooldowns || {}).map(([skillId, turns]) => [
+        skillId,
+        Math.max(0, Math.ceil((Number(turns) || 0) * factor)),
+      ])
+    );
+  }
+
   const actorPatch: BattleCombatant = {
     ...actor,
     stats,
@@ -3037,6 +3090,18 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     itemPassiveChanceMultiplier: Math.max(1, Math.min(20, Number(normalizedItem.battlePassiveChanceMultiplier) || 1)),
     damageReductionPercent: Math.max(0, Math.min(100, Number(normalizedItem.damageReductionPercent) || 0)),
     damageReductionTurns: Math.max(0, Math.floor(Number(normalizedItem.damageReductionDuration) || 0)),
+    dodgeChancePercent: Math.max(0, Math.min(100, Number(normalizedItem.dodgeChancePercent) || 0)),
+    lifestealPercent: Math.max(0, Math.min(100, Number(normalizedItem.lifestealPercent) || 0)),
+    cooldownReductionPercent: Math.max(0, Math.min(100, Number(normalizedItem.cooldownReductionPercent) || 0)),
+    statusImmunityTurns: Math.max(0, Math.floor(Number(normalizedItem.statusImmunityDuration) || 0)),
+    shieldPercent: Math.max(0, Math.min(100, Number(normalizedItem.shieldPercent) || 0)),
+    shieldTurns: Math.max(0, Math.floor(Number(normalizedItem.shieldDuration) || 0)),
+    dodgeChancePercent: Math.max(0, Math.min(100, Number(normalizedItem.dodgeChancePercent) || 0)),
+    lifestealPercent: Math.max(0, Math.min(100, Number(normalizedItem.lifestealPercent) || 0)),
+    cooldownReductionPercent: Math.max(0, Math.min(100, Number(normalizedItem.cooldownReductionPercent) || 0)),
+    statusImmunityTurns: Math.max(0, Math.floor(Number(normalizedItem.statusImmunityDuration) || 0)),
+    shieldPercent: Math.max(0, Math.min(100, Number(normalizedItem.shieldPercent) || 0)),
+    shieldTurns: Math.max(0, Math.floor(Number(normalizedItem.shieldDuration) || 0)),
   };
 
   // Store the item-use result in the same room state that the next turn uses.
@@ -3363,6 +3428,10 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         result.message += ` • ♾️ ${defender.name} อมตะ — ไม่ได้รับดาเมจ`;
         result.damage = 0;
       }
+      if (defender.dodgeChancePercent && Math.random() * 100 < defender.dodgeChancePercent) {
+        result.message += ` • 🍃 ${defender.name} หลบหลีกสำเร็จ ${defender.dodgeChancePercent}%`;
+        result.damage = 0;
+      }
       const reductionPercent = defender.damageReductionTurns && defender.damageReductionTurns > 0 ? Math.min(100, Math.max(0, Number(defender.damageReductionPercent) || 0)) : 0;
       // Apply skill damage reduction exactly once. getAdminIncomingDamageMultiplier
       // also knows about this state, so do not multiply it a second time here.
@@ -3376,6 +3445,11 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       const finalDamage = Math.max(0, damageAfterStatus - blocked);
       if (statusBlocked > 0) result.message += ` • สถานะลดดาเมจ ${statusBlocked}`;
       defender.hp = Math.max(0, defender.hp - finalDamage);
+      if (finalDamage > 0 && current.lifestealPercent) {
+        const restored = Math.max(0, Math.round(finalDamage * Math.min(100, Math.max(0, current.lifestealPercent)) / 100));
+        current.hp = Math.min(current.maxHp, current.hp + restored);
+        if (restored > 0) result.message += ` • 🩸 ดูดเลือด +${restored} HP`;
+      }
       if (blocked > 0) {
         result.message += ` • ป้องกันไว้ ${blocked}`;
         defender.defenseTurns = 0;
