@@ -347,11 +347,37 @@ async function claimBattleRewardDirect(body) {
     nextData.coins += dropCoinTotal;
   }
 
-  await supabase(`star_stream_documents?${charFilter}`, {
-    method: 'PATCH',
-    headers: { Prefer: 'return=minimal' },
-    body: JSON.stringify({ data: nextData, updated_at: Date.now() }),
-  });
+  try {
+    await supabase(`star_stream_documents?${charFilter}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ data: nextData, updated_at: Date.now() }),
+    });
+  } catch (error) {
+    // Do not leave the room permanently reward-locked when the character
+    // write fails. The claim lock is only valid after the reward has been
+    // successfully written to the player.
+    try {
+      const rollbackFilter = 'star_stream_documents?' + roomFilter;
+      const rollbackRooms = await supabase(`star_stream_documents?select=data&${roomFilter}`);
+      const latestRoom = rollbackRooms?.[0]?.data;
+      if (latestRoom && latestRoom.rewardClaims && Object.prototype.hasOwnProperty.call(latestRoom.rewardClaims, playerId)) {
+        const rollbackClaims = { ...latestRoom.rewardClaims };
+        delete rollbackClaims[playerId];
+        await supabase(rollbackFilter, {
+          method: 'PATCH',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            data: { ...latestRoom, rewardClaims: rollbackClaims, rewardClaimedBy: undefined, updatedAt: Date.now() },
+            updated_at: Date.now(),
+          }),
+        });
+      }
+    } catch (rollbackError) {
+      console.error('[database] reward claim rollback failed', rollbackError?.message || rollbackError);
+    }
+    throw error;
+  }
 
   return true;
 }
