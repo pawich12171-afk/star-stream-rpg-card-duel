@@ -2504,7 +2504,7 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
   const randomReward = room.mode === 'random' ? room.randomReward : undefined;
   const reward = Math.max(0, Math.floor(Number(room.victoryRewardCoins) || 0));
   if (room.mode === 'random' && !randomReward) return 0;
-  if (room.mode !== 'random' && reward <= 0) return 0;
+  if (room.mode !== 'random' && reward <= 0 && !(room.battleDrops || []).length) return 0;
 
   const response = await fetch('/api/database?action=claim_battle_reward', {
     method: 'POST',
@@ -2521,12 +2521,71 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
   if (!response.ok) throw new Error(body?.error || 'ไม่สามารถรับรางวัลการต่อสู้ได้');
   if (!body?.paid) return 0;
 
+  // The battle UI currently uses Firestore as the character source of truth.
+  // The API claim endpoint is also used for the shared reward claim lock, so
+  // mirror the granted reward/drops into the current Firestore character here.
+  const current = localCharacters.find(char => char.id === playerId);
+  if (current) {
+    let updated: CharacterProfile = {
+      ...current,
+      coins: Math.max(0, Number(current.coins) || 0) + reward,
+      inventory: [...(current.inventory || [])],
+      skills: [...(current.skills || [])],
+      notifications: [...(current.notifications || [])],
+    };
+
+    if (randomReward?.type === 'item' && randomReward.itemData) {
+      const item = { ...randomReward.itemData };
+      const existing = updated.inventory.find(entry => entry.id === item.id && entry.name === item.name && entry.category === item.category);
+      if (existing) existing.quantity = Math.max(0, Number(existing.quantity) || 0) + 1;
+      else updated.inventory.push({ ...item, instanceId: `battle-reward-${room.id}-${Date.now()}`, quantity: 1, isEquipped: false, equippedQuantity: 0 });
+    }
+
+    if (randomReward?.type === 'skill' && randomReward.skillData) {
+      if (!updated.skills.some(skill => skill.name === randomReward.skillData!.name)) {
+        updated.skills.push({ ...randomReward.skillData, id: `reward-${room.id}-${randomReward.skillData.id || Date.now()}` });
+      }
+    }
+
+    for (const drop of Array.isArray(room.battleDrops) ? room.battleDrops : []) {
+      const amount = Math.max(0, Math.floor(Number(drop.amount) || 0));
+      if (!amount) continue;
+      if (drop.type === 'coin') {
+        updated.coins += amount;
+        continue;
+      }
+      if (drop.type === 'item' && drop.itemData) {
+        const item = { ...drop.itemData };
+        const existing = updated.inventory.find(entry => entry.id === item.id && entry.name === item.name && entry.category === item.category);
+        if (existing) existing.quantity = Math.max(0, Number(existing.quantity) || 0) + amount;
+        else updated.inventory.push({ ...item, instanceId: `battle-drop-${room.id}-${drop.id || Date.now()}`, quantity: amount, isEquipped: false, equippedQuantity: 0 });
+      }
+    }
+
+    updated.notifications.unshift({
+      id: `notif-battle-reward-${room.id}-${playerId}`,
+      title: 'ได้รับรางวัลการต่อสู้',
+      message: [
+        reward > 0 ? `+ ${reward.toLocaleString()} Coins` : '',
+        ...(room.battleDrops || []).map(drop => drop.type === 'coin'
+          ? `+ ${Number(drop.amount).toLocaleString()} Coins`
+          : `+ ${drop.name} ×${Number(drop.amount)}`),
+      ].filter(Boolean).join(' · ') || 'ได้รับรางวัลจากการต่อสู้',
+      timestamp: Date.now(),
+      read: false,
+      type: 'game',
+    });
+
+    await updateCharacterData(updated);
+  }
+
   const updatedRoom = { ...room, rewardClaimedBy: playerId, updatedAt: Date.now() };
   pendingBattleRooms.set(room.id, updatedRoom);
   localBattleRooms = [updatedRoom, ...localBattleRooms.filter(item => item.id !== room.id)];
   saveBattleLocal();
   notifyBattleRooms();
-  return randomReward?.type === 'item' ? 0 : randomReward?.type === 'skill' ? 0 : reward;
+
+  return reward;
 }
 
 export async function updateBattleRoom(room: BattleRoom): Promise<void> {
