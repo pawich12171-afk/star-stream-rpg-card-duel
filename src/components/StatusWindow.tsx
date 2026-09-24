@@ -349,8 +349,6 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       if (level > 10) { level = 1; multiplier *= 2; ascensionCount += 1; }
       finalSkill = { ...finalSkill, level, multiplier, upgradeCount: startUpgradeCount + i + 1 };
     }
-    const oldHpBonus = getSkillHpBonus(targetSkill);
-    const newHpBonus = getSkillHpBonus(finalSkill);
     const previousProgress = base.skillUpgradeProgress || {
       hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0,
       equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(base.equipmentSlotUpgrades) || 0))),
