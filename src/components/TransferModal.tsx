@@ -1,4 +1,4 @@
-import { formatCoins } from '../utils/formatNumber';
+import { formatCoins, parseCoinAmount } from '../utils/formatNumber';
 import React, { useState } from 'react';
 import { CharacterProfile } from '../types';
 import { 
@@ -29,7 +29,8 @@ export const TransferModal: React.FC<TransferModalProps> = ({
   onTransfer,
 }) => {
   const [recipientId, setRecipientId] = useState('');
-  const [amount, setAmount] = useState(500);
+  const [amountInput, setAmountInput] = useState('500');
+  const amount = parseCoinAmount(amountInput);
 
   if (!isOpen) return null;
 
@@ -61,12 +62,12 @@ export const TransferModal: React.FC<TransferModalProps> = ({
   };
 
   const handleQuickAdd = (addVal: number) => {
-    setAmount(prev => Math.min(sender.coins, prev + addVal));
+    setAmountInput(String(Math.min(sender.coins, amount + addVal)));
   };
 
   const handlePercentage = (pct: number) => {
     const calculated = Math.floor((sender.coins * pct) / 100);
-    setAmount(Math.max(1, calculated));
+    setAmountInput(String(Math.max(1, calculated)));
   };
 
   return (
@@ -185,11 +186,11 @@ export const TransferModal: React.FC<TransferModalProps> = ({
 
             <div className="relative">
               <input
-                type="number"
-                min={1}
-                max={sender.coins}
-                value={amount || ''}
-                onChange={(e) => setAmount(Number(e.target.value))}
+                type="text"
+                inputMode="decimal"
+                placeholder="เช่น 1m หรือ 1,000,000"
+                value={amountInput}
+                onChange={(e) => setAmountInput(e.target.value)}
                 required
                 className="w-full px-4 py-3 rounded-xl bg-slate-950 border-2 border-slate-700 focus:border-amber-500 text-white font-mono text-base font-black outline-none shadow-inner"
               />
@@ -198,7 +199,10 @@ export const TransferModal: React.FC<TransferModalProps> = ({
               </span>
             </div>
 
-            {/* Quick Adjustment Pills */}
+            <div className="text-[10px] leading-relaxed text-slate-500">
+              พิมพ์ได้ทั้ง <span className="text-amber-300">1,000,000</span>, <span className="text-amber-300">1m</span>, <span className="text-amber-300">1.5m</span> หรือ <span className="text-amber-300">2b</span>
+            </div>
+                        {/* Quick Adjustment Pills */}
             <div className="flex flex-wrap gap-1.5 pt-1">
               <button
                 type="button"
