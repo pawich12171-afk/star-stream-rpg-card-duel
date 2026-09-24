@@ -501,9 +501,28 @@ export interface BattleConfig {
   victoryMessage?: string;
 }
 
+export type BattleSkillConditionType =
+  | 'hp_below_percent'
+  | 'hp_above_percent'
+  | 'target_hp_below_percent'
+  | 'target_hp_above_percent'
+  | 'turn_at_least'
+  | 'chance_percent'
+  | 'summon_count_below'
+  | 'summon_count_at_least';
+
+export interface BattleSkillCondition {
+  id?: string;
+  type: BattleSkillConditionType;
+  value: number;
+  enabled?: boolean;
+}
+
 export interface BattleBotSkill extends Skill {
   /** โอกาสที่ AI จะเลือกใช้สกิลนี้เมื่อถึงเทิร์น (%) */
   aiChancePercent?: number;
+  /** เงื่อนไขเสริมของสกิลบอส/มอนสเตอร์ แต่ละรายการเปิดหรือปิดได้ */
+  conditions?: BattleSkillCondition[];
 }
 
 export interface BattleBot {
