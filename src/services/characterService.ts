@@ -24,6 +24,7 @@ import {
   BattleConfig,
   BattleDiceConfig,
   BattleBot,
+  BattleBotDrop,
   BattleRoom,
   BattleCombatant,
   BattleRollResult,
