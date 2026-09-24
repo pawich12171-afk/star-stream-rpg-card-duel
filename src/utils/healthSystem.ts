@@ -108,13 +108,21 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   const consumedMaxHp = character.consumedMaxHpBonus || 0;
   // โบนัส HP ของแต่ละสกิลเป็น "ยอดสะสม" ไม่มีเพดานถาวร
   // 20,000 คือค่าสูงสุดของ "รางวัลแต่ละครั้ง" เท่านั้น พอวนรอบใหม่จะบวกต่อเป็น 20,001, 20,003, ...
-  const skillProgressHp = (character.skills || []).reduce((sum, skill) => (
+  const skills = character.skills || [];
+  const skillProgressHp = skills.reduce((sum, skill) => (
     sum + Math.max(0, Number(skill.skillUpgradeProgress?.hpBonus) || 0)
   ), 0);
-  if (skillProgressHp > 0) itemsList.push({ name: 'โบนัส HP จากสกิล', bonus: skillProgressHp, source: 'skill' });
+  // รองรับข้อมูลเก่าที่เคยเก็บโบนัส HP รวมไว้ที่ตัวละคร
+  // ใช้ legacy เฉพาะตอนที่ยังไม่มี progress รายสกิล เพื่อไม่ให้ HP ถูกนับซ้ำ
+  const hasPerSkillProgress = skills.some(skill => skill.skillUpgradeProgress);
+  const legacySkillHp = hasPerSkillProgress
+    ? 0
+    : Math.max(0, Number(character.skillUpgradeProgress?.hpBonus) || 0);
+  if (totalSkillHp > 0) itemsList.push({ name: 'โบนัส HP จากสกิล', bonus: totalSkillHp, source: 'skill' });
   if (consumedMaxHp > 0) itemsList.push({ name: 'โอสถทองคำ/แก่นพลังชีวิตถาวรที่ดื่ม', bonus: consumedMaxHp, source: 'item' });
 
-  const baseCalculatedMaxHp = BASE_HP + statBonusHp + titleBonusHp + storyBonusHp + skillBonusHp + equipHpBonus + consumedMaxHp + skillProgressHp;
+  const totalSkillHp = skillProgressHp + legacySkillHp;
+  const baseCalculatedMaxHp = BASE_HP + statBonusHp + titleBonusHp + storyBonusHp + skillBonusHp + equipHpBonus + consumedMaxHp + totalSkillHp;
   const adminMaxHpDelta = (character.adminBalanceModifiers || [])
     .filter(m => m.kind === 'hp' && m.id.startsWith('admin-maxhp-'))
     .reduce((sum, m) => sum + (m.mode === 'buff' ? Number(m.amount || 0) : -Number(m.amount || 0)), 0);
@@ -122,7 +130,7 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   if (adminMaxHpDelta !== 0) {
     itemsList.push({ name: `แอดมิน BUFF/NERF MAX HP (${adminMaxHpDelta > 0 ? '+' : ''}${adminMaxHpDelta})`, bonus: adminMaxHpDelta, source: 'base' });
   }
-  return { baseHp: BASE_HP, statBonusHp, effectiveStrength, effectiveDurability, titleBonusHp, storyBonusHp, skillBonusHp, itemBonusHp: equipHpBonus, totalMaxHp, formulaDescription: `HP = พื้นฐาน (${BASE_HP}) + สเตตัส (+${statBonusHp}) + ฉายา (+${titleBonusHp}) + เรื่องเล่า (+${storyBonusHp}) + สกิล (+${skillBonusHp}) + โบนัสอัปสกิล HP (+${skillProgressHp}) + อุปกรณ์ (+${equipHpBonus})${consumedMaxHp > 0 ? ` + โอสถถาวร (+${consumedMaxHp})` : ''}${adminMaxHpDelta !== 0 ? ` + แอดมิน (${adminMaxHpDelta >= 0 ? '+' : ''}${adminMaxHpDelta})` : ''} = ${totalMaxHp} HP`, itemsList };
+  return { baseHp: BASE_HP, statBonusHp, effectiveStrength, effectiveDurability, titleBonusHp, storyBonusHp, skillBonusHp, itemBonusHp: equipHpBonus, totalMaxHp, formulaDescription: `HP = พื้นฐาน (${BASE_HP}) + สเตตัส (+${statBonusHp}) + ฉายา (+${titleBonusHp}) + เรื่องเล่า (+${storyBonusHp}) + สกิล (+${skillBonusHp}) + โบนัสอัปสกิล HP (+${totalSkillHp}) + อุปกรณ์ (+${equipHpBonus})${consumedMaxHp > 0 ? ` + โอสถถาวร (+${consumedMaxHp})` : ''}${adminMaxHpDelta !== 0 ? ` + แอดมิน (${adminMaxHpDelta >= 0 ? '+' : ''}${adminMaxHpDelta})` : ''} = ${totalMaxHp} HP`, itemsList };
 }
 
 type AdminModifier = AdminBalanceModifier;
