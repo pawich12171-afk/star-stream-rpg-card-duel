@@ -791,7 +791,14 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
 
   const getSpecialLimitLabel = (item: InventoryItem) => {
     const type = getSpecialEquipmentType(item);
-    return type ? `⚠️ ${type}: ใส่ได้สูงสุด 1 ชิ้น` : null;
+    return type ? `ใส่ได้สูงสุด 1 ชิ้น • ${type}` : null;
+  };
+
+  const getEquipmentLimitLabel = (item: InventoryItem) => {
+    const special = getSpecialLimitLabel(item);
+    if (special) return special;
+    if (isAryaEquipment(item)) return 'ใส่ได้สูงสุด 1 ชิ้น • Arya';
+    return null;
   };
 
   const handleUpgradeEquipmentSlot = async () => {
@@ -1521,7 +1528,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                                 : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow shadow-cyan-900/40'
                             }`}
                           >
-                            {getSpecialLimitLabel(invItem) && <span className="mr-2 text-[10px] font-bold text-amber-300">{getSpecialLimitLabel(invItem)}</span>}
+                            {getEquipmentLimitLabel(invItem) && <span className="mr-2 text-[10px] font-bold text-amber-300">{getEquipmentLimitLabel(invItem)}</span>}
                              {getEquippedQuantity(invItem) > 0 ? 'เลือกจำนวนที่สวมใส่' : 'สวมใส่'}
                           </button>
                         ) : (
