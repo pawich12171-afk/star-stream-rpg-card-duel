@@ -349,11 +349,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       if (level > 10) { level = 1; multiplier *= 2; ascensionCount += 1; }
       finalSkill = { ...finalSkill, level, multiplier, upgradeCount: startUpgradeCount + i + 1 };
     }
-    const previousProgress = base.skillUpgradeProgress || {
-      hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0,
-      equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(base.equipmentSlotUpgrades) || 0))),
-      totalUpgrades: Math.max(0, Math.floor(Number(base.skillUpgradeProgress?.totalUpgrades) || 0)),
-      cycleCount: Math.max(0, Math.floor(Number(base.skillUpgradeProgress?.cycleCount) || 0)),
+    const previousProgress = targetSkill.skillUpgradeProgress || {
+      hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0,
     };
     const progress = {
       hpBonus: Math.max(0, Math.min(20000, Number(previousProgress.hpBonus) || 0)),
@@ -361,9 +358,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       strength: Math.max(0, Math.min(100, Number(previousProgress.strength) || 0)),
       agility: Math.max(0, Math.min(100, Number(previousProgress.agility) || 0)),
       magic: Math.max(0, Math.min(100, Number(previousProgress.magic) || 0)),
-      equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(previousProgress.equipmentSlots ?? base.equipmentSlotUpgrades) || 0))),
-      totalUpgrades: Math.max(0, Math.floor(Number(previousProgress.totalUpgrades) || 0)),
-      cycleCount: Math.max(0, Math.floor(Number(previousProgress.cycleCount) || 0)),
+      equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(previousProgress.equipmentSlots) || 0))),
     };
 
     // รางวัลจากการอัปสกิลเป็นการทวีคูณ: HP 1→2→4→8..., แล้วแต่ละสเตตัสเริ่ม 0.01→0.02→0.04...
@@ -445,7 +440,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     const updatedChar: CharacterProfile = {
       ...base,
       coins: currentCoins - totalCost,
-      skills: (base.skills || []).map(skill => skill.id === skillId ? finalSkill : skill),
+      skills: (base.skills || []).map(skill => skill.id === skillId
+        ? { ...finalSkill, skillUpgradeProgress: progress }
+        : skill),
       stats: newStats,
       equipmentSlotUpgrades: Math.max(0, Number(base.equipmentSlotUpgrades) || 0) + slotUnlocked,
       skillUpgradeProgress: progress,
