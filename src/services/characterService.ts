@@ -2536,6 +2536,7 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body?.error || 'ไม่สามารถรับรางวัลการต่อสู้ได้');
   if (!body?.paid) return 0;
+  const awardedDrops = Array.isArray(body?.awardedDrops) ? body.awardedDrops : (Array.isArray(room.battleDrops) ? room.battleDrops : []);
 
   // The battle UI currently uses Firestore as the character source of truth.
   // The API claim endpoint is also used for the shared reward claim lock, so
@@ -2563,7 +2564,7 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
       }
     }
 
-    for (const drop of Array.isArray(room.battleDrops) ? room.battleDrops : []) {
+    for (const drop of awardedDrops) {
       const amount = Math.max(0, Math.floor(Number(drop.amount) || 0));
       if (!amount) continue;
       if (drop.type === 'coin') {
