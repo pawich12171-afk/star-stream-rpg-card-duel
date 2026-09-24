@@ -176,6 +176,37 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
   const healthData = calculateCharacterHealth(character);
 
+  const getSkillRewardPreview = (count: number) => {
+    const source = character.skillUpgradeProgress || { hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(character.equipmentSlotUpgrades) || 0))), totalUpgrades: 0 };
+    const progress = {
+      hpBonus: Math.max(0, Math.min(20000, Number(source.hpBonus) || 0)),
+      durability: Math.max(0, Math.min(100, Number(source.durability) || 0)),
+      strength: Math.max(0, Math.min(100, Number(source.strength) || 0)),
+      agility: Math.max(0, Math.min(100, Number(source.agility) || 0)),
+      magic: Math.max(0, Math.min(100, Number(source.magic) || 0)),
+      equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(source.equipmentSlots ?? character.equipmentSlotUpgrades) || 0))),
+    };
+    let hp = 0, durability = 0, strength = 0, agility = 0, magic = 0, slots = 0;
+    for (let i = 0; i < count; i += 1) {
+      if (progress.hpBonus < 20000) { progress.hpBonus += 1; hp += 1; }
+      else if (progress.durability < 100) { progress.durability = Math.min(100, Number((progress.durability + 0.01).toFixed(2))); durability += 0.01; }
+      else if (progress.strength < 100) { progress.strength = Math.min(100, Number((progress.strength + 0.01).toFixed(2))); strength += 0.01; }
+      else if (progress.agility < 100) { progress.agility = Math.min(100, Number((progress.agility + 0.01).toFixed(2))); agility += 0.01; }
+      else if (progress.magic < 100) { progress.magic = Math.min(100, Number((progress.magic + 0.01).toFixed(2))); magic += 0.01; }
+      else if (progress.equipmentSlots < 2) { progress.equipmentSlots += 1; slots += 1; }
+      else break;
+    }
+    const parts = [
+      hp ? `HP +${hp.toLocaleString()}` : '',
+      durability ? `ทนทาน +${durability.toFixed(2)}` : '',
+      strength ? `STR +${strength.toFixed(2)}` : '',
+      agility ? `ความเร็ว +${agility.toFixed(2)}` : '',
+      magic ? `เวท +${magic.toFixed(2)}` : '',
+      slots ? `ช่องไอเทม +${slots}` : '',
+    ].filter(Boolean);
+    return parts.length ? parts.join(' • ') : '🎯 เส้นทางรางวัลเต็มแล้ว (ตัน)';
+  };
+
   const equippedItems = character.inventory?.filter(i => i.isEquipped || (Number(i.equippedQuantity) || 0) > 0) || [];
   const statBonus = {
     strength: 0,
@@ -1160,6 +1191,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                           className="w-16 sm:w-20 min-w-0 px-2 py-2 rounded-xl bg-slate-950 border border-cyan-500/30 text-white text-xs font-mono font-bold"
                         />
                         <span className="text-[10px] text-slate-500 whitespace-nowrap">ขั้น (1–1,000)</span>
+                      </div>
+                      <div className="mt-2 rounded-xl border border-emerald-500/20 bg-emerald-950/20 px-2.5 py-2 text-[10px] font-mono text-emerald-200">
+                        <span className="text-slate-500">อัป {skillBatchCount} ขั้นนี้จะเพิ่ม: </span>{getSkillRewardPreview(skillBatchCount)}
                       </div>
                       <div className="flex min-w-0 gap-2">
                         <div className="min-w-0 flex-1 rounded-xl border border-amber-500/20 bg-slate-950/70 px-2.5 py-1.5 text-[10px] font-mono overflow-hidden">
