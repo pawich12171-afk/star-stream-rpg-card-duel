@@ -71,7 +71,8 @@ export interface EquippedBonus {
 }
 
 export type GachaRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
-export const MAX_GACHA_REWARDS = 20;
+// Gacha reward pool has no hard item-count limit; storage/UI may paginate when needed.
+export const MAX_GACHA_REWARDS = Number.MAX_SAFE_INTEGER;
 
 export type ItemPassiveTrigger = 'turn_start' | 'attack';
 export type ItemPassiveKind = 'stack' | 'true_damage_per_stack' | 'true_damage_at_max_stacks' | 'damage' | 'damage_percent' | 'heal' | 'heal_percent' | 'buff_stat' | 'shield' | 'reflect' | 'repeat_attack_chance' | 'critical_chance';
