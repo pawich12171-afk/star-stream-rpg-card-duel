@@ -101,11 +101,9 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
     if (bonus > 0) { storyBonusHp += bonus; itemsList.push({ name: `คุณลักษณะเรื่องเล่า (${character.characteristics.length} ประการ)`, bonus, source: 'story' }); }
   }
 
-  let skillBonusHp = 0;
-  (character.skills || []).forEach(s => {
-    const bonus = getSkillHpBonus(s);
-    if (bonus > 0) { skillBonusHp += bonus; itemsList.push({ name: `สกิล: ${s.name} (Lv.${s.level}) [ความสามารถ +${getSkillPotencyPercent(s.level, s.multiplier)}%]`, bonus, source: 'skill' }); }
-  });
+  // HP จากการอัปสกิลใช้เส้นทางรางวัลเดียวกันทั้งระบบเท่านั้น
+  // ไม่ใช้เลเวล/Multiplier ของสกิลมาคำนวณ HP เพิ่มอีก เพื่อป้องกัน HP กระโดดเกิน 20,000
+  const skillBonusHp = 0;
 
   const consumedMaxHp = character.consumedMaxHpBonus || 0;
   // โบนัส HP จากการอัปสกิลเป็นอีกแหล่งหนึ่ง และล็อกไว้สูงสุด 20,000
