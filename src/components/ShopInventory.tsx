@@ -838,8 +838,6 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const getEquipmentSlots = (char: CharacterProfile = character) =>
     20 + Math.max(0, Math.min(2, Math.floor(Number(char.equipmentSlotUpgrades) || 0)));
 
-  const getNextEquipmentSlotRequirement = (_char: CharacterProfile = character) => 100;
-
   const canEquipSpecialType = (item: InventoryItem) => {
     const type = getSpecialEquipmentType(item);
     if (!type) return true;
