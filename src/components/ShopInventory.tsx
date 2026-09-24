@@ -1441,6 +1441,11 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                           <div className="flex items-center gap-2 mt-1">
                             <input type="checkbox" checked={selectedInventoryKeys.includes(inventoryKey)} onChange={() => toggleInventorySelection(inventoryKey)} onClick={e => e.stopPropagation()} className="accent-rose-500 cursor-pointer" aria-label={`เลือก ${invItem.name}`} />
                             <h3 className="text-sm font-bold text-white leading-snug truncate">{invItem.name}</h3>
+                            {invItem.category === 'equipment' && getEquipmentLimitLabel(invItem) && (
+                              <div className="mt-1 inline-flex max-w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-300">
+                                🔒 {getEquipmentLimitLabel(invItem)}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
