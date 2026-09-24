@@ -223,7 +223,6 @@ async function claimBattleRewardDirect(body) {
   const playerId = String(body.playerId || '');
   const reward = Math.max(0, Math.floor(Number(body.reward) || 0));
   const rewardData = body.rewardData && typeof body.rewardData === 'object' ? body.rewardData : null;
-  const drops = Array.isArray(body.drops) ? body.drops : [];
 
   if (!validId(roomId) || !validId(playerId)) throw new Error('Invalid reward reference');
 
@@ -234,6 +233,12 @@ async function claimBattleRewardDirect(body) {
   const roomFilter = `collection=eq.battle_rooms&id=eq.${encodeURIComponent(roomId)}`;
   const rooms = await supabase(`star_stream_documents?select=data&${roomFilter}`);
   const roomData = rooms?.[0]?.data || {};
+
+  // The server is authoritative for configured monster/boss drops.
+  // Never depend on the browser sending the drop list back during claim;
+  // otherwise a stale client or a room snapshot without the field can make
+  // a correctly configured drop disappear at reward time.
+  const drops = Array.isArray(roomData.battleDrops) ? roomData.battleDrops : [];
 
   const winningPlayers = Array.isArray(roomData.teamA)
     ? roomData.teamA.filter(unit => unit?.type === 'player' && String(unit?.sourceId || ''))
