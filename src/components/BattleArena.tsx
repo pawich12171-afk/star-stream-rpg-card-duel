@@ -852,7 +852,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
                         const battleItemKey = String(item.instanceId || item.id || ('legacy-' + String(item.name || 'item') + '-' + index));
                         return (
                           <option key={battleItemKey} value={battleItemKey}>
-                            {String(item.icon || '🧪')} {String(item.name || 'ไอเทม')} ×{Number(item.quantity) || 0} · {getBattleItemLabel(item)}
+                            {String(item.name || 'ไอเทม')}
                           </option>
                         );
                       })}
