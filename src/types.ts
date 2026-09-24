@@ -342,7 +342,7 @@ export interface CharacterProfile {
   passiveStacks?: Record<string, number>;
   /** จำนวนครั้งที่อัพช่องสวมใส่อุปกรณ์ทั่วไป */
   equipmentSlotUpgrades?: number;
-  /** ความคืบหน้าโบนัสที่ได้จากการอัปเกรดสกิล: HP ก่อน แล้วจึงไล่สเตตัสตามลำดับ */
+  /** โบนัสสะสมจากการอัปสกิล: เพิ่มจริงทุกครั้ง และเมื่อจบรอบจะวนกลับมาเพิ่มต่อจากค่าที่มี */
   skillUpgradeProgress?: {
     hpBonus: number;
     durability: number;
@@ -350,7 +350,10 @@ export interface CharacterProfile {
     agility: number;
     magic: number;
     equipmentSlots: number;
-    /** จำนวนครั้งที่อัปสกิลทั้งหมดสำหรับเส้นทางรางวัลนี้ */
+    /** phase ปัจจุบัน: 0=HP, 1=ทนทาน, 2=STR, 3=ความเร็ว, 4=เวท, 5=ช่องอุปกรณ์ */
+    rewardPhase?: number;
+    /** ค่ารางวัลครั้งล่าสุดใน phase ปัจจุบัน เช่น HP 4 หมายถึงครั้งถัดไป +8 */
+    rewardValue?: number;
     totalUpgrades?: number;
     cycleCount?: number;
   };
