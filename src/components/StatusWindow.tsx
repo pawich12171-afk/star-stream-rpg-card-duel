@@ -177,32 +177,44 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const healthData = calculateCharacterHealth(character);
 
   const getSkillRewardPreview = (count: number) => {
-    const source = character.skillUpgradeProgress || { hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(character.equipmentSlotUpgrades) || 0))), totalUpgrades: 0 };
+    const source = character.skillUpgradeProgress || {
+      hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0,
+      equipmentSlots: Math.max(0, Math.floor(Number(character.equipmentSlotUpgrades) || 0)),
+      totalUpgrades: 0,
+    };
     const progress = {
       hpBonus: Math.max(0, Math.min(20000, Number(source.hpBonus) || 0)),
       durability: Math.max(0, Math.min(100, Number(source.durability) || 0)),
       strength: Math.max(0, Math.min(100, Number(source.strength) || 0)),
       agility: Math.max(0, Math.min(100, Number(source.agility) || 0)),
       magic: Math.max(0, Math.min(100, Number(source.magic) || 0)),
-      equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(source.equipmentSlots ?? character.equipmentSlotUpgrades) || 0))),
+      equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(source.equipmentSlots) || 0))),
     };
     let hp = 0, durability = 0, strength = 0, agility = 0, magic = 0, slots = 0;
+    const doubleReward = (current: number, first: number, max: number) =>
+      current <= 0 ? first : Math.min(max, current * 2);
+
     for (let i = 0; i < count; i += 1) {
-      if (progress.hpBonus < 20000) { progress.hpBonus += 1; hp += 1; }
-      else if (progress.durability < 100) { progress.durability = Math.min(100, Number((progress.durability + 0.01).toFixed(2))); durability += 0.01; }
-      else if (progress.strength < 100) { progress.strength = Math.min(100, Number((progress.strength + 0.01).toFixed(2))); strength += 0.01; }
-      else if (progress.agility < 100) { progress.agility = Math.min(100, Number((progress.agility + 0.01).toFixed(2))); agility += 0.01; }
-      else if (progress.magic < 100) { progress.magic = Math.min(100, Number((progress.magic + 0.01).toFixed(2))); magic += 0.01; }
-      else if (progress.equipmentSlots < 2) { progress.equipmentSlots += 1; slots += 1; }
-      else {
-        progress.hpBonus = 0;
-        progress.durability = 0;
-        progress.strength = 0;
-        progress.agility = 0;
-        progress.magic = 0;
-        progress.equipmentSlots = 0;
-        progress.hpBonus = 1;
-        hp += 1;
+      if (progress.hpBonus < 20000) {
+        const gain = doubleReward(progress.hpBonus, 1, 20000) - progress.hpBonus;
+        progress.hpBonus += gain; hp += gain;
+      } else if (progress.durability < 100) {
+        const next = doubleReward(progress.durability, 0.01, 100);
+        durability += next - progress.durability; progress.durability = next;
+      } else if (progress.strength < 100) {
+        const next = doubleReward(progress.strength, 0.01, 100);
+        strength += next - progress.strength; progress.strength = next;
+      } else if (progress.agility < 100) {
+        const next = doubleReward(progress.agility, 0.01, 100);
+        agility += next - progress.agility; progress.agility = next;
+      } else if (progress.magic < 100) {
+        const next = doubleReward(progress.magic, 0.01, 100);
+        magic += next - progress.magic; progress.magic = next;
+      } else if (progress.equipmentSlots < 2) {
+        progress.equipmentSlots += 1; slots += 1;
+      } else {
+        progress.hpBonus = 0; progress.durability = 0; progress.strength = 0;
+        progress.agility = 0; progress.magic = 0; progress.equipmentSlots = 0;
       }
     }
     const parts = [
@@ -356,7 +368,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       cycleCount: Math.max(0, Math.floor(Number(previousProgress.cycleCount) || 0)),
     };
 
-    // ทุกการอัปสกิลวนรอบซ้ำ: HP 20,000 -> ทนทาน 100 -> STR 100 -> ความเร็ว 100 -> เวท 100 -> ช่อง +2 -> กลับไป HP
+    // รางวัลจากการอัปสกิลเป็นการทวีคูณ: HP 1→2→4→8..., แล้วแต่ละสเตตัสเริ่ม 0.01→0.02→0.04...
     let hpGained = 0;
     let durabilityGained = 0;
     let strengthGained = 0;
@@ -364,38 +376,45 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     let magicGained = 0;
     let slotUnlocked = 0;
     let completedCycles = 0;
+    const doubleReward = (current: number, first: number, max: number) =>
+      current <= 0 ? first : Math.min(max, current * 2);
+
     for (let i = 0; i < requestedTimes; i += 1) {
       if (progress.hpBonus < 20000) {
-        progress.hpBonus = Math.min(20000, progress.hpBonus + 1);
-        hpGained += 1;
+        const next = doubleReward(progress.hpBonus, 1, 20000);
+        hpGained += next - progress.hpBonus;
+        progress.hpBonus = next;
       } else if (progress.durability < 100) {
-        progress.durability = Math.min(100, Number((progress.durability + 0.01).toFixed(2)));
-        durabilityGained += 0.01;
+        const next = doubleReward(progress.durability, 0.01, 100);
+        durabilityGained += next - progress.durability;
+        progress.durability = next;
       } else if (progress.strength < 100) {
-        progress.strength = Math.min(100, Number((progress.strength + 0.01).toFixed(2)));
-        strengthGained += 0.01;
+        const next = doubleReward(progress.strength, 0.01, 100);
+        strengthGained += next - progress.strength;
+        progress.strength = next;
       } else if (progress.agility < 100) {
-        progress.agility = Math.min(100, Number((progress.agility + 0.01).toFixed(2)));
-        agilityGained += 0.01;
+        const next = doubleReward(progress.agility, 0.01, 100);
+        agilityGained += next - progress.agility;
+        progress.agility = next;
       } else if (progress.magic < 100) {
-        progress.magic = Math.min(100, Number((progress.magic + 0.01).toFixed(2)));
-        magicGained += 0.01;
+        const next = doubleReward(progress.magic, 0.01, 100);
+        magicGained += next - progress.magic;
+        progress.magic = next;
       } else if (progress.equipmentSlots < 2) {
         progress.equipmentSlots += 1;
         slotUnlocked += 1;
+        if (progress.equipmentSlots >= 2) {
+          progress.cycleCount += 1;
+          completedCycles += 1;
+          // รอบถัดไปจะเริ่มด้วย HP +1 ในการอัปครั้งถัดไป
+        }
       } else {
-        // ครบ +2 ช่องแล้ว เริ่มรอบใหม่ทันที และช่องรวมของตัวละครเพิ่มต่อไปเรื่อย ๆ
         progress.hpBonus = 0;
         progress.durability = 0;
         progress.strength = 0;
         progress.agility = 0;
         progress.magic = 0;
         progress.equipmentSlots = 0;
-        progress.cycleCount += 1;
-        completedCycles += 1;
-        // รอบใหม่ใช้การอัปครั้งนี้เป็น HP +1
-        progress.hpBonus = 1;
-        hpGained += 1;
       }
     }
 
