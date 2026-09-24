@@ -1205,9 +1205,24 @@ export async function updateShopItem(item: Item): Promise<void> {
   saveLocalAll();
   broadcast?.postMessage({ type: 'SHOP_UPDATE' });
   try {
-    await enqueuePersistenceWrite(`shop:${item.id}`, () =>
-      updateDoc(doc(db, SHOP_ITEMS_COLLECTION, item.id), sanitizeForFirestore(item))
-    );
+    await enqueuePersistenceWrite(`shop:${item.id}`, async () => {
+      const ref = doc(db, SHOP_ITEMS_COLLECTION, item.id);
+      const cleanItem = sanitizeForFirestore(item);
+      try {
+        await updateDoc(ref, cleanItem);
+      } catch (updateError: any) {
+        // Some legacy/admin items exist locally but do not have a Firestore
+        // document yet. updateDoc() rejects in that case even though the UI
+        // has already updated optimistically. Upsert instead so editing works
+        // for both old and newly-created items.
+        const message = String(updateError?.message || '');
+        if (/not-found|No document to update|NOT_FOUND/i.test(message)) {
+          await setDoc(ref, cleanItem, { merge: true });
+        } else {
+          throw updateError;
+        }
+      }
+    });
     pendingShopItems.delete(item.id);
   } catch (err) {
     pendingShopItems.delete(item.id);
