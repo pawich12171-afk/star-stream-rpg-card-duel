@@ -1,4 +1,4 @@
-import { formatCoins } from '../utils/formatNumber';
+import { formatCoins, parseCoinAmount } from '../utils/formatNumber';
 import React, { useEffect, useState } from 'react';
 import { CharacterProfile, Item, Skill, Quest, GachaReward, GachaBanner, GachaConfig, GachaRarity, BattleExtraEffect, BattleSkillStat, ItemPassiveEffect } from '../types';
 import { 
@@ -230,7 +230,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [activeTab, setActiveTab] = useState<'users' | 'shop' | 'admin_items' | 'inventory_spawner' | 'gacha_manage' | 'quests'>('users');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCharId, setSelectedCharId] = useState<string>(characters[0]?.id || '');
-  const [coinInput, setCoinInput] = useState<number>(5000);
+  const [coinInput, setCoinInput] = useState('5000');
 
   const [questTitle, setQuestTitle] = useState('');
   const [questDescription, setQuestDescription] = useState('');
@@ -446,19 +446,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Quick coin action handlers
   const handleAddCoins = () => {
     if (!selectedCharId) return;
-    onUpdateCharacterCoins(selectedCharId, coinInput);
+    const amount = parseCoinAmount(coinInput);
+    if (amount <= 0) return alert('กรุณาระบุจำนวนเหรียญที่ถูกต้อง เช่น 1m หรือ 1,000,000');
+    onUpdateCharacterCoins(selectedCharId, amount);
     alert(`เพิ่มเหรียญ ${formatCoins(coinInput)} Coins ให้ผู้เล่น "${selectedChar?.displayName}" เรียบร้อยแล้ว!`);
   };
 
   const handleDeductCoins = () => {
     if (!selectedCharId) return;
-    onUpdateCharacterCoins(selectedCharId, -coinInput);
+    const amount = parseCoinAmount(coinInput);
+    if (amount <= 0) return alert('กรุณาระบุจำนวนเหรียญที่ถูกต้อง เช่น 1m หรือ 1,000,000');
+    onUpdateCharacterCoins(selectedCharId, -amount);
     alert(`หักเหรียญ ${formatCoins(coinInput)} Coins จากผู้เล่น "${selectedChar?.displayName}" เรียบร้อยแล้ว!`);
   };
 
   const handleSetExactCoins = () => {
     if (!selectedCharId) return;
-    onSetCharacterCoins(selectedCharId, coinInput);
+    const amount = parseCoinAmount(coinInput);
+    if (amount < 0) return alert('กรุณาระบุจำนวนเหรียญที่ถูกต้อง เช่น 1m หรือ 1,000,000');
+    onSetCharacterCoins(selectedCharId, amount);
     alert(`กำหนดเหรียญให้ "${selectedChar?.displayName}" เป็น ${formatCoins(coinInput)} Coins เรียบร้อยแล้ว!`);
   };
 
@@ -1029,17 +1035,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div>
                 <label className="text-xs text-slate-300 block mb-1">จำนวนเหรียญ:</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="เช่น 1m หรือ 1,000,000"
                   value={coinInput}
-                  onChange={(e) => setCoinInput(Number(e.target.value))}
+                  onChange={(e) => setCoinInput(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono font-bold outline-none focus:border-amber-400"
                 />
+                <div className="text-[10px] text-slate-500">รองรับ 1,000,000 = 1m · 1b = 1,000,000,000 · 1t = 1,000,000,000,000</div>
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {[1000, 5000, 10000, 50000, 100000].map(amt => (
                     <button
                       key={amt}
                       type="button"
-                      onClick={() => setCoinInput(amt)}
+                      onClick={() => setCoinInput(String(amt))}
                       className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 font-mono cursor-pointer"
                     >
                       +{amt.toLocaleString()}
