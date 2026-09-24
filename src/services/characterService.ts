@@ -1200,27 +1200,27 @@ export async function addShopItem(item: Item): Promise<void> {
 // Delete Shop item (Admin)
 export async function updateShopItem(item: Item): Promise<void> {
   const previousItem = localShopItems.find(existing => existing.id === item.id);
+  const cleanItem = sanitizeForFirestore(item);
   localShopItems = [item, ...localShopItems.filter(existing => existing.id !== item.id)];
   pendingShopItems.add(item.id);
   saveLocalAll();
   broadcast?.postMessage({ type: 'SHOP_UPDATE' });
+
   try {
     await enqueuePersistenceWrite(`shop:${item.id}`, async () => {
       const ref = doc(db, SHOP_ITEMS_COLLECTION, item.id);
-      const cleanItem = sanitizeForFirestore(item);
-      try {
-        await updateDoc(ref, cleanItem);
-      } catch (updateError: any) {
-        // Some legacy/admin items exist locally but do not have a Firestore
-        // document yet. updateDoc() rejects in that case even though the UI
-        // has already updated optimistically. Upsert instead so editing works
-        // for both old and newly-created items.
-        const message = String(updateError?.message || '');
-        if (/not-found|No document to update|NOT_FOUND/i.test(message)) {
-          await setDoc(ref, cleanItem, { merge: true });
-        } else {
-          throw updateError;
-        }
+      // Upsert instead of updateDoc: legacy items may not have a Firestore
+      // document even though they are present in the admin catalog.
+      await setDoc(ref, cleanItem, { merge: true });
+
+      // Verify the actual database write before reporting success.
+      const saved = await getDoc(ref);
+      if (!saved.exists()) {
+        throw new Error('Firestore ไม่พบไอเทมหลังบันทึก');
+      }
+      const savedData = saved.data() || {};
+      if (String(savedData.name ?? '') !== String(cleanItem.name ?? '')) {
+        throw new Error('Firestore ยืนยันชื่อไอเทมที่แก้ไขไม่ตรงกับข้อมูลล่าสุด');
       }
     });
     pendingShopItems.delete(item.id);
@@ -1231,6 +1231,7 @@ export async function updateShopItem(item: Item): Promise<void> {
       : localShopItems.filter(existing => existing.id !== item.id);
     saveLocalAll();
     broadcast?.postMessage({ type: 'SHOP_UPDATE' });
+    console.error('Error updating shop item in Firestore:', err);
     throw err;
   }
 }
