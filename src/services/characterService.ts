@@ -2574,11 +2574,15 @@ export async function createBattleRoomWithEntryFee(room: BattleRoom, playerId: s
 }
 
 export async function settleBattleVictoryReward(room: BattleRoom, playerId: string): Promise<{ paid: number; awardedDrops: BattleBotDrop[] }> {
-  if ((room.mode !== "pve" && room.mode !== "random") || room.status !== "completed" || room.winnerTeam !== "a") return { paid: 0, awardedDrops: [] };
+  if ((room.mode !== "pve" && room.mode !== "random") || room.status !== "completed" || room.winnerTeam !== "a") {
+    return { paid: 0, awardedDrops: [] };
+  }
   const randomReward = room.mode === 'random' ? room.randomReward : undefined;
   const reward = Math.max(0, Math.floor(Number(room.victoryRewardCoins) || 0));
   if (room.mode === 'random' && !randomReward) return { paid: 0, awardedDrops: [] };
-  if (room.mode !== 'random' && reward <= 0 && !(room.battleDrops || []).length) return { paid: 0, awardedDrops: [] };
+  if (room.mode !== 'random' && reward <= 0 && !(room.battleDrops || []).length) {
+    return { paid: 0, awardedDrops: [] };
+  }
 
   const response = await fetch('/api/database?action=claim_battle_reward', {
     method: 'POST',
@@ -2593,80 +2597,13 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body?.error || 'ไม่สามารถรับรางวัลการต่อสู้ได้');
+
+  // The API is the single writer for battle rewards. Do not add the reward
+  // again from the browser, otherwise a realtime snapshot can race this claim
+  // and duplicate coins/items.
   if (!body?.paid) return { paid: 0, awardedDrops: [] };
-  const awardedDrops = Array.isArray(body?.awardedDrops) ? body.awardedDrops : (Array.isArray(room.battleDrops) ? room.battleDrops : []);
 
-  // The battle UI currently uses Firestore as the character source of truth.
-  // The API claim endpoint is also used for the shared reward claim lock, so
-  // mirror the granted reward/drops into the current Firestore character here.
-  const current = localCharacters.find(char => char.id === playerId);
-  if (current) {
-    let updated: CharacterProfile = {
-      ...current,
-      coins: Math.max(0, Number(current.coins) || 0) + reward,
-      inventory: [...(current.inventory || [])],
-      skills: [...(current.skills || [])],
-      notifications: [...(current.notifications || [])],
-    };
-
-    if (randomReward?.type === 'item' && randomReward.itemData) {
-      const item = { ...randomReward.itemData };
-      const existing = updated.inventory.find(entry => entry.id === item.id && entry.name === item.name && entry.category === item.category);
-      if (existing) existing.quantity = Math.max(0, Number(existing.quantity) || 0) + 1;
-      else updated.inventory.push({ ...item, instanceId: `battle-reward-${room.id}-${Date.now()}`, quantity: 1, isEquipped: false, equippedQuantity: 0 });
-    }
-
-    if (randomReward?.type === 'skill' && randomReward.skillData) {
-      if (!updated.skills.some(skill => skill.name === randomReward.skillData!.name)) {
-        updated.skills.push({ ...randomReward.skillData, id: `reward-${room.id}-${randomReward.skillData.id || Date.now()}` });
-      }
-    }
-
-    for (const drop of awardedDrops) {
-      const amount = Math.max(0, Math.floor(Number(drop.amount) || 0));
-      if (!amount) continue;
-      if (drop.type === 'coin') {
-        updated.coins += amount;
-        continue;
-      }
-      if (drop.type === 'item' && drop.itemData) {
-        const item = { ...drop.itemData };
-        const existing = updated.inventory.find(entry => entry.id === item.id && entry.name === item.name && entry.category === item.category);
-        if (existing) existing.quantity = Math.max(0, Number(existing.quantity) || 0) + amount;
-        else updated.inventory.push({ ...item, instanceId: `battle-drop-${room.id}-${drop.id || Date.now()}`, quantity: amount, isEquipped: false, equippedQuantity: 0 });
-      }
-    }
-
-    const configuredDrops = Array.isArray(room.battleDrops) ? room.battleDrops : [];
-    const awardedDropKeys = new Set(awardedDrops.map(drop => String(drop.id || `${drop.type}:${drop.itemData?.id || drop.name || drop.amount}`)));
-    const dropMessages = configuredDrops.map(drop => {
-      const key = String(drop.id || `${drop.type}:${drop.itemData?.id || drop.name || drop.amount}`);
-      const label = drop.type === 'coin'
-        ? `${Number(drop.amount).toLocaleString()} Coins`
-        : `${drop.name || drop.itemData?.name || 'ไอเทม'} ×${Number(drop.amount)}`;
-      return awardedDropKeys.has(key)
-        ? `✅ ได้ ${label}`
-        : `❌ ไม่ได้ ${label} (โอกาสดรอป ${Number(drop.dropChancePercent ?? 100)}%)`;
-    });
-    const dropSummary = configuredDrops.length === 0
-      ? '❌ ของ Drop ไม่ออก — มอน/บอสตัวนี้ไม่มีรายการ Drop ที่ตั้งค่าไว้'
-      : awardedDrops.length === 0
-        ? '❌ ของ Drop ไม่ออก'
-        : dropMessages.join(' · ');
-    updated.notifications.unshift({
-      id: `notif-battle-reward-${room.id}-${playerId}`,
-      title: 'ผลของดรอปจากการต่อสู้',
-      message: [
-        reward > 0 ? `💰 ได้ ${reward.toLocaleString()} Coins` : '',
-        dropSummary,
-      ].filter(Boolean).join(' · '),
-      timestamp: Date.now(),
-      read: false,
-      type: 'game',
-    });
-    await updateCharacterData(updated);
-  }
-
+  const awardedDrops = Array.isArray(body?.awardedDrops) ? body.awardedDrops : [];
   const updatedRoom = { ...room, rewardClaimedBy: playerId, updatedAt: Date.now() };
   pendingBattleRooms.set(room.id, updatedRoom);
   localBattleRooms = [updatedRoom, ...localBattleRooms.filter(item => item.id !== room.id)];
