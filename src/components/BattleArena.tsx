@@ -915,8 +915,9 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     <label className="text-[11px] text-slate-400">คูลดาวน์ (เทิร์น)<input className={inputClass+" mt-1"} type="number" min="0" value={botSkillCooldown} onChange={e=>setBotSkillCooldown(e.target.value)} /></label>
     <label className="text-[11px] text-slate-400">เอฟเฟกต์<select className={inputClass+" mt-1"} value={botSkillEffect} onChange={e=>setBotSkillEffect(e.target.value as NonNullable<Skill['battleEffect']>)}><option value="damage">⚔️ โจมตี/ทำดาเมจ</option><option value="heal">❤️ ฟื้นฟู HP</option><option value="defense">🛡️ เพิ่มการป้องกัน</option><option value="stun">💫 ทำให้ติดสตัน</option><option value="damage_reduction">🔻 ลดดาเมจเป้าหมาย</option><option value="summon">🧿 เสกลูกน้อง</option></select></label>
     <label className="text-[11px] text-slate-400">โอกาสใช้สกิล (%)<input className={inputClass+" mt-1"} type="number" min="0" max="100" value={botSkillChance} onChange={e=>setBotSkillChance(e.target.value)} /></label>
-    <div className="sm:col-span-2 rounded-2xl border border-amber-500/20 bg-amber-950/20 p-3">
-      <div className="mb-1 font-black text-amber-200">⚙️ เงื่อนไขการใช้สกิล (ไม่ตั้งก็ได้)</div>
+    <div className="sm:col-span-2 rounded-2xl border-2 border-amber-400/40 bg-amber-950/30 p-3 shadow-[0_0_18px_rgba(245,158,11,0.08)]">
+      <div className="mb-1 text-sm font-black text-amber-200">⚙️ เงื่อนไขการใช้สกิล</div>
+      <div className="mb-2 text-[10px] font-bold text-amber-300/80">ตั้งได้หลายเงื่อนไข หรือปล่อยว่างเพื่อให้สกิลใช้ได้ตามปกติ</div>
       <p className="mb-2 text-[11px] text-slate-400">ทุกเงื่อนไขที่เปิดไว้ต้องผ่านก่อน บอส/มอนจึงจะใช้สกิลนี้ได้ ตั้งได้หลายข้อ</p>
       <div className="space-y-2">
         {botSkillConditions.map((condition, index) => <div key={condition.id || index} className="grid gap-2 sm:grid-cols-[1fr_110px_auto]">
