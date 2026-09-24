@@ -116,7 +116,7 @@ const getRarityBadge = (rarity?: string) => {
 
 const getItemDetailLines = (item: Item): string[] => {
   const lines: string[] = [];
-  const n = (value: unknown) => Number(value);
+  const n = (value: unknown) => { const v = Number(value); return Number.isFinite(v) ? v : 0; };
   const add = (condition: unknown, text: string) => { if (condition) lines.push(text); };
 
   add(item.effectType === 'heal_hp' && n(item.effectValue) > 0, `ฟื้น HP +${n(item.effectValue)} หน่วย`);
