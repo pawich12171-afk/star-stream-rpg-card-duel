@@ -168,6 +168,9 @@ const pendingGachaDeletes = new Set<string>();
 // Keep a local write ahead of an older Firestore realtime snapshot.
 const pendingCharacterUpdates = new Map<string, CharacterProfile>();
 const pendingCharacterDeletes = new Set<string>();
+// IDs created during this session. These may be updated immediately after creation
+// by profile/status effects before the next backend read sees the document.
+const pendingNewCharacters = new Set<string>();
 const pendingShopItems = new Map<string, Item>();
 const pendingShopDeletes = new Set<string>();
 const pendingGachaBanners = new Map<string, GachaBanner>();
@@ -896,12 +899,21 @@ export async function updateCharacterData(char: CharacterProfile): Promise<void>
       // Confirm that the shared document still exists before updating it.
       // A character deleted by an admin/player must not be recreated by a
       // stale Shop/Inventory/Profile client.
-      const serverSnap = await getDoc(doc(db, CHARACTERS_COLLECTION, updated.id));
-      if (!serverSnap.exists()) {
-        throw new Error('CHARACTER_DELETED');
-      }
+      const characterRef = doc(db, CHARACTERS_COLLECTION, updated.id);
+      const serverSnap = await getDoc(characterRef);
       const cleaned = sanitizeForFirestore(updated);
-      await updateDoc(doc(db, CHARACTERS_COLLECTION, updated.id), cleaned);
+      if (!serverSnap.exists()) {
+        // A newly-created character can be updated before the API read cache
+        // catches up. Only the explicitly tracked new-character path may
+        // recreate the document; normal deleted characters stay deleted.
+        if (pendingNewCharacters.has(updated.id)) {
+          await setDoc(characterRef, cleaned);
+        } else {
+          throw new Error('CHARACTER_DELETED');
+        }
+      } else {
+        await updateDoc(characterRef, cleaned);
+      }
     });
   } catch (err) {
     const pending = pendingCharacterUpdates.get(updated.id);
@@ -2193,9 +2205,6 @@ export async function addCharacterToDB(char: CharacterProfile): Promise<void> {
   const id = String(char.id || '').trim();
   if (!id) throw new Error('ไม่พบ ID ตัวละครใหม่');
 
-  // Creating a character must CREATE the Firestore document.
-  // Do not route creation through updateCharacterData(), because that
-  // intentionally rejects missing documents to protect normal updates.
   const created: CharacterProfile = {
     ...char,
     skills: [...(char.skills || [])],
@@ -2207,31 +2216,34 @@ export async function addCharacterToDB(char: CharacterProfile): Promise<void> {
   };
 
   const previous = localCharacters.find(c => c.id === id);
-  localCharacters = [...localCharacters.filter(c => c.id !== id), created];
+  pendingNewCharacters.add(id);
   pendingCharacterUpdates.set(id, created);
+  localCharacters = [...localCharacters.filter(c => c.id !== id), created];
   saveLocalAll();
   broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
 
   try {
+    // Creation is an UPSERT at the backend API. Do not GET first: a newly
+    // created character is expected not to exist yet.
     await enqueueCharacterWrite(id, async () => {
-      const ref = doc(db, CHARACTERS_COLLECTION, id);
-      const existing = await getDoc(ref);
-      if (existing.exists()) {
-        throw new Error('CHARACTER_ID_ALREADY_EXISTS');
-      }
-      await setDoc(ref, sanitizeForFirestore(created));
+      await setDoc(doc(db, CHARACTERS_COLLECTION, id), sanitizeForFirestore(created));
     });
     pendingCharacterUpdates.delete(id);
   } catch (err) {
     pendingCharacterUpdates.delete(id);
+    pendingNewCharacters.delete(id);
     localCharacters = previous
       ? [...localCharacters.filter(c => c.id !== id), previous]
       : localCharacters.filter(c => c.id !== id);
     saveLocalAll();
     broadcast?.postMessage({ type: 'CHARACTERS_UPDATE' });
-    console.error('Error creating character in Firestore:', err);
+    console.error('Error creating character in backend:', err);
     throw err;
   }
+
+  // Keep the ID marked as newly-created for the immediate post-creation
+  // profile/status saves. It is removed after a short grace period.
+  window.setTimeout(() => pendingNewCharacters.delete(id), 15000);
 }
 export const transferCoinsBetweenCharacters = transferCoins;
 export const saveShopItem = addShopItem;
