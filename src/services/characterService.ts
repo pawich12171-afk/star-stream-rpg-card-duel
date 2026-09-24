@@ -2860,6 +2860,14 @@ function getAdminOutgoingDamageMultiplier(unit: BattleCombatant): number {
   }, itemMultiplier);
 }
 
+function getDefenseStatDamageReduction(defenseStat: unknown): number {
+  const defense = Math.max(0, Number(defenseStat) || 0);
+  if (defense >= 500 && defense <= 1000) return 15;
+  if (defense >= 200 && defense < 500) return 10;
+  if (defense >= 1 && defense <= 100) return 5;
+  return 0;
+}
+
 function getAdminIncomingDamageMultiplier(unit: BattleCombatant): number {
   // Skill damage reduction is applied explicitly at hit resolution so it is
   // never multiplied twice. This helper only handles percentage shield status.
@@ -3500,9 +3508,13 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       }
       const damageAfterStatus = Math.max(0, Math.round(result.damage * getAdminIncomingDamageMultiplier(defender)));
       const statusBlocked = Math.max(0, result.damage - damageAfterStatus);
-      const blocked = Math.min(damageAfterStatus, defender.defenseTurns ? (defender.defenseValue || 0) : 0);
-      const finalDamage = Math.max(0, damageAfterStatus - blocked);
+      const statDefenseReduction = getDefenseStatDamageReduction(defender.stats?.durability);
+      const damageAfterStatDefense = Math.max(0, Math.round(damageAfterStatus * (1 - statDefenseReduction / 100)));
+      const statDefenseBlocked = Math.max(0, damageAfterStatus - damageAfterStatDefense);
+      const blocked = Math.min(damageAfterStatDefense, defender.defenseTurns ? (defender.defenseValue || 0) : 0);
+      const finalDamage = Math.max(0, damageAfterStatDefense - blocked);
       if (statusBlocked > 0) result.message += ` • สถานะลดดาเมจ ${statusBlocked}`;
+      if (statDefenseReduction > 0) result.message += ` • 🛡️ Defense ${Number(defender.stats?.durability) || 0} ลดดาเมจ ${statDefenseReduction}%`;
       defender.hp = Math.max(0, defender.hp - finalDamage);
       if (finalDamage > 0 && current.lifestealPercent) {
         const restored = Math.max(0, Math.round(finalDamage * Math.min(100, Math.max(0, current.lifestealPercent)) / 100));
