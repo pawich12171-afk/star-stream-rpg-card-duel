@@ -3306,6 +3306,38 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
     };
     const cooldowns = { ...(current.skillCooldowns || {}) };
     const skillProfile = skill ? getBattleSkillProfile(skill) : null;
+    const skillConditions = skill && Array.isArray((skill as BattleBotSkill).conditions)
+      ? (skill as BattleBotSkill).conditions!.filter(condition => condition?.enabled !== false)
+      : [];
+    if (skill && skillConditions.length) {
+      const summonCount = all.filter(unit => unit.type === 'bot' && unit.team === current.team && String(unit.sourceId || '').startsWith(`summon:${current.id}:`)).length;
+      const targetHpPercent = defender.maxHp > 0 ? defender.hp / defender.maxHp * 100 : 0;
+      const actorHpPercent = current.maxHp > 0 ? current.hp / current.maxHp * 100 : 0;
+      const conditionsMet = skillConditions.every(condition => {
+        const value = Number(condition.value);
+        if (!Number.isFinite(value)) return true;
+        switch (condition.type) {
+          case 'hp_below_percent': return actorHpPercent <= Math.max(0, Math.min(100, value));
+          case 'hp_above_percent': return actorHpPercent >= Math.max(0, Math.min(100, value));
+          case 'target_hp_below_percent': return targetHpPercent <= Math.max(0, Math.min(100, value));
+          case 'target_hp_above_percent': return targetHpPercent >= Math.max(0, Math.min(100, value));
+          case 'turn_at_least': return Number(nextRoom.round || 1) >= Math.max(1, Math.floor(value));
+          case 'chance_percent': return Math.random() * 100 < Math.max(0, Math.min(100, value));
+          case 'summon_count_below': return summonCount < Math.max(0, Math.floor(value));
+          case 'summon_count_at_least': return summonCount >= Math.max(0, Math.floor(value));
+          default: return true;
+        }
+      });
+      if (!conditionsMet) {
+        nextRoom.log.unshift({
+          id: "battle-log-" + Date.now(),
+          timestamp: Date.now(),
+          actorName: current.name,
+          message: `${current.name} ยังไม่เข้าเงื่อนไขการใช้สกิล ${skill.name}`,
+        });
+        return { room: nextRoom, result: null };
+      }
+    }
     const skillName = skill?.name || "สกิล";
     const skillId = skill ? String(skill.id ?? skill.name ?? ("skill-" + skillName)).trim() : "";
     // Check cooldown BEFORE consuming this actor's turn. A skill with 1 turn
