@@ -336,18 +336,43 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       if (level > 10) { level = 1; multiplier *= 2; ascensionCount += 1; }
       finalSkill = { ...finalSkill, level, multiplier, upgradeCount: startUpgradeCount + i + 1 };
     }
-    const previousProgress = targetSkill.skillUpgradeProgress || {
-      hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0,
-    };
+    // ย้ายความคืบหน้าเดิมมาสู่สกิลนี้โดยไม่ทิ้งโบนัส HP ที่เคยอัปไว้
+    // รองรับข้อมูลเก่าที่เคยเก็บ progress ไว้ระดับตัวละครด้วย
+    const legacyProgress = base.skillUpgradeProgress;
+    const previousProgress = targetSkill.skillUpgradeProgress || (
+      legacyProgress && (
+        Number(legacyProgress.hpBonus) > 0 || Number(legacyProgress.durability) > 0 ||
+        Number(legacyProgress.strength) > 0 || Number(legacyProgress.agility) > 0 ||
+        Number(legacyProgress.magic) > 0 || Number(legacyProgress.equipmentSlots) > 0
+      ) ? legacyProgress : {
+        hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0,
+      }
+    );
+    const storedHp = Math.max(0, Number(previousProgress.hpBonus) || 0);
+    const storedDurability = Math.max(0, Number(previousProgress.durability) || 0);
+    const storedStrength = Math.max(0, Number(previousProgress.strength) || 0);
+    const storedAgility = Math.max(0, Number(previousProgress.agility) || 0);
+    const storedMagic = Math.max(0, Number(previousProgress.magic) || 0);
+    const hasPhase = Number.isFinite(Number(previousProgress.rewardPhase));
+    const inferredPhase = hasPhase
+      ? Math.max(0, Math.min(5, Math.floor(Number(previousProgress.rewardPhase))))
+      : storedHp < 20000 ? 0
+      : storedDurability < 100 ? 1
+      : storedStrength < 100 ? 2
+      : storedAgility < 100 ? 3
+      : storedMagic < 100 ? 4 : 5;
+    const phaseValues = [storedHp, storedDurability, storedStrength, storedAgility, storedMagic, Math.max(0, Number(previousProgress.equipmentSlots) || 0)];
     const progress = {
-      hpBonus: Math.max(0, Number(previousProgress.hpBonus) || 0),
-      durability: Math.max(0, Number(previousProgress.durability) || 0),
-      strength: Math.max(0, Number(previousProgress.strength) || 0),
-      agility: Math.max(0, Number(previousProgress.agility) || 0),
-      magic: Math.max(0, Number(previousProgress.magic) || 0),
+      hpBonus: storedHp,
+      durability: storedDurability,
+      strength: storedStrength,
+      agility: storedAgility,
+      magic: storedMagic,
       equipmentSlots: Math.max(0, Number(previousProgress.equipmentSlots) || 0),
-      rewardPhase: Math.max(0, Math.min(5, Math.floor(Number(previousProgress.rewardPhase) || 0))),
-      rewardValue: Math.max(0, Number(previousProgress.rewardValue) || 0),
+      rewardPhase: inferredPhase,
+      rewardValue: Number.isFinite(Number(previousProgress.rewardValue))
+        ? Math.max(0, Number(previousProgress.rewardValue))
+        : Math.max(0, phaseValues[inferredPhase] || 0),
       totalUpgrades: Math.max(0, Math.floor(Number(previousProgress.totalUpgrades) || 0)),
       cycleCount: Math.max(0, Math.floor(Number(previousProgress.cycleCount) || 0)),
     };
@@ -420,7 +445,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       notifications: [{
         id: `notif-skill-up-${now}-${startUpgradeCount + requestedTimes}`,
         title: ascensionCount ? 'สกิลจุติสวรรค์ (Ascension)!' : 'อัปเกรดสกิลสำเร็จ',
-        message: `อัปเกรด "${targetSkill.name}" +${requestedTimes} ขั้น → Lv.${finalSkill.level} • ${progressMessage} • ใช้ ${formatCoins(totalCost)} Coins${ascensionCount ? ` • จุติ ${ascensionCount} ครั้ง → x${finalSkill.multiplier}` : ''}${newHpBonus > oldHpBonus ? ` • โบนัสสกิลเดิม HP +${newHpBonus - oldHpBonus}` : ''}`,
+        message: `อัปเกรด "${targetSkill.name}" +${requestedTimes} ขั้น → Lv.${finalSkill.level} • ${progressMessage || 'อัปเกรดระดับสกิลแล้ว'} • ใช้ ${formatCoins(totalCost)} Coins${ascensionCount ? ` • จุติ ${ascensionCount} ครั้ง → x${finalSkill.multiplier}` : ''}`,
         timestamp: now,
         read: false,
         type: 'system',
