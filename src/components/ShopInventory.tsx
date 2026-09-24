@@ -51,7 +51,7 @@ interface ShopInventoryProps {
 const renderItemIcon = (iconName?: string, category?: string, effectType?: string, className = "w-5 h-5") => {
   // Uploaded item artwork can be stored in the icon field as a data URI or URL.
   const icon = String(iconName || '').trim();
-  const isImageIcon = /^data:image\\//i.test(icon) || /^https?:\\/\\//i.test(icon) || /^blob:/i.test(icon);
+  const isImageIcon = /^data:image\//i.test(icon) || /^https?:\/\//i.test(icon) || /^blob:/i.test(icon);
   if (isImageIcon) {
     return <img src={icon} alt="" className={className + " rounded-lg object-cover"} />;
   }
