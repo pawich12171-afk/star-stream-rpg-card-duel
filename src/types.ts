@@ -462,6 +462,8 @@ export interface BattleBotDrop {
   type: 'coin' | 'item';
   name: string;
   amount: number;
+  /** โอกาสดรอปของรายการนี้ (%) */
+  dropChancePercent?: number;
   itemData?: Item;
 }
 
