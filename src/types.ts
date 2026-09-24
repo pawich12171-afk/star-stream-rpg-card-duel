@@ -633,4 +633,151 @@ export interface BattleRollResult {
   skillPower?: number;
   cooldownRemaining?: number;
   trueDamage?: number;
+}export type BattleSkillConditionType =
+  | 'hp_below_percent' | 'hp_above_percent'
+  | 'target_hp_below_percent' | 'target_hp_above_percent'
+  | 'turn_at_least' | 'chance_percent'
+  | 'summon_count_below' | 'summon_count_at_least';
+
+export interface BattleSkillCondition {
+  id?: string;
+  type: BattleSkillConditionType;
+  value: number;
+  enabled?: boolean;
+}
+
+export interface BattleBotSkill extends Skill {
+  /** โอกาสที่ AI จะเลือกใช้สกิลนี้เมื่อถึงเทิร์น (%) */
+  aiChancePercent?: number;
+  /** เงื่อนไขเสริมของสกิลบอส/มอนสเตอร์ แต่ละรายการเปิด/ปิดได้ */
+  conditions?: BattleSkillCondition[];
+}
+
+export interface BattleBot {
+  id: string;
+  name: string;
+  description: string;
+  avatarUrl: string;
+  /** Uploaded image data URI or regular URL. */
+  avatarFileName?: string;
+  isBoss: boolean;
+  stats: CharacterStats;
+  hp: number;
+  maxHp: number;
+  aiProfile?: 'balanced' | 'aggressive' | 'defensive';
+  /** สกิลที่แอดมินยัดให้มอน/บอส และโอกาสที่ AI จะเลือกใช้ */
+  skills?: BattleBotSkill[];
+  /** ของดรอปเมื่อชนะมอน/บอสตัวนี้ */
+  drops?: BattleBotDrop[];
+  /** น้ำหนัก/โอกาสที่มอนหรือบอสตัวนี้จะถูกสุ่มเจอในโหมดสุ่ม (%) */
+  encounterChancePercent?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type BattleCombatantType = 'player' | 'bot';
+export interface BattleCombatant {
+  id: string;
+  sourceId: string;
+  name: string;
+  avatarUrl: string;
+  type: BattleCombatantType;
+  team: 'a' | 'b';
+  stats: CharacterStats;
+  hp: number;
+  maxHp: number;
+  isBoss?: boolean;
+  stunnedTurns?: number;
+  frozenTurns?: number;
+  defenseValue?: number;
+  defenseTurns?: number;
+  reflectPercent?: number;
+  reflectTurns?: number;
+  skillCooldowns?: Record<string, number>;
+  /** สกิลของลูกน้องที่ถูกเสกโดยมอน/บอส */
+  skills?: BattleBotSkill[];
+  adminStatusEffects?: AdminStatusEffect[];
+  equippedPassives?: ItemPassiveEffect[];
+  activeSkillPassives?: ItemPassiveEffect[];
+  passiveStacks?: Record<string, number>;
+  /** โบนัสโจมตีจากไอเทมที่ใช้ระหว่างต่อสู้ */
+  itemDamagePercent?: number;
+  /** เทิร์นที่เหลือของโบนัสโจมตีจากไอเทม */
+  itemDamageTurns?: number;
+  /** ตัวคูณโชคจากไอเทมระหว่างต่อสู้ */
+  itemLuckMultiplier?: number;
+  /** โบนัสโอกาสคริติคอลจากไอเทม (%) */
+  itemCriticalChancePercent?: number;
+  /** โบนัสโอกาสตีซ้ำจากไอเทม (%) */
+  itemRepeatAttackChancePercent?: number;
+  /** ตัวคูณโอกาสทำงานของ Passive/Effect จากไอเทม */
+  itemPassiveChanceMultiplier?: number;
+  /** เทิร์นที่เหลือของบัฟโชคจากไอเทม */
+  itemLuckTurns?: number;
+  immortalTurns?: number;
+  damageReductionPercent?: number;
+  damageReductionTurns?: number;
+  /** เอฟเฟกต์จากไอเทมใช้ระหว่างต่อสู้ */
+  dodgeChancePercent?: number;
+  lifestealPercent?: number;
+  cooldownReductionPercent?: number;
+  statusImmunityTurns?: number;
+  shieldPercent?: number;
+  shieldTurns?: number;
+  copiedAbility?: Skill;
+  copiedAbilityTurns?: number;
+  skills?: Skill[];
+}
+
+export interface BattleLogEntry {
+  id: string;
+  timestamp: number;
+  actorName: string;
+  message: string;
+  roll?: number;
+  damage?: number;
+  effect?: BattleDiceEffect | 'stun_skip';
+}
+
+export interface BattleRoom {
+  id: string;
+  mode: BattleMode;
+  status: 'active' | 'completed' | 'cancelled';
+  createdBy: string;
+  createdByName: string;
+  teamA: BattleCombatant[];
+  teamB: BattleCombatant[];
+  turnActorId: string;
+  round: number;
+  log: BattleLogEntry[];
+  winnerTeam?: 'a' | 'b' | 'draw';
+  entryFeeCoins?: number;
+  victoryRewardCoins?: number;
+  /** รางวัลสุ่มของโหมดสุ่มที่เลือกตั้งแต่สร้างห้อง */
+  randomReward?: BattleRandomReward;
+  /** ของดรอปที่ล็อกไว้จากมอน/บอสทั้งหมดในห้อง */
+  battleDrops?: BattleBotDrop[];
+  /** คิวศัตรูที่เหลือของโหมดสุ่ม หลังจากชนะตัวปัจจุบัน */
+  randomBattleQueue?: BattleCombatant[];
+  /** ลำดับศัตรูปัจจุบันในโหมดสุ่ม (1-3) */
+  randomBattleStage?: number;
+  rewardClaimedBy?: string;
+  /** ผู้ชนะฝ่ายทีม A ที่รับรางวัลไปแล้ว แยกตามผู้เล่น */
+  rewardClaims?: Record<string, number>;
+  /** จำนวนครั้งที่ผู้เล่นใช้ไอเทมระหว่างการต่อสู้ครั้งนี้ */
+  battleItemUses?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface BattleRollResult {
+  roll: number;
+  face: BattleDiceFace;
+  damage: number;
+  heal: number;
+  message: string;
+  skillEffect?: BattleSkillEffect;
+  skillPower?: number;
+  cooldownRemaining?: number;
+  trueDamage?: number;
 }
