@@ -179,12 +179,11 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const getSkillRewardPreview = (skill: Skill, count: number) => {
     // เก็บความคืบหน้าแยกตามสกิล และรองรับข้อมูลเก่าที่เคยเก็บไว้ระดับตัวละคร
     // เพื่อไม่ให้สกิลที่อัปไปก่อนเปลี่ยนระบบถูกตัดความคืบหน้าทิ้ง
-    const legacy = character.skillUpgradeProgress;
-    const source = skill.skillUpgradeProgress || (
-      skill.upgradeCount && skill.upgradeCount > 0 && legacy
-        ? legacy
-        : { hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0 }
-    );
+    // โบนัสการอัปสกิลเป็นของสกิลนั้น ๆ เท่านั้น
+    // ห้ามใช้ progress ระดับตัวละครเป็น fallback เพราะจะทำให้ทุกสกิลแสดง HP/โบนัสซ้ำกัน
+    const source = skill.skillUpgradeProgress || {
+      hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0
+    };
     const sourceHp = Math.max(0, Number(source.hpBonus) || 0);
     const sourceDurability = Math.max(0, Number(source.durability) || 0);
     const sourceStrength = Math.max(0, Number(source.strength) || 0);
@@ -337,7 +336,20 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     const requestedTimes = Math.max(1, Math.min(1000, Math.floor(Number(skillBatchCounts[skillId]) || 1)));
     const startUpgradeCount = Math.max(0, Math.floor(Number(targetSkill.upgradeCount ?? (targetSkill.level - 1)) || 0));
     let totalCost = 0;
-    for (let i = 0; i < requestedTimes; i += 1) totalCost += calculateSkillUpgradeCost({ ...targetSkill, upgradeCount: startUpgradeCount + i });
+    let costSkill = { ...targetSkill, upgradeCount: startUpgradeCount };
+    for (let i = 0; i < requestedTimes; i += 1) {
+      totalCost += calculateSkillUpgradeCost(costSkill);
+      let nextLevel = Number(costSkill.level || 1) + 1;
+      let nextMultiplier = Number(costSkill.multiplier || 1);
+      let nextUpgradeCount = Math.max(0, Number(costSkill.upgradeCount || 0)) + 1;
+      if (nextLevel > 10) {
+        nextLevel = 1;
+        nextMultiplier *= 2;
+        // จุติแล้วเริ่มต้นต้นทุนรอบใหม่ที่ค่าเริ่มต้น
+        nextUpgradeCount = 0;
+      }
+      costSkill = { ...costSkill, level: nextLevel, multiplier: nextMultiplier, upgradeCount: nextUpgradeCount };
+    }
     const currentCoins = Number(base.coins) || 0;
     if (currentCoins < totalCost) {
       alert(`เหรียญไม่เพียงพอ ต้องการ ${formatCoins(totalCost)} Coins (คุณมี ${formatCoins(currentCoins)} Coins)`);
@@ -348,20 +360,29 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     for (let i = 0; i < requestedTimes; i += 1) {
       let level = Number(finalSkill.level || 1) + 1;
       let multiplier = Number(finalSkill.multiplier || 1);
-      if (level > 10) { level = 1; multiplier *= 2; ascensionCount += 1; }
-      finalSkill = { ...finalSkill, level, multiplier, upgradeCount: startUpgradeCount + i + 1 };
+      let upgradeCount = Math.max(0, Number(finalSkill.upgradeCount || 0)) + 1;
+      if (level > 10) {
+        level = 1;
+        multiplier *= 2;
+        ascensionCount += 1;
+        upgradeCount = 0;
+      }
+      finalSkill = { ...finalSkill, level, multiplier, upgradeCount };
     }
     // ย้ายความคืบหน้าเดิมมาสู่สกิลนี้โดยไม่ทิ้งโบนัส HP ที่เคยอัปไว้
     // รองรับข้อมูลเก่าที่เคยเก็บ progress ไว้ระดับตัวละครด้วย
+    // ข้อมูลเก่าระดับตัวละครใช้สำหรับย้ายเข้าระบบแยกสกิลครั้งแรกเท่านั้น
+    // หลังจากย้ายแล้วจะไม่ใช้เป็นโบนัสร่วมของสกิลอื่น
     const legacyProgress = base.skillUpgradeProgress;
+    const legacyHasProgress = !!legacyProgress && (
+      Number(legacyProgress.hpBonus) > 0 || Number(legacyProgress.durability) > 0 ||
+      Number(legacyProgress.strength) > 0 || Number(legacyProgress.agility) > 0 ||
+      Number(legacyProgress.magic) > 0 || Number(legacyProgress.equipmentSlots) > 0
+    );
     const previousProgress = targetSkill.skillUpgradeProgress || (
-      legacyProgress && (
-        Number(legacyProgress.hpBonus) > 0 || Number(legacyProgress.durability) > 0 ||
-        Number(legacyProgress.strength) > 0 || Number(legacyProgress.agility) > 0 ||
-        Number(legacyProgress.magic) > 0 || Number(legacyProgress.equipmentSlots) > 0
-      ) ? legacyProgress : {
-        hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0,
-      }
+      legacyHasProgress
+        ? legacyProgress!
+        : { hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0 }
     );
     const storedHp = Math.max(0, Number(previousProgress.hpBonus) || 0);
     const storedDurability = Math.max(0, Number(previousProgress.durability) || 0);
@@ -455,7 +476,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         : skill),
       stats: newStats,
       equipmentSlotUpgrades: Math.max(0, Number(base.equipmentSlotUpgrades) || 0) + slotUnlocked,
-      skillUpgradeProgress: progress,
+      // skillUpgradeProgress ระดับตัวละครเลิกใช้แล้ว — progress อยู่ใน skill แต่ละตัว
+      skillUpgradeProgress: undefined,
       lastUpdated: Math.max(now, Number(base.lastUpdated || 0) + 1),
       notifications: [{
         id: `notif-skill-up-${now}-${startUpgradeCount + requestedTimes}`,
