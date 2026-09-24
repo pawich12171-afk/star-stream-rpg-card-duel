@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, Check, Crown, Dice5, Heart, Package, Plus, Settings2, Shield, Skull, Sparkles, Swords, Target, Trash2, UsersRound, Zap } from 'lucide-react';
-import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRandomReward, BattleBotDrop, BattleRoom, CharacterProfile, Skill, BattleBotSkill, Item } from '../types';
+import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRandomReward, BattleBotDrop, BattleRoom, CharacterProfile, Skill, BattleBotSkill, BattleSkillCondition, Item } from '../types';
 import {
   DEFAULT_BATTLE_CONFIG,
   createBattleRoom,
@@ -252,6 +252,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const [botDropAmount, setBotDropAmount] = useState('1000');
   const [botDropChance, setBotDropChance] = useState('100');
   const [botDropItemId, setBotDropItemId] = useState('');
+  const [botSkillConditions, setBotSkillConditions] = useState<BattleSkillCondition[]>([]);
   const [editingBotId, setEditingBotId] = useState('');
   const [victoryImageFileName, setVictoryImageFileName] = useState('');
   const [victoryVideoFileName, setVictoryVideoFileName] = useState('');
@@ -546,10 +547,39 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     }
   };
 
-  const chooseBotSkill = (bot: BattleCombatant): Skill | undefined => {
+  const skillConditionsMet = (skill: Skill, actor: BattleCombatant, target: BattleCombatant | undefined, room: BattleRoom, rollChance = true) => {
+    const conditions = Array.isArray((skill as BattleBotSkill).conditions)
+      ? (skill as BattleBotSkill).conditions!.filter(condition => condition?.enabled !== false)
+      : [];
+    if (!conditions.length) return true;
+    const summonCount = [...room.teamA, ...room.teamB].filter(unit =>
+      unit.type === 'bot' && unit.team === actor.team && String(unit.sourceId || '').startsWith(`summon:${actor.id}:`)
+    ).length;
+    return conditions.every(condition => {
+      const value = Number(condition.value);
+      if (!Number.isFinite(value)) return true;
+      const actorHpPercent = actor.maxHp > 0 ? actor.hp / actor.maxHp * 100 : 0;
+      const targetHpPercent = target && target.maxHp > 0 ? target.hp / target.maxHp * 100 : 0;
+      switch (condition.type) {
+        case 'hp_below_percent': return actorHpPercent <= Math.max(0, Math.min(100, value));
+        case 'hp_above_percent': return actorHpPercent >= Math.max(0, Math.min(100, value));
+        case 'target_hp_below_percent': return !!target && targetHpPercent <= Math.max(0, Math.min(100, value));
+        case 'target_hp_above_percent': return !!target && targetHpPercent >= Math.max(0, Math.min(100, value));
+        case 'turn_at_least': return Number(room.round || 1) >= Math.max(1, Math.floor(value));
+        case 'summon_count_below': return summonCount < Math.max(0, Math.floor(value));
+        case 'summon_count_at_least': return summonCount >= Math.max(0, Math.floor(value));
+        case 'chance_percent': return !rollChance || Math.random() * 100 < Math.max(0, Math.min(100, value));
+        default: return true;
+      }
+    });
+  };
+
+  const chooseBotSkill = (bot: BattleCombatant, room: BattleRoom): Skill | undefined => {
     const candidates = (bot.skills || []).filter(skill => {
       const id = getSkillId(skill);
-      return (Number(bot.skillCooldowns?.[id] || 0) <= 0) && (Number((skill as BattleBotSkill).aiChancePercent ?? 0) > 0);
+      return (Number(bot.skillCooldowns?.[id] || 0) <= 0)
+        && (Number((skill as BattleBotSkill).aiChancePercent ?? 0) > 0)
+        && skillConditionsMet(skill, bot, [...room.teamA, ...room.teamB].find(unit => unit.team !== bot.team && unit.hp > 0), room);
     });
     if (!candidates.length) return undefined;
     const total = candidates.reduce((sum, skill) => sum + Math.max(0, Math.min(100, Number((skill as BattleBotSkill).aiChancePercent) || 0)), 0);
@@ -693,6 +723,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       battlePower:Math.max(0,Number(botSkillPower)||0),
       cooldownTurns:Math.max(0,Math.floor(Number(botSkillCooldown)||0)),
       aiChancePercent:Math.max(0,Math.min(100,Number(botSkillChance)||0)),
+      conditions: botSkillConditions.map(condition => ({ ...condition, value: Number(condition.value) || 0, enabled: condition.enabled !== false })),
       damageScaling:'fixed', battleEffect:botSkillEffect,
       ...(botSkillEffect === 'summon' ? {
         summonName:botSummonName.trim() || 'ลูกน้อง',
@@ -711,7 +742,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     setBotSummonName('ลูกน้อง'); setBotSummonMaxCount('1'); setBotSummonHp('20'); setBotSummonDamage('5'); setBotSummonAgility('1');
     setBotSummonSkillsText('[]'); setBotSummonSkillName(''); setBotSummonSkillDescription(''); setBotSummonSkillPower('5');
     setBotSummonSkillChance('100'); setBotSummonSkillCooldown('0'); setBotSummonSkillEffect('damage'); setBotSummonSkillMode('normal');
-    setBotSummonAvatarUrl(''); setBotSummonAvatarFileName(''); setBotSummonUnits([]);
+    setBotSummonAvatarUrl(''); setBotSummonAvatarFileName(''); setBotSummonUnits([]); setBotSkillConditions([]);
   };
 
   const addConfiguredMinion = async () => {
@@ -884,6 +915,27 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     <label className="text-[11px] text-slate-400">คูลดาวน์ (เทิร์น)<input className={inputClass+" mt-1"} type="number" min="0" value={botSkillCooldown} onChange={e=>setBotSkillCooldown(e.target.value)} /></label>
     <label className="text-[11px] text-slate-400">เอฟเฟกต์<select className={inputClass+" mt-1"} value={botSkillEffect} onChange={e=>setBotSkillEffect(e.target.value as NonNullable<Skill['battleEffect']>)}><option value="damage">⚔️ โจมตี/ทำดาเมจ</option><option value="heal">❤️ ฟื้นฟู HP</option><option value="defense">🛡️ เพิ่มการป้องกัน</option><option value="stun">💫 ทำให้ติดสตัน</option><option value="damage_reduction">🔻 ลดดาเมจเป้าหมาย</option><option value="summon">🧿 เสกลูกน้อง</option></select></label>
     <label className="text-[11px] text-slate-400">โอกาสใช้สกิล (%)<input className={inputClass+" mt-1"} type="number" min="0" max="100" value={botSkillChance} onChange={e=>setBotSkillChance(e.target.value)} /></label>
+    <div className="sm:col-span-2 rounded-2xl border border-amber-500/20 bg-amber-950/20 p-3">
+      <div className="mb-1 font-black text-amber-200">⚙️ เงื่อนไขการใช้สกิล (ไม่ตั้งก็ได้)</div>
+      <p className="mb-2 text-[11px] text-slate-400">ทุกเงื่อนไขที่เปิดไว้ต้องผ่านก่อน บอส/มอนจึงจะใช้สกิลนี้ได้ ตั้งได้หลายข้อ</p>
+      <div className="space-y-2">
+        {botSkillConditions.map((condition, index) => <div key={condition.id || index} className="grid gap-2 sm:grid-cols-[1fr_110px_auto]">
+          <select className={inputClass} value={condition.type} onChange={e=>setBotSkillConditions(prev=>prev.map((item,i)=>i===index?{...item,type:e.target.value as BattleSkillCondition['type']}:item))}>
+            <option value="hp_below_percent">❤️ HP บอสต่ำกว่า/เท่ากับ (%)</option>
+            <option value="hp_above_percent">❤️ HP บอสสูงกว่า/เท่ากับ (%)</option>
+            <option value="target_hp_below_percent">🎯 HP เป้าหมายต่ำกว่า/เท่ากับ (%)</option>
+            <option value="target_hp_above_percent">🎯 HP เป้าหมายสูงกว่า/เท่ากับ (%)</option>
+            <option value="turn_at_least">⏱️ ตั้งแต่เทิร์นที่</option>
+            <option value="chance_percent">🎲 โอกาสผ่านเงื่อนไข (%)</option>
+            <option value="summon_count_below">🧿 จำนวนลูกน้องต่ำกว่า</option>
+            <option value="summon_count_at_least">🧿 จำนวนลูกน้องอย่างน้อย</option>
+          </select>
+          <input className={inputClass} type="number" min="0" max={condition.type.includes('percent') ? 100 : undefined} value={condition.value} onChange={e=>setBotSkillConditions(prev=>prev.map((item,i)=>i===index?{...item,value:Number(e.target.value)||0}:item))} />
+          <button type="button" className="rounded-xl px-3 py-2 text-xs text-rose-300" onClick={()=>setBotSkillConditions(prev=>prev.filter((_,i)=>i!==index))}>ลบ</button>
+        </div>)}
+      </div>
+      <button type="button" className={buttonClass+" mt-2 bg-amber-500 text-slate-950"} onClick={()=>setBotSkillConditions(prev=>[...prev,{id:'condition-'+Date.now(),type:'hp_below_percent',value:20,enabled:true}])}>+ เพิ่มเงื่อนไข</button>
+    </div>
     {botSkillEffect==='summon' && <div className="sm:col-span-2 rounded-2xl border border-cyan-500/20 bg-cyan-950/20 p-3">
       <div className="font-black text-cyan-200">🧿 ลูกน้องแบบแยกรายตัว</div>
       <p className="mt-1 mb-3 text-[11px] text-slate-400">ตัวอย่าง: ลูกน้อง A STR 50 แต่ลูกน้อง B STR 40 ได้ และแต่ละตัวมี HP, DEF, Speed, Magic, รูป และสกิลของตัวเอง</p>
