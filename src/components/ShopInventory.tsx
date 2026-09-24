@@ -1299,7 +1299,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                 <button type="button" onClick={() => setInventorySearch('')} className="mt-3 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer">ล้างการค้นหา</button>
               </div>
             ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[72vh] overflow-y-auto pr-1 scrollbar-thin">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[72vh] overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
               {filteredInventory.map((invItem, index) => {
                 const inventoryKey = invItem.instanceId || `legacy-${invItem.id}-${index}`;
                 const rarityInfo = getRarityBadge(invItem.rarity);
@@ -1309,7 +1309,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                 return (
                   <div
                     key={inventoryKey}
-                    className={`rounded-3xl p-5 border transition-all flex flex-col justify-between space-y-4 shadow-xl ${
+                    className={`rounded-3xl p-4 sm:p-5 border transition-all flex flex-col justify-between space-y-4 shadow-xl min-w-0 overflow-hidden ${
                       invItem.isEquipped
                         ? 'bg-slate-900/95 border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.2)]'
                         : 'bg-slate-900/80 border-slate-800'
@@ -1387,13 +1387,13 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
-                      <span className="text-[11px] text-slate-400">
+                    <div className="pt-3 border-t border-slate-800 flex flex-col gap-3 min-w-0">
+                      <span className="text-[11px] text-slate-400 min-w-0 break-words">
                         {invItem.category === 'equipment'
                           ? (getEquippedQuantity(invItem) > 0 ? `สวมใส่ ${getEquippedQuantity(invItem)}/${Math.max(1, Number(invItem.quantity) || 1)} · กำลังมอบพลัง` : 'ยังไม่ได้ใส่')
                           : 'พร้อมใช้งาน'}
                       </span>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 min-w-0 w-full">
                         <button
                           type="button"
                           id={`btn-delete-inventory-${inventoryKey}`}
