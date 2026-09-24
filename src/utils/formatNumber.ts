@@ -70,3 +70,29 @@ export function formatCoins(value: number | string | null | undefined, mode?: Co
   const displayMode = mode || getCoinDisplayMode();
   return displayMode === 'full' ? formatFullNumber(value) : formatCompactNumber(value);
 }
+
+/** แปลงจำนวน Coins ที่ผู้ใช้พิมพ์ เช่น 1,000,000 / 1m / 1.5M / 2B ให้เป็นตัวเลขจริง */
+export function parseCoinAmount(value: number | string | null | undefined): number {
+  if (typeof value === 'number') return Number.isFinite(value) ? Math.floor(value) : 0;
+  const raw = String(value ?? '').trim().replace(/\s+/g, '').replace(/,/g, '');
+  if (!raw) return 0;
+  const match = raw.match(/^(-?\d+(?:\.\d+)?)([a-z]+)?$/i);
+  if (!match) return 0;
+  const base = Number(match[1]);
+  if (!Number.isFinite(base)) return 0;
+  const suffix = (match[2] || '').toLowerCase();
+  const units: Record<string, number> = {
+    k: 1e3, m: 1e6, b: 1e9, t: 1e12,
+    qa: 1e15, qi: 1e18, sx: 1e21, sp: 1e24, oc: 1e27, no: 1e30,
+    dc: 1e33, ud: 1e36, dd: 1e39, td: 1e42, qad: 1e45, qid: 1e48,
+    sxd: 1e51, spd: 1e54, od: 1e57, nd: 1e60, vg: 1e63,
+    spvg: 1e66, sxvg: 1e69, qivg: 1e72, qavg: 1e75,
+    trvg: 1e78, duvg: 1e81, unvg: 1e84, dcg: 1e87,
+    nog: 1e90, ocg: 1e93, spg: 1e96, sxg: 1e99,
+    qig: 1e102, qag: 1e105, trg: 1e108,
+  };
+  const multiplier = suffix ? units[suffix] : 1;
+  if (!multiplier) return 0;
+  const amount = base * multiplier;
+  return Number.isFinite(amount) ? Math.floor(amount) : 0;
+}
