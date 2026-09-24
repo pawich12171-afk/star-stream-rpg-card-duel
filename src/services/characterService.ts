@@ -2716,10 +2716,12 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
     const baseChance = effect.chance == null ? 100 : Math.max(0, Math.min(100, Number(effect.chance) || 0));
     const chance = getBattleChance(attacker, baseChance);
     if (Math.random() * 100 >= chance) continue;
-    const target = effect.target === 'self' ? attacker : defender;
-    const value = Math.max(0, Number(effect.value) || 0);
-    const duration = Math.max(1, Math.round(Number(effect.duration) || 1));
     const label = effect.label || effect.kind;
+    const isStatusEffect = ['stun', 'freeze', 'poison', 'burn', 'bleeding', 'slow', 'curse', 'weakness'].includes(effect.kind);
+    if (isStatusEffect && target.statusImmunityTurns && target.statusImmunityTurns > 0) {
+      result.message += ` • 🚫 ${target.name} ต้านสถานะ ${label}`;
+      continue;
+    }
     if (effect.kind === 'damage_percent') {
       result.damage += Math.max(0, Math.round(result.damage * value / 100));
       result.message += ` • ${label} +${value}% ดาเมจ`;
