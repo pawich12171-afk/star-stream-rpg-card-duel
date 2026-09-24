@@ -1,5 +1,6 @@
 import React from 'react';
 import { CharacterProfile } from '../types';
+import { formatCoins } from '../utils/formatNumber';
 import { calculateCharacterHealth } from '../utils/healthSystem';
 import { 
   Users, 
@@ -144,7 +145,7 @@ export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
                   <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono">
                     <div className="flex items-center gap-1 text-amber-300 font-bold">
                       <Coins className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{char.coins.toLocaleString()} C</span>
+                      <span>{formatCoins(char.coins)} C</span>
                     </div>
 
                     <div className="flex items-center gap-1 text-slate-300">
