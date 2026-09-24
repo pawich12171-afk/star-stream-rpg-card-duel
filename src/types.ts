@@ -42,6 +42,8 @@ export interface Skill {
   /** ตัวคูณของสเตตัส เช่น 1.5 = 150% ของค่า stat */
   damageScalingMultiplier?: number;
   cooldownTurns?: number;
+  /** จำกัดจำนวนครั้งที่ใช้สกิลได้ในหนึ่งการต่อสู้ */
+  battleUseLimit?: 'unlimited' | 'once_per_battle';
   /** ระยะเวลาของเอฟเฟกต์หลักของสกิล (เทิร์น) */
   battleEffectDuration?: number;
   battleCriticalChance?: number;
@@ -566,6 +568,8 @@ export interface BattleCombatant {
   reflectPercent?: number;
   reflectTurns?: number;
   skillCooldowns?: Record<string, number>;
+  /** จำนวนครั้งที่สกิลแต่ละ ID ถูกใช้ในเกมนี้ */
+  skillUses?: Record<string, number>;
   /** สกิลของลูกน้องที่ถูกเสกโดยมอน/บอส */
   skills?: BattleBotSkill[];
   adminStatusEffects?: AdminStatusEffect[];
