@@ -212,6 +212,10 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const [selectedSkillId, setSelectedSkillId] = useState('');
   const [botSkillDraftId, setBotSkillDraftId] = useState('');
   const [botSkillChance, setBotSkillChance] = useState('25');
+  const [botSkillName, setBotSkillName] = useState('');
+  const [botSkillDescription, setBotSkillDescription] = useState('');
+  const [botSkillPower, setBotSkillPower] = useState('10');
+  const [botSkillCooldown, setBotSkillCooldown] = useState('2');
   const [selectedBattleItemId, setSelectedBattleItemId] = useState('');
   const [usingBattleItemId, setUsingBattleItemId] = useState('');
   // Synchronous action lock: React state alone updates after the click event,
@@ -375,7 +379,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       .filter(unit => unit.hp > 0)
       .sort((a, b) => (Number(b.stats?.agility) || 0) - (Number(a.stats?.agility) || 0))[0] || teamA[0];
     const room: BattleRoom = {
-      id: 'battle-' + now, mode, status: 'active', createdBy: currentUser.id, createdByName: currentUser.displayName,
+      id: 'battle-' + now, mode, status: mode === 'pvp' ? 'pending' : 'active', createdBy: currentUser.id, createdByName: currentUser.displayName,
       teamA, teamB, turnActorId: firstActor.id, round: 1,
       log: [
         ...teamA.flatMap(unit => [
@@ -388,7 +392,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
           ...(unit.activeSkillPassives || []).map(passive => ({ id: `battle-skill-passive-${unit.id}-${passive.id}-${now}`, timestamp: now, actorName: unit.name, message: `🌸 SKILL PASSIVE พร้อมทำงาน: ${passive.name} · ${passive.description || passive.kind}` })),
           ...(unit.equippedPassives || []).map(passive => ({ id: `battle-item-passive-${unit.id}-${passive.id}-${now}`, timestamp: now, actorName: unit.name, message: `⚙️ ITEM PASSIVE พร้อมทำงาน: ${passive.name} · ${passive.description || passive.kind}` })),
         ]),
-        { id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pve' || mode === 'random' ? `เริ่มการต่อสู้ — หักค่าเข้า ${(mode === 'random' ? RANDOM_BATTLE_ENTRY_FEE : BATTLE_ENTRY_FEE).toLocaleString()} Coins · รางวัลสุ่ม ${victoryReward.toLocaleString()} Coins` : 'เริ่มการต่อสู้ — Passive/TRAIT พร้อมทำงาน · เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' },
+        { id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pvp' ? 'ส่งคำท้าแล้ว — รอผู้เล่นฝ่ายตรงข้ามยืนยันก่อนเริ่มการต่อสู้' : mode === 'pve' || mode === 'random' ? `เริ่มการต่อสู้ — หักค่าเข้า ${(mode === 'random' ? RANDOM_BATTLE_ENTRY_FEE : BATTLE_ENTRY_FEE).toLocaleString()} Coins · รางวัลสุ่ม ${victoryReward.toLocaleString()} Coins` : 'เริ่มการต่อสู้ — Passive/TRAIT พร้อมทำงาน · เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' },
       ],
       entryFeeCoins: mode === 'random' ? RANDOM_BATTLE_ENTRY_FEE : (mode === 'pve' ? BATTLE_ENTRY_FEE : 0), victoryRewardCoins: victoryReward, randomReward, battleDrops, randomBattleQueue, randomBattleStage: mode === 'random' ? 1 : undefined, createdAt: now, updatedAt: now
     };
@@ -625,20 +629,26 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     }
   };
 
-  const availableBotSkills = useMemo(() => {
-    const map = new Map<string, Skill>();
-    allCharacters.flatMap(character => character.skills || []).forEach(skill => {
-      const id = getSkillId(skill);
-      if (id && !map.has(id)) map.set(id, skill);
-    });
-    return Array.from(map.values());
-  }, [allCharacters]);
-
   const addBotSkill = () => {
-    const source = availableBotSkills.find(skill => getSkillId(skill) === botSkillDraftId);
-    if (!source) return;
-    const skill = { ...source, id: getSkillId(source), aiChancePercent: Math.max(0, Math.min(100, Number(botSkillChance) || 0)) } as BattleBotSkill;
-    setBotForm(prev => ({ ...prev, skills: [...prev.skills.filter(item => getSkillId(item) !== skill.id), skill] }));
+    const name = botSkillName.trim();
+    if (!name) return alert('กรุณาตั้งชื่อสกิลมอน/บอส');
+    const id = 'bot-skill-' + Date.now();
+    const skill: BattleBotSkill = {
+      id,
+      name,
+      level: 1,
+      multiplier: 1,
+      type: 'monster',
+      description: botSkillDescription.trim() || 'สกิลเฉพาะของมอน/บอส',
+      battlePower: Math.max(0, Number(botSkillPower) || 0),
+      cooldownTurns: Math.max(0, Math.floor(Number(botSkillCooldown) || 0)),
+      aiChancePercent: Math.max(0, Math.min(100, Number(botSkillChance) || 0)),
+      damageScaling: 'fixed',
+      battleEffect: 'damage',
+    };
+    setBotForm(prev => ({ ...prev, skills: [...prev.skills, skill] }));
+    setBotSkillName('');
+    setBotSkillDescription('');
     setBotSkillDraftId('');
   };
 
@@ -780,13 +790,13 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
 </div>
 <div className="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-3">
   <div className="mb-2 text-xs font-black text-fuchsia-200">🧠 สกิลของมอน / บอส</div>
-  <div className="grid gap-2 sm:grid-cols-[1fr_6rem_auto]">
-    <select className={inputClass} value={botSkillDraftId} onChange={event => setBotSkillDraftId(event.target.value)}>
-      <option value="">เลือกสกิลจากคลังตัวละคร</option>
-      {availableBotSkills.map(skill => <option key={getSkillId(skill)} value={getSkillId(skill)}>{skill.name}</option>)}
-    </select>
-    <input className={inputClass} type="number" min="0" max="100" value={botSkillChance} onChange={event => setBotSkillChance(event.target.value)} placeholder="โอกาส %" />
-    <button type="button" className={buttonClass + " bg-fuchsia-500 text-white"} onClick={addBotSkill}>+ ใส่สกิล</button>
+  <div className="grid gap-2 sm:grid-cols-2">
+    <input className={inputClass} value={botSkillName} onChange={event => setBotSkillName(event.target.value)} placeholder="ชื่อสกิลมอน/บอส" />
+    <input className={inputClass} value={botSkillDescription} onChange={event => setBotSkillDescription(event.target.value)} placeholder="คำอธิบายสกิล" />
+    <input className={inputClass} type="number" min="0" value={botSkillPower} onChange={event => setBotSkillPower(event.target.value)} placeholder="พลัง/ดาเมจ" />
+    <input className={inputClass} type="number" min="0" value={botSkillCooldown} onChange={event => setBotSkillCooldown(event.target.value)} placeholder="คูลดาวน์ (เทิร์น)" />
+    <input className={inputClass} type="number" min="0" max="100" value={botSkillChance} onChange={event => setBotSkillChance(event.target.value)} placeholder="โอกาสใช้ %" />
+    <button type="button" className={buttonClass + " bg-fuchsia-500 text-white"} onClick={addBotSkill}>+ สร้างสกิลเฉพาะ</button>
   </div>
   <div className="mt-2 space-y-1">
     {botForm.skills.map(skill => <div key={getSkillId(skill)} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs"><span>{skill.name} · โอกาสใช้ {Number(skill.aiChancePercent ?? 0)}%</span><button type="button" className="text-rose-300" onClick={() => removeBotSkill(getSkillId(skill))}>ลบ</button></div>)}
@@ -895,7 +905,22 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
                       กำลังต่อสู้
                     </span>
                   )}
-                  {room.status === 'completed' && (
+                  {room.status === 'pending' && room.mode === 'pvp' && (
+                <div className="mt-3 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3">
+                  <div className="text-sm font-black text-amber-100">⚔️ รอการยืนยัน PvP</div>
+                  <div className="mt-1 text-xs text-amber-200/80">
+                    {room.createdBy === currentUser.id ? 'รอฝ่ายตรงข้ามยืนยันการท้าสู้' : 'คุณถูกท้าสู้ — ต้องยืนยันก่อนเริ่ม'}
+                  </div>
+                  {room.createdBy !== currentUser.id && room.teamB.some(u => u.type === 'player' && u.sourceId === currentUser.id) && (
+                    <div className="mt-3 flex gap-2">
+                      <button type="button" onClick={() => void updateBattleRoom({ ...room, status: 'active', updatedAt: Date.now(), log: [...(room.log || []), { id: 'pvp-accept-' + Date.now(), timestamp: Date.now(), actorName: currentUser.displayName, message: '✅ ยืนยันการท้าสู้ — เริ่มการต่อสู้' }] })} className={buttonClass + ' bg-emerald-500 text-slate-950'}>✓ ยืนยันและเริ่ม</button>
+                      <button type="button" onClick={() => void updateBattleRoom({ ...room, status: 'cancelled', updatedAt: Date.now(), log: [...(room.log || []), { id: 'pvp-reject-' + Date.now(), timestamp: Date.now(), actorName: currentUser.displayName, message: '❌ ปฏิเสธคำท้า' }] })} className={buttonClass + ' bg-rose-500 text-white'}>ปฏิเสธ</button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {room.status === 'completed' && (
                     <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-black text-emerald-200">
                       จบศึก: {winner}
                     </span>
