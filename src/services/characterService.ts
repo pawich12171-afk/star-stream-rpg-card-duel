@@ -2509,7 +2509,13 @@ export async function settleBattleVictoryReward(room: BattleRoom, playerId: stri
   const response = await fetch('/api/database?action=claim_battle_reward', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ roomId: room.id, playerId, reward, rewardData: randomReward || null }),
+    body: JSON.stringify({
+      roomId: room.id,
+      playerId,
+      reward,
+      rewardData: randomReward || null,
+      drops: Array.isArray(room.battleDrops) ? room.battleDrops : [],
+    }),
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body?.error || 'ไม่สามารถรับรางวัลการต่อสู้ได้');
