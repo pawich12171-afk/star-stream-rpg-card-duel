@@ -929,28 +929,6 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         )}
       </div>
 
-      <div className="mb-5 rounded-3xl border border-cyan-500/30 bg-cyan-950/20 p-4 space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-black text-cyan-200">เส้นทางรางวัลจากการอัปสกิล</h3>
-          <span className="text-[10px] font-mono text-slate-400">เลือกอัปได้ 1–1,000 ขั้น/ครั้ง • ไม่มีตันถาวร</span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-[10px] font-mono">
-          <div className="rounded-xl bg-slate-950/70 p-2">❤️ HP<br/><b className="text-rose-300">{Math.floor(Number(character.skillUpgradeProgress?.hpBonus) || 0)}/20,000</b></div>
-          <div className="rounded-xl bg-slate-950/70 p-2">🛡️ ทนทาน<br/><b className="text-amber-300">{Number(character.skillUpgradeProgress?.durability || 0).toFixed(2)}/100</b></div>
-          <div className="rounded-xl bg-slate-950/70 p-2">💪 STR<br/><b className="text-orange-300">{Number(character.skillUpgradeProgress?.strength || 0).toFixed(2)}/100</b></div>
-          <div className="rounded-xl bg-slate-950/70 p-2">⚡ ความเร็ว<br/><b className="text-cyan-300">{Number(character.skillUpgradeProgress?.agility || 0).toFixed(2)}/100</b></div>
-          <div className="rounded-xl bg-slate-950/70 p-2">✨ เวท<br/><b className="text-purple-300">{Number(character.skillUpgradeProgress?.magic || 0).toFixed(2)}/100</b></div>
-          <div className="rounded-xl bg-slate-950/70 p-2">🎒 ช่องไอเทม<br/><b className="text-emerald-300">+{Math.floor(Number(character.equipmentSlotUpgrades) || 0)}</b></div>
-        </div>
-        <div className="rounded-xl bg-slate-950/60 border border-cyan-500/10 p-2.5 text-[10px] font-mono text-slate-300 space-y-1">
-          <div>📈 อัปสกิลไปแล้วทั้งหมด: <b className="text-cyan-300">{Math.floor(Number(character.skillUpgradeProgress?.totalUpgrades) || (character.skills || []).reduce((sum, skill) => sum + Math.max(0, Math.floor(Number(skill.upgradeCount ?? (skill.level - 1)) || 0)), 0)).toLocaleString()}</b> ครั้ง</div>
-          <div>🔁 รอบที่จบครบแล้ว: <b className="text-amber-300">{Math.floor(Number(character.skillUpgradeProgress?.cycleCount) || 0).toLocaleString()}</b> รอบ</div>
-          <div>🎯 1 รอบ = <b className="text-amber-300">60,002</b> ครั้ง แล้ววนกลับ HP ไม่มีจุดตันถาวร</div>
-          <div>🧭 ลำดับ: HP 20,000 → ทนทาน 100 → STR 100 → ความเร็ว 100 → เวท 100 → ช่อง +2 → 🔁 HP</div>
-        </div>
-        <div className="text-[10px] text-slate-500">ทุกครั้งที่กดอัปจะบอกผลที่เพิ่มให้ในรายการแจ้งเตือน และการเลือกจำนวนจะแสดงค่าใช้จ่ายรวมก่อนยืนยัน</div>
-      </div>
-
       {/* Grid: Core Stats & Stories */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 bg-slate-900/90 rounded-3xl p-6 border border-slate-800 shadow-xl space-y-4">
