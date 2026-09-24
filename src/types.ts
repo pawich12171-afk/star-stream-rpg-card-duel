@@ -60,6 +60,8 @@ export interface Skill {
   summonDamage?: number;
   summonAgility?: number;
   summonSkills?: BattleBotSkill[];
+  summonAvatarUrl?: string;
+  summonAvatarFileName?: string;
 }
 
 export interface EquippedBonus {
