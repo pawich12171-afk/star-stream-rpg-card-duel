@@ -106,10 +106,11 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   const skillBonusHp = 0;
 
   const consumedMaxHp = character.consumedMaxHpBonus || 0;
-  // โบนัส HP จากการอัปสกิลเป็นอีกแหล่งหนึ่ง และล็อกไว้สูงสุด 20,000
-  // เพื่อไม่ให้การอัปสกิลทำให้ HP โตเกินขอบเขตที่กำหนด
-  const skillProgressHp = Math.max(0, Math.min(20000, Number(character.skillUpgradeProgress?.hpBonus) || 0));
-  if (skillProgressHp > 0) itemsList.push({ name: 'ความคืบหน้าการอัปสกิล (HP)', bonus: skillProgressHp, source: 'skill' });
+  // โบนัส HP ผูกกับสกิลแต่ละอันโดยตรง และแต่ละสกิลมีเพดาน HP โบนัส 20,000
+  const skillProgressHp = (character.skills || []).reduce((sum, skill) => (
+    sum + Math.max(0, Math.min(20000, Number(skill.skillUpgradeProgress?.hpBonus) || 0))
+  ), 0);
+  if (skillProgressHp > 0) itemsList.push({ name: 'โบนัส HP จากสกิล', bonus: skillProgressHp, source: 'skill' });
   if (consumedMaxHp > 0) itemsList.push({ name: 'โอสถทองคำ/แก่นพลังชีวิตถาวรที่ดื่ม', bonus: consumedMaxHp, source: 'item' });
 
   const baseCalculatedMaxHp = BASE_HP + statBonusHp + titleBonusHp + storyBonusHp + skillBonusHp + equipHpBonus + consumedMaxHp + skillProgressHp;
