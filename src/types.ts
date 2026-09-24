@@ -352,6 +352,7 @@ export interface CharacterProfile {
     equipmentSlots: number;
     /** จำนวนครั้งที่อัปสกิลทั้งหมดสำหรับเส้นทางรางวัลนี้ */
     totalUpgrades?: number;
+    cycleCount?: number;
   };
   /** Character Traits shown and activated for the battle UI. */
   traits?: string[];
