@@ -752,6 +752,21 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
     )
   );
 
+  const getSpecialEquipmentType = (item: InventoryItem) => {
+    const text = String(item.name || '').toLowerCase();
+    const category = String(item.category || '').toLowerCase();
+    const combined = text + ' ' + category;
+    if (/e\.g\.o\s*weapon|ego\s*weapon/.test(combined)) return 'E.G.O Weapon';
+    if (/e\.g\.o\s*gift|ego\s*gift/.test(combined)) return 'E.G.O Gift';
+    if (/e\.g\.o\s*suit|ego\s*suit/.test(combined)) return 'E.G.O Suit';
+    return null;
+  };
+
+  const getSpecialEquippedCount = (type: string) =>
+    stackedInventory
+      .filter(item => getSpecialEquipmentType(item) === type)
+      .reduce((sum, item) => sum + getEquippedQuantity(item), 0);
+
   const getEquipmentStatTotal = (char: CharacterProfile = character) =>
     Math.max(0, Number(char.stats?.strength) || 0) +
     Math.max(0, Number(char.stats?.durability) || 0) +
@@ -765,6 +780,13 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const getNextEquipmentSlotRequirement = (char: CharacterProfile = character) => {
     const upgrades = Math.max(0, Math.floor(Number(char.equipmentSlotUpgrades) || 0));
     return Math.ceil(50 * Math.pow(1.1, upgrades));
+  };
+
+  const canEquipSpecialType = (item: InventoryItem) => {
+    const type = getSpecialEquipmentType(item);
+    if (!type) return true;
+    const current = getEquippedQuantity(item);
+    return current > 0 || getSpecialEquippedCount(type) < 1;
   };
 
   const handleUpgradeEquipmentSlot = async () => {
