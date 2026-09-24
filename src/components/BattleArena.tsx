@@ -741,24 +741,28 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
 </div>
 <div className="mt-3 rounded-xl border border-cyan-400/20 bg-slate-950/50 p-3">
   <div className="mb-2 text-xs font-black text-cyan-200">🎁 รางวัลที่มีโอกาสได้รับ</div>
-  {randomRewards.length > 0 ? (() => {
-    const validRewards = randomRewards.filter(reward => Number(reward.rate) > 0);
-    const totalRate = validRewards.reduce((sum, reward) => sum + Number(reward.rate), 0);
-    return validRewards.map(reward => {
-      const chance = totalRate > 0 ? Number(reward.rate) / totalRate * 100 : 0;
-      const rewardLabel = reward.type === 'coin'
-        ? (Number(reward.coinAmount || 0).toLocaleString() + ' Coins')
-        : reward.type === 'item'
-          ? (reward.itemData?.name || 'ไอเทม')
-          : (reward.skillData?.name || 'สกิล');
-      return (
-        <div key={reward.id} className="flex items-center justify-between gap-2 border-b border-slate-800 py-1.5 last:border-0 text-[11px]">
-          <span className="truncate text-slate-200">{rewardLabel}</span>
-          <span className="shrink-0 font-black text-emerald-300">{chance.toFixed(2)}%</span>
-        </div>
-      );
-    });
-  })() : <div className="text-[11px] text-rose-200">ยังไม่มีรางวัลที่แอดมินตั้งค่า</div>}
+  {randomRewards.length > 0 && (
+    <div className="space-y-1">
+      {randomRewards
+        .filter(reward => Number(reward.rate) > 0)
+        .map(reward => {
+          const totalRate = randomRewards.reduce((sum, item) => sum + Math.max(0, Number(item.rate) || 0), 0);
+          const chance = totalRate > 0 ? (Math.max(0, Number(reward.rate) || 0) / totalRate) * 100 : 0;
+          const rewardLabel = reward.type === 'coin'
+            ? (Number(reward.coinAmount || 0).toLocaleString() + ' Coins')
+            : reward.type === 'item'
+              ? (reward.itemData?.name || 'ไอเทม')
+              : (reward.skillData?.name || 'สกิล');
+          return (
+            <div key={reward.id} className="flex items-center justify-between gap-2 border-b border-slate-800 py-1.5 last:border-0 text-[11px]">
+              <span className="truncate text-slate-200">{rewardLabel}</span>
+              <span className="shrink-0 font-black text-emerald-300">{chance.toFixed(2)}%</span>
+            </div>
+          );
+        })}
+    </div>
+  )}
+  {!randomRewards.length && <div className="text-[11px] text-rose-200">ยังไม่มีรางวัลที่แอดมินตั้งค่า</div>}
 </div></div>) : <div className="space-y-2">{activeBots.length === 0 && <div className="rounded-xl border border-dashed border-slate-700 p-4 text-center text-xs text-slate-500">ยังไม่มีบอท — ให้แอดมินสร้างก่อน</div>}{activeBots.map(bot => <label key={bot.id} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-2 text-sm"><input type="checkbox" checked={selectedBotIds.includes(bot.id)} onChange={() => toggleBot(bot.id)} /><img src={bot.avatarUrl} alt="" className="h-8 w-8 rounded-lg object-cover" /><span className="font-bold text-white">{bot.name}</span>{bot.isBoss ? <span className="ml-auto flex items-center gap-1 text-[10px] font-black text-amber-300"><Skull className="h-3 w-3" />BOSS</span> : <span className="ml-auto text-[10px] text-slate-500">HP {bot.maxHp}</span>}</label>)}
 <button type="button" disabled={isCreatingRoom} onClick={() => void createRoom()} className={buttonClass + ' mt-2 w-full bg-emerald-500 text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50'}><Plus className="mr-1 inline h-4 w-4" />{isCreatingRoom ? '⏳ กำลังสร้างห้อง...' : mode === 'pve' || mode === 'random' ? 'เริ่มต่อสู้' : 'เปิดห้องรบ'}</button></div></div></section>
 
