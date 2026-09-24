@@ -227,21 +227,9 @@ async function claimBattleRewardDirect(body) {
 
   if (!validId(roomId) || !validId(playerId)) throw new Error('Invalid reward reference');
 
-  try {
-    if (!rewardData && drops.length === 0) {
-    const result = await supabase('rpc/claim_battle_reward', {
-      method: 'POST',
-      body: JSON.stringify({
-        p_room_id: roomId,
-        p_player_id: playerId,
-        p_reward: reward,
-      }),
-    });
-    return Array.isArray(result) ? result[0] === true : result === true;
-    }
-  } catch (rpcError) {
-    console.warn('[database] atomic reward RPC unavailable, using compatibility fallback', rpcError?.message || rpcError);
-  }
+  // Use the unified compatibility path so team members receive the same
+  // reward/drop logic as the room creator. The old RPC only understood a
+  // single claimant and could silently reject teammates or configured drops.
 
   const roomFilter = `collection=eq.battle_rooms&id=eq.${encodeURIComponent(roomId)}`;
   const rooms = await supabase(`star_stream_documents?select=data&${roomFilter}`);
