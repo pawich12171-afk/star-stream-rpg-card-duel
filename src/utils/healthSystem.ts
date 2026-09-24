@@ -108,9 +108,13 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   });
 
   const consumedMaxHp = character.consumedMaxHpBonus || 0;
+  // โบนัส HP จากการอัปสกิลเป็นอีกแหล่งหนึ่ง และล็อกไว้สูงสุด 20,000
+  // เพื่อไม่ให้การอัปสกิลทำให้ HP โตเกินขอบเขตที่กำหนด
+  const skillProgressHp = Math.max(0, Math.min(20000, Number(character.skillUpgradeProgress?.hpBonus) || 0));
+  if (skillProgressHp > 0) itemsList.push({ name: 'ความคืบหน้าการอัปสกิล (HP)', bonus: skillProgressHp, source: 'skill' });
   if (consumedMaxHp > 0) itemsList.push({ name: 'โอสถทองคำ/แก่นพลังชีวิตถาวรที่ดื่ม', bonus: consumedMaxHp, source: 'item' });
 
-  const baseCalculatedMaxHp = BASE_HP + statBonusHp + titleBonusHp + storyBonusHp + skillBonusHp + equipHpBonus + consumedMaxHp;
+  const baseCalculatedMaxHp = BASE_HP + statBonusHp + titleBonusHp + storyBonusHp + skillBonusHp + equipHpBonus + consumedMaxHp + skillProgressHp;
   const adminMaxHpDelta = (character.adminBalanceModifiers || [])
     .filter(m => m.kind === 'hp' && m.id.startsWith('admin-maxhp-'))
     .reduce((sum, m) => sum + (m.mode === 'buff' ? Number(m.amount || 0) : -Number(m.amount || 0)), 0);
@@ -118,7 +122,7 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   if (adminMaxHpDelta !== 0) {
     itemsList.push({ name: `แอดมิน BUFF/NERF MAX HP (${adminMaxHpDelta > 0 ? '+' : ''}${adminMaxHpDelta})`, bonus: adminMaxHpDelta, source: 'base' });
   }
-  return { baseHp: BASE_HP, statBonusHp, effectiveStrength, effectiveDurability, titleBonusHp, storyBonusHp, skillBonusHp, itemBonusHp: equipHpBonus, totalMaxHp, formulaDescription: `HP = พื้นฐาน (${BASE_HP}) + สเตตัส (+${statBonusHp}) + ฉายา (+${titleBonusHp}) + เรื่องเล่า (+${storyBonusHp}) + สกิล (+${skillBonusHp}) + อุปกรณ์ (+${equipHpBonus})${consumedMaxHp > 0 ? ` + โอสถถาวร (+${consumedMaxHp})` : ''}${adminMaxHpDelta !== 0 ? ` + แอดมิน (${adminMaxHpDelta >= 0 ? '+' : ''}${adminMaxHpDelta})` : ''} = ${totalMaxHp} HP`, itemsList };
+  return { baseHp: BASE_HP, statBonusHp, effectiveStrength, effectiveDurability, titleBonusHp, storyBonusHp, skillBonusHp, itemBonusHp: equipHpBonus, totalMaxHp, formulaDescription: `HP = พื้นฐาน (${BASE_HP}) + สเตตัส (+${statBonusHp}) + ฉายา (+${titleBonusHp}) + เรื่องเล่า (+${storyBonusHp}) + สกิล (+${skillBonusHp}) + โบนัสอัปสกิล HP (+${skillProgressHp}) + อุปกรณ์ (+${equipHpBonus})${consumedMaxHp > 0 ? ` + โอสถถาวร (+${consumedMaxHp})` : ''}${adminMaxHpDelta !== 0 ? ` + แอดมิน (${adminMaxHpDelta >= 0 ? '+' : ''}${adminMaxHpDelta})` : ''} = ${totalMaxHp} HP`, itemsList };
 }
 
 type AdminModifier = AdminBalanceModifier;
