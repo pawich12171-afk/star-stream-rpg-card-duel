@@ -749,14 +749,14 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       <option value="item">📦 ไอเทม</option>
     </select>
     {botDropType === 'coin' ? (
-      <input className={inputClass} type="number" min="1" value={botDropAmount} onChange={event => setBotDropAmount(event.target.value)} placeholder="จำนวน Coins" />
+      <div className="flex items-center rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs font-bold text-amber-300">จำนวน Coins</div>
     ) : (
       <select className={inputClass} value={botDropItemId} onChange={event => setBotDropItemId(event.target.value)}>
         <option value="">เลือกไอเทมที่จะดรอป</option>
         {shopItems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
       </select>
     )}
-    <input className={inputClass} type="number" min="1" value={botDropAmount} onChange={event => setBotDropAmount(event.target.value)} placeholder="จำนวน" />
+    <input className={inputClass} type="number" min="1" value={botDropAmount} onChange={event => setBotDropAmount(event.target.value)} placeholder={botDropType === 'coin' ? 'จำนวน Coins' : 'จำนวนชิ้น'} />
     <button type="button" className={buttonClass + ' bg-emerald-500 text-slate-950'} onClick={addBotDrop}>+ เพิ่ม</button>
   </div>
   <div className="mt-2 space-y-1">
