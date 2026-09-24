@@ -733,6 +733,12 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
 
     <section className={panelClass + ' p-5 md:p-6'}><div className="mb-5 flex items-center gap-2"><Target className="h-5 w-5 text-cyan-300" /><h3 className="text-lg font-black text-white">สร้างศึกใหม่</h3></div><div className="grid gap-6 xl:grid-cols-2"><div className="space-y-4"><div className="grid grid-cols-3 gap-2"><button type="button" onClick={() => setMode('pve')} className={buttonClass + ' ' + (mode === 'pve' ? 'bg-violet-500 text-white' : 'bg-slate-800 text-slate-400')}><Bot className="mr-1 inline h-4 w-4" />ตีบอท / บอส</button><button type="button" onClick={() => setMode('random')} className={buttonClass + ' ' + (mode === 'random' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400')}><Dice5 className="mr-1 inline h-4 w-4" />สุ่มมอน / บอส</button><button type="button" onClick={() => setMode('pvp')} className={buttonClass + ' ' + (mode === 'pvp' ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-400')}><UsersRound className="mr-1 inline h-4 w-4" />สู้ผู้เล่น</button></div><div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3"><div className="mb-2 text-xs font-bold text-slate-300">ทีมของคุณ <span className="text-slate-500">(เลือกได้สูงสุด 3 คน)</span></div><div className="space-y-2">{allCharacters.map(character => <label key={character.id} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/50 p-2 text-sm"><input type="checkbox" checked={selectedTeamIds.includes(character.id)} disabled={character.id === currentUser.id} onChange={() => toggleTeamMember(character.id)} /><img src={character.avatarUrl} alt="" className="h-7 w-7 rounded-lg object-cover" /><span className={character.id === currentUser.id ? 'font-bold text-white' : 'text-slate-300'}>{character.displayName}</span><span className="ml-auto text-[10px] text-slate-500">STR {character.stats.strength}</span></label>)}</div></div></div><div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/35 p-3"><div className="text-xs font-bold text-slate-300">ฝ่ายตรงข้าม</div>{mode === 'pvp' ? <select className={inputClass} value={selectedOpponentId} onChange={event => setSelectedOpponentId(event.target.value)}><option value="">เลือกผู้เล่น</option>{otherPlayers.map(character => <option key={character.id} value={character.id}>{character.displayName} · STR {character.stats.strength}</option>)}</select> : mode === 'random' ? <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100"><div className="font-black">🎲 โหมดต่อสู้สุ่ม</div><div className="mt-1 text-xs text-amber-200/80">ระบบจะสุ่มมอนหรือบอสที่แอดมินสร้างจำนวน 3 ตัวแบบไม่ซ้ำกัน โดยใช้น้ำหนัก “โอกาสถูกสุ่มเจอ” ของแต่ละตัว และมีโอกาสเจอมอน/บอสพิเศษตามค่าที่แอดมินตั้ง</div>
 {activeBots.length < 3 && <div className="mt-2 text-xs text-rose-200">ต้องมีมอนหรือบอสที่ใช้งานได้อย่างน้อย 3 ตัว</div>}
+<div className="mb-3 rounded-2xl border-2 border-amber-400/50 bg-amber-500/10 p-4 shadow-lg shadow-amber-500/10">
+  <div className="text-base font-black text-amber-100">🎲 โหมดสุ่มมอน / Boss</div>
+  <div className="mt-2 text-xl font-black text-yellow-300">💰 ค่าเข้า: 15,000 Coins</div>
+  <div className="mt-1 text-xs font-bold text-slate-200">💳 Coin ของคุณ: {Math.max(0, Math.floor(Number(currentUser.coins) || 0)).toLocaleString()} Coins</div>
+  <div className="mt-2 text-xs font-bold text-amber-200/90">⚠️ ต้องมีอย่างน้อย 15,000 Coins เพื่อเริ่ม ระบบจะตรวจ Coin ก่อนเริ่มและหัก 15,000 Coins เมื่อเริ่มสำเร็จ</div>
+</div>
 <div className="mt-3 rounded-xl border border-cyan-400/20 bg-slate-950/50 p-3">
   <div className="mb-2 text-xs font-black text-cyan-200">🎁 รางวัลที่มีโอกาสได้รับ</div>
   {randomRewards.length > 0 ? (() => {
@@ -751,25 +757,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       </div>;
     });
   })() : <div className="text-[11px] text-rose-200">ยังไม่มีรางวัลที่แอดมินตั้งค่า</div>}
-</div></div> : <div className="space-y-2">{activeBots.length === 0 && <div className="rounded-xl border border-dashed border-slate-700 p-4 text-center text-xs text-slate-500">ยังไม่มีบอท — ให้แอดมินสร้างก่อน</div>}{activeBots.map(bot => <label key={bot.id} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-2 text-sm"><input type="checkbox" checked={selectedBotIds.includes(bot.id)} onChange={() => toggleBot(bot.id)} /><img src={bot.avatarUrl} alt="" className="h-8 w-8 rounded-lg object-cover" /><span className="font-bold text-white">{bot.name}</span>{bot.isBoss ? <span className="ml-auto flex items-center gap-1 text-[10px] font-black text-amber-300"><Skull className="h-3 w-3" />BOSS</span> : <span className="ml-auto text-[10px] text-slate-500">HP {bot.maxHp}</span>}</label>)}}{mode === 'random' && (
-  <div className="mb-3 rounded-2xl border-2 border-amber-400/50 bg-amber-500/10 p-4 shadow-lg shadow-amber-500/10">
-    <div className="text-base font-black text-amber-100">🎲 โหมดสุ่มมอน / Boss</div>
-    <div className="mt-2 text-xl font-black text-yellow-300">💰 ค่าเข้า: 15,000 Coins</div>
-    <div className="mt-1 text-xs font-bold text-slate-200">💳 Coin ของคุณ: {Math.max(0, Math.floor(Number(currentUser.coins) || 0)).toLocaleString()} Coins</div>
-    <div className="mt-2 text-xs font-bold text-amber-200/90">⚠️ ต้องมีอย่างน้อย 15,000 Coins เพื่อเริ่ม ระบบจะตรวจ Coin ก่อนเริ่มและหัก 15,000 Coins เมื่อเริ่มสำเร็จ</div>
-    <div className="mt-3 rounded-xl border border-amber-300/20 bg-slate-950/40 p-3">
-      <div className="text-xs font-black text-white">🎁 Reward Pool</div>
-      <div className="mt-2 space-y-1">
-        {validRandomRewards.length ? validRandomRewards.map(reward => (
-          <div key={reward.id} className="flex justify-between gap-2 text-xs text-slate-200">
-            <span>{reward.type === 'item' ? reward.itemData?.name : reward.type === 'skill' ? reward.skillData?.name : (Number(reward.coinAmount || 0).toLocaleString() + ' Coins')}</span>
-            <span className="text-amber-300">{Number(reward.rate)}%</span>
-          </div>
-        )) : <div className="text-xs text-rose-300">ยังไม่มีรางวัลที่ตั้งค่าไว้</div>}
-      </div>
-    </div>
-  </div>
-)}
+</div></div> : <div className="space-y-2">{activeBots.length === 0 && <div className="rounded-xl border border-dashed border-slate-700 p-4 text-center text-xs text-slate-500">ยังไม่มีบอท — ให้แอดมินสร้างก่อน</div>}{activeBots.map(bot => <label key={bot.id} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-2 text-sm"><input type="checkbox" checked={selectedBotIds.includes(bot.id)} onChange={() => toggleBot(bot.id)} /><img src={bot.avatarUrl} alt="" className="h-8 w-8 rounded-lg object-cover" /><span className="font-bold text-white">{bot.name}</span>{bot.isBoss ? <span className="ml-auto flex items-center gap-1 text-[10px] font-black text-amber-300"><Skull className="h-3 w-3" />BOSS</span> : <span className="ml-auto text-[10px] text-slate-500">HP {bot.maxHp}</span>}</label>)}}
 <button type="button" disabled={isCreatingRoom} onClick={() => void createRoom()} className={buttonClass + ' mt-2 w-full bg-emerald-500 text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50'}><Plus className="mr-1 inline h-4 w-4" />{isCreatingRoom ? '⏳ กำลังสร้างห้อง...' : mode === 'pve' || mode === 'random' ? 'เริ่มต่อสู้' : 'เปิดห้องรบ'}</button></div></div></section>
 
     <section className="space-y-4">
