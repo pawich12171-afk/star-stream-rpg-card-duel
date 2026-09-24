@@ -738,12 +738,24 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                           className="mt-1 w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-amber-500/30 text-white font-mono font-bold outline-none focus:border-amber-400"
                         />
                       </label>
-                      <div className="text-[10px] text-amber-300 font-mono">
+                      <div className="rounded-xl border border-amber-500/20 bg-slate-950/70 px-2.5 py-2 text-[10px] font-mono space-y-1">
                         {(() => {
                           const count = Math.max(1, Math.min(1000, Math.floor(Number(transcendenceBatchCounts[statKey]) || 1)));
                           const start = Math.max(0, Math.floor(Number(character.statUpgradeCount) || 0));
+                          const firstCost = calculateStatUpgradeCost(start);
                           const total = Array.from({ length: count }, (_, index) => calculateStatUpgradeCost(start + index)).reduce((sum, cost) => sum + cost, 0);
-                          return `รวม ${formatCoins(total)} C`;
+                          return (
+                            <>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-slate-500">ราคา 1 ขั้น</span>
+                                <span className="text-amber-300 font-black">{formatCoins(firstCost)} Coins</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-slate-400">อัป {count} ขั้น</span>
+                                <span className="text-yellow-300 font-black">รวม {formatCoins(total)} Coins</span>
+                              </div>
+                            </>
+                          );
                         })()}
                       </div>
                       <button
@@ -1019,7 +1031,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                 <div className="mt-4 pt-3 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-2">
                   <div className="text-[11px] text-slate-400 flex items-center gap-1">
                     <Coins className="w-3.5 h-3.5 text-amber-400" />
-                    <span>ราคา: <strong className="text-amber-300">{formatCoins(upgradePreview.cost)} C</strong></span>
+                    <span>ราคา 1 ขั้น: <strong className="text-amber-300">{formatCoins(upgradePreview.cost)} Coins</strong></span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -1038,14 +1050,14 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                         />
                         <span className="text-[10px] text-slate-500">ขั้น</span>
                       </div>
-                      <div className="text-[10px] text-amber-300 font-mono whitespace-nowrap">
-                        รวม {formatCoins(skillBatchCost)} C
+                      <div className="rounded-xl border border-amber-500/20 bg-slate-950/70 px-2.5 py-1.5 text-[10px] font-mono whitespace-nowrap">
+                        <span className="text-slate-500">อัป {skillBatchCount} ขั้น = </span><strong className="text-amber-300">{formatCoins(skillBatchCost)} Coins</strong>
                       </div>
                       <button type="button" id={`btn-upgrade-skill-${skill.id}`} onClick={() => handleUpgradeSkill(skill.id)}
                         disabled={!canAfford || isUpgradingSkill}
                         className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${canAfford && !isUpgradingSkill ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
                         <ArrowUpCircle className="w-4 h-4" />
-                        {skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`} • ${formatCoins(skillBatchCost)} C
+                        {skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`} • {formatCoins(skillBatchCost)} Coins
                       </button>
                     </div>
                     <button type="button"
