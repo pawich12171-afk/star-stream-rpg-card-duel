@@ -235,7 +235,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const [botSummonAvatarFileName, setBotSummonAvatarFileName] = useState('');
   type ConfiguredMinion = NonNullable<Skill['summonUnits']>[number];
   const [botSummonUnits, setBotSummonUnits] = useState<ConfiguredMinion[]>([]);
-  const [minionDraft, setMinionDraft] = useState({name:'', hp:'20', strength:'5', durability:'1', agility:'1', magic:'0', avatarUrl:'', avatarFileName:'', skillsText:'[]'});
+  const [minionDraft, setMinionDraft] = useState({name:'', hp:'20', strength:'5', durability:'1', agility:'1', magic:'0', avatarUrl:'', avatarFileName:'', skills:[] as BattleBotSkill[], skillName:'', skillDescription:'', skillPower:'5', skillChance:'100', skillCooldown:'0', skillEffect:'damage' as NonNullable<Skill['battleEffect']>});
 
   const [selectedBattleItemId, setSelectedBattleItemId] = useState('');
   const [usingBattleItemId, setUsingBattleItemId] = useState('');
@@ -704,9 +704,15 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const addConfiguredMinion = async () => {
     const name=minionDraft.name.trim();
     if(!name) return alert('กรุณาตั้งชื่อลูกน้อง');
-    let skills: BattleBotSkill[]=[];
-    try { const parsed=JSON.parse(minionDraft.skillsText||'[]'); if(!Array.isArray(parsed)) throw new Error(); skills=parsed; }
-    catch { return alert('JSON สกิลของลูกน้องตัวนี้ไม่ถูกต้อง'); }
+    const skills: BattleBotSkill[] = [...minionDraft.skills];
+    if (minionDraft.skillName.trim()) skills.push({
+      id:'minion-skill-'+Date.now(), name:minionDraft.skillName.trim(), level:1, multiplier:1, type:'monster-minion',
+      description:minionDraft.skillDescription.trim() || 'สกิลเฉพาะของลูกน้องตัวนี้',
+      battlePower:Math.max(0,Number(minionDraft.skillPower)||0),
+      cooldownTurns:Math.max(0,Math.floor(Number(minionDraft.skillCooldown)||0)),
+      aiChancePercent:Math.max(0,Math.min(100,Number(minionDraft.skillChance)||0)),
+      damageScaling:'fixed', battleEffect:minionDraft.skillEffect,
+    });
     setBotSummonUnits(prev=>[...prev,{
       id:'minion-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), name,
       hp:Math.max(1,Number(minionDraft.hp)||1), strength:Math.max(0,Number(minionDraft.strength)||0),
@@ -714,7 +720,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       magic:Math.max(0,Number(minionDraft.magic)||0), avatarUrl:minionDraft.avatarUrl||undefined,
       avatarFileName:minionDraft.avatarFileName||undefined, skills
     }]);
-    setMinionDraft({name:'',hp:'20',strength:'5',durability:'1',agility:'1',magic:'0',avatarUrl:'',avatarFileName:'',skillsText:'[]'});
+    setMinionDraft({name:'',hp:'20',strength:'5',durability:'1',agility:'1',magic:'0',avatarUrl:'',avatarFileName:'',skills:[],skillName:'',skillDescription:'',skillPower:'5',skillChance:'100',skillCooldown:'0',skillEffect:'damage'});
   };
 
   const removeBotSkill = (skillId: string) => {
@@ -876,11 +882,24 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
         <label className="text-[11px] text-slate-400">SPD — ลำดับการโจมตี<input className={inputClass+" mt-1"} type="number" min="0" value={minionDraft.agility} onChange={e=>setMinionDraft({...minionDraft,agility:e.target.value})} /></label>
         <label className="text-[11px] text-slate-400">MAG — พลังเวท<input className={inputClass+" mt-1"} type="number" min="0" value={minionDraft.magic} onChange={e=>setMinionDraft({...minionDraft,magic:e.target.value})} /></label>
         <label className="text-[11px] text-slate-400">รูปของลูกน้อง<input className="mt-1 block w-full text-xs" type="file" accept="image/*" onChange={async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>4*1024*1024)return alert('รูปต้องไม่เกิน 4MB');setMinionDraft({...minionDraft,avatarUrl:await fileToDataUrl(f),avatarFileName:f.name});}} /></label>
-        <label className="text-[11px] text-slate-400 sm:col-span-2">สกิลของลูกน้องตัวนี้ (JSON ขั้นสูง — ปล่อย [] ได้)<textarea className={inputClass+" mt-1 min-h-20"} value={minionDraft.skillsText} onChange={e=>setMinionDraft({...minionDraft,skillsText:e.target.value})} placeholder='[{"name":"กรงเล็บ","description":"โจมตีด้วยกรงเล็บ","battlePower":10,"battleEffect":"damage","aiChancePercent":100}]' /></label>
+        <div className="sm:col-span-2 rounded-xl border border-violet-500/20 bg-violet-950/20 p-3">
+<div className="mb-1 font-black text-violet-200">✨ สกิลของลูกน้องตัวนี้</div>
+<p className="mb-2 text-[11px] text-slate-400">ตั้งสกิลแยกให้ลูกน้องแต่ละตัวได้ ตัวที่ 1 และตัวที่ 2 ใช้คนละสกิลได้</p>
+<div className="grid gap-2 sm:grid-cols-2">
+<label className="text-[11px] text-slate-400">ชื่อสกิล<input className={inputClass+" mt-1"} value={minionDraft.skillName} onChange={e=>setMinionDraft({...minionDraft,skillName:e.target.value})} placeholder="เช่น ฟันเงา" /></label>
+<label className="text-[11px] text-slate-400">คำอธิบาย<textarea className={inputClass+" mt-1 min-h-16"} value={minionDraft.skillDescription} onChange={e=>setMinionDraft({...minionDraft,skillDescription:e.target.value})} placeholder="สกิลนี้ทำอะไร" /></label>
+<label className="text-[11px] text-slate-400">พลัง / ดาเมจ<input className={inputClass+" mt-1"} type="number" min="0" value={minionDraft.skillPower} onChange={e=>setMinionDraft({...minionDraft,skillPower:e.target.value})} /></label>
+<label className="text-[11px] text-slate-400">โอกาสใช้ (%)<input className={inputClass+" mt-1"} type="number" min="0" max="100" value={minionDraft.skillChance} onChange={e=>setMinionDraft({...minionDraft,skillChance:e.target.value})} /></label>
+<label className="text-[11px] text-slate-400">คูลดาวน์ (เทิร์น)<input className={inputClass+" mt-1"} type="number" min="0" value={minionDraft.skillCooldown} onChange={e=>setMinionDraft({...minionDraft,skillCooldown:e.target.value})} /></label>
+<label className="text-[11px] text-slate-400">ประเภทสกิล<select className={inputClass+" mt-1"} value={minionDraft.skillEffect} onChange={e=>setMinionDraft({...minionDraft,skillEffect:e.target.value as NonNullable<Skill['battleEffect']>})}><option value="damage">⚔️ โจมตี / ดาเมจ</option><option value="heal">❤️ ฟื้นฟู HP</option><option value="defense">🛡️ ป้องกัน</option><option value="stun">💫 สตัน</option></select></label>
+</div>
+<button type="button" className={buttonClass+" mt-2 bg-violet-500 text-white"} onClick={()=>{if(!minionDraft.skillName.trim())return alert("กรุณาใส่ชื่อสกิลก่อน");setMinionDraft({...minionDraft,skills:[...minionDraft.skills,{id:"draft-"+Date.now(),name:minionDraft.skillName.trim(),level:1,multiplier:1,type:"monster-minion",description:minionDraft.skillDescription.trim()||"สกิลเฉพาะของลูกน้องตัวนี้",battlePower:Math.max(0,Number(minionDraft.skillPower)||0),cooldownTurns:Math.max(0,Math.floor(Number(minionDraft.skillCooldown)||0)),aiChancePercent:Math.max(0,Math.min(100,Number(minionDraft.skillChance)||0)),damageScaling:"fixed",battleEffect:minionDraft.skillEffect}],skillName:"",skillDescription:""})}}>+ เพิ่มสกิลให้ลูกน้องตัวนี้</button>
+{minionDraft.skills.length>0&&<div className="mt-2 space-y-1">{minionDraft.skills.map((s,i)=><div key={s.id} className="rounded-lg border border-slate-700 px-2 py-1 text-[11px]"><b>{i+1}. {s.name}</b> — {s.description} · พลัง {s.battlePower} · {s.battleEffect}<button type="button" className="ml-2 text-rose-300" onClick={()=>setMinionDraft({...minionDraft,skills:minionDraft.skills.filter(x=>x.id!==s.id)})}>ลบ</button></div>)}</div>}
+</div>
       </div>
       <button type="button" className={buttonClass+" mt-2 bg-cyan-500 text-slate-950"} onClick={addConfiguredMinion}>+ เพิ่มลูกน้องตัวนี้</button>
       <div className="mt-3 space-y-2">{botSummonUnits.map((m,idx)=><div key={m.id} className="rounded-xl border border-slate-700 bg-slate-950/60 p-3"><div className="flex items-center gap-3"><img src={m.avatarUrl||'/avatars/system.svg'} alt="" className="h-10 w-10 rounded-lg object-cover"/><div className="flex-1"><div className="font-bold text-white">{idx+1}. {m.name}</div><div className="text-[10px] text-slate-400">HP {m.hp} · STR {m.strength} · DEF {m.durability} · SPD {m.agility} · MAG {m.magic} · สกิล {m.skills?.length||0}</div></div><button type="button" className="text-rose-300" onClick={()=>setBotSummonUnits(prev=>prev.filter(x=>x.id!==m.id))}>ลบ</button></div></div>)}</div>
-      <div className="mt-3 border-t border-slate-700 pt-3"><div className="mb-2 text-xs font-bold text-slate-300">สกิลลูกน้องแบบสร้างปกติ / JSON</div><div className="grid gap-2 sm:grid-cols-2"><input className={inputClass} value={botSummonSkillName} onChange={e=>setBotSummonSkillName(e.target.value)} placeholder="ชื่อสกิลลูกน้อง (แบบปกติ)" /><textarea className={inputClass+" min-h-16"} value={botSummonSkillDescription} onChange={e=>setBotSummonSkillDescription(e.target.value)} placeholder="คำอธิบายสกิลลูกน้อง" /></div></div>
+      
     </div>}
     <button type="button" className={buttonClass+" sm:col-span-2 bg-fuchsia-500 text-white"} onClick={addBotSkill}>+ สร้างสกิลมอน / บอส</button>
   </div>
