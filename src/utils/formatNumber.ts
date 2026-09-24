@@ -1,6 +1,16 @@
 export type CoinDisplayMode = 'compact' | 'full';
 
 const COMPACT_UNITS = [
+  { value: 1e63, suffix: 'Vg' },
+  { value: 1e60, suffix: 'Nd' },
+  { value: 1e57, suffix: 'Od' },
+  { value: 1e54, suffix: 'Spd' },
+  { value: 1e51, suffix: 'Sxd' },
+  { value: 1e48, suffix: 'Qid' },
+  { value: 1e45, suffix: 'Qad' },
+  { value: 1e42, suffix: 'Td' },
+  { value: 1e39, suffix: 'Dd' },
+  { value: 1e36, suffix: 'Ud' },
   { value: 1e33, suffix: 'Dc' },
   { value: 1e30, suffix: 'No' },
   { value: 1e27, suffix: 'Oc' },
