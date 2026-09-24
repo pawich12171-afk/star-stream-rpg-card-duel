@@ -216,6 +216,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const [botSkillDescription, setBotSkillDescription] = useState('');
   const [botSkillPower, setBotSkillPower] = useState('10');
   const [botSkillCooldown, setBotSkillCooldown] = useState('2');
+  // Skill editor state: keep this local to BattleArena so Admin/team arena never references an undefined variable.
   const [botSkillEffect, setBotSkillEffect] = useState<NonNullable<Skill['battleEffect']>>('damage');
   const [botSummonName, setBotSummonName] = useState('ลูกน้อง');
   const [botSummonMaxCount, setBotSummonMaxCount] = useState('1');
