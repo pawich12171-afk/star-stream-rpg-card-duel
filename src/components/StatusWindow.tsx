@@ -204,7 +204,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       magic ? `เวท +${magic.toFixed(2)}` : '',
       slots ? `ช่องไอเทม +${slots}` : '',
     ].filter(Boolean);
-    return parts.length ? parts.join(' • ') : '🎯 เส้นทางรางวัลเต็มแล้ว (ตัน)';
+    return parts.length ? parts.join(' • ') : '🔁 ครบรอบแล้ว — เริ่มรอบใหม่ที่ HP';
   };
 
   const equippedItems = character.inventory?.filter(i => i.isEquipped || (Number(i.equippedQuantity) || 0) > 0) || [];
@@ -334,6 +334,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0,
       equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(base.equipmentSlotUpgrades) || 0))),
       totalUpgrades: Math.max(0, Math.floor(Number(base.skillUpgradeProgress?.totalUpgrades) || 0)),
+      cycleCount: Math.max(0, Math.floor(Number(base.skillUpgradeProgress?.cycleCount) || 0)),
     };
     const progress = {
       hpBonus: Math.max(0, Math.min(20000, Number(previousProgress.hpBonus) || 0)),
@@ -343,15 +344,17 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       magic: Math.max(0, Math.min(100, Number(previousProgress.magic) || 0)),
       equipmentSlots: Math.max(0, Math.min(2, Math.floor(Number(previousProgress.equipmentSlots ?? base.equipmentSlotUpgrades) || 0))),
       totalUpgrades: Math.max(0, Math.floor(Number(previousProgress.totalUpgrades) || 0)),
+      cycleCount: Math.max(0, Math.floor(Number(previousProgress.cycleCount) || 0)),
     };
 
-    // ทุกการอัปสกิลให้รางวัลตามลำดับ: HP -> ทนทาน -> STR -> ความเร็ว -> เวท -> ช่อง +2 -> ตัน
+    // ทุกการอัปสกิลวนรอบซ้ำ: HP 20,000 -> ทนทาน 100 -> STR 100 -> ความเร็ว 100 -> เวท 100 -> ช่อง +2 -> กลับไป HP
     let hpGained = 0;
     let durabilityGained = 0;
     let strengthGained = 0;
     let agilityGained = 0;
     let magicGained = 0;
     let slotUnlocked = 0;
+    let completedCycles = 0;
     for (let i = 0; i < requestedTimes; i += 1) {
       if (progress.hpBonus < 20000) {
         progress.hpBonus = Math.min(20000, progress.hpBonus + 1);
@@ -369,12 +372,31 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         progress.magic = Math.min(100, Number((progress.magic + 0.01).toFixed(2)));
         magicGained += 0.01;
       } else if (progress.equipmentSlots < 2) {
-        progress.equipmentSlots = Math.min(2, progress.equipmentSlots + 1);
+        progress.equipmentSlots += 1;
         slotUnlocked += 1;
       } else {
-        break;
+        // ครบ +2 ช่องแล้ว เริ่มรอบใหม่ทันที และช่องรวมของตัวละครเพิ่มต่อไปเรื่อย ๆ
+        progress.hpBonus = 0;
+        progress.durability = 0;
+        progress.strength = 0;
+        progress.agility = 0;
+        progress.magic = 0;
+        progress.equipmentSlots = 0;
+        progress.cycleCount += 1;
+        completedCycles += 1;
+        // รอบใหม่ใช้การอัปครั้งนี้เป็น HP +1
+        progress.hpBonus = 1;
+        hpGained += 1;
       }
     }
+
+    const newStats = {
+      ...base.stats,
+      durability: Math.min(100, Number(base.stats.durability || 0) + durabilityGained),
+      strength: Math.min(100, Number(base.stats.strength || 0) + strengthGained),
+      agility: Math.min(100, Number(base.stats.agility || 0) + agilityGained),
+      magic: Math.min(100, Number(base.stats.magic || 0) + magicGained),
+    };
 
     const newStats = {
       ...base.stats,
@@ -407,7 +429,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       coins: currentCoins - totalCost,
       skills: (base.skills || []).map(skill => skill.id === skillId ? finalSkill : skill),
       stats: newStats,
-      equipmentSlotUpgrades: progress.equipmentSlots,
+      equipmentSlotUpgrades: Math.max(0, Number(base.equipmentSlotUpgrades) || 0) + slotUnlocked,
       skillUpgradeProgress: progress,
       lastUpdated: Math.max(now, Number(base.lastUpdated || 0) + 1),
       notifications: [{
@@ -895,7 +917,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       <div className="mb-5 rounded-3xl border border-cyan-500/30 bg-cyan-950/20 p-4 space-y-2">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-black text-cyan-200">เส้นทางรางวัลจากการอัปสกิล</h3>
-          <span className="text-[10px] font-mono text-slate-400">เลือกอัปได้ 1–1,000 ขั้น/ครั้ง</span>
+          <span className="text-[10px] font-mono text-slate-400">เลือกอัปได้ 1–1,000 ขั้น/ครั้ง • ไม่มีตันถาวร</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-[10px] font-mono">
           <div className="rounded-xl bg-slate-950/70 p-2">❤️ HP<br/><b className="text-rose-300">{Math.floor(Number(character.skillUpgradeProgress?.hpBonus) || 0)}/20,000</b></div>
@@ -903,12 +925,13 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
           <div className="rounded-xl bg-slate-950/70 p-2">💪 STR<br/><b className="text-orange-300">{Number(character.skillUpgradeProgress?.strength || 0).toFixed(2)}/100</b></div>
           <div className="rounded-xl bg-slate-950/70 p-2">⚡ ความเร็ว<br/><b className="text-cyan-300">{Number(character.skillUpgradeProgress?.agility || 0).toFixed(2)}/100</b></div>
           <div className="rounded-xl bg-slate-950/70 p-2">✨ เวท<br/><b className="text-purple-300">{Number(character.skillUpgradeProgress?.magic || 0).toFixed(2)}/100</b></div>
-          <div className="rounded-xl bg-slate-950/70 p-2">🎒 ช่องไอเทม<br/><b className="text-emerald-300">{Math.floor(Number(character.skillUpgradeProgress?.equipmentSlots ?? character.equipmentSlotUpgrades) || 0)}/2</b></div>
+          <div className="rounded-xl bg-slate-950/70 p-2">🎒 ช่องไอเทม<br/><b className="text-emerald-300">+{Math.floor(Number(character.equipmentSlotUpgrades) || 0)}</b></div>
         </div>
         <div className="rounded-xl bg-slate-950/60 border border-cyan-500/10 p-2.5 text-[10px] font-mono text-slate-300 space-y-1">
           <div>📈 อัปสกิลไปแล้วทั้งหมด: <b className="text-cyan-300">{Math.floor(Number(character.skillUpgradeProgress?.totalUpgrades) || (character.skills || []).reduce((sum, skill) => sum + Math.max(0, Math.floor(Number(skill.upgradeCount ?? (skill.level - 1)) || 0)), 0)).toLocaleString()}</b> ครั้ง</div>
-          <div>🎯 ตันทั้งหมดที่ต้องอัป: <b className="text-amber-300">60,002</b> ครั้ง</div>
-          <div>🧭 ลำดับรางวัล: HP 20,000 ครั้ง → ทนทาน 10,000 → STR 10,000 → ความเร็ว 10,000 → เวท 10,000 → ช่องไอเทม 2 ครั้ง → ตัน</div>
+          <div>🔁 รอบที่จบครบแล้ว: <b className="text-amber-300">{Math.floor(Number(character.skillUpgradeProgress?.cycleCount) || 0).toLocaleString()}</b> รอบ</div>
+          <div>🎯 1 รอบ = <b className="text-amber-300">60,002</b> ครั้ง แล้ววนกลับ HP ไม่มีจุดตันถาวร</div>
+          <div>🧭 ลำดับ: HP 20,000 → ทนทาน 100 → STR 100 → ความเร็ว 100 → เวท 100 → ช่อง +2 → 🔁 HP</div>
         </div>
         <div className="text-[10px] text-slate-500">ทุกครั้งที่กดอัปจะบอกผลที่เพิ่มให้ในรายการแจ้งเตือน และการเลือกจำนวนจะแสดงค่าใช้จ่ายรวมก่อนยืนยัน</div>
       </div>
