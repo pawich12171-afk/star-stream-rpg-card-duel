@@ -3728,21 +3728,27 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         const scalingLabel = scaling === 'fixed' ? 'คงที่' : `ตาม ${scaling.toUpperCase()} × ${scalingMultiplier}`;
         result.message += ` • ใช้สกิล ${skillName} เพิ่มดาเมจ ${skillDamage} [${scalingLabel}]`;
       } else if (skillProfile.effect === "heal") {
-        const healPercent = getSkillStat(skill, 'heal_percent');
-        const baseHeal = Math.max(0, skillProfile.power + (healPercent > 0 ? Math.round(current.maxHp * healPercent / 100) : 0));
+        const healPercent = Math.max(0, Math.min(100, getSkillStat(skill, 'heal_percent')));
         const healTargets = skillTargets.filter(unit => unit.hp > 0);
         if (healTargets.length > 1) {
           let totalHealed = 0;
           healTargets.forEach(unit => {
+            const flatHeal = Math.max(0, skillProfile.power);
+            const percentHeal = healPercent > 0 ? Math.round(unit.maxHp * healPercent / 100) : 0;
             const before = unit.hp;
-            unit.hp = Math.min(unit.maxHp, unit.hp + baseHeal);
+            unit.hp = Math.min(unit.maxHp, unit.hp + flatHeal + percentHeal);
             totalHealed += Math.max(0, unit.hp - before);
           });
           result.heal += totalHealed;
           result.message += ` • ใช้สกิล ${skillName} ฮีลหมู่ ${healTargets.length} คน รวม +${totalHealed} HP`;
         } else {
-          result.heal += baseHeal;
-          result.message += ` • ใช้สกิล ${skillName} ฟื้นฟู ${baseHeal}`;
+          const healTarget = healTargets[0] || current;
+          const flatHeal = Math.max(0, skillProfile.power);
+          const percentHeal = healPercent > 0 ? Math.round(healTarget.maxHp * healPercent / 100) : 0;
+          const totalHeal = flatHeal + percentHeal;
+          healTarget.hp = Math.min(healTarget.maxHp, healTarget.hp + totalHeal);
+          result.heal += Math.max(0, healTarget.hp - (healTarget.hp - totalHeal));
+          result.message += ` • ใช้สกิล ${skillName} ฟื้นฟู ${totalHeal} HP${healPercent > 0 ? ` (${healPercent}% Max HP)` : ''}`;
         }
       } else if (skillProfile.effect === "buff_stat") {
         const stat = skill?.buffStat || 'strength';
