@@ -455,43 +455,10 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
          if (!snapshotIds.has(id) && !pendingCharacterDeletes.has(id)) list.push(pending);
        });
 
-      // Revadis profile repair: keep the profile fields the user customized
-      // instead of losing them when an older/partial server record is returned.
-      // Only this named character is repaired here; other deleted characters
-      // remain fully server-authoritative.
-      const revadisId = 'revadis-ravencroft';
-      const localRevadis = localCharacters.find(c => c.id === revadisId);
-      const serverRevadisIndex = list.findIndex(c => c.id === revadisId);
-      const initialRevadis = INITIAL_CHARACTERS.find(c => c.id === revadisId);
-      const profileFields = ['displayName', 'nickname', 'avatarUrl', 'constellation', 'badgeTitle', 'quote', 'characteristics'] as const;
-      const hasCustomizedRevadisProfile = !!localRevadis && !!initialRevadis && profileFields.some(key => {
-        const localValue = localRevadis[key];
-        const initialValue = initialRevadis[key];
-        return stableSerialize(stripUndefined(localValue)) !== stableSerialize(stripUndefined(initialValue));
-      });
-
-      if (serverRevadisIndex < 0 && localRevadis) {
-        list.push(localRevadis);
-        pendingCharacterUpdates.set(revadisId, localRevadis);
-        void setDoc(doc(db, CHARACTERS_COLLECTION, revadisId), sanitizeForFirestore(localRevadis)).catch(err => {
-          console.warn('[profile-repair] unable to restore Revadis profile:', err);
-        });
-      } else if (serverRevadisIndex >= 0 && localRevadis && hasCustomizedRevadisProfile) {
-        const serverRevadis = list[serverRevadisIndex];
-        if (Number(localRevadis.lastUpdated || 0) > Number(serverRevadis.lastUpdated || 0)) {
-          const repaired = {
-            ...serverRevadis,
-            ...Object.fromEntries(profileFields.map(key => [key, localRevadis[key]])),
-            lastUpdated: Math.max(Number(localRevadis.lastUpdated || 0), Date.now()),
-          } as CharacterProfile;
-          list[serverRevadisIndex] = repaired;
-          pendingCharacterUpdates.set(revadisId, repaired);
-          void updateDoc(doc(db, CHARACTERS_COLLECTION, revadisId), sanitizeForFirestore(repaired)).catch(err => {
-            console.warn('[profile-repair] unable to restore Revadis profile fields:', err);
-          });
-        }
-      }
-
+      // Server snapshots are authoritative. Never recreate a character just because
+      // an old local copy contains customized profile data. Deleted characters must
+      // stay deleted; localStorage is only an offline fallback and must not resurrect
+      // records that no longer exist in the shared database.
       // Re-apply a locally persisted custom avatar after every realtime snapshot.
       // Profile images are intentionally kept in a small dedicated localStorage
       // key as a safety net. Without this step, Firestore can briefly/actually
