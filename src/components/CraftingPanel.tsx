@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { CharacterProfile, CraftingRecipe, Item } from '../types';
+import { ItemPicker } from './ItemPicker';
 
 interface Props {
   character: CharacterProfile;
@@ -38,11 +39,9 @@ export const CraftingPanel: React.FC<Props> = ({character,shopItems,recipes,isAd
       <input value={name} onChange={e=>setName(e.target.value)} placeholder="ชื่อสูตร" className="mt-3 w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-white"/>
       <input value={desc} onChange={e=>setDesc(e.target.value)} placeholder="วิธีคราฟ / คำอธิบาย" className="mt-2 w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-white"/>
       <div className="mt-3 space-y-2">{ingredients.map((x,i)=><div key={i} className="flex gap-2">
-        <select value={x.itemId} onChange={e=>setIngredients(a=>a.map((v,j)=>j===i?{...v,itemId:e.target.value}:v))} className="flex-1 rounded-xl bg-slate-950 border border-slate-700 p-2 text-white">
-          <option value="">เลือกวัตถุดิบ</option>{shopItems.filter(x=>x.category==='material').map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
-        </select><input type="number" min="1" value={x.quantity} onChange={e=>setIngredients(a=>a.map((v,j)=>j===i?{...v,quantity:Number(e.target.value)}:v))} className="w-20 rounded-xl bg-slate-950 border border-slate-700 p-2 text-white"/>
+        <ItemPicker items={shopItems.filter(x=>x.category==='material')} value={x.itemId} onChange={itemId=>setIngredients(a=>a.map((v,j)=>j===i?{...v,itemId}:v))} emptyLabel="เลือกวัตถุดิบ" placeholder="ค้นหาวัตถุดิบด้วยชื่อหรือ ID..." className="flex-1" /><input type="number" min="1" value={x.quantity} onChange={e=>setIngredients(a=>a.map((v,j)=>j===i?{...v,quantity:Number(e.target.value)}:v))} className="w-20 rounded-xl bg-slate-950 border border-slate-700 p-2 text-white"/>
       </div>)}<button onClick={addIngredient} className="text-xs text-cyan-300">+ เพิ่มวัตถุดิบ</button></div>
-      <div className="flex gap-2 mt-3"><select value={output} onChange={e=>setOutput(e.target.value)} className="flex-1 rounded-xl bg-slate-950 border border-slate-700 p-2 text-white"><option value="">เลือกไอเทมผลลัพธ์</option>{shopItems.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select><input type="number" min="1" value={outputQty} onChange={e=>setOutputQty(Number(e.target.value))} className="w-20 rounded-xl bg-slate-950 border border-slate-700 p-2 text-white"/></div>
+      <div className="flex gap-2 mt-3"><ItemPicker items={shopItems} value={output} onChange={setOutput} emptyLabel="เลือกไอเทมผลลัพธ์" placeholder="ค้นหาไอเทมผลลัพธ์ด้วยชื่อหรือ ID..." className="flex-1" /><input type="number" min="1" value={outputQty} onChange={e=>setOutputQty(Number(e.target.value))} className="w-20 rounded-xl bg-slate-950 border border-slate-700 p-2 text-white"/></div>
       <button onClick={save} className="mt-4 rounded-xl bg-fuchsia-500 px-5 py-2 font-black text-white">บันทึกสูตร</button>
       <div className="mt-4 space-y-2">{recipes.map(r=><div key={r.id} className="flex items-center justify-between rounded-xl bg-slate-950 p-3 text-xs text-white"><span>{r.name}</span><button onClick={()=>onDeleteRecipe?.(r.id)} className="text-rose-300">ลบ</button></div>)}</div>
     </div>}
