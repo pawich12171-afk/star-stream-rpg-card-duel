@@ -493,6 +493,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     if (item.effectType === 'buff_stat') return `✨ +${Math.round(Number(item.effectValue) || 0)} ${String(item.targetStat || 'STAT').toUpperCase()}`;
     if (item.effectType === 'boost_max_hp') return `❤️‍🔥 เพิ่ม MAX HP +${Math.round(Number(item.effectValue) || 0)}`;
     if (item.effectType === 'enhance_skill') return `⚡ ${item.skillEnhanceDesc || 'เสริมพลังสกิล'}`;
+    if (item.effectType === 'summon') return `🧿 เสก ${item.summonName || 'ลูกน้อง'} · HP ${Math.round(Number(item.summonHp) || 0)} · STR ${Math.round(Number(item.summonStrength) || 0)}`;
     return '🧪 ใช้ไอเทม';
   };
 
