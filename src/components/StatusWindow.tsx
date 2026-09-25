@@ -1686,7 +1686,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                 </div>
                 <label className="text-slate-400 block">ผลหลัก
                   <select value={editingSkillDraft.battleEffect || 'damage'} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battleEffect:e.target.value as Skill['battleEffect']})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white">
-                    <option value="damage">⚔️ โจมตี / ดาเมจ</option><option value="heal">❤️ ฟื้น HP</option><option value="defense">🛡️ ป้องกัน</option><option value="reflect">↩️ สะท้อน</option><option value="stun">💫 สตัน</option><option value="copy_ability">🧬 คัดลอกความสามารถ</option><option value="immortal">♾️ อมตะ</option><option value="damage_reduction">🛡️ ลดความเสียหาย</option>
+                    <option value="damage">⚔️ โจมตี / ดาเมจ</option><option value="heal">❤️ ฟื้น HP</option><option value="defense">🛡️ ป้องกัน</option><option value="reflect">↩️ สะท้อน</option><option value="stun">💫 สตัน</option><option value="copy_ability">🧬 คัดลอกความสามารถ</option><option value="immortal">♾️ อมตะ</option><option value="damage_reduction">🛡️ ลดความเสียหาย</option><option value="buff_stat">💪 บัฟสเตตัส</option><option value="summon">🧿 เสกลูกน้อง</option>
                   </select>
                 </label>
                 <SkillBattleOptions
