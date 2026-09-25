@@ -802,15 +802,20 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   // Stacked equipment: choose exactly how many copies to equip.
   const isAryaEquipment = (item: InventoryItem) => item.category === 'equipment' && /araya|arya/i.test(String(item.name || ''));
 
-  const getEquippedQuantity = (item: InventoryItem) => Math.max(
-    0,
-    Math.min(
-      Number(item.quantity) || 1,
-      Number.isFinite(Number(item.equippedQuantity))
-        ? Number(item.equippedQuantity)
-        : (item.isEquipped ? 1 : 0)
-    )
-  );
+  const getEquippedQuantity = (item: InventoryItem) => {
+    // equippedQuantity เป็นค่าช่วยเก็บจำนวนเท่านั้น
+    // ถ้า isEquipped เป็น false ถือว่าถอดออกทั้งหมดเสมอ
+    if (item.isEquipped !== true) return 0;
+    return Math.max(
+      0,
+      Math.min(
+        Number(item.quantity) || 1,
+        Number.isFinite(Number(item.equippedQuantity))
+          ? Number(item.equippedQuantity)
+          : 1
+      )
+    );
+  };
 
   const getSpecialEquipmentType = (item: InventoryItem) => {
     const text = String(item.name || '').toLowerCase();
