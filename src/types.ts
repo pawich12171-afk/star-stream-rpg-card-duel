@@ -62,6 +62,8 @@ export interface Skill {
   /** ตั้งค่าสำหรับสกิลเสกลูกน้องของมอน/บอส */
   summonName?: string;
   summonMaxCount?: number;
+  /** จำนวนลูกน้องที่ไอเทมเสกในแต่ละครั้งที่กดใช้ */
+  summonPerUse?: number;
   summonHp?: number;
   summonDamage?: number;
   summonAgility?: number;
