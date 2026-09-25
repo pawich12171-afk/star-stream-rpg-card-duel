@@ -201,6 +201,13 @@ export interface Item {
   equipmentDefenseDuration?: number;
   equipmentMagicDuration?: number;
   targetStat?: keyof CharacterStats;
+  /** เป้าหมายของเอฟเฟกต์หลักของไอเทม เช่น ฮีล/บัฟหมู่ */
+  targetMode?: BattleSkillTarget;
+  buffStat?: keyof CharacterStats;
+  buffAmount?: number;
+  buffDuration?: number;
+  /** สกิลต่อสู้ที่ติดมากับไอเทม */
+  battleSkills?: Skill[];
   skillEnhanceTarget?: string;
   skillEnhanceDesc?: string;
   usableByPlayers: boolean;
