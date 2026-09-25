@@ -654,6 +654,7 @@ export interface BattleRoom {
   log: BattleLogEntry[];
   winnerTeam?: 'a' | 'b' | 'draw';
   entryFeeCoins?: number;
+  entryFeePossibility?: number;
   victoryRewardCoins?: number;
   /** รางวัลสุ่มของโหมดสุ่มที่เลือกตั้งแต่สร้างห้อง */
   randomReward?: BattleRandomReward;
