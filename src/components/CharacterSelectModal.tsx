@@ -22,6 +22,7 @@ interface CharacterSelectModalProps {
   currentCharacterId: string;
   onSelect: (char: CharacterProfile) => void;
   onOpenCreate: () => void;
+  onOpenCreateConstellation?: () => void;
 }
 
 export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
@@ -31,6 +32,7 @@ export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
   currentCharacterId,
   onSelect,
   onOpenCreate,
+  onOpenCreateConstellation,
 }) => {
   if (!isOpen) return null;
 
@@ -68,19 +70,18 @@ export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
 
         {/* Content Body */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-3 flex-1">
-          <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+          <div className="flex items-center justify-between gap-2 text-xs text-slate-400 px-1">
             <span>แตะการ์ดตัวละครเพื่อสลับการควบคุมทันที ({characters.length} ตัวละคร):</span>
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onOpenCreate();
-              }}
-              className="text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1 cursor-pointer"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              สร้างตัวละครใหม่
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button type="button" onClick={() => { onClose(); onOpenCreate(); }} className="text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1 cursor-pointer">
+                <UserPlus className="w-3.5 h-3.5" /> สร้างตัวละครใหม่
+              </button>
+              {onOpenCreateConstellation && (
+                <button type="button" onClick={() => { onClose(); onOpenCreateConstellation(); }} className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 cursor-pointer">
+                  <Star className="w-3.5 h-3.5" /> สร้างกลุ่มดาว
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
