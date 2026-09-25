@@ -2550,19 +2550,33 @@ export async function createBattleRoom(room: BattleRoom): Promise<string> {
   return id;
 }
 
-export async function createBattleRoomWithEntryFee(room: BattleRoom, playerId: string, entryFeePossibility: number): Promise<string> {
+export async function createBattleRoomWithEntryFee(room: BattleRoom, playerId: string, fee: number, currency: 'coins' | 'possibility' = 'possibility'): Promise<string> {
   const id = room.id || "battle-" + Date.now();
-  const fee = Math.max(0, Math.floor(Number(entryFeePossibility) || 0));
+  const normalizedFee = Math.max(0, Math.floor(Number(fee) || 0));
   const current = localCharacters.find(character => character.id === playerId);
   if (!current) throw new Error('ไม่พบตัวละครผู้เข้าสนาม');
-  if (fee > 0 && (Number(current.possibility) || 0) < fee) {
-    throw new Error('ความเป็นไปได้ไม่เพียงพอสำหรับค่าเข้าสนาม');
+  const balance = currency === 'coins' ? (Number(current.coins) || 0) : (Number(current.possibility) || 0);
+  if (normalizedFee > 0 && balance < normalizedFee) {
+    throw new Error((currency === 'coins' ? 'Coins' : 'ความเป็นไปได้') + ' ไม่เพียงพอสำหรับค่าเข้าสนาม');
   }
-  const nextCharacter = fee > 0
-    ? { ...current, possibility: Math.max(0, (Number(current.possibility) || 0) - fee), lastUpdated: Math.max(Date.now(), Number(current.lastUpdated || 0) + 1) }
+  const nextCharacter = normalizedFee > 0
+    ? {
+        ...current,
+        coins: currency === 'coins' ? balance - normalizedFee : (Number(current.coins) || 0),
+        possibility: currency === 'possibility' ? balance - normalizedFee : (Number(current.possibility) || 0),
+        lastUpdated: Math.max(Date.now(), Number(current.lastUpdated || 0) + 1),
+      }
     : current;
-  if (fee > 0) await updateCharacterInDB(nextCharacter);
-  const next = { ...room, id, entryFeePossibility: fee, entryFeeCoins: 0, createdAt: room.createdAt || Date.now(), updatedAt: Date.now() };
+  if (normalizedFee > 0) await updateCharacterInDB(nextCharacter);
+  const next = {
+    ...room,
+    id,
+    entryFeeCurrency: currency,
+    entryFeeCoins: currency === 'coins' ? normalizedFee : 0,
+    entryFeePossibility: currency === 'possibility' ? normalizedFee : 0,
+    createdAt: room.createdAt || Date.now(),
+    updatedAt: Date.now(),
+  };
   await setDoc(doc(db, BATTLE_ROOMS_COLLECTION, id), sanitizeForFirestore(next));
   localCharacters = localCharacters.map(character => character.id === playerId ? nextCharacter : character);
   localStorage.setItem('starstream_characters', JSON.stringify(localCharacters));
