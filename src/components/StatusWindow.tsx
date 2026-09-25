@@ -126,6 +126,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [skillBatchCounts, setSkillBatchCounts] = useState<Record<string, number>>({});
   const [isUpgradingSkill, setIsUpgradingSkill] = useState(false);
   const [statUpgradeCurrency, setStatUpgradeCurrency] = useState<'coins' | 'possibility'>('coins');
+  const [showExchangeModal, setShowExchangeModal] = useState(false);
+  const [exchangeDirection, setExchangeDirection] = useState<'coinsToPossibility' | 'possibilityToCoins'>('coinsToPossibility');
+  const [exchangeAmount, setExchangeAmount] = useState(1);
   const latestCharacterRef = useRef<CharacterProfile>(character);
 
   useEffect(() => {
@@ -229,17 +232,54 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   };
 
   const healthData = calculateCharacterHealth(character);
-  const exchangeCoinsToPossibility = async () => {
+  const exchangeCoinsToPossibility = async (amount = 1) => {
+    const quantity = Math.max(1, Math.floor(Number(amount) || 1));
     const coins = Number(latestCharacterRef.current.coins) || 0;
-    if (coins < 100000) { alert('ต้องใช้ 100,000 Coins เพื่อแลก 1 ความเป็นไปได้'); return; }
+    const requiredCoins = quantity * 100000;
+    if (coins < requiredCoins) {
+      alert(`Coins ไม่เพียงพอ ต้องใช้ ${formatCoins(requiredCoins)} Coins เพื่อแลก ${formatCoins(quantity)} Possibility (คุณมี ${formatCoins(coins)})`);
+      return false;
+    }
     const base = latestCharacterRef.current;
-    await onUpdateCharacter({ ...base, coins: coins - 100000, possibility: (Number(base.possibility) || 0) + 1, lastUpdated: Date.now() });
+    const saved = await onUpdateCharacter({
+      ...base,
+      coins: coins - requiredCoins,
+      possibility: (Number(base.possibility) || 0) + quantity,
+      lastUpdated: Date.now(),
+    });
+    if (saved !== false) setShowExchangeModal(false);
+    return saved !== false;
   };
-  const exchangePossibilityToCoins = async () => {
+  const exchangePossibilityToCoins = async (amount = 1) => {
+    const quantity = Math.max(1, Math.floor(Number(amount) || 1));
     const possibility = Number(latestCharacterRef.current.possibility) || 0;
-    if (possibility < 1) { alert('ต้องมีความเป็นไปได้อย่างน้อย 1 เพื่อแลกเป็น Coins'); return; }
+    if (possibility < quantity) {
+      alert(`ความเป็นไปได้ไม่เพียงพอ ต้องใช้ ${formatCoins(quantity)} P เพื่อแลก Coins (คุณมี ${formatCoins(possibility)} P)`);
+      return false;
+    }
     const base = latestCharacterRef.current;
-    await onUpdateCharacter({ ...base, possibility: possibility - 1, coins: (Number(base.coins) || 0) + 80000, lastUpdated: Date.now() });
+    const saved = await onUpdateCharacter({
+      ...base,
+      possibility: possibility - quantity,
+      coins: (Number(base.coins) || 0) + quantity * 80000,
+      lastUpdated: Date.now(),
+    });
+    if (saved !== false) setShowExchangeModal(false);
+    return saved !== false;
+  };
+
+  const openExchangeModal = (direction: 'coinsToPossibility' | 'possibilityToCoins') => {
+    setExchangeDirection(direction);
+    setExchangeAmount(1);
+    setShowExchangeModal(true);
+  };
+
+  const handleExchangeConfirm = async () => {
+    if (exchangeDirection === 'coinsToPossibility') {
+      await exchangeCoinsToPossibility(exchangeAmount);
+    } else {
+      await exchangePossibilityToCoins(exchangeAmount);
+    }
   };
 
 
@@ -559,7 +599,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     const updatedChar: CharacterProfile = {
       ...base,
       coins: Number(base.coins) || 0,
-      possibility: currentBalance - totalCost,
+      possibility: currentPossibility - totalCost,
       skills: (base.skills || []).map(skill => skill.id === skillId
         ? { ...finalSkill, skillUpgradeProgress: progress }
         : skill),
@@ -814,9 +854,25 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-              <div className="w-full text-xs text-fuchsia-300 font-black">ความเป็นไปได้: {formatCoins(character.possibility || 0)} P</div>
-              <button type="button" onClick={exchangeCoinsToPossibility} className="px-3 py-2 bg-fuchsia-600/80 hover:bg-fuchsia-500 text-white text-xs font-black rounded-xl">100,000 C → 1 P</button>
-              <button type="button" onClick={exchangePossibilityToCoins} className="px-3 py-2 bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-black rounded-xl">1 P → 80,000 C</button>
+              <div className="mt-2 rounded-2xl border border-fuchsia-500/30 bg-gradient-to-r from-fuchsia-950/60 via-slate-950/80 to-amber-950/50 p-3 shadow-lg">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-fuchsia-300/80 font-black">Possibility Exchange</div>
+                    <div className="text-sm font-black text-fuchsia-200 mt-0.5">ความเป็นไปได้: {formatCoins(character.possibility || 0)} P</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openExchangeModal('coinsToPossibility')}
+                    className="px-3 py-2 rounded-xl bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white text-xs font-black shadow-lg transition-all"
+                  >
+                    ✨ เปิดหน้าแลกเปลี่ยน
+                  </button>
+                </div>
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] font-bold">
+                  <div className="rounded-xl bg-slate-950/70 border border-fuchsia-500/20 px-2.5 py-2 text-fuchsia-200">100,000 Coins = 1 P</div>
+                  <div className="rounded-xl bg-slate-950/70 border border-amber-500/20 px-2.5 py-2 text-amber-200">1 P = 80,000 Coins</div>
+                </div>
+              </div>
                 <span className="text-xs font-semibold px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800 tracking-wider">
                   [หน้าต่างสถานะตัวละคร]
                 </span>
@@ -1053,6 +1109,71 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
           </div>
         )}
       </div>
+
+      {showExchangeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
+          <div className="w-full max-w-md rounded-3xl border border-fuchsia-500/40 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 shadow-[0_0_60px_rgba(217,70,239,0.2)] overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.2em] text-fuchsia-300 font-black">STAR STREAM EXCHANGE</div>
+                <h3 className="text-xl font-black text-white mt-1">แลกเปลี่ยนความเป็นไปได้</h3>
+              </div>
+              <button type="button" onClick={() => setShowExchangeModal(false)} className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold">✕</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setExchangeDirection('coinsToPossibility')} className={`rounded-2xl p-3 text-left border transition-all ${exchangeDirection === 'coinsToPossibility' ? 'border-fuchsia-400 bg-fuchsia-950/50 shadow-[0_0_20px_rgba(217,70,239,0.18)]' : 'border-slate-700 bg-slate-900'}`}>
+                  <div className="text-xs font-black text-amber-300">Coins → P</div>
+                  <div className="text-[10px] text-slate-400 mt-1">100,000 C = 1 P</div>
+                </button>
+                <button type="button" onClick={() => setExchangeDirection('possibilityToCoins')} className={`rounded-2xl p-3 text-left border transition-all ${exchangeDirection === 'possibilityToCoins' ? 'border-amber-400 bg-amber-950/40 shadow-[0_0_20px_rgba(245,158,11,0.18)]' : 'border-slate-700 bg-slate-900'}`}>
+                  <div className="text-xs font-black text-fuchsia-300">P → Coins</div>
+                  <div className="text-[10px] text-slate-400 mt-1">1 P = 80,000 C</div>
+                </button>
+              </div>
+
+              <div className="rounded-2xl border border-slate-700 bg-slate-950/80 p-4">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400">ยอด Coins</span>
+                  <span className="font-black text-amber-300">{formatCoins(latestCharacterRef.current.coins || 0)} C</span>
+                </div>
+                <div className="flex items-center justify-between text-xs mt-2">
+                  <span className="text-slate-400">ยอด Possibility</span>
+                  <span className="font-black text-fuchsia-300">{formatCoins(latestCharacterRef.current.possibility || 0)} P</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-2">จำนวนที่ต้องการแลก ({exchangeDirection === 'coinsToPossibility' ? 'หน่วย P' : 'หน่วย P'})</label>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setExchangeAmount(Math.max(1, exchangeAmount - 1))} className="w-11 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-lg font-black">−</button>
+                  <input type="number" min={1} value={exchangeAmount} onChange={e => setExchangeAmount(Math.max(1, Math.floor(Number(e.target.value) || 1)))} className="flex-1 text-center px-3 py-3 rounded-xl bg-slate-900 border border-fuchsia-500/30 text-white font-mono text-lg font-black outline-none focus:border-fuchsia-400" />
+                  <button type="button" onClick={() => setExchangeAmount(Math.min(999999, exchangeAmount + 1))} className="w-11 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-lg font-black">+</button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-950/20 p-4">
+                <div className="text-[10px] text-slate-400 uppercase tracking-wider font-black">รายการแลกเปลี่ยน</div>
+                {exchangeDirection === 'coinsToPossibility' ? (
+                  <>
+                    <div className="text-lg font-black text-white mt-1">{formatCoins(exchangeAmount * 100000)} Coins <span className="text-fuchsia-400">→</span> {formatCoins(exchangeAmount)} P</div>
+                    <div className="text-[10px] text-slate-400 mt-1">เรตคงที่: 100,000 Coins ต่อ 1 Possibility</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-lg font-black text-white mt-1">{formatCoins(exchangeAmount)} P <span className="text-amber-400">→</span> {formatCoins(exchangeAmount * 80000)} Coins</div>
+                    <div className="text-[10px] text-slate-400 mt-1">เรตคงที่: 1 Possibility ต่อ 80,000 Coins</div>
+                  </>
+                )}
+              </div>
+
+              <button type="button" onClick={handleExchangeConfirm} className="w-full py-3 rounded-2xl bg-gradient-to-r from-fuchsia-600 via-purple-600 to-amber-500 hover:from-fuchsia-500 hover:to-amber-400 text-white font-black shadow-lg">
+                ยืนยันการแลกเปลี่ยน
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Grid: Core Stats & Stories */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
