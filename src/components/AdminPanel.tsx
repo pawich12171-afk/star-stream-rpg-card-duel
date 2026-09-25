@@ -2813,9 +2813,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <textarea value={editingSkillDesc} onChange={e => setEditingSkillDesc(e.target.value)} placeholder="คำอธิบาย" className="sm:col-span-2 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white min-h-20" />
 
             <SkillBattleOptions
-              config={{battleEffect:editingSkillEffect,targetMode:editingSkillTargetMode,buffStat:editingSkillBuffStat,buffAmount:editingSkillBuffAmount,buffDuration:editingSkillBuffDuration,summonUnits:editingSkillSummonUnits}}
+              config={{skillCategory:editingSkillCategory,targetMode:editingSkillTargetMode,targetConfig:editingSkillTargetConfig,skillModifiers:editingSkillModifiers,battleEffect:editingSkillEffect,buffStat:editingSkillBuffStat,buffAmount:editingSkillBuffAmount,buffDuration:editingSkillBuffDuration,summonUnits:editingSkillSummonUnits}}
               onChange={(patch) => {
+                if(patch.skillCategory) setEditingSkillCategory(patch.skillCategory);
                 if(patch.targetMode) setEditingSkillTargetMode(patch.targetMode);
+                if(patch.targetConfig) setEditingSkillTargetConfig(patch.targetConfig);
+                if(patch.skillModifiers) setEditingSkillModifiers(patch.skillModifiers);
                 if(patch.buffStat) setEditingSkillBuffStat(patch.buffStat);
                 if(patch.buffAmount != null) setEditingSkillBuffAmount(Number(patch.buffAmount));
                 if(patch.buffDuration != null) setEditingSkillBuffDuration(Number(patch.buffDuration));
