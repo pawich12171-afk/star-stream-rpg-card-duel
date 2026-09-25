@@ -828,5 +828,6 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         </div>
       </div>
     </div>
+    </div
   );
 };
