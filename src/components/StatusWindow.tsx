@@ -266,7 +266,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       }
       const gain = value <= 0
         ? firsts[phase]
-        : Math.min(Math.max(0, maxes[phase] - value), value * 1.3);
+        : Math.min(Math.max(0, maxes[phase] - value), value * 1.1);
       if (phase === 0) hp += gain;
       else if (phase === 1) durability += gain;
       else if (phase === 2) strength += gain;
@@ -491,7 +491,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       const currentPhaseValue = Math.max(0, Number(progress.rewardValue) || 0);
       const nextGain = currentPhaseValue <= 0
         ? firsts[phase]
-        : Math.min(Math.max(0, maxes[phase] - currentPhaseValue), currentPhaseValue * 1.3);
+        : Math.min(Math.max(0, maxes[phase] - currentPhaseValue), currentPhaseValue * 1.1);
       if (phase === 0) { progress.hpBonus += nextGain; hpGained += nextGain; }
       else if (phase === 1) { progress.durability += nextGain; durabilityGained += nextGain; }
       else if (phase === 2) { progress.strength += nextGain; strengthGained += nextGain; }
