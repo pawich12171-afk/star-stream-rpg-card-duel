@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { Item, GachaRarity, ItemPassiveEffect, BattleExtraEffect, BattleBotSkill, ItemUseCondition } from '../types';
 import { Package, Search, Store, Gift, Layers, Edit3, Trash2, Save, X, UploadCloud, Eye } from 'lucide-react';
+import { SkillBattleOptions } from './SkillBattleOptions';
 
 interface ItemManagementPanelProps {
   shopItems: Item[];
@@ -66,6 +67,8 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const [rarity, setRarity] = useState<GachaRarity>('common');
   const [effectType, setEffectType] = useState<'heal_hp'|'boost_max_hp'|'buff_stat'|'enhance_skill'|'custom'|'summon'>('heal_hp');
   const [effectValue, setEffectValue] = useState(10);
+  const [targetMode, setTargetMode] = useState<NonNullable<Item['targetMode']>>('self');
+  const [battleSkills, setBattleSkills] = useState<NonNullable<Item['battleSkills']>>([]);
   const [icon, setIcon] = useState('HeartPulse');
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [targetStat, setTargetStat] = useState<'strength'|'durability'|'agility'|'magic'>('strength');
@@ -149,7 +152,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     setEditingId(null); setName(''); setDescription(''); setPrice(0);
     setCategory('consumable'); setRarity('common'); setEffectType('heal_hp');
     setSummonMaxCount(1); setSummonPerUse(1);
-    setEffectValue(10); setIcon('HeartPulse'); setIconPreview(null); setTargetStat('strength');
+    setEffectValue(10); setTargetMode('self'); setBattleSkills([]); setIcon('HeartPulse'); setIconPreview(null); setTargetStat('strength');
     setItemClass('normal'); setLimitedStock(0); setHealPercent(0); setHpBonus(0); setSkillTarget(''); setSkillDesc('');
     setUseConditions([]); setConditionType('hp_below_percent'); setConditionValue(50); setConditionStat('strength');
     setBattleDamagePercent(0); setBattleDamageDuration(0); setBattleCriticalChancePercent(0); setBattleRepeatAttackChancePercent(0); setBattleLuckMultiplier(0); setBattleLuckDuration(0); setGachaRateMultiplier(0); setBattlePassiveChanceMultiplier(0);
@@ -165,7 +168,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     if (!item || !item.id) return;
     setEditingId(item.id); setName(item.name); setDescription(item.description || '');
     setPrice(item.price || 0); setCategory(item.category === 'material' ? 'material' : item.category); setRarity(item.rarity as GachaRarity);
-    setEffectType(item.effectType || 'custom'); setEffectValue(item.effectValue || 0);
+    setEffectType(item.effectType || 'custom'); setEffectValue(item.effectValue || 0); setTargetMode(item.targetMode || 'self'); setBattleSkills(Array.isArray(item.battleSkills) ? item.battleSkills.map(x=>({...x})) : []);
     setIcon(typeof item.icon === 'string' ? item.icon : 'Package'); setIconPreview(isImageIcon(item.icon) ? item.icon : null); setTargetStat(item.targetStat || 'strength');
     setInShop(item.inShop === true && !item.adminOnly);
     setRewardEligible(item.rewardEligible !== false); setStackable(item.stackable !== false);
@@ -391,7 +394,16 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
                 <option value="custom">✨ เอฟเฟกต์อื่น / กำหนดเอง</option>
               </select>
 
-              {effectType === 'heal_hp' && (
+              {(effectType === 'heal_hp' || effectType === 'buff_stat') && <SkillBattleOptions
+  config={{battleEffect: effectType === 'heal_hp' ? 'heal' : 'buff_stat', targetMode, buffStat: targetStat, buffAmount: effectValue, buffDuration: 3}}
+  onChange={(patch) => {
+    if (patch.targetMode) setTargetMode(patch.targetMode);
+    if (patch.buffStat) setTargetStat(patch.buffStat);
+    if (patch.buffAmount != null) setEffectValue(Number(patch.buffAmount));
+  }}
+/>}
+
+{effectType === 'heal_hp' && (
                 <div className="grid grid-cols-2 gap-2">
                   <label className="text-[10px] text-slate-400">❤️ ฟื้น HP เป็นหน่วย
                     <input type="number" min="0" className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" placeholder="เช่น 10" value={effectValue || ''} onChange={e=>setEffectValue(Number(e.target.value)||0)}/>
