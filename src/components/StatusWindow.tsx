@@ -1027,12 +1027,41 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                   {formatCoins(currentStatUpgradeCost)} {statUpgradeCurrency === 'coins' ? 'Coins' : 'Possibility'}
                 </span>
               </div>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setStatUpgradeCurrency('coins')} className={`px-2 py-1 rounded-lg text-[10px] font-black ${statUpgradeCurrency === 'coins' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>Coins 500 +10%</button>
-                <button type="button" onClick={() => setStatUpgradeCurrency('possibility')} className={`px-2 py-1 rounded-lg text-[10px] font-black ${statUpgradeCurrency === 'possibility' ? 'bg-fuchsia-500 text-white' : 'bg-slate-800 text-slate-400'}`}>P 1 +1%</button>
-              </div>
+
             </div>
           )}
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-fuchsia-500/30 bg-gradient-to-r from-slate-950/90 via-indigo-950/50 to-fuchsia-950/30 p-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-black text-white">💳 เลือกเงินสำหรับอัปเกรดสเตตัส</div>
+              <div className="text-[10px] text-slate-400 mt-1">การอัป 1 ขั้น = เพิ่มสเตตัสที่เลือก +1 ไม่ได้แปลงเป็น HP โดยตรง</div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 w-full md:w-auto">
+              <button
+                type="button"
+                onClick={() => setStatUpgradeCurrency('coins')}
+                className={`min-w-[145px] px-4 py-2.5 rounded-xl border text-xs font-black transition-all ${statUpgradeCurrency === 'coins' ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.25)]' : 'bg-slate-900 text-slate-400 border-slate-700 hover:border-amber-500/50'}`}
+              >
+                🪙 Coins
+                <span className="block text-[10px] mt-0.5 opacity-80">500 +10%/ขั้น</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatUpgradeCurrency('possibility')}
+                className={`min-w-[145px] px-4 py-2.5 rounded-xl border text-xs font-black transition-all ${statUpgradeCurrency === 'possibility' ? 'bg-fuchsia-500 text-white border-fuchsia-300 shadow-[0_0_20px_rgba(217,70,239,0.25)]' : 'bg-slate-900 text-slate-400 border-slate-700 hover:border-fuchsia-500/50'}`}
+              >
+                ✨ Possibility
+                <span className="block text-[10px] mt-0.5 opacity-80">1 +1%/ขั้น</span>
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-bold">
+            <span className="px-2.5 py-1 rounded-lg bg-amber-950/50 border border-amber-500/20 text-amber-300">คงเหลือ Coins: {formatCoins(character.coins || 0)} C</span>
+            <span className="px-2.5 py-1 rounded-lg bg-fuchsia-950/50 border border-fuchsia-500/20 text-fuchsia-300">คงเหลือ P: {formatCoins(character.possibility || 0)} P</span>
+            <span className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300">ราคาขั้นถัดไป: {formatCoins(currentStatUpgradeCost)} {statUpgradeCurrency === 'coins' ? 'Coins' : 'P'}</span>
+          </div>
         </div>
 
         {isAllStats100 ? (
