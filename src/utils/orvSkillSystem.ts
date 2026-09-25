@@ -139,18 +139,14 @@ export function getSkillORVRank(skill: Skill): ORVRankDetails {
   return ORV_RANKS.general;
 }
 
-export const BASE_SKILL_UPGRADE_COST = 350; // Coins
+export const BASE_SKILL_UPGRADE_COST = 500; // Coins — fixed cost per skill upgrade
 export const BASE_STAT_UPGRADE_COST = 1000; // Coins
-export const COMPOUND_RATE = 1.20; // skill upgrades: +20% compounded per upgrade
+export const COMPOUND_RATE = 1; // skill upgrades use a flat 500 Coins cost
 export const STAT_COMPOUND_RATE = 1.05; // transcendence stat upgrades: +5% compounded per upgrade
 
-export function calculateSkillUpgradeCost(skill: Skill): number {
-  // upgradeCount นับเฉพาะ Lv.1 → Lv.10 ของจุติปัจจุบัน
-  // เมื่อจุติจะถูกรีเซ็ตเป็น 0 ทำให้ราคากลับไปค่าเริ่มต้น
-  const timesUpgraded = Math.max(0, Math.floor(Number(
-    skill.upgradeCount ?? Math.max(0, (Number(skill.level) || 1) - 1)
-  ) || 0));
-  return Math.round(BASE_SKILL_UPGRADE_COST * Math.pow(COMPOUND_RATE, timesUpgraded));
+export function calculateSkillUpgradeCost(_skill: Skill): number {
+  // ค่าอัปสกิลใหม่เป็น 500 Coins ต่อ 1 ขั้นเสมอ
+  return BASE_SKILL_UPGRADE_COST;
 }
 
 export function calculateStatUpgradeCost(timesUpgraded: number = 0): number {
