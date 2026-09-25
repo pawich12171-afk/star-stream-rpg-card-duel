@@ -62,8 +62,8 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     }
   }, [gachaBanners, selectedBannerId]);
 
-  const pullCost = activeBanner?.pullCost ?? 500;
-  const tenPullCost = activeBanner?.tenPullCost ?? 4500;
+  const pullCost = activeBanner?.pullCostPossibility ?? activeBanner?.pullCost ?? 500;
+  const tenPullCost = activeBanner?.tenPullCostPossibility ?? activeBanner?.tenPullCost ?? 4500;
   const configuredMultiPullCounts = Array.from(new Set(
     (activeBanner?.multiPullCounts || [activeBanner?.multiPullCount || 20])
       .map(value => Math.floor(Number(value)))
@@ -200,8 +200,8 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
       pendingGachaRateMinRarity: 'rare',
       lastUpdated: Math.max(Date.now(), Number(currentCharacter.lastUpdated || 0) + 1),
     };
-    if (currentCharacter.coins < cost) {
-      alert(`เหรียญไม่เพียงพอ ต้องการ ${formatCoins(cost)} C แต่คุณมี ${formatCoins(character.coins)} C`);
+    if ((Number(currentCharacter.possibility) || 0) < cost) {
+      alert(`ความเป็นไปได้ไม่เพียงพอ ต้องการ ${formatCoins(cost)} Possibility แต่คุณมี ${formatCoins(currentCharacter.possibility || 0)} Possibility`);
       return;
     }
     if (activeRewards.length === 0) {
@@ -288,8 +288,8 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         }
       }
 
-      const netCoinChange = totalCoinReward - cost;
-      const updatedCoins = Math.max(0, latestCharacter.coins + netCoinChange);
+      const updatedCoins = Math.max(0, latestCharacter.coins + totalCoinReward);
+      const updatedPossibility = Math.max(0, (Number(latestCharacter.possibility) || 0) - cost);
 
       // Merge legacy records and every new reward using the SAME identity
       // as the inventory/shop stacker. This is what makes equipment stack too,
@@ -419,6 +419,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
         pendingGachaRateMultiplier: 1,
         pendingGachaRateMinRarity: 'rare',
         coins: updatedCoins,
+        possibility: updatedPossibility,
         inventory: existingInventory,
         skills: existingSkills,
         characteristics: existingCharacteristics,
