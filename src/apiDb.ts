@@ -80,9 +80,15 @@ export function onSnapshot(ref: CollectionReference | DocumentReference, options
   const poll = async () => {
     if (stopped) return;
     try {
-      const snap = 'id' in ref ? await getDoc(ref) : await getDocs(ref);
-      const serial = JSON.stringify('id' in ref ? (snap.exists() ? snap.data() : null) : snap.docs.map(d => ({ id: d.id, data: d.data() })));
-      if (serial !== lastSerialized) { lastSerialized = serial; callback(snap); }
+      if ('id' in ref) {
+        const snap = await getDoc(ref);
+        const serial = JSON.stringify(snap.exists() ? snap.data() : null);
+        if (serial !== lastSerialized) { lastSerialized = serial; callback(snap); }
+      } else {
+        const snap = await getDocs(ref);
+        const serial = JSON.stringify(snap.docs.map(d => ({ id: d.id, data: d.data() })));
+        if (serial !== lastSerialized) { lastSerialized = serial; callback(snap); }
+      }
     } catch (error) { errorCallback?.(error); }
     if (!stopped) window.setTimeout(poll, 1500);
   };
