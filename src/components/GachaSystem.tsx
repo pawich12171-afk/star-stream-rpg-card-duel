@@ -1,4 +1,4 @@
-import { formatCoins } from '../utils/formatNumber';
+import { formatPossibility, formatCoins } from '../utils/formatNumber';
 import React, { useEffect, useRef, useState } from 'react';
 import { CharacterProfile, GachaReward, GachaConfig, GachaBanner, Skill, InventoryItem, Item } from '../types';
 import { 
@@ -78,7 +78,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
   const activeMultiPullCount = availableMultiPullCounts.includes(selectedMultiPullCount)
     ? selectedMultiPullCount
     : availableMultiPullCounts[0];
-  const getPullCost = (count: number) => count === 1 ? pullCost : count === 10 ? tenPullCost : Math.max(0, Math.round(pullCost * count));
+  const getPullCost = (count: number) => count === 1 ? pullCost : count === 10 ? tenPullCost : Math.round(pullCost * count * 10) / 10;
   const multiPullCost = getPullCost(activeMultiPullCount);
 
   // Helper to pick a random reward based on rate %
@@ -207,7 +207,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
     };
     const currentBalance = gachaCurrency === 'coins' ? (Number(currentCharacter.coins) || 0) : (Number(currentCharacter.possibility) || 0);
     if (currentBalance < cost) {
-      alert(`${gachaCurrency === 'coins' ? 'Coins' : 'ความเป็นไปได้'} ไม่เพียงพอ ต้องการ ${formatCoins(cost)} ${gachaCurrency === 'coins' ? 'Coins' : 'Possibility'} แต่คุณมี ${formatCoins(currentBalance)}`);
+      alert(`${gachaCurrency === 'coins' ? 'Coins' : 'ความเป็นไปได้'} ไม่เพียงพอ ต้องการ ${gachaCurrency === 'possibility' ? formatPossibility(cost) : formatCoins(cost)} ${gachaCurrency === 'coins' ? 'Coins' : 'Possibility'} แต่คุณมี ${formatCoins(currentBalance)}`);
       return;
     }
     if (activeRewards.length === 0) {
@@ -501,7 +501,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
                 <span className="text-xl font-black text-amber-300">
                   {formatCoins(character.coins)}
                 </span>
-                <span className="text-xs text-amber-500/80 font-mono">Coins</span><span className="ml-3 text-fuchsia-300 font-mono">P {formatCoins(character.possibility || 0)}</span>
+                <span className="text-xs text-amber-500/80 font-mono">Coins</span><span className="ml-3 text-fuchsia-300 font-mono">P {formatPossibility(character.possibility || 0)}</span>
               </div>
             </div>
           </div>
@@ -521,8 +521,8 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
               </div>
               <div className="mt-2 text-xs text-slate-400">{banner.bannerTitle}</div>
               <div className="mt-3 flex gap-2 text-[10px]">
-                <span className="px-2 py-1 rounded-lg bg-slate-800 text-cyan-300">1 ครั้ง {formatCoins(gachaCurrency === 'possibility' ? (banner.pullCostPossibility ?? banner.pullCost) : banner.pullCost)} {gachaCurrency === 'possibility' ? 'P' : 'C'}</span>
-                <span className="px-2 py-1 rounded-lg bg-slate-800 text-amber-300">10 ครั้ง {formatCoins(gachaCurrency === 'possibility' ? (banner.tenPullCostPossibility ?? banner.tenPullCost) : banner.tenPullCost)} {gachaCurrency === 'possibility' ? 'P' : 'C'}</span>
+                <span className="px-2 py-1 rounded-lg bg-slate-800 text-cyan-300">1 ครั้ง {gachaCurrency === 'possibility' ? formatPossibility(banner.pullCostPossibility ?? banner.pullCost) : formatCoins(banner.pullCost)} {gachaCurrency === 'possibility' ? 'P' : 'C'}</span>
+                <span className="px-2 py-1 rounded-lg bg-slate-800 text-amber-300">10 ครั้ง {gachaCurrency === 'possibility' ? formatPossibility(banner.tenPullCostPossibility ?? banner.tenPullCost) : formatCoins(banner.tenPullCost)} {gachaCurrency === 'possibility' ? 'P' : 'C'}</span>
               </div>
             </button>
           ))}
@@ -576,7 +576,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-sm shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <Sparkles className="w-4 h-4" />
-            <span>สุ่ม 1 ครั้ง ({formatCoins(pullCost)} {gachaCurrency === 'coins' ? 'C' : 'P'})</span>
+            <span>สุ่ม 1 ครั้ง ({gachaCurrency === 'possibility' ? formatPossibility(pullCost) : formatCoins(pullCost)} {gachaCurrency === 'coins' ? 'C' : 'P'})</span>
           </button>
           <button
             id="btn-gacha-ten"
@@ -585,9 +585,9 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-sm shadow-[0_0_25px_rgba(245,158,11,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <Gift className="w-4 h-4 text-slate-950" />
-            <span>สุ่ม 10 ครั้ง ({formatCoins(tenPullCost)} {gachaCurrency === 'coins' ? 'C' : 'P'})</span>
+            <span>สุ่ม 10 ครั้ง ({gachaCurrency === 'possibility' ? formatPossibility(tenPullCost) : formatCoins(tenPullCost)} {gachaCurrency === 'coins' ? 'C' : 'P'})</span>
             <span className="text-[10px] bg-slate-950 text-amber-300 px-1.5 py-0.5 rounded font-bold ml-1">
-              ประหยัด {formatCoins((pullCost * 10) - tenPullCost)} {gachaCurrency === 'coins' ? 'C' : 'P'}
+              ประหยัด {gachaCurrency === 'possibility' ? formatPossibility((pullCost * 10) - tenPullCost) : formatCoins((pullCost * 10) - tenPullCost)} {gachaCurrency === 'coins' ? 'C' : 'P'}
             </span>
           </button>
           <div className="w-full mt-1 rounded-2xl border-2 border-purple-500/50 bg-purple-950/40 p-4 shadow-[0_0_24px_rgba(168,85,247,0.18)]">
