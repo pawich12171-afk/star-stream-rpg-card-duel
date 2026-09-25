@@ -1001,6 +1001,13 @@ export async function updateCharacterData(char: CharacterProfile): Promise<void>
           throw new Error('CHARACTER_DELETED');
         }
       } else {
+        // Persist the profile image separately first. Avatar edits are small and
+        // must survive refresh even if the full character document is rejected
+        // because another field made the payload too large or invalid.
+        const avatarToPersist = String(updated.avatarUrl || '').trim();
+        if (avatarToPersist && isCustomProfileAvatar(avatarToPersist)) {
+          await updateDoc(characterRef, { avatarUrl: avatarToPersist });
+        }
         await updateDoc(characterRef, cleaned);
       }
     });
