@@ -59,6 +59,17 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
   return <div className="space-y-3 rounded-xl border border-violet-500/25 bg-violet-950/10 p-3">
     <div className="rounded-xl border border-cyan-400/20 bg-cyan-950/10 p-3 space-y-2"><div className="text-[11px] font-black text-cyan-100">🧩 โครงสร้างประเภทสกิล</div><label className="block text-[10px] text-slate-400">ประเภทสกิล<select value={category} onChange={e=>onChange({skillCategory:e.target.value as BattleSkillCategory})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-white"><option value="attack">⚔️ โจมตี / ดาเมจ</option><option value="buff">✨ บัฟ</option><option value="debuff">⚠️ ดีบัฟ</option><option value="control">💫 ควบคุม</option><option value="heal">❤️ ฟื้นฟู</option><option value="defense">🛡️ ป้องกัน</option><option value="summon">🧿 เสกลูกน้อง</option><option value="utility">🧬 Utility</option></select></label><div className="text-[9px] text-slate-500">เลือกประเภทแล้วช่องตั้งค่าด้านล่างจะเปลี่ยนตามประเภท และเพิ่มบัฟ/ดีบัฟได้หลายรายการพร้อมกัน</div></div>
     {showTarget && <label className="block text-[10px] text-slate-400">
+      ผลหลักของสกิล
+      <select value={config.battleEffect || 'damage'} onChange={e=>onChange({battleEffect:e.target.value as Skill['battleEffect']})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-white">
+        <option value="damage">⚔️ โจมตี / ดาเมจ</option>
+        <option value="heal">❤️ ฟื้นฟู HP</option>
+        <option value="defense">🛡️ ป้องกัน</option>
+        <option value="stun">💫 สตัน</option>
+        <option value="buff_stat">✨ เพิ่มสเตตัส</option>
+        <option value="summon">🧿 เสกลูกน้อง</option>
+      </select>
+    </label>}
+    {showTarget && <label className="block text-[10px] text-slate-400">
       🎯 เป้าหมายของสกิล
       <select value={target} onChange={e=>onChange({targetMode:e.target.value as BattleSkillTarget})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-2 text-white">
         <option value="self">ตัวผู้ใช้</option><option value="enemy">ศัตรู 1 ตัว</option><option value="selected_enemy">🎯 เลือกศัตรูเอง</option><option value="selected_ally">🤝 เลือกเพื่อนร่วมทีมเอง</option><option value="selected_bots">👾 เลือกมอน/ลูกน้องหลายตัว</option><option value="selected_bosses">👑 เลือกบอสหลายตัว</option>
