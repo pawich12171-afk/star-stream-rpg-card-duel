@@ -338,6 +338,7 @@ export default function App() {
       hp: Number.isFinite(Number(candidate.hp)) ? Number(candidate.hp) : 0,
       maxHp: Number.isFinite(Number(candidate.maxHp)) ? Number(candidate.maxHp) : 1,
       lastUpdated: Number(candidate.lastUpdated) || 0,
+      role: candidate.role === 'admin' ? 'admin' : 'player',
     } as CharacterProfile;
   })();
   // Momi is the permanent owner. Other profiles can only use Admin Mode after Momi grants them the admin role.
@@ -348,7 +349,7 @@ export default function App() {
     const displayName = String(character.displayName || '').trim().toLowerCase();
     return id === '001' || username === '001' || id === 'momi' || username === 'momi' || displayName === 'momi' || displayName === 'โมมิ' || displayName.includes('(momi)');
   };
-  const canUseAdminMode = isMomiProfile(currentUser) || currentUser.role === 'admin';
+  const canUseAdminMode = isMomiProfile(currentUser) || currentUser?.role === 'admin';
 
   // If the active profile is no longer allowed to use Admin Mode (for example
   // after switching characters or having the role revoked), immediately leave
