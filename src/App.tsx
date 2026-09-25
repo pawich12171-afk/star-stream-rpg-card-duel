@@ -162,7 +162,7 @@ export default function App() {
   });
 
   // Real-time State
-  const [characters, setCharacters] = useState<CharacterProfile[]>(() => [...INITIAL_CHARACTERS]);
+  const [characters, setCharacters] = useState<CharacterProfile[]>(() => []);
   const [coinDisplayMode, setCoinDisplayMode] = useState<CoinDisplayMode>(() => getCoinDisplayMode());
   const [currentUserId, setCurrentUserId] = useState<string>(() => {
     const fallback = INITIAL_CHARACTERS[0]?.id || '';
@@ -294,22 +294,12 @@ export default function App() {
 
     void initializeRealtimeData();
 
-    // Hard fallback: the app must never remain on LINKING forever just because
-    // the production API/Supabase request is slow or unavailable. If no
-    // character snapshot has arrived after a few seconds, render the bundled
-    // starter character so the UI is usable; a later server snapshot replaces it.
-    const startupFallback = window.setTimeout(() => {
-      if (disposed || charactersRef.current.length > 0) return;
-      charactersRef.current = [...INITIAL_CHARACTERS];
-      setCharacters([...INITIAL_CHARACTERS]);
-      setCurrentUserId(INITIAL_CHARACTERS[0]?.id || '');
-      setIsRealtimeLinked(false);
-      console.warn('Realtime startup fallback: using bundled character data.');
-    }, 4000);
-
+    // Do not fall back to bundled starter characters here.
+    // A starter profile that was deleted from the shared database must never
+    // reappear on refresh just because the realtime connection is slow/offline.
+    // The UI stays in a neutral loading state until the server snapshot arrives.
     return () => {
       disposed = true;
-      window.clearTimeout(startupFallback);
       cleanups.forEach(cleanup => cleanup());
     };
   }, []);
@@ -317,32 +307,29 @@ export default function App() {
   // Keep the shell usable even if localStorage contains an empty collection
   // from an earlier failed sync. The realtime snapshot can still replace it.
   const currentUser = (() => {
-    const fallback = INITIAL_CHARACTERS[0];
-    const candidate = characters.find(c => c && c.id === currentUserId) || characters.find(Boolean) || fallback;
-    if (!candidate) {
-      throw new Error('ไม่พบข้อมูลตัวละครเริ่มต้น');
-    }
+    const fallback = characters.find(Boolean);
+    const candidate = characters.find(c => c && c.id === currentUserId) || fallback;
+    if (!candidate) return null;
     // Realtime/API data can be partially populated after an old schema change.
-    // Fill only missing UI-safe fields from the bundled profile so one malformed
+    // Fill only missing UI-safe fields from the server character so one malformed
     // record cannot crash the initial screen.
     return {
-      ...fallback,
       ...candidate,
-      id: String(candidate.id || fallback.id),
-      username: String(candidate.username || fallback.username),
-      displayName: String(candidate.displayName || fallback.displayName),
+      id: String(candidate.id || ''),
+      username: String(candidate.username || ''),
+      displayName: String(candidate.displayName || ''),
       nickname: String(candidate.nickname || ''),
-      avatarUrl: String(candidate.avatarUrl || fallback.avatarUrl),
+      avatarUrl: String(candidate.avatarUrl || '/avatars/system.svg'),
       characteristics: Array.isArray(candidate.characteristics) ? candidate.characteristics : [],
-      stats: { ...fallback.stats, ...(candidate.stats || {}) },
+      stats: { strength: 0, durability: 0, agility: 0, magic: 0, ...(candidate.stats || {}) },
       skills: Array.isArray(candidate.skills) ? candidate.skills : [],
       inventory: Array.isArray(candidate.inventory) ? candidate.inventory : [],
       quests: Array.isArray(candidate.quests) ? candidate.quests : [],
       notifications: Array.isArray(candidate.notifications) ? candidate.notifications : [],
       coins: Number.isFinite(Number(candidate.coins)) ? Number(candidate.coins) : 0,
       possibility: Number.isFinite(Number(candidate.possibility)) ? Number(candidate.possibility) : 0,
-      hp: Number.isFinite(Number(candidate.hp)) ? Number(candidate.hp) : fallback.hp,
-      maxHp: Number.isFinite(Number(candidate.maxHp)) ? Number(candidate.maxHp) : fallback.maxHp,
+      hp: Number.isFinite(Number(candidate.hp)) ? Number(candidate.hp) : 0,
+      maxHp: Number.isFinite(Number(candidate.maxHp)) ? Number(candidate.maxHp) : 1,
       lastUpdated: Number(candidate.lastUpdated) || 0,
     } as CharacterProfile;
   })();
@@ -653,6 +640,19 @@ export default function App() {
       alert(err.message || 'เกิดข้อผิดพลาดในการโอน');
     }
   };
+
+  // Never render a deleted/missing profile while the first authoritative
+  // character snapshot is still loading.
+  if (!currentUser) {
+    return (
+      <div className="min-h-[100dvh] bg-slate-950 text-slate-100 flex items-center justify-center">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-6 py-5 text-center shadow-xl">
+          <div className="text-sm font-black">STAR STREAM / LINKING</div>
+          <div className="mt-2 text-xs text-slate-400">กำลังโหลดข้อมูลตัวละครจากฐานข้อมูล...</div>
+        </div>
+      </div>
+    );
+  }
 
   // Waiting rooms count
   const waitingDuelRoomsCount = duelRooms.filter(r => r.status === 'waiting').length;
