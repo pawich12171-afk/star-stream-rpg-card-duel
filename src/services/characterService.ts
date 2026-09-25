@@ -3107,6 +3107,7 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
       duration: Math.floor(safeNum(p.duration, 0, 1000)),
       maxStacks: Math.max(1, Math.floor(safeNum(p.maxStacks, 1, 1000))),
       stackKey: String(p.stackKey || p.id || `item-passive-${index}`),
+    })),
     battleDrawbacks: Array.isArray(item.battleDrawbacks) ? item.battleDrawbacks.filter(Boolean).slice(0, 20).map((d, index) => ({
       kind: String(d.kind || 'bleeding') as any,
       value: safeNum(d.value, 0, 1000000),
