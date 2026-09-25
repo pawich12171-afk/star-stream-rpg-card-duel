@@ -3357,27 +3357,29 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     const perUse = Math.max(1, Math.min(20, Number(normalizedItem.summonPerUse) || 1));
     if (currentCount >= maxCount) throw new Error('ไอเทมนี้เสกได้สูงสุด ' + maxCount + ' ตัวในสนาม');
     const spawnCount = Math.min(perUse, maxCount - currentCount);
+    const unitTemplates = Array.isArray(normalizedItem.summonUnits) ? normalizedItem.summonUnits : [];
     for (let spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++) {
+    const template = unitTemplates.length ? unitTemplates[(currentCount + spawnIndex) % unitTemplates.length] : undefined;
     const summonId = prefix + ':' + (currentCount + spawnIndex + 1);
     const summon: BattleCombatant = {
       id: summonId,
       sourceId: summonId,
-      name: (normalizedItem.summonName || 'ลูกน้อง') + ' #' + (currentCount + 1),
-      avatarUrl: normalizedItem.summonAvatarUrl || actor.avatarUrl || '/avatars/system.svg',
+      name: (template?.name || normalizedItem.summonName || 'ลูกน้อง') + ' #' + (currentCount + spawnIndex + 1),
+      avatarUrl: template?.avatarUrl || normalizedItem.summonAvatarUrl || actor.avatarUrl || '/avatars/system.svg',
       type: 'bot',
       team: actor.team,
       stats: {
-        strength: Math.max(0, Number(normalizedItem.summonStrength) || 0),
-        durability: Math.max(0, Number(normalizedItem.summonDurability) || 0),
-        agility: Math.max(0, Number(normalizedItem.summonAgility) || 0),
-        magic: Math.max(0, Number(normalizedItem.summonMagic) || 0),
+        strength: Math.max(0, Number(template?.strength ?? normalizedItem.summonStrength) || 0),
+        durability: Math.max(0, Number(template?.durability ?? normalizedItem.summonDurability) || 0),
+        agility: Math.max(0, Number(template?.agility ?? normalizedItem.summonAgility) || 0),
+        magic: Math.max(0, Number(template?.magic ?? normalizedItem.summonMagic) || 0),
       },
-      hp: Math.max(1, Number(normalizedItem.summonHp) || 1),
-      maxHp: Math.max(1, Number(normalizedItem.summonHp) || 1),
+      hp: Math.max(1, Number(template?.hp ?? normalizedItem.summonHp) || 1),
+      maxHp: Math.max(1, Number(template?.hp ?? normalizedItem.summonHp) || 1),
       isBoss: Boolean(normalizedItem.summonIsBoss),
       skillCooldowns: {},
       skillUses: {},
-      skills: Array.isArray(normalizedItem.summonSkills) ? normalizedItem.summonSkills.map((s: any) => ({ ...s })) : [],
+      skills: Array.isArray(template?.skills) && template.skills.length ? template.skills.map((s: any) => ({ ...s })) : (Array.isArray(normalizedItem.summonSkills) ? normalizedItem.summonSkills.map((s: any) => ({ ...s })) : []),
     } as BattleCombatant;
     if (actor.team === 'a') normalizedRoom.teamA.push(summon); else normalizedRoom.teamB.push(summon);
     normalizedRoom.log = [{
