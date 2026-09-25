@@ -495,7 +495,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
                 <span className="text-xl font-black text-amber-300">
                   {formatCoins(character.coins)}
                 </span>
-                <span className="text-xs text-amber-500/80 font-mono">Coins</span>
+                <span className="text-xs text-amber-500/80 font-mono">Coins</span><span className="ml-3 text-fuchsia-300 font-mono">P {formatCoins(character.possibility || 0)}</span>
               </div>
             </div>
           </div>
@@ -515,8 +515,8 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
               </div>
               <div className="mt-2 text-xs text-slate-400">{banner.bannerTitle}</div>
               <div className="mt-3 flex gap-2 text-[10px]">
-                <span className="px-2 py-1 rounded-lg bg-slate-800 text-cyan-300">1 ครั้ง {formatCoins(banner.pullCost)} C</span>
-                <span className="px-2 py-1 rounded-lg bg-slate-800 text-amber-300">10 ครั้ง {formatCoins(banner.tenPullCost)} C</span>
+                <span className="px-2 py-1 rounded-lg bg-slate-800 text-cyan-300">1 ครั้ง {formatCoins(banner.pullCostPossibility ?? banner.pullCost)} P</span>
+                <span className="px-2 py-1 rounded-lg bg-slate-800 text-amber-300">10 ครั้ง {formatCoins(banner.tenPullCostPossibility ?? banner.tenPullCost)} P</span>
               </div>
             </button>
           ))}
@@ -564,7 +564,7 @@ export const GachaSystem: React.FC<GachaSystemProps> = ({
             className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-sm shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <Sparkles className="w-4 h-4" />
-            <span>สุ่ม 1 ครั้ง ({formatCoins(pullCost)} C)</span>
+            <span>สุ่ม 1 ครั้ง ({formatCoins(pullCost)} P)</span>
           </button>
           <button
             id="btn-gacha-ten"
