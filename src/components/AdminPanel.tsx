@@ -1,4 +1,4 @@
-import { formatCoins, parseCoinAmount } from '../utils/formatNumber';
+import { formatCoins, formatPossibility, parseCoinAmount } from '../utils/formatNumber';
 import React, { useEffect, useState } from 'react';
 import { CharacterProfile, Item, Skill, Quest, GachaReward, GachaBanner, GachaConfig, GachaRarity, BattleExtraEffect, BattleSkillStat, ItemPassiveEffect } from '../types';
 import { 
@@ -610,8 +610,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         bannerDescription: editBannerDesc.trim() || selectedBanner.bannerDescription,
         pullCost: Math.max(1, Number(editBannerPullCost) || 1),
         tenPullCost: Math.max(100, Number(editBannerTenCost) || 100),
-        pullCostPossibility: Math.max(1, Number(editBannerPullCostPossibility) || 1),
-        tenPullCostPossibility: Math.max(1, Number(editBannerTenCostPossibility) || 1),
+        pullCostPossibility: Number.isFinite(Number(editBannerPullCostPossibility)) ? Number(editBannerPullCostPossibility) : 0,
+        tenPullCostPossibility: Number.isFinite(Number(editBannerTenCostPossibility)) ? Number(editBannerTenCostPossibility) : 0,
         multiPullCounts: parseMultiPullCounts(editBannerMultiPullCounts),
         multiPullCount: Math.max(11, Math.floor(Number(editBannerMultiPullCount) || 20)),
         enabled: editBannerEnabled,
@@ -629,8 +629,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       name: newBannerName.trim(),
       pullCost: Math.max(1, Number(newBannerPullCost) || 1),
       tenPullCost: Math.max(100, Number(newBannerTenCost) || 100),
-      pullCostPossibility: Math.max(1, Number(newBannerPullCostPossibility) || 1),
-      tenPullCostPossibility: Math.max(1, Number(newBannerTenCostPossibility) || 1),
+      pullCostPossibility: Number.isFinite(Number(newBannerPullCostPossibility)) ? Number(newBannerPullCostPossibility) : 0,
+      tenPullCostPossibility: Number.isFinite(Number(newBannerTenCostPossibility)) ? Number(newBannerTenCostPossibility) : 0,
       multiPullCounts: parseMultiPullCounts(newBannerMultiPullCounts),
         multiPullCount: Math.max(11, Math.floor(Number(newBannerMultiPullCount) || 20)),
       enabled: newBannerEnabled,
@@ -663,8 +663,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         ...mainBanner,
         pullCost: Math.max(1, Number(pullCostInput) || 1),
         tenPullCost: Math.max(100, Number(tenPullCostInput) || 100),
-        pullCostPossibility: Math.max(1, Number(gachaConfig.pullCostPossibility) || 1),
-        tenPullCostPossibility: Math.max(1, Number(gachaConfig.tenPullCostPossibility) || 10),
+        pullCostPossibility: Number.isFinite(Number(gachaConfig.pullCostPossibility)) ? Number(gachaConfig.pullCostPossibility) : 0,
+        tenPullCostPossibility: Number.isFinite(Number(gachaConfig.tenPullCostPossibility)) ? Number(gachaConfig.tenPullCostPossibility) : 0,
         bannerTitle: bannerTitleInput.trim() || mainBanner.name,
         bannerDescription: bannerDescInput.trim() || 'ตู้กาชาพิเศษ',
         multiPullCounts: parseMultiPullCounts(multiPullCountsInput),
@@ -2102,7 +2102,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div key={b.id} className={`rounded-2xl border p-3 ${selectedBannerId === b.id ? 'border-amber-400 bg-amber-500/10' : 'border-slate-700 bg-slate-800/50'}`}>
                   <button type="button" onClick={() => setSelectedBannerId(b.id)} className="w-full text-left">
                     <div className="text-xs font-black text-white">{b.name}</div>
-                    <div className="text-[10px] text-slate-400">C: {b.pullCost.toLocaleString()} / 10 = {b.tenPullCost.toLocaleString()} • P: {(b.pullCostPossibility ?? 1).toLocaleString()} / 10 = {(b.tenPullCostPossibility ?? 10).toLocaleString()}</div>
+                    <div className="text-[10px] text-slate-400">C: {b.pullCost.toLocaleString()} / 10 = {b.tenPullCost.toLocaleString()} • P: {formatPossibility(b.pullCostPossibility ?? 1)} / 10 = {formatPossibility(b.tenPullCostPossibility ?? 10)}</div>
                     <div className={`text-[9px] mt-1 ${b.enabled ? 'text-emerald-400' : 'text-rose-400'}`}>{b.enabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}</div>
                   </button>
                   <button type="button" onClick={async () => { if (!confirm(`ลบตู้ "${b.name}" หรือไม่?`)) return; try { await onDeleteGachaBanner(b.id); if (selectedBannerId === b.id) setSelectedBannerId(safeGachaBanners.find(x => x.id !== b.id)?.id || 'main'); } catch (e: any) { alert(e?.message || 'ลบตู้ไม่สำเร็จ'); } }} className="mt-2 text-[10px] text-rose-400 hover:text-rose-300 flex items-center gap-1">
@@ -2115,8 +2115,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <input value={newBannerName} onChange={e=>setNewBannerName(e.target.value)} placeholder="ชื่อตู้" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs md:col-span-2" />
               <input type="number" min={10} value={newBannerPullCost} onChange={e=>setNewBannerPullCost(Number(e.target.value))} placeholder="1 ครั้ง" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
               <input type="number" min={100} value={newBannerTenCost} onChange={e=>setNewBannerTenCost(Number(e.target.value))} placeholder="10 ครั้ง Coins" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
-              <input type="number" min={1} value={newBannerPullCostPossibility} onChange={e=>setNewBannerPullCostPossibility(Number(e.target.value))} placeholder="1 ครั้ง Possibility" className="px-2 py-2 rounded-xl bg-fuchsia-950/40 border border-fuchsia-500/40 text-fuchsia-100 text-xs" />
-              <input type="number" min={1} value={newBannerTenCostPossibility} onChange={e=>setNewBannerTenCostPossibility(Number(e.target.value))} placeholder="10 ครั้ง Possibility" className="px-2 py-2 rounded-xl bg-fuchsia-950/40 border border-fuchsia-500/40 text-fuchsia-100 text-xs" />
+              <input type="number" step="0.01" value={newBannerPullCostPossibility} onChange={e=>setNewBannerPullCostPossibility(Number(e.target.value))} placeholder="1 ครั้ง Possibility" className="px-2 py-2 rounded-xl bg-fuchsia-950/40 border border-fuchsia-500/40 text-fuchsia-100 text-xs" />
+              <input type="number" step="0.01" value={newBannerTenCostPossibility} onChange={e=>setNewBannerTenCostPossibility(Number(e.target.value))} placeholder="10 ครั้ง Possibility" className="px-2 py-2 rounded-xl bg-fuchsia-950/40 border border-fuchsia-500/40 text-fuchsia-100 text-xs" />
               <input type="number" min={11} value={newBannerMultiPullCount} onChange={e=>setNewBannerMultiPullCount(Number(e.target.value))} placeholder="เลือกสุ่ม เช่น 20" className="px-2 py-2 rounded-xl bg-purple-950/50 border border-purple-500/50 text-purple-100 text-xs" />
               <input value={newBannerMultiPullCounts} onChange={e=>setNewBannerMultiPullCounts(e.target.value)} placeholder="สุ่มเพิ่ม เช่น 20,30,50" className="px-2 py-2 rounded-xl bg-purple-950/50 border border-purple-500/50 text-purple-100 text-xs md:col-span-2" />
               <input value={newBannerTitle} onChange={e=>setNewBannerTitle(e.target.value)} placeholder="หัวข้อ" className="px-2 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
@@ -2139,8 +2139,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <input value={editBannerTitle} onChange={e => setEditBannerTitle(e.target.value)} placeholder="หัวข้อบนหน้าสุ่ม" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
                   <input type="number" min={10} value={editBannerPullCost} onChange={e => setEditBannerPullCost(Number(e.target.value))} placeholder="ราคา 1 ครั้ง" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
                   <input type="number" min={100} value={editBannerTenCost} onChange={e => setEditBannerTenCost(Number(e.target.value))} placeholder="ราคา 10 ครั้ง Coins" className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
-                  <input type="number" min={1} value={editBannerPullCostPossibility} onChange={e => setEditBannerPullCostPossibility(Number(e.target.value))} placeholder="1 ครั้ง Possibility" className="px-3 py-2 rounded-xl bg-fuchsia-950/40 border border-fuchsia-500/40 text-fuchsia-100 text-xs" />
-                  <input type="number" min={1} value={editBannerTenCostPossibility} onChange={e => setEditBannerTenCostPossibility(Number(e.target.value))} placeholder="10 ครั้ง Possibility" className="px-3 py-2 rounded-xl bg-fuchsia-950/40 border border-fuchsia-500/40 text-fuchsia-100 text-xs" />
+                  <input type="number" step="0.01" value={editBannerPullCostPossibility} onChange={e => setEditBannerPullCostPossibility(Number(e.target.value))} placeholder="1 ครั้ง Possibility" className="px-3 py-2 rounded-xl bg-fuchsia-950/40 border border-fuchsia-500/40 text-fuchsia-100 text-xs" />
+                  <input type="number" step="0.01" value={editBannerTenCostPossibility} onChange={e => setEditBannerTenCostPossibility(Number(e.target.value))} placeholder="10 ครั้ง Possibility" className="px-3 py-2 rounded-xl bg-fuchsia-950/40 border border-fuchsia-500/40 text-fuchsia-100 text-xs" />
                   <div className="md:col-span-2 rounded-xl border-2 border-purple-500/40 bg-purple-950/30 p-3">
                     <label className="text-xs font-black text-purple-200 block mb-1">✨ จำนวนสุ่มเพิ่มเติม (มากกว่า 10 ครั้ง)</label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
