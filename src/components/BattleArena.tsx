@@ -413,8 +413,8 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     }
     const teamA = teamMembers.slice(0, 3).map(character => makePlayerCombatant(character, 'a'));
     const selectedBots = (mode === 'pve' || mode === 'random') ? enemies.slice(0, 3).map(bot => bot as BattleBot) : [];
-    // PVE: ถ้าเลือกมอน/บอสมากกว่า 1 ตัว ให้ทุกตัวที่เลือกเข้าสนามพร้อมกันทันที
-    // ไม่ต้องรอให้ตัวแรกตายก่อนเหมือนระบบคิวเดิม
+    // โหมดปกติ: ศัตรูที่เลือกทั้งหมดเข้าสนามพร้อมกัน
+    // โหมดสุ่มมอน: คงระบบเดิมไว้ คือสุ่ม/ปล่อยทีละตัวตามคิว
     const teamB = mode === 'pve'
       ? selectedBots.map(bot => makeBotCombatant(bot, 'b'))
       : mode === 'random'
