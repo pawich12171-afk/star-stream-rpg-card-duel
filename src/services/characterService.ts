@@ -3825,7 +3825,13 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       }
       if (skill?.battleEffects?.length) {
         const statusChanceBonus = getSkillStat(skill, 'status_chance_percent');
-        const durationBonus = Math.max(0, Math.round(getSkillStat(skill, 'status_duration')));
+        // Void weapon singularity 4 previously inherited a legacy status_duration=99
+        // value. That value is a sentinel/old data value, not a +99-turn bonus.
+        // For this skill only, use each effect's configured duration directly so
+        // bleeding/burn/poison/freeze/stun respect the duration set in Skill Settings.
+        const isVoidWeaponSingularity4 = String(skill.name || '').trim().toLowerCase() === 'void weapon singularity 4';
+        const rawDurationBonus = Math.max(0, Math.round(getSkillStat(skill, 'status_duration')));
+        const durationBonus = isVoidWeaponSingularity4 && rawDurationBonus >= 99 ? 0 : rawDurationBonus;
         const adjustedEffects = skill.battleEffects.map(effect => ({
           ...effect,
           chance: effect.chance == null ? Math.min(100, 100 + statusChanceBonus) : Math.min(100, Math.max(0, Number(effect.chance) + statusChanceBonus)),
