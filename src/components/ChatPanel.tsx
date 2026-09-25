@@ -63,6 +63,5 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ currentUser, messages, onS
         <div className="text-[10px] text-slate-600 mt-1.5 text-right">{draft.length}/300</div>
       </div>
     </div>
-    </div>
   </div>;
 };
