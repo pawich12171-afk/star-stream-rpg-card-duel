@@ -3107,6 +3107,14 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
       duration: Math.floor(safeNum(p.duration, 0, 1000)),
       maxStacks: Math.max(1, Math.floor(safeNum(p.maxStacks, 1, 1000))),
       stackKey: String(p.stackKey || p.id || `item-passive-${index}`),
+    battleDrawbacks: Array.isArray(item.battleDrawbacks) ? item.battleDrawbacks.filter(Boolean).slice(0, 20).map((d, index) => ({
+      kind: String(d.kind || 'bleeding') as any,
+      value: safeNum(d.value, 0, 1000000),
+      duration: Math.floor(safeNum(d.duration, 0, 1000)),
+      chance: safeNum(d.chance, 0, 100),
+      target: d.target === 'enemy' ? 'enemy' : 'self',
+      label: String(d.label || d.kind || 'ข้อเสีย'),
+    })) : [],
     })) : [],
   };
 
@@ -3193,6 +3201,41 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
         Math.max(0, Math.ceil((Number(turns) || 0) * factor)),
       ])
     );
+  }
+
+  // Apply item drawbacks immediately when the item is consumed. Each drawback rolls its own chance.
+  for (const drawback of normalizedItem.battleDrawbacks || []) {
+    const chance = Math.max(0, Math.min(100, Number(drawback.chance ?? 100)));
+    if (chance < 100 && Math.random() * 100 >= chance) continue;
+    const value = Math.max(0, Number(drawback.value) || 0);
+    if (value <= 0) continue;
+    switch (drawback.kind) {
+      case 'bleeding':
+      case 'burn':
+      case 'poison':
+        hp = Math.max(0, hp - Math.round(value));
+        break;
+      case 'damage_percent':
+        hp = Math.max(0, hp - Math.round(maxHp * Math.min(100, value) / 100));
+        break;
+      case 'reduce_max_hp_percent': {
+        const reduction = Math.min(95, value);
+        maxHp = Math.max(1, Math.round(maxHp * (1 - reduction / 100)));
+        hp = Math.min(hp, maxHp);
+        break;
+      }
+      case 'reduce_defense_percent':
+        stats.durability = Math.max(0, Math.round(stats.durability * (1 - Math.min(100, value) / 100)));
+        break;
+      case 'stun':
+        actor.stunnedTurns = Math.max(Number(actor.stunnedTurns || 0), Math.max(1, Math.floor(Number(drawback.duration) || 1)));
+        break;
+      case 'freeze':
+        actor.frozenTurns = Math.max(Number(actor.frozenTurns || 0), Math.max(1, Math.floor(Number(drawback.duration) || 1)));
+        break;
+      default:
+        break;
+    }
   }
 
   const actorPatch: BattleCombatant = {
