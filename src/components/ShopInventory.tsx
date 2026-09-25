@@ -703,6 +703,10 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const maxHpSafe = (value: number) => Math.max(1, Number(value) || 20);
 
   const handleUseItem = async (invItem: InventoryItem) => {
+    if (invItem.category === 'material') {
+      alert('ไอเทมวัตถุดิบไม่สามารถใช้ต่อสู้หรือกดใช้โดยตรงได้ กรุณานำไปคราฟต์ในเมนู คราฟต์ / วัตถุดิบ');
+      return;
+    }
     let updatedChar = { ...character };
     let effectMessage = '';
 
@@ -902,6 +906,10 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   };
 
   const handleToggleEquip = (invItem: InventoryItem) => {
+    if (invItem.category !== 'equipment') {
+      alert('ไอเทมวัตถุดิบและไอเทมใช้งานไม่สามารถสวมใส่ได้');
+      return;
+    }
     const total = Math.max(1, Number(invItem.quantity) || 1);
     const current = getEquippedQuantity(invItem);
     const aryaTotal = stackedInventory
