@@ -565,7 +565,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       notifications: [{
         id: `notif-skill-up-${now}-${startUpgradeCount + requestedTimes}`,
         title: ascensionCount ? 'สกิลจุติสวรรค์ (Ascension)!' : 'อัปเกรดสกิลสำเร็จ',
-        message: `อัปเกรด "${targetSkill.name}" +${requestedTimes} ขั้น → Lv.${finalSkill.level} • ${progressMessage || 'อัปเกรดระดับสกิลแล้ว'} • ใช้ ${formatCoins(totalCost)} Coins${ascensionCount ? ` • จุติ ${ascensionCount} ครั้ง → x${finalSkill.multiplier}` : ''}`,
+        message: `อัปเกรด "${targetSkill.name}" +${requestedTimes} ขั้น → Lv.${finalSkill.level} • ${progressMessage || 'อัปเกรดระดับสกิลแล้ว'} • ใช้ ${formatCoins(totalCost)} Possibility${ascensionCount ? ` • จุติ ${ascensionCount} ครั้ง → x${finalSkill.multiplier}` : ''}`,
         timestamp: now,
         read: false,
         type: 'system',
@@ -1342,13 +1342,13 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                       </div>
                       <div className="flex min-w-0 gap-2">
                         <div className="min-w-0 flex-1 rounded-xl border border-amber-500/20 bg-slate-950/70 px-2.5 py-1.5 text-[10px] font-mono overflow-hidden">
-                          <span className="text-slate-500">อัป {skillBatchCount} ขั้น = </span><strong className="text-amber-300">{formatCoins(skillBatchCost)} Coins</strong>
+                          <span className="text-slate-500">อัป {skillBatchCount} ขั้น = </span><strong className="text-fuchsia-300">{formatCoins(skillBatchCost)} Possibility</strong>
                         </div>
                         <button type="button" id={`btn-upgrade-skill-${skill.id}`} onClick={() => handleUpgradeSkill(skill.id)}
                           disabled={!canAfford || isUpgradingSkill}
                           className={`flex-1 min-w-0 max-w-full px-3 sm:px-4 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md overflow-hidden ${canAfford && !isUpgradingSkill ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
                           <ArrowUpCircle className="w-4 h-4 shrink-0" />
-                          <span className="truncate">{skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`} • {formatCoins(skillBatchCost)} Coins</span>
+                          <span className="truncate">{skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`} • {formatCoins(skillBatchCost)} Possibility</span>
                         </button>
                       </div>
                     </div>
