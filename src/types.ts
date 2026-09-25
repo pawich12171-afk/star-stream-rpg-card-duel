@@ -514,8 +514,10 @@ export interface BattleConfig {
   strengthPerDamage: number;
   faces: BattleDiceFace[];
   bossDice: BattleDiceConfig;
-  /** ค่าเข้าโหมดสุ่มมอน/บอส */
-  randomBattleEntryFee?: number;
+  /** ค่าเข้า PVE ด้วย Coins */
+  battleEntryFeeCoins?: number;
+  /** ค่าเข้าโหมดสุ่มด้วย Coins */
+  randomBattleEntryFeeCoins?: number;
   /** ค่าเข้าโหมด PVE เป็น Possibility */
   battleEntryFeePossibility?: number;
   /** ค่าเข้าสนามโหมดสุ่มเป็น Possibility */
@@ -655,6 +657,7 @@ export interface BattleRoom {
   winnerTeam?: 'a' | 'b' | 'draw';
   entryFeeCoins?: number;
   entryFeePossibility?: number;
+  entryFeeCurrency?: 'coins' | 'possibility';
   victoryRewardCoins?: number;
   /** รางวัลสุ่มของโหมดสุ่มที่เลือกตั้งแต่สร้างห้อง */
   randomReward?: BattleRandomReward;
