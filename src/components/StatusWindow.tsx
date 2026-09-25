@@ -126,6 +126,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [transcendenceBatchCounts, setTranscendenceBatchCounts] = useState<Record<'strength' | 'durability' | 'agility' | 'magic', number>>({ strength: 1, durability: 1, agility: 1, magic: 1 });
   const [skillBatchCounts, setSkillBatchCounts] = useState<Record<string, number>>({});
   const [isUpgradingSkill, setIsUpgradingSkill] = useState(false);
+  const [statUpgradeCurrency, setStatUpgradeCurrency] = useState<'coins' | 'possibility'>('coins');
+  const [skillUpgradeCurrencies, setSkillUpgradeCurrencies] = useState<Record<string, 'coins' | 'possibility'>>({});
   const latestCharacterRef = useRef<CharacterProfile>(character);
 
   useEffect(() => {
@@ -350,11 +352,11 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     const startUpgradeTimes = Math.max(0, Math.floor(Number(base.statUpgradeCount) || 0));
     let totalCost = 0;
     for (let i = 0; i < requestedTimes; i += 1) {
-      totalCost += calculateStatUpgradeCost(startUpgradeTimes + i);
+      totalCost += calculateStatUpgradeCost(startUpgradeTimes + i, statUpgradeCurrency);
     }
-    const currentCoins = Number(base.coins) || 0;
-    if (currentCoins < totalCost) {
-      alert(`เหรียญไม่เพียงพอ ต้องการ ${formatCoins(totalCost)} Coins (คุณมี ${formatCoins(currentCoins)} Coins)`);
+    const currentBalance = statUpgradeCurrency === 'coins' ? (Number(base.coins) || 0) : (Number(base.possibility) || 0);
+    if (currentBalance < totalCost) {
+      alert(`${statUpgradeCurrency === 'coins' ? 'Coins' : 'ความเป็นไปได้'} ไม่เพียงพอ ต้องการ ${formatCoins(totalCost)} ${statUpgradeCurrency === 'coins' ? 'Coins' : 'Possibility'} (คุณมี ${formatCoins(currentBalance)})`);
       return;
     }
     const now = Date.now();
@@ -365,7 +367,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     };
     const updatedChar: CharacterProfile = {
       ...base,
-      coins: currentCoins - totalCost,
+      coins: statUpgradeCurrency === 'coins' ? currentBalance - totalCost : (Number(base.coins) || 0),
+      possibility: statUpgradeCurrency === 'possibility' ? currentBalance - totalCost : (Number(base.possibility) || 0),
       stats: newStats,
       statUpgradeCount: nextTimes,
       lastUpdated: Math.max(now, Number(base.lastUpdated || 0) + 1),
@@ -373,7 +376,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         {
           id: `notif-stat-up-${now}-${nextTimes}`,
           title: 'อัปเกรดสเตตัสทะลุขีดจำกัดสำเร็จ!',
-          message: `เพิ่มค่า ${statName} +${requestedTimes} (ปัจจุบัน Lv.${newStats[statName]}) ใช้เหรียญ ${formatCoins(totalCost)} Coins`,
+          message: `เพิ่มค่า ${statName} +${requestedTimes} (ปัจจุบัน Lv.${newStats[statName]}) ใช้ ${formatCoins(totalCost)} ${statUpgradeCurrency === 'coins' ? 'Coins' : 'Possibility'}`,
           timestamp: now,
           read: false,
           type: 'system',
@@ -405,10 +408,11 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     if (!targetSkill) return;
     const requestedTimes = Math.max(1, Math.min(1000, Math.floor(Number(skillBatchCounts[skillId]) || 1)));
     const startUpgradeCount = Math.max(0, Math.floor(Number(targetSkill.upgradeCount ?? (targetSkill.level - 1)) || 0));
+    const upgradeCurrency = skillUpgradeCurrencies[skillId] || 'possibility';
     let totalCost = 0;
     let costSkill = { ...targetSkill, upgradeCount: startUpgradeCount };
     for (let i = 0; i < requestedTimes; i += 1) {
-      totalCost += calculateSkillUpgradeCost(costSkill);
+      totalCost += calculateSkillUpgradeCostByCurrency(costSkill, upgradeCurrency);
       let nextLevel = Number(costSkill.level || 1) + 1;
       let nextMultiplier = Number(costSkill.multiplier || 1);
       let nextUpgradeCount = Math.max(0, Number(costSkill.upgradeCount || 0)) + 1;
@@ -556,8 +560,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
     const updatedChar: CharacterProfile = {
       ...base,
-      coins: Number(base.coins) || 0,
-      possibility: currentPossibility - totalCost,
+      coins: upgradeCurrency === 'coins' ? (Number(base.coins) || 0) - totalCost : (Number(base.coins) || 0),
+      possibility: upgradeCurrency === 'possibility' ? currentBalance - totalCost : (Number(base.possibility) || 0),
       skills: (base.skills || []).map(skill => skill.id === skillId
         ? { ...finalSkill, skillUpgradeProgress: progress }
         : skill),
@@ -1013,8 +1017,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                         {(() => {
                           const count = Math.max(1, Math.min(1000, Math.floor(Number(transcendenceBatchCounts[statKey]) || 1)));
                           const start = Math.max(0, Math.floor(Number(character.statUpgradeCount) || 0));
-                          const firstCost = calculateStatUpgradeCost(start);
-                          const total = Array.from({ length: count }, (_, index) => calculateStatUpgradeCost(start + index)).reduce((sum, cost) => sum + cost, 0);
+                          const firstCost = calculateStatUpgradeCost(start, statUpgradeCurrency);
+                          const total = Array.from({ length: count }, (_, index) => calculateStatUpgradeCost(start + index, statUpgradeCurrency)).reduce((sum, cost) => sum + cost, 0);
                           return (
                             <>
                               <div className="flex items-center justify-between gap-2">
