@@ -2550,23 +2550,23 @@ export async function createBattleRoom(room: BattleRoom): Promise<string> {
   return id;
 }
 
-export async function createBattleRoomWithEntryFee(room: BattleRoom, playerId: string, entryFeeCoins: number): Promise<string> {
+export async function createBattleRoomWithEntryFee(room: BattleRoom, playerId: string, entryFeePossibility: number): Promise<string> {
   const id = room.id || "battle-" + Date.now();
-  const fee = Math.max(0, Math.floor(Number(entryFeeCoins) || 0));
-  const next = { ...room, id, entryFeeCoins: fee, createdAt: room.createdAt || Date.now(), updatedAt: Date.now() };
-  if (fee > 0) {
-    await enqueueCharacterWrite(playerId, async () => {
-      const response = await fetch('/api/database?action=create_battle_room_with_fee', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId, fee, room: sanitizeForFirestore(next) }),
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body?.error || 'ไม่สามารถหักค่าเข้าสู้และสร้างห้องได้');
-    });
-  } else {
-    await setDoc(doc(db, BATTLE_ROOMS_COLLECTION, id), sanitizeForFirestore(next));
+  const fee = Math.max(0, Math.floor(Number(entryFeePossibility) || 0));
+  const current = localCharacters.find(character => character.id === playerId);
+  if (!current) throw new Error('ไม่พบตัวละครผู้เข้าสนาม');
+  if (fee > 0 && (Number(current.possibility) || 0) < fee) {
+    throw new Error('ความเป็นไปได้ไม่เพียงพอสำหรับค่าเข้าสนาม');
   }
+  const nextCharacter = fee > 0
+    ? { ...current, possibility: Math.max(0, (Number(current.possibility) || 0) - fee), lastUpdated: Math.max(Date.now(), Number(current.lastUpdated || 0) + 1) }
+    : current;
+  if (fee > 0) await updateCharacterInDB(nextCharacter);
+  const next = { ...room, id, entryFeePossibility: fee, entryFeeCoins: 0, createdAt: room.createdAt || Date.now(), updatedAt: Date.now() };
+  await setDoc(doc(db, BATTLE_ROOMS_COLLECTION, id), sanitizeForFirestore(next));
+  localCharacters = localCharacters.map(character => character.id === playerId ? nextCharacter : character);
+  saveCharactersLocal();
+  notifyCharacters();
   localBattleRooms = [next, ...localBattleRooms.filter(item => item.id !== id)];
   saveBattleLocal();
   notifyBattleRooms();
