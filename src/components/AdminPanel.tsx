@@ -2578,9 +2578,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if(patch.summonAgility != null) setNewSummonAgility(Number(patch.summonAgility));
     if(patch.summonUnits) setNewRewardSummonUnits(patch.summonUnits);
   }}
-/>} placeholder="ชื่อลูกน้อง" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white"/><input type="number" min={1} max={20} value={newSummonMaxCount} onChange={e=>setNewSummonMaxCount(Number(e.target.value))} placeholder="จำนวนสูงสุด" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white"/><input type="number" min={1} value={newSummonHp} onChange={e=>setNewSummonHp(Number(e.target.value))} placeholder="HP ต่อตัว" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white"/><input type="number" min={1} value={newSummonDamage} onChange={e=>setNewSummonDamage(Number(e.target.value))} placeholder="Damage ต่อตัว" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white"/><input type="number" min={0} value={newSummonAgility} onChange={e=>setNewSummonAgility(Number(e.target.value))} placeholder="Speed / AGI" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white"/></div><textarea value={newSummonSkillsText} onChange={e=>setNewSummonSkillsText(e.target.value)} placeholder='JSON สกิลลูกน้อง' className="min-h-24 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] font-mono text-white"/><div className="text-[9px] text-slate-500">กำหนดสกิลลูกน้องเป็น JSON array และใช้ aiChancePercent กำหนดโอกาสใช้</div></div>)}
+/>}
 
-                    {newRewardBattleEffect === 'damage' && (
+{newRewardBattleEffect === 'damage' && (
                       <div className="rounded-lg border border-amber-500/20 bg-amber-950/10 p-2">
                         <div className="text-[10px] font-black text-amber-200 mb-2">⚔️ สูตรคำนวณดาเมจ</div>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
