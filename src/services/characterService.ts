@@ -3007,7 +3007,12 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
         const status = { id: `battle-effect-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, kind: kind as AdminStatusEffect['kind'], name: label, mode, power: value, duration, remaining: duration, appliedAt: Date.now(), source: 'admin' as const, description: label };
         target.adminStatusEffects = [...existing, status];
       }
-      if (effect.kind === 'freeze' || effect.kind === 'stun') target.stunnedTurns = Math.max(target.stunnedTurns || 0, duration);
+      if (effect.kind === 'freeze' || effect.kind === 'stun') {
+        // Duration is the actual time this status remains active. Reapplying a
+        // stun refreshes it to the configured duration; it must not accumulate
+        // into 50/100+ turns just because the skill hits repeatedly.
+        target.stunnedTurns = duration;
+      }
       result.message += ` • ${label} ${duration} เทิร์น`;
     }
   }
@@ -3755,7 +3760,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         current.reflectTurns = skillProfile.duration;
         result.message += ` • ใช้สกิล ${skillName} สะท้อนดาเมจ ${current.reflectPercent}% เป็นเวลา ${skillProfile.duration} เทิร์น`;
       } else if (skillProfile.effect === "stun") {
-        defender.stunnedTurns = (defender.stunnedTurns || 0) + skillProfile.duration;
+        defender.stunnedTurns = Math.max(1, Math.min(99, Math.floor(Number(skillProfile.duration) || 1)));
         result.message += ` • ใช้สกิล ${skillName} ทำให้ ${defender.name} ติดสตัน ${skillProfile.duration} เทิร์น`;
       } else if (skillProfile.effect === "immortal") {
         current.immortalTurns = skillProfile.duration;
@@ -3998,7 +4003,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       result.trueDamage = appliedTrueDamage;
     }
     if (result.heal > 0 && !['all_allies','all_combatants'].includes(String(skill?.targetMode || 'enemy'))) current.hp = Math.min(current.maxHp, current.hp + result.heal);
-    if (result.face.effect === "stun" && defender.hp > 0) defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
+    if (result.face.effect === "stun" && defender.hp > 0) defender.stunnedTurns = 1;
     nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: result.message + (result.face.effect === "stun" ? " และทำให้เป้าหมายติดสตัน" : ""), roll: result.roll, damage: result.damage, effect: result.face.effect });
   }
   const remainingOpponent = opponentTeam.filter(item => item.hp > 0);
