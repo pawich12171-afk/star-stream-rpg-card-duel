@@ -3290,14 +3290,35 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     magic: Number(rawStats.magic) || 0,
   };
 
-  // Basic item effects.
+  // Basic item effects. Items can also target the whole allied team.
+  const itemTargetMode = normalizedItem.targetMode || 'self';
+  const itemAll = [...normalizedRoom.teamA, ...normalizedRoom.teamB];
+  const itemTargets = itemTargetMode === 'all_allies'
+    ? itemAll.filter(u => u.team === actor.team && u.hp > 0)
+    : itemTargetMode === 'all_enemies'
+      ? itemAll.filter(u => u.team !== actor.team && u.hp > 0)
+      : itemTargetMode === 'all_combatants'
+        ? itemAll.filter(u => u.hp > 0)
+        : [actor];
   if (item.effectType === 'heal_hp') {
     const flatHeal = Math.max(0, Number(normalizedItem.effectValue) || 0);
     const percentHeal = Math.min(100, Math.max(0, Number(normalizedItem.healPercent) || 0));
-    hp = Math.min(maxHp, hp + flatHeal + Math.round(maxHp * percentHeal / 100));
+    const baseHeal = flatHeal + Math.round(maxHp * percentHeal / 100);
+    if (itemTargets.length > 1) {
+      itemTargets.forEach(target => { target.hp = Math.min(target.maxHp, target.hp + baseHeal); });
+    } else {
+      hp = Math.min(maxHp, hp + baseHeal);
+    }
   } else if (item.effectType === 'buff_stat' && normalizedItem.targetStat) {
     const stat = String(normalizedItem.targetStat);
-    if (stat in stats) stats[stat] = Math.max(0, Number(stats[stat]) || 0) + Math.max(0, Number(normalizedItem.effectValue) || 0);
+    const amount = Math.max(0, Number(normalizedItem.effectValue) || 0);
+    if (itemTargets.length > 1) {
+      itemTargets.forEach(target => {
+        target.stats = { ...target.stats, [stat]: Math.max(0, Number(target.stats?.[stat]) || 0) + amount };
+      });
+    } else if (stat in stats) {
+      stats[stat] = Math.max(0, Number(stats[stat]) || 0) + amount;
+    }
   } else if (item.effectType === 'boost_max_hp') {
     const bonus = Math.max(0, Number(normalizedItem.effectValue) || 0);
     maxHp += bonus;
