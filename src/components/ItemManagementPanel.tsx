@@ -449,15 +449,14 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
                     </select>
                     <input className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" placeholder="คำอธิบาย" value={summonSkillDescription} onChange={e=>setSummonSkillDescription(e.target.value)}/>
                     <input className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" type="number" min="0" placeholder="พลังสกิล" value={summonSkillPower} onChange={e=>setSummonSkillPower(Number(e.target.value)||0)}/>
-                    <input className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" type="number" min="0" max="100" placeholder="AI โอกาสใช้ %" value={summonSkillChance} onChange={e=>setSummonSkillChance(Number(e.target.value)||0)}/>
                     <input className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" type="number" min="0" max="99" placeholder="คูลดาวน์" value={summonSkillCooldown} onChange={e=>setSummonSkillCooldown(Number(e.target.value)||0)}/>
                   </div>
                   <button type="button" className="w-full rounded-lg bg-violet-600/20 border border-violet-500/30 py-2 text-xs font-bold text-violet-100" onClick={()=>{
                     if(!summonSkillName.trim()){alert('กรุณาใส่ชื่อสกิล');return;}
-                    setSummonSkills(prev=>[...prev,{id:'item-summon-skill-'+Date.now(),name:summonSkillName.trim(),level:1,multiplier:1,type:'battle',description:summonSkillDescription.trim()||'สกิลของลูกน้อง',battleEffect:summonSkillEffect,battlePower:Math.max(0,summonSkillPower),battleUseLimit:'unlimited',cooldownTurns:Math.max(0,Math.floor(summonSkillCooldown)),aiChancePercent:Math.max(0,Math.min(100,summonSkillChance))} as BattleBotSkill]);
+                    setSummonSkills(prev=>[...prev,{id:'item-summon-skill-'+Date.now(),name:summonSkillName.trim(),level:1,multiplier:1,type:'battle',description:summonSkillDescription.trim()||'สกิลของลูกน้อง',battleEffect:summonSkillEffect,battlePower:Math.max(0,summonSkillPower),battleUseLimit:'unlimited',cooldownTurns:Math.max(0,Math.floor(summonSkillCooldown))} as BattleBotSkill]);
                     setSummonSkillName(''); setSummonSkillDescription('');
                   }}>+ เพิ่มสกิลให้ลูกน้อง</button>
-                  {summonSkills.map((s,i)=><div key={s.id} className="flex items-center justify-between gap-2 text-[10px] text-violet-100 bg-slate-950/70 p-2 rounded-lg"><span>{s.name} · {s.battleEffect} · พลัง {s.battlePower || 0} · AI {s.aiChancePercent ?? 100}%</span><button type="button" className="text-rose-300" onClick={()=>setSummonSkills(prev=>prev.filter((_,j)=>j!==i))}>ลบ</button></div>)}
+                  {summonSkills.map((s,i)=><div key={s.id} className="flex items-center justify-between gap-2 text-[10px] text-violet-100 bg-slate-950/70 p-2 rounded-lg"><span>{s.name} · {s.battleEffect} · พลัง {s.battlePower || 0}</span><button type="button" className="text-rose-300" onClick={()=>setSummonSkills(prev=>prev.filter((_,j)=>j!==i))}>ลบ</button></div>)}
                 </div>
               </div>
             )}
