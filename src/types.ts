@@ -59,8 +59,16 @@ export interface Skill {
   /** ข้อเสีย/ผลย้อนกลับของสกิลที่ผู้สร้างกำหนด และมีผลจริงในสนามรบ */
   battleDrawbacks?: BattleExtraEffect[];
   battleStats?: BattleSkillStat[];
+  /** ประเภทสกิลที่ Admin กำหนด */
+  skillCategory?: BattleSkillCategory;
   /** เป้าหมายของผลหลัก เช่น ฮีลตัวเอง/ฮีลหมู่/บัฟหมู่ */
   targetMode?: BattleSkillTarget;
+  /** กติกาการเลือกเป้าหมายสำหรับสกิลลูกน้อง/สกิลสนามรบ */
+  targetConfig?: BattleSkillTargetConfig;
+  /** เอฟเฟกต์บัฟ/ดีบัฟหลายรายการที่ Admin กำหนด */
+  skillModifiers?: BattleSkillModifier[];
+  /** ใช้กับลูกน้อง/มอน/บอสในสนามรบหรือไม่ */
+  usableBySummons?: boolean;
   /** ค่าบัฟสเตตัสชั่วคราวของสกิล */
   buffStat?: keyof CharacterStats;
   buffAmount?: number;
@@ -547,7 +555,58 @@ export interface CardDuelRoom {
 
 export type BattleMode = 'pvp' | 'pve' | 'random';
 export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect' | 'stun' | 'copy_ability' | 'immortal' | 'damage_reduction' | 'summon' | 'buff_stat';
-export type BattleSkillTarget = 'self' | 'enemy' | 'all_allies' | 'all_enemies' | 'all_combatants';
+export type BattleSkillTarget =
+  | 'self'
+  | 'enemy'
+  | 'ally'
+  | 'selected_ally'
+  | 'selected_enemy'
+  | 'all_allies'
+  | 'all_enemies'
+  | 'all_combatants'
+  | 'battlefield_allies'
+  | 'battlefield_enemies'
+  | 'selected_bots'
+  | 'selected_bosses';
+
+export type BattleSkillCategory =
+  | 'attack'
+  | 'buff'
+  | 'debuff'
+  | 'control'
+  | 'heal'
+  | 'defense'
+  | 'summon'
+  | 'utility';
+
+export type BattleSkillEffectKind =
+  | 'attack_damage'
+  | 'heal'
+  | 'buff'
+  | 'debuff'
+  | 'status'
+  | 'shield'
+  | 'cleanse'
+  | 'summon';
+
+export interface BattleSkillTargetConfig {
+  mode: BattleSkillTarget;
+  allowMultiple?: boolean;
+  maxTargets?: number;
+  selectedTargetIds?: string[];
+  selectedTargetTypes?: Array<'player' | 'bot' | 'boss'>;
+}
+
+export interface BattleSkillModifier {
+  id: string;
+  kind: BattleSkillEffectKind;
+  stat?: keyof CharacterStats;
+  status?: AdminStatusEffectKind | BattleExtraEffectKind | string;
+  value: number;
+  duration?: number;
+  chance?: number;
+  label?: string;
+}
 
 export type BattleExtraEffectKind = 'bleeding' | 'burn' | 'poison' | 'freeze' | 'stun' | 'reduce_max_hp_percent' | 'reduce_defense_percent' | 'damage_percent' | 'heal_percent' | 'shield' | 'reflect' | 'damage_reduction';
 
@@ -725,6 +784,9 @@ export interface BattleLogEntry {
   id: string;
   timestamp: number;
   actorName: string;
+  targetName?: string;
+  actorType?: BattleCombatantType;
+  targetType?: BattleCombatantType;
   message: string;
   roll?: number;
   damage?: number;
