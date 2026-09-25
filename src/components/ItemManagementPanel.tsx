@@ -18,6 +18,7 @@ const getItemEffectSummary = (item: Partial<Item>) => {
     case 'boost_max_hp': return 'เพิ่ม Max HP +' + (item.hpBonus || item.effectValue || 0);
     case 'buff_stat': return 'เพิ่ม ' + String(item.targetStat || 'STR').toUpperCase() + ' +' + (item.effectValue || 0);
     case 'enhance_skill': return 'เสริมสกิล ' + (item.skillEnhanceTarget || 'ที่กำหนด');
+    case 'summon': return '🧿 เสก ' + (item.summonName || 'ลูกน้อง') + ' · HP ' + (item.summonHp || 0) + ' · STR ' + (item.summonStrength || 0);
     default: return 'เอฟเฟกต์กำหนดเอง';
   }
 };
