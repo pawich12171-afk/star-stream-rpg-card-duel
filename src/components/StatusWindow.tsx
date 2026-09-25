@@ -192,6 +192,59 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     latestCharacterRef.current = resetCharacter;
     void onUpdateCharacter(syncCharacterHealth(resetCharacter));
   }, [character.id, character.skillUpgradeResetVersion]);
+  // One-time cleanup for the old exponential bonus system that could create
+  // huge HP/stat/slot values (for example x262144 being applied directly per click).
+  useEffect(() => {
+    const BALANCE_VERSION = 4;
+    if (Number(character.skillUpgradeBalanceVersion || 0) >= BALANCE_VERSION) return;
+    const skills = character.skills || [];
+    const bonus = skills.reduce((sum, skill) => {
+      const p = skill.skillUpgradeProgress;
+      return {
+        hp: sum.hp + Math.max(0, Number(p?.hpBonus) || 0),
+        durability: sum.durability + Math.max(0, Number(p?.durability) || 0),
+        strength: sum.strength + Math.max(0, Number(p?.strength) || 0),
+        agility: sum.agility + Math.max(0, Number(p?.agility) || 0),
+        magic: sum.magic + Math.max(0, Number(p?.magic) || 0),
+        slots: sum.slots + Math.max(0, Number(p?.equipmentSlots) || 0),
+      };
+    }, { hp: 0, durability: 0, strength: 0, agility: 0, magic: 0, slots: 0 });
+    const legacy = character.skillUpgradeProgress;
+    const legacyBonus = legacy ? {
+      hp: Math.max(0, Number(legacy.hpBonus) || 0),
+      durability: Math.max(0, Number(legacy.durability) || 0),
+      strength: Math.max(0, Number(legacy.strength) || 0),
+      agility: Math.max(0, Number(legacy.agility) || 0),
+      magic: Math.max(0, Number(legacy.magic) || 0),
+      slots: Math.max(0, Number(legacy.equipmentSlots) || 0),
+    } : { hp: 0, durability: 0, strength: 0, agility: 0, magic: 0, slots: 0 };
+    const total = {
+      hp: bonus.hp + legacyBonus.hp,
+      durability: bonus.durability + legacyBonus.durability,
+      strength: bonus.strength + legacyBonus.strength,
+      agility: bonus.agility + legacyBonus.agility,
+      magic: bonus.magic + legacyBonus.magic,
+      slots: bonus.slots + legacyBonus.slots,
+    };
+    const resetSkills = skills.map(skill => ({ ...skill, skillUpgradeProgress: undefined }));
+    const cleaned: CharacterProfile = {
+      ...character,
+      skills: resetSkills,
+      stats: {
+        strength: Math.max(0, Number(character.stats.strength || 0) - total.strength),
+        durability: Math.max(0, Number(character.stats.durability || 0) - total.durability),
+        agility: Math.max(0, Number(character.stats.agility || 0) - total.agility),
+        magic: Math.max(0, Number(character.stats.magic || 0) - total.magic),
+      },
+      equipmentSlotUpgrades: Math.max(0, Number(character.equipmentSlotUpgrades || 0) - Math.min(12, total.slots)),
+      skillUpgradeProgress: undefined,
+      skillUpgradeBalanceVersion: BALANCE_VERSION,
+      lastUpdated: Math.max(Date.now(), Number(character.lastUpdated || 0) + 1),
+    };
+    latestCharacterRef.current = cleaned;
+    void onUpdateCharacter(syncCharacterHealth(cleaned));
+  }, [character.id, character.skillUpgradeBalanceVersion]);
+
   useEffect(() => {
     // Keep the edit form aligned with the newest character snapshot.
     // A realtime update must not leave the modal editing an older copy.
@@ -305,45 +358,44 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       : sourceAgility < 100 ? 3
       : sourceMagic < 100 ? 4 : 5;
     const phaseValues = [sourceHp, sourceDurability, sourceStrength, sourceAgility, sourceMagic, Math.max(0, Number(source.equipmentSlots) || 0)];
-    let value = Number.isFinite(Number(source.rewardValue))
-      ? Math.max(0, Number(source.rewardValue))
-      : Math.max(0, phaseValues[phase] || 0);
+    let value = Number.isFinite(Number(source.rewardValue)) ? Math.max(0, Number(source.rewardValue)) : 0;
     let hp = 0, durability = 0, strength = 0, agility = 0, magic = 0, slots = 0;
     let cycle = Math.max(0, Math.floor(Number(source.cycleCount) || 0));
-    let multiplier = Math.max(1, Number(skill.multiplier) || 1);
+    const multiplier = Math.max(1, Number(skill.multiplier) || 1);
+    // ใช้ log2 ของ multiplier แทนการเอา multiplier แบบทวีคูณไปคูณรางวัลตรง ๆ
+    // จุติยังมีผล แต่ไม่ทำให้ x256/x65536/x262144 ทำให้ HP ระเบิด
+    const rewardPower = 1 + Math.floor(Math.log2(multiplier));
     for (let i = 0; i < count; i += 1) {
       const hpCap = 20000 * (cycle + 1);
       const statCap = 100 * (cycle + 1);
-      const slotCap = 2 * (cycle + 1);
       if (phase === 5) {
-        const slotProgress = multiplier / (50 * Math.pow(cycle + 1, 2));
-        value += slotProgress;
+        if (source.equipmentSlots + slots >= 12) { cycle += 1; phase = 0; value = 0; continue; }
+        value += rewardPower / (500 * Math.pow(cycle + 1, 2));
         if (value >= 1) {
-          const gainedSlots = Math.floor(value);
+          const gainedSlots = Math.min(Math.floor(value), 12 - (source.equipmentSlots + slots));
           slots += gainedSlots;
           value -= gainedSlots;
         }
-        if (phaseValues[5] + slots >= slotCap) { cycle += 1; phase = 0; value = 0; }
+        if (source.equipmentSlots + slots >= 12) { cycle += 1; phase = 0; value = 0; }
         continue;
       }
       if (phase === 0) {
-        hp += multiplier;
-        value = phaseValues[0] + hp;
-        if (value >= hpCap) { phase = 1; value = 0; }
-      } else {
-        const statProgress = multiplier / (100 * Math.pow(cycle + 1, 2));
-        value += statProgress;
-        if (value >= 1) {
-          const gained = Math.floor(value);
-          if (phase === 1) durability += gained;
-          else if (phase === 2) strength += gained;
-          else if (phase === 3) agility += gained;
-          else if (phase === 4) magic += gained;
-          value -= gained;
-        }
-        const currentGain = phase === 1 ? durability : phase === 2 ? strength : phase === 3 ? agility : magic;
-        if (phaseValues[phase] + currentGain >= statCap) { phase += 1; value = 0; }
+        hp += Math.min(rewardPower, Math.max(0, hpCap - (sourceHp + hp)));
+        if (sourceHp + hp >= hpCap) { phase = 1; value = 0; }
+        continue;
       }
+      value += rewardPower / (100 * Math.pow(cycle + 1, 2));
+      if (value >= 1) {
+        const gained = Math.floor(value);
+        if (phase === 1) durability += gained;
+        else if (phase === 2) strength += gained;
+        else if (phase === 3) agility += gained;
+        else if (phase === 4) magic += gained;
+        value -= gained;
+      }
+      const currentGain = phase === 1 ? durability : phase === 2 ? strength : phase === 3 ? agility : magic;
+      const currentSource = phase === 1 ? sourceDurability : phase === 2 ? sourceStrength : phase === 3 ? sourceAgility : sourceMagic;
+      if (currentSource + currentGain >= statCap) { phase += 1; value = 0; }
     }
     return [
       hp ? `HP +${hp.toLocaleString()}` : '',
@@ -526,14 +578,14 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       : storedStrength < 100 ? 2
       : storedAgility < 100 ? 3
       : storedMagic < 100 ? 4 : 5;
-    const phaseValues = [storedHp, storedDurability, storedStrength, storedAgility, storedMagic, Math.max(0, Number(previousProgress.equipmentSlots) || 0)];
+    const phaseValues = [storedHp, storedDurability, storedStrength, storedAgility, storedMagic, Math.min(12, Math.max(0, Number(previousProgress.equipmentSlots) || 0))];
     const progress = {
       hpBonus: storedHp,
       durability: storedDurability,
       strength: storedStrength,
       agility: storedAgility,
       magic: storedMagic,
-      equipmentSlots: Math.max(0, Number(previousProgress.equipmentSlots) || 0),
+      equipmentSlots: Math.min(12, Math.max(0, Number(previousProgress.equipmentSlots) || 0)),
       rewardPhase: inferredPhase,
       rewardValue: Number.isFinite(Number(previousProgress.rewardValue))
         ? Math.max(0, Number(previousProgress.rewardValue))
@@ -544,29 +596,33 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
     let hpGained = 0, durabilityGained = 0, strengthGained = 0, agilityGained = 0, magicGained = 0, slotUnlocked = 0;
     let completedCycles = 0;
-    // เพดานขยายทุกครั้งที่วนครบลูป: HP 20,000 → 40,000 → 60,000...
-    // สเตตัส 100 → 200 → 300... และช่องสวมใส่ 2 → 4 → 6...
-    // สเตตัส/ช่องใช้ความคืบหน้าแบบเศษส่วนเพื่อให้รอบสูง ๆ อัปได้ยากขึ้น
     let rewardProgress = Math.max(0, Number(progress.rewardValue) || 0);
     const rewardMultiplier = Math.max(1, Number(finalSkill.multiplier) || 1);
+    const rewardPower = 1 + Math.floor(Math.log2(rewardMultiplier));
 
     for (let i = 0; i < requestedTimes; i += 1) {
       const phase = progress.rewardPhase;
       const cycle = Math.max(0, Math.floor(Number(progress.cycleCount) || 0));
       const hpCap = 20000 * (cycle + 1);
       const statCap = 100 * (cycle + 1);
-      const slotCap = 2 * (cycle + 1);
 
       if (phase === 5) {
-        // ช่องใหม่ยิ่งสูงยิ่งใช้การอัปสกิลมากขึ้น: 50 × รอบ² ครั้งต่อ 1 ช่อง
-        rewardProgress += rewardMultiplier / (50 * Math.pow(cycle + 1, 2));
+        // ช่องอุปกรณ์มีเพดานถาวร 12 ช่อง และยิ่งรอบสูงยิ่งใช้ความคืบหน้ามากขึ้น
+        if (progress.equipmentSlots >= 12) {
+          progress.rewardPhase = 0;
+          rewardProgress = 0;
+          progress.cycleCount = cycle + 1;
+          completedCycles += 1;
+          continue;
+        }
+        rewardProgress += rewardPower / (500 * Math.pow(cycle + 1, 2));
         if (rewardProgress >= 1) {
-          const gainedSlots = Math.floor(rewardProgress);
+          const gainedSlots = Math.min(Math.floor(rewardProgress), 12 - progress.equipmentSlots);
           progress.equipmentSlots += gainedSlots;
           slotUnlocked += gainedSlots;
           rewardProgress -= gainedSlots;
         }
-        if (progress.equipmentSlots >= slotCap) {
+        if (progress.equipmentSlots >= 12) {
           progress.rewardPhase = 0;
           rewardProgress = 0;
           progress.cycleCount = cycle + 1;
@@ -576,8 +632,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       }
 
       if (phase === 0) {
-        // HP ยังคง +1 ต่อครั้งตามระบบเดิม และใช้ multiplier จากจุติ
-        const hpGain = rewardMultiplier;
+        // HP ได้จากพลังจุติแบบ soft-scaled ไม่ใช่ multiplier ตรง ๆ
+        // x1 = +1 ต่อครั้ง, x2 = +2, x4 = +3 ... เพื่อไม่ให้ HP เฟ้อ
+        const hpGain = Math.min(rewardPower, Math.max(0, hpCap - progress.hpBonus));
         progress.hpBonus += hpGain;
         hpGained += hpGain;
         if (progress.hpBonus >= hpCap) {
@@ -587,9 +644,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         continue;
       }
 
-      // สเตตัสอื่นไม่พุ่งตาม HP: ต้องสะสมความคืบหน้าจนครบ 1 ก่อน +1
-      // รอบใหม่จะยากขึ้นแบบกำลังสอง ทำให้ STR/DEF/AGI/MAG ไม่เฟ้อ
-      rewardProgress += rewardMultiplier / (100 * Math.pow(cycle + 1, 2));
+      // สเตตัสต้องเติมให้ถึงเพดานของรอบปัจจุบันก่อน จึงค่อยไปสเตตัสถัดไป
+      // และความยากเพิ่มตามรอบกำลังสอง
+      rewardProgress += rewardPower / (100 * Math.pow(cycle + 1, 2));
       if (rewardProgress >= 1) {
         const gained = Math.floor(rewardProgress);
         if (phase === 1) { progress.durability += gained; durabilityGained += gained; }
@@ -599,13 +656,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         rewardProgress -= gained;
       }
 
-      const phaseTotal = phase === 1
-        ? progress.durability
-        : phase === 2
-          ? progress.strength
-          : phase === 3
-            ? progress.agility
-            : progress.magic;
+      const phaseTotal = phase === 1 ? progress.durability : phase === 2 ? progress.strength : phase === 3 ? progress.agility : progress.magic;
       if (phaseTotal >= statCap) {
         progress.rewardPhase = phase + 1;
         rewardProgress = 0;
