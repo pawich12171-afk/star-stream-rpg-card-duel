@@ -2000,161 +2000,62 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
       {/* MODAL: Player Customize Own Stats */}
       {showStatEditModal && (
-        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex flex-col items-center justify-center p-3 sm:p-4 overflow-y-auto bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-cyan-500/40 rounded-3xl max-w-lg w-full shadow-[0_0_50px_rgba(6,182,212,0.25)] my-4 max-h-[90vh] overflow-hidden">
-            <div className="px-5 py-4 border-b border-cyan-900/40 bg-slate-900/80 flex items-center justify-between">
-              <h3 className="text-base font-black text-white flex items-center gap-2">
-                <Zap className="w-5 h-5 text-cyan-400" />
-                ปรับแต่งสเตตัสและพลังชีวิต (Adjust Stats & HP)
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 sm:p-4">
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border-2 border-cyan-500/40 bg-slate-900 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-cyan-900/40 bg-slate-900/90 px-5 py-4">
+              <h3 className="flex items-center gap-2 text-base font-black text-white">
+                <Zap className="h-5 w-5 text-cyan-400" />
+                ปรับแต่งสเตตัสและพลังชีวิต
               </h3>
-              <button
-                onClick={() => setShowStatEditModal(false)}
-                className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
-              >
-                ปิด
-              </button>
+              <button type="button" onClick={() => setShowStatEditModal(false)} className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-800 text-slate-400 hover:text-white">ปิด</button>
             </div>
-
-            <div className="p-5 space-y-4 text-xs overflow-y-auto">
+            <div className="space-y-4 p-5 text-xs">
               <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-2xl bg-slate-950 border border-rose-900/50">
-                  <label className="text-rose-400 font-bold block mb-1">HP ปัจจุบัน</label>
-                  <input
-                    type="number"
-                    value={tempHp}
-                    onChange={(e) => setTempHp(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono font-bold text-sm outline-none focus:border-rose-500"
-                  />
-                </div>
-                <div className="p-3 rounded-2xl bg-slate-950 border border-rose-900/50">
-                  <label className="text-rose-400 font-bold block mb-1">HP สูงสุด (Max HP)</label>
-                  <input
-                    type="number"
-                    value={tempMaxHp}
-                    onChange={(e) => setTempMaxHp(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono font-bold text-sm outline-none focus:border-rose-500"
-                  />
-                </div>
+                <label className="rounded-2xl border border-rose-900/50 bg-slate-950 p-3 text-rose-400 font-bold">
+                  HP ปัจจุบัน
+                  <input type="number" value={tempHp} onChange={e => setTempHp(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-bold text-white" />
+                </label>
+                <label className="rounded-2xl border border-rose-900/50 bg-slate-950 p-3 text-rose-400 font-bold">
+                  HP สูงสุด
+                  <input type="number" value={tempMaxHp} onChange={e => setTempMaxHp(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-bold text-white" />
+                </label>
               </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                  <label className="text-slate-400 text-[11px] font-bold block mb-1">พละกำลัง</label>
-                  <input
-                    type="number"
-                    value={tempStats.strength}
-                    onChange={(e) => setTempStats({ ...tempStats, strength: Number(e.target.value) })}
-                    className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono font-bold outline-none focus:border-cyan-500"
-                  />
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                  <label className="text-slate-400 text-[11px] font-bold block mb-1">ความทนทาน</label>
-                  <input
-                    type="number"
-                    value={tempStats.durability}
-                    onChange={(e) => setTempStats({ ...tempStats, durability: Number(e.target.value) })}
-                    className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono font-bold outline-none focus:border-cyan-500"
-                  />
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                  <label className="text-slate-400 text-[11px] font-bold block mb-1">ความว่องไว</label>
-                  <input
-                    type="number"
-                    value={tempStats.agility}
-                    onChange={(e) => setTempStats({ ...tempStats, agility: Number(e.target.value) })}
-                    className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono font-bold outline-none focus:border-cyan-500"
-                  />
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                  <label className="text-slate-400 text-[11px] font-bold block mb-1">พลังเวท</label>
-                  <input
-                    type="number"
-                    value={tempStats.magic}
-                    onChange={(e) => setTempStats({ ...tempStats, magic: Number(e.target.value) })}
-                    className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono font-bold outline-none focus:border-cyan-500"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                <label className="rounded-xl border border-slate-800 bg-slate-950 p-2.5 text-slate-400">พละกำลัง<input type="number" value={tempStats.strength} onChange={e => setTempStats({...tempStats,strength:Number(e.target.value)})} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-white" /></label>
+                <label className="rounded-xl border border-slate-800 bg-slate-950 p-2.5 text-slate-400">ความทนทาน<input type="number" value={tempStats.durability} onChange={e => setTempStats({...tempStats,durability:Number(e.target.value)})} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-white" /></label>
+                <label className="rounded-xl border border-slate-800 bg-slate-950 p-2.5 text-slate-400">ความว่องไว<input type="number" value={tempStats.agility} onChange={e => setTempStats({...tempStats,agility:Number(e.target.value)})} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-white" /></label>
+                <label className="rounded-xl border border-slate-800 bg-slate-950 p-2.5 text-slate-400">พลังเวท<input type="number" value={tempStats.magic} onChange={e => setTempStats({...tempStats,magic:Number(e.target.value)})} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-white" /></label>
               </div>
-
+              <label className="block text-slate-300 font-bold">
+                สถานะบัฟพิเศษ
+                <input type="text" value={tempBuffs} onChange={e => setTempBuffs(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white" />
+              </label>
               <div>
-                <label className="text-slate-300 font-bold block mb-1">สถานะบัฟพิเศษ (Status Buffs)</label>
-                <input
-                  type="text"
-                  value={tempBuffs}
-                  onChange={(e) => setTempBuffs(e.target.value)}
-                  placeholder="เช่น บัฟสายลมศักดิ์สิทธิ์ (Stack) - ความเร็วพุ่งทะยาน +15%..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none focus:border-cyan-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-300 font-bold block mb-1">คุณลักษณะตัวละคร</label>
-                <div className="min-h-10 p-2 rounded-xl bg-slate-950 border border-slate-700 flex flex-wrap gap-1.5 items-center">
-                  {tempCharacteristics.map((characteristic, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-cyan-950/70 text-cyan-200 border border-cyan-700/60 text-xs font-semibold"
-                    >
-                      {characteristic}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCharacteristic(index)}
-                        className="text-cyan-400 hover:text-rose-300 cursor-pointer"
-                        aria-label="ลบคุณลักษณะ"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                  {tempCharacteristics.length === 0 && (
-                    <span className="text-slate-500 text-xs">ยังไม่มีคุณลักษณะ</span>
-                  )}
+                <div className="mb-1 text-slate-300 font-bold">คุณลักษณะตัวละคร</div>
+                <div className="min-h-10 rounded-xl border border-slate-700 bg-slate-950 p-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {tempCharacteristics.map((characteristic,index) => (
+                      <span key={index} className="inline-flex items-center gap-1 rounded-full border border-cyan-700/60 bg-cyan-950/70 px-2.5 py-1 text-cyan-200">
+                        {characteristic}
+                        <button type="button" onClick={() => handleRemoveCharacteristic(index)} className="text-cyan-400 hover:text-rose-300" aria-label="ลบคุณลักษณะ"><Trash2 className="h-3 w-3" /></button>
+                      </span>
+                    ))}
+                    {tempCharacteristics.length === 0 && <span className="text-slate-500">ยังไม่มีคุณลักษณะ</span>}
+                  </div>
                 </div>
-                <div className="flex gap-2 mt-2">
-                  <input
-                    id="input-new-characteristic"
-                    type="text"
-                    value={newCharacteristic}
-                    onChange={(e) => setNewCharacteristic(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddCharacteristic();
-                      }
-                    }}
-                    placeholder="เช่น ผู้ดูดาราเริ่มต้น"
-                    className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none focus:border-cyan-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddCharacteristic}
-                    className="px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    เพิ่ม
-                  </button>
+                <div className="mt-2 flex gap-2">
+                  <input id="input-new-characteristic" type="text" value={newCharacteristic} onChange={e => setNewCharacteristic(e.target.value)} onKeyDown={e => { if(e.key==='Enter'){e.preventDefault();handleAddCharacteristic();} }} placeholder="เช่น ผู้ดูดาราเริ่มต้น" className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white" />
+                  <button type="button" onClick={handleAddCharacteristic} className="rounded-xl bg-cyan-600 px-3 py-2 font-bold text-white">เพิ่ม</button>
                 </div>
               </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowStatEditModal(false)}
-                  className="px-4 py-2 text-slate-400 hover:text-white cursor-pointer font-semibold"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveStats}
-                  className="px-5 py-2 font-black text-slate-950 bg-gradient-to-r from-cyan-400 via-teal-300 to-cyan-400 hover:from-cyan-300 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)] cursor-pointer"
-                >
-                  {isSavingStats ? 'กำลังบันทึก...' : 'บันทึกสเตตัส'}
-                </button>
+              <div className="flex justify-end gap-2 border-t border-slate-800 pt-3">
+                <button type="button" onClick={() => setShowStatEditModal(false)} className="rounded-xl px-4 py-2 font-semibold text-slate-400 hover:text-white">ยกเลิก</button>
+                <button type="button" onClick={handleSaveStats} className="rounded-xl bg-gradient-to-r from-cyan-400 via-teal-300 to-cyan-400 px-5 py-2 font-black text-slate-950">{isSavingStats ? 'กำลังบันทึก...' : 'บันทึกสเตตัส'}</button>
               </div>
             </div>
           </div>
         </div>
-      )}
+      )}}
     </div>
   );
 };
