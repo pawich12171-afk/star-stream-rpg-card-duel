@@ -132,25 +132,62 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     latestCharacterRef.current = character;
   }, [character]);
 
-  // Migration ครั้งเดียว: ย้อนการอัปสกิลเดิมของทุกสกิลกลับ Lv.1
-  // ไม่ลบ skillUpgradeProgress/โบนัส HP ที่สะสมไว้
+  // Migration ครั้งเดียว: รีเซ็ตระบบอัปสกิลกลับค่าเริ่มต้นทั้งหมด
+  // - ทุกสกิลกลับ Lv.1 / Multiplier x1 / upgradeCount 0
+  // - ล้างโบนัสสเตตัสที่เกิดจากการอัปสกิลเดิม และคืนค่า stats/equipment slots
+  // - รีเซ็ตตัวนับการอัปสเตตัสทะลุขีดจำกัด เพื่อเริ่มต้นต้นทุนรอบใหม่
   useEffect(() => {
-    const RESET_VERSION = 2;
+    const RESET_VERSION = 3;
     if (Number(character.skillUpgradeResetVersion || 0) >= RESET_VERSION) return;
+
+    const skillProgress = (character.skills || []).reduce(
+      (sum, skill) => {
+        const p = skill.skillUpgradeProgress;
+        return {
+          hp: sum.hp + Math.max(0, Number(p?.hpBonus) || 0),
+          durability: sum.durability + Math.max(0, Number(p?.durability) || 0),
+          strength: sum.strength + Math.max(0, Number(p?.strength) || 0),
+          agility: sum.agility + Math.max(0, Number(p?.agility) || 0),
+          magic: sum.magic + Math.max(0, Number(p?.magic) || 0),
+          slots: sum.slots + Math.max(0, Number(p?.equipmentSlots) || 0),
+        };
+      },
+      { hp: 0, durability: 0, strength: 0, agility: 0, magic: 0, slots: 0 }
+    );
+    const legacy = character.skillUpgradeProgress;
+    const legacyBonus = legacy ? {
+      hp: Math.max(0, Number(legacy.hpBonus) || 0),
+      durability: Math.max(0, Number(legacy.durability) || 0),
+      strength: Math.max(0, Number(legacy.strength) || 0),
+      agility: Math.max(0, Number(legacy.agility) || 0),
+      magic: Math.max(0, Number(legacy.magic) || 0),
+      slots: Math.max(0, Number(legacy.equipmentSlots) || 0),
+    } : { hp: 0, durability: 0, strength: 0, agility: 0, magic: 0, slots: 0 };
+
     const resetSkills = (character.skills || []).map(skill => ({
       ...skill,
       level: 1,
       multiplier: 1,
       upgradeCount: 0,
+      skillUpgradeProgress: undefined,
     }));
     const resetCharacter: CharacterProfile = {
       ...character,
       skills: resetSkills,
+      stats: {
+        strength: Math.max(0, Number(character.stats.strength || 0) - skillProgress.strength - legacyBonus.strength),
+        durability: Math.max(0, Number(character.stats.durability || 0) - skillProgress.durability - legacyBonus.durability),
+        agility: Math.max(0, Number(character.stats.agility || 0) - skillProgress.agility - legacyBonus.agility),
+        magic: Math.max(0, Number(character.stats.magic || 0) - skillProgress.magic - legacyBonus.magic),
+      },
+      equipmentSlotUpgrades: Math.max(0, Number(character.equipmentSlotUpgrades || 0) - skillProgress.slots - legacyBonus.slots),
+      statUpgradeCount: 0,
+      skillUpgradeProgress: undefined,
       skillUpgradeResetVersion: RESET_VERSION,
       lastUpdated: Math.max(Date.now(), Number(character.lastUpdated || 0) + 1),
     };
     latestCharacterRef.current = resetCharacter;
-    void onUpdateCharacter(resetCharacter);
+    void onUpdateCharacter(syncCharacterHealth(resetCharacter));
   }, [character.id, character.skillUpgradeResetVersion]);
   useEffect(() => {
     // Keep the edit form aligned with the newest character snapshot.
