@@ -145,7 +145,7 @@ export const COMPOUND_RATE = 1.01; // Possibility skill upgrades compound +1% pe
 export const SKILL_COIN_COMPOUND_RATE = 1.10; // Coins skill upgrades compound +10% per upgrade
 export const BASE_STAT_UPGRADE_COST = 500; // Coins
 export const BASE_STAT_UPGRADE_COST_POSSIBILITY = 1; // Possibility
-export const STAT_COMPOUND_RATE = 1.10; // Coins stat upgrades: +10% compounded per upgrade
+export const STAT_COMPOUND_RATE = 1.05; // Coins stat upgrades: +5% compounded per upgrade
 export const STAT_POSSIBILITY_COMPOUND_RATE = 1.01; // Possibility stat upgrades: +1% compounded per upgrade
 
 export function calculateSkillUpgradeCost(skill: Skill): number {
