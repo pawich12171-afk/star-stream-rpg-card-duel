@@ -410,7 +410,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     let totalCost = 0;
     let costSkill = { ...targetSkill, upgradeCount: startUpgradeCount };
     for (let i = 0; i < requestedTimes; i += 1) {
-      totalCost += calculateSkillUpgradeCostByCurrency(costSkill, upgradeCurrency);
+      totalCost += calculateSkillUpgradeCost(costSkill);
       let nextLevel = Number(costSkill.level || 1) + 1;
       let nextMultiplier = Number(costSkill.multiplier || 1);
       let nextUpgradeCount = Math.max(0, Number(costSkill.upgradeCount || 0)) + 1;
@@ -1022,7 +1022,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                             <>
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-slate-500">ราคา 1 ขั้น</span>
-                                <span className="text-amber-300 font-black">{formatCoins(firstCost)} Coins</span>
+                                <span className="text-amber-300 font-black">{formatCoins(firstCost)} {statUpgradeCurrency === 'coins' ? 'Coins' : 'Possibility'}</span>
                               </div>
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-slate-400">อัป {count} ขั้น</span>
