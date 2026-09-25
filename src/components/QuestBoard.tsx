@@ -214,6 +214,5 @@ export const QuestBoard: React.FC<QuestBoardProps> = ({ character, shopItems, on
         </div>
       )}
     </div>
-    </div>
   );
 };
