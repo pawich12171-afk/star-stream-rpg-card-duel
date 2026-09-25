@@ -44,6 +44,7 @@ import {
 
 const CHARACTERS_COLLECTION = "characters";
 const SHOP_ITEMS_COLLECTION = "shop_items";
+const CRAFTING_RECIPES_COLLECTION = "crafting_recipes";
 const GACHA_REWARDS_COLLECTION = "gacha_rewards";
 const GACHA_CONFIG_COLLECTION = "gacha_config";
 const GACHA_BANNERS_COLLECTION = "gacha_banners";
@@ -815,6 +816,56 @@ export async function finalizeMarketplaceAuction(auctionId: string): Promise<voi
 }
 
 // Subscribe to Shop items
+export function subscribeToCraftingRecipes(callback: (recipes: import("../types").CraftingRecipe[]) => void) {
+  try {
+    return onSnapshot(collection(db, CRAFTING_RECIPES_COLLECTION), (snapshot: any) => {
+      const list: import("../types").CraftingRecipe[] = [];
+      snapshot.forEach((d: any) => list.push({ ...d.data(), id: d.id } as import("../types").CraftingRecipe));
+      callback(list.filter(r => r.enabled !== false).sort((a,b) => (a.name || '').localeCompare(b.name || '')));
+    }, () => callback([]));
+  } catch { callback([]); return () => {}; }
+}
+
+export async function saveCraftingRecipe(recipe: import("../types").CraftingRecipe): Promise<void> {
+  await setDoc(doc(db, CRAFTING_RECIPES_COLLECTION, recipe.id), sanitizeForFirestore(recipe));
+}
+
+export async function deleteCraftingRecipe(recipeId: string): Promise<void> {
+  await deleteDoc(doc(db, CRAFTING_RECIPES_COLLECTION, recipeId));
+}
+
+export async function craftRecipe(characterId: string, recipe: import("../types").CraftingRecipe, shopItems: Item[]) {
+  const charRef = doc(db, CHARACTERS_COLLECTION, characterId);
+  return runTransaction(db, async tx => {
+    const snap = await tx.get(charRef);
+    if (!snap.exists()) throw new Error('ไม่พบตัวละคร');
+    const char = { ...snap.data(), id: snap.id } as CharacterProfile;
+    const inv = [...(char.inventory || [])];
+    for (const ing of recipe.ingredients || []) {
+      const needed = Math.max(1, Math.floor(Number(ing.quantity) || 1));
+      const owned = inv.filter(x => x.id === ing.itemId).reduce((sum,x) => sum + Math.max(0, Number(x.quantity)||0), 0);
+      if (owned < needed) return {success:false, message:'วัตถุดิบไม่พอ'};
+    }
+    for (const ing of recipe.ingredients || []) {
+      let remain = Math.max(1, Math.floor(Number(ing.quantity)||1));
+      for (let i=inv.length-1;i>=0 && remain>0;i--) {
+        if (inv[i].id !== ing.itemId) continue;
+        const q=Math.max(0, Number(inv[i].quantity)||0), take=Math.min(q,remain); remain-=take;
+        if (q>take) inv[i]={...inv[i],quantity:q-take}; else inv.splice(i,1);
+      }
+    }
+    const output = shopItems.find(x => x.id === recipe.outputItemId);
+    if (!output) return {success:false,message:'ไม่พบไอเทมผลลัพธ์ของสูตรนี้'};
+    const qty=Math.max(1,Math.floor(Number(recipe.outputQuantity)||1));
+    const idx=inv.findIndex(x => x.id===output.id && x.name===output.name);
+    if(idx>=0) inv[idx]={...inv[idx],quantity:Math.max(0,Number(inv[idx].quantity)||0)+qty};
+    else inv.push({...output,instanceId:'craft-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),quantity:qty,isEquipped:false,equippedQuantity:0});
+    const updated={...char,inventory:inv,lastUpdated:Date.now()};
+    tx.update(charRef,sanitizeForFirestore({...updated,powerScore:calculatePowerScore(updated)}));
+    return {success:true,message:'คราฟต์สำเร็จ',updatedChar:updated};
+  });
+}
+
 export function subscribeToShop(callback: (items: Item[]) => void) {
   try {
     const q = collection(db, SHOP_ITEMS_COLLECTION);
