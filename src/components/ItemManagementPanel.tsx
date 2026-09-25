@@ -68,7 +68,6 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const [effectType, setEffectType] = useState<'heal_hp'|'boost_max_hp'|'buff_stat'|'enhance_skill'|'custom'|'summon'>('heal_hp');
   const [effectValue, setEffectValue] = useState(10);
   const [targetMode, setTargetMode] = useState<NonNullable<Item['targetMode']>>('self');
-  const [battleSkills, setBattleSkills] = useState<NonNullable<Item['battleSkills']>>([]);
   const [icon, setIcon] = useState('HeartPulse');
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [targetStat, setTargetStat] = useState<'strength'|'durability'|'agility'|'magic'>('strength');
@@ -153,7 +152,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     setEditingId(null); setName(''); setDescription(''); setPrice(0);
     setCategory('consumable'); setRarity('common'); setEffectType('heal_hp');
     setSummonMaxCount(1); setSummonPerUse(1);
-    setEffectValue(10); setTargetMode('self'); setBattleSkills([]); setIcon('HeartPulse'); setIconPreview(null); setTargetStat('strength');
+    setEffectValue(10); setTargetMode('self'); setIcon('HeartPulse'); setIconPreview(null); setTargetStat('strength');
     setItemClass('normal'); setLimitedStock(0); setHealPercent(0); setHpBonus(0); setSkillTarget(''); setSkillDesc('');
     setUseConditions([]); setConditionType('hp_below_percent'); setConditionValue(50); setConditionStat('strength');
     setBattleDamagePercent(0); setBattleDamageDuration(0); setBattleCriticalChancePercent(0); setBattleRepeatAttackChancePercent(0); setBattleLuckMultiplier(0); setBattleLuckDuration(0); setGachaRateMultiplier(0); setBattlePassiveChanceMultiplier(0);
@@ -169,7 +168,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     if (!item || !item.id) return;
     setEditingId(item.id); setName(item.name); setDescription(item.description || '');
     setPrice(item.price || 0); setCategory(item.category === 'material' ? 'material' : item.category); setRarity(item.rarity as GachaRarity);
-    setEffectType(item.effectType || 'custom'); setEffectValue(item.effectValue || 0); setTargetMode(item.targetMode || 'self'); setBattleSkills(Array.isArray(item.battleSkills) ? item.battleSkills.map(x=>({...x})) : []);
+    setEffectType(item.effectType || 'custom'); setEffectValue(item.effectValue || 0); setTargetMode(item.targetMode || 'self');
     setIcon(typeof item.icon === 'string' ? item.icon : 'Package'); setIconPreview(isImageIcon(item.icon) ? item.icon : null); setTargetStat(item.targetStat || 'strength');
     setInShop(item.inShop === true && !item.adminOnly);
     setRewardEligible(item.rewardEligible !== false); setStackable(item.stackable !== false);
