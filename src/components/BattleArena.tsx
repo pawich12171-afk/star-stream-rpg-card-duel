@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, Check, Crown, Dice5, Heart, Package, Plus, Settings2, Shield, Skull, Sparkles, Swords, Target, Trash2, UsersRound, Zap } from 'lucide-react';
 import { ItemPicker } from './ItemPicker';
+import { SkillBattleOptions } from './SkillBattleOptions';
 import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRandomReward, BattleBotDrop, BattleRoom, CharacterProfile, Skill, BattleBotSkill, BattleSkillCondition, Item } from '../types';
 import {
   DEFAULT_BATTLE_CONFIG,
@@ -231,6 +232,10 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const [editingMinionId, setEditingMinionId] = useState('');
   // Skill editor state: keep this local to BattleArena so Admin/team arena never references an undefined variable.
   const [botSkillEffect, setBotSkillEffect] = useState<NonNullable<Skill['battleEffect']>>('damage');
+  const [botSkillCategory, setBotSkillCategory] = useState<NonNullable<Skill['skillCategory']>>('attack');
+  const [botSkillTargetMode, setBotSkillTargetMode] = useState<NonNullable<Skill['targetMode']>>('enemy');
+  const [botSkillTargetConfig, setBotSkillTargetConfig] = useState<NonNullable<Skill['targetConfig']> | undefined>(undefined);
+  const [botSkillModifiers, setBotSkillModifiers] = useState<NonNullable<Skill['skillModifiers']>>([]);
   const [botSummonName, setBotSummonName] = useState('ลูกน้อง');
   const [botSummonMaxCount, setBotSummonMaxCount] = useState('1');
   const [botSummonHp, setBotSummonHp] = useState('20');
@@ -248,7 +253,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const [botSummonAvatarFileName, setBotSummonAvatarFileName] = useState('');
   type ConfiguredMinion = NonNullable<Skill['summonUnits']>[number];
   const [botSummonUnits, setBotSummonUnits] = useState<ConfiguredMinion[]>([]);
-  const [minionDraft, setMinionDraft] = useState({name:'', hp:'20', strength:'5', durability:'1', agility:'1', magic:'0', avatarUrl:'', avatarFileName:'', skills:[] as BattleBotSkill[], skillName:'', skillDescription:'', skillPower:'5', skillChance:'100', skillCooldown:'0', skillEffect:'damage' as NonNullable<Skill['battleEffect']>});
+  const [minionDraft, setMinionDraft] = useState({name:'', hp:'20', strength:'5', durability:'1', agility:'1', magic:'0', avatarUrl:'', avatarFileName:'', skills:[] as BattleBotSkill[], skillName:'', skillDescription:'', skillPower:'5', skillChance:'100', skillCooldown:'0', skillEffect:'damage' as NonNullable<Skill['battleEffect']>, skillCategory:'attack' as NonNullable<Skill['skillCategory']>, skillTargetMode:'enemy' as NonNullable<Skill['targetMode']>, skillTargetConfig:undefined as NonNullable<Skill['targetConfig']> | undefined, skillModifiers:[] as NonNullable<Skill['skillModifiers']>});
 
   const [selectedBattleItemId, setSelectedBattleItemId] = useState('');
   const [usingBattleItemId, setUsingBattleItemId] = useState('');
@@ -752,7 +757,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       battleUseLimit: botSkillUseLimit,
       aiChancePercent:Math.max(0,Math.min(100,Number(botSkillChance)||0)),
       conditions: botSkillConditions.map(condition => ({ ...condition, value: Number(condition.value) || 0, enabled: condition.enabled !== false })),
-      damageScaling:'fixed', battleEffect:botSkillEffect,
+      damageScaling:'fixed', battleEffect:botSkillEffect, skillCategory:botSkillCategory, targetMode:botSkillTargetMode, targetConfig:botSkillTargetConfig, skillModifiers:botSkillModifiers.length ? [...botSkillModifiers] : undefined,
       ...(botSkillEffect === 'summon' ? {
         summonName:botSummonName.trim() || 'ลูกน้อง',
         summonMaxCount:Math.max(1,Math.min(20,Math.round(Number(botSummonMaxCount)||1))),
@@ -766,7 +771,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       } : {}),
     };
     setBotForm(prev=>({...prev,skills: botSkillDraftId ? prev.skills.map(existing => getSkillId(existing) === botSkillDraftId ? { ...skill, id: botSkillDraftId } : existing) : [...prev.skills, skill]}));
-    setBotSkillName(''); setBotSkillDescription(''); setBotSkillDraftId(''); setBotSkillEffect('damage'); setBotSkillUseLimit('unlimited');
+    setBotSkillName(''); setBotSkillDescription(''); setBotSkillDraftId(''); setBotSkillEffect('damage'); setBotSkillCategory('attack'); setBotSkillTargetMode('enemy'); setBotSkillTargetConfig(undefined); setBotSkillModifiers([]); setBotSkillUseLimit('unlimited');
     setBotSummonName('ลูกน้อง'); setBotSummonMaxCount('1'); setBotSummonHp('20'); setBotSummonDamage('5'); setBotSummonAgility('1');
     setBotSummonSkillsText('[]'); setBotSummonSkillName(''); setBotSummonSkillDescription(''); setBotSummonSkillPower('5');
     setBotSummonSkillChance('100'); setBotSummonSkillCooldown('0'); setBotSummonSkillEffect('damage'); setBotSummonSkillMode('normal');
@@ -784,7 +789,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       cooldownTurns:Math.max(0,Math.floor(Number(minionDraft.skillCooldown)||0)),
       battleUseLimit:minionSkillUseLimit,
       aiChancePercent:Math.max(0,Math.min(100,Number(minionDraft.skillChance)||0)),
-      damageScaling:'fixed', battleEffect:minionDraft.skillEffect,
+      damageScaling:'fixed', battleEffect:minionDraft.skillEffect, skillCategory:minionDraft.skillCategory, targetMode:minionDraft.skillTargetMode, targetConfig:minionDraft.skillTargetConfig, skillModifiers:minionDraft.skillModifiers.length ? [...minionDraft.skillModifiers] : undefined,
     });
     setBotSummonUnits(prev=>editingMinionId ? prev.map(existing => existing.id === editingMinionId ? {
       ...existing, name, hp:Math.max(1,Number(minionDraft.hp)||1), strength:Math.max(0,Number(minionDraft.strength)||0), durability:Math.max(0,Number(minionDraft.durability)||0), agility:Math.max(0,Number(minionDraft.agility)||0), magic:Math.max(0,Number(minionDraft.magic)||0), avatarUrl:minionDraft.avatarUrl||undefined, avatarFileName:minionDraft.avatarFileName||undefined, skills
@@ -950,7 +955,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     <label className="text-[11px] text-slate-400">คูลดาวน์ (เทิร์น)<input className={inputClass+" mt-1"} type="number" min="0" value={botSkillCooldown} onChange={e=>setBotSkillCooldown(e.target.value)} /></label>
     <label className="text-[11px] text-slate-400">จำนวนครั้งต่อเกม<select className={inputClass+" mt-1"} value={botSkillUseLimit} onChange={e=>setBotSkillUseLimit(e.target.value as 'unlimited' | 'once_per_battle')}><option value="unlimited">ใช้ได้หลายครั้งตามคูลดาวน์</option><option value="once_per_battle">ใช้ได้ 1 ครั้งต่อเกม</option></select></label>
     <label className="text-[11px] text-slate-400">เอฟเฟกต์<select className={inputClass+" mt-1"} value={botSkillEffect} onChange={e=>setBotSkillEffect(e.target.value as NonNullable<Skill['battleEffect']>)}><option value="damage">⚔️ โจมตี/ทำดาเมจ</option><option value="heal">❤️ ฟื้นฟู HP</option><option value="defense">🛡️ เพิ่มการป้องกัน</option><option value="stun">💫 ทำให้ติดสตัน</option><option value="damage_reduction">🔻 ลดดาเมจเป้าหมาย</option><option value="summon">🧿 เสกลูกน้อง</option></select></label>
-    <label className="text-[11px] text-slate-400">โอกาสใช้สกิล (%)<input className={inputClass+" mt-1"} type="number" min="0" max="100" value={botSkillChance} onChange={e=>setBotSkillChance(e.target.value)} /></label>
+    <label className="text-[11px] text-slate-400">โอกาสใช้สกิล (%)<input className={inputClass+" mt-1"} type="number" min="0" max="100" value={botSkillChance} onChange={e=>setBotSkillChance(e.target.value)} /></label>\n    <SkillBattleOptions config={{skillCategory:botSkillCategory,targetMode:botSkillTargetMode,targetConfig:botSkillTargetConfig,skillModifiers:botSkillModifiers,battleEffect:botSkillEffect}} onChange={patch=>{if(patch.skillCategory)setBotSkillCategory(patch.skillCategory);if(patch.targetMode)setBotSkillTargetMode(patch.targetMode);if(patch.targetConfig)setBotSkillTargetConfig(patch.targetConfig);if(patch.skillModifiers)setBotSkillModifiers(patch.skillModifiers);}} />
     <div className="sm:col-span-2 rounded-2xl border-2 border-amber-400/40 bg-amber-950/30 p-3 shadow-[0_0_18px_rgba(245,158,11,0.08)]">
       <div className="mb-1 text-sm font-black text-amber-200">⚙️ เงื่อนไขการใช้สกิล</div>
       <div className="mb-2 text-[10px] font-bold text-amber-300/80">ตั้งได้หลายเงื่อนไข หรือปล่อยว่างเพื่อให้สกิลใช้ได้ตามปกติ</div>
@@ -993,7 +998,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
 <label className="text-[11px] text-slate-400">พลัง / ดาเมจ<input className={inputClass+" mt-1"} type="number" min="0" value={minionDraft.skillPower} onChange={e=>setMinionDraft({...minionDraft,skillPower:e.target.value})} /></label>
 <label className="text-[11px] text-slate-400">โอกาสใช้ (%)<input className={inputClass+" mt-1"} type="number" min="0" max="100" value={minionDraft.skillChance} onChange={e=>setMinionDraft({...minionDraft,skillChance:e.target.value})} /></label>
 <label className="text-[11px] text-slate-400">คูลดาวน์ (เทิร์น)<input className={inputClass+" mt-1"} type="number" min="0" value={minionDraft.skillCooldown} onChange={e=>setMinionDraft({...minionDraft,skillCooldown:e.target.value})} /></label>
-<label className="text-[11px] text-slate-400">จำนวนครั้งต่อเกม<select className={inputClass+" mt-1"} value={minionSkillUseLimit} onChange={e=>setMinionSkillUseLimit(e.target.value as 'unlimited' | 'once_per_battle')}><option value="unlimited">ใช้ได้หลายครั้งตามคูลดาวน์</option><option value="once_per_battle">ใช้ได้ 1 ครั้งต่อเกม</option></select></label>
+<SkillBattleOptions config={{skillCategory:minionDraft.skillCategory,targetMode:minionDraft.skillTargetMode,targetConfig:minionDraft.skillTargetConfig,skillModifiers:minionDraft.skillModifiers,battleEffect:minionDraft.skillEffect}} onChange={patch=>setMinionDraft(prev=>({...prev,skillCategory:patch.skillCategory||prev.skillCategory,skillTargetMode:patch.targetMode||prev.skillTargetMode,skillTargetConfig:patch.targetConfig||prev.skillTargetConfig,skillModifiers:patch.skillModifiers||prev.skillModifiers}))} /><label className="text-[11px] text-slate-400">จำนวนครั้งต่อเกม<select className={inputClass+" mt-1"} value={minionSkillUseLimit} onChange={e=>setMinionSkillUseLimit(e.target.value as 'unlimited' | 'once_per_battle')}><option value="unlimited">ใช้ได้หลายครั้งตามคูลดาวน์</option><option value="once_per_battle">ใช้ได้ 1 ครั้งต่อเกม</option></select></label>
 <label className="text-[11px] text-slate-400">ประเภทสกิล<select className={inputClass+" mt-1"} value={minionDraft.skillEffect} onChange={e=>setMinionDraft({...minionDraft,skillEffect:e.target.value as NonNullable<Skill['battleEffect']>})}><option value="damage">⚔️ โจมตี / ดาเมจ</option><option value="heal">❤️ ฟื้นฟู HP</option><option value="defense">🛡️ ป้องกัน</option><option value="stun">💫 สตัน</option></select></label>
 </div>
 <button type="button" className={buttonClass+" mt-2 bg-violet-500 text-white"} onClick={()=>{if(!minionDraft.skillName.trim())return alert("กรุณาใส่ชื่อสกิลก่อน");setMinionDraft({...minionDraft,skills:[...minionDraft.skills,{id:"draft-"+Date.now(),name:minionDraft.skillName.trim(),level:1,multiplier:1,type:"monster-minion",description:minionDraft.skillDescription.trim()||"สกิลเฉพาะของลูกน้องตัวนี้",battlePower:Math.max(0,Number(minionDraft.skillPower)||0),cooldownTurns:Math.max(0,Math.floor(Number(minionDraft.skillCooldown)||0)),aiChancePercent:Math.max(0,Math.min(100,Number(minionDraft.skillChance)||0)),damageScaling:"fixed",battleEffect:minionDraft.skillEffect}],skillName:"",skillDescription:""})}}>+ เพิ่มสกิลให้ลูกน้องตัวนี้</button>
