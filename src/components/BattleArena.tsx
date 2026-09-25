@@ -305,7 +305,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
           }),
         ].filter(Boolean);
         if (rewardLines.length > 0) {
-          alert(`🏆 ชนะการต่อสู้!\\n\\n${rewardLines.join('\\n')}`);
+          alert(`🏆 ชนะการต่อสู้!\\import { ItemPicker } from './ItemPicker';\nn\\n${rewardLines.join('\\n')}`);
         }
       }).catch(error => console.warn('ไม่สามารถจ่ายรางวัลการต่อสู้ได้', error));
     });
@@ -886,7 +886,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
 <label className="text-[10px] text-slate-400">ชื่อรางวัล<input className={inputClass + ' mt-1'} value={randomRewardName} onChange={event => setRandomRewardName(event.target.value)} placeholder="เช่น Jackpot / ดาบพิเศษ / สกิล" /></label>
 <label className="text-[10px] text-slate-400">ประเภท<select className={inputClass + ' mt-1'} value={randomRewardType} onChange={event => setRandomRewardType(event.target.value as 'coin' | 'item' | 'skill')}><option value="coin">Coins</option><option value="item">ไอเทม</option><option value="skill">สกิล</option></select></label>
 {randomRewardType === 'coin' && <label className="text-[10px] text-slate-400">จำนวน Coins<input className={inputClass + ' mt-1'} type="number" min="1" value={randomRewardAmount} onChange={event => setRandomRewardAmount(event.target.value)} /></label>}
-{randomRewardType === 'item' && <label className="text-[10px] text-slate-400">ไอเทม<select className={inputClass + ' mt-1'} value={randomRewardItemId} onChange={event => setRandomRewardItemId(event.target.value)}><option value="">เลือกไอเทม</option>{shopItems.map(item => <option key={item.id} value={item.id}>{item.name}{item.adminOnly ? ' [รางวัลพิเศษ]' : ''}</option>)}</select></label>}
+{randomRewardType === 'item' && <label className="text-[10px] text-slate-400">ไอเทม<ItemPicker items={shopItems} value={randomRewardItemId} onChange={setRandomRewardItemId} emptyLabel="เลือกไอเทม" placeholder="ค้นหาไอเทมรางวัลด้วยชื่อหรือ ID..." className="mt-1" /></label>}
 {randomRewardType === 'skill' && <label className="text-[10px] text-slate-400">สกิล<select className={inputClass + ' mt-1'} value={randomRewardSkillId} onChange={event => setRandomRewardSkillId(event.target.value)}><option value="">เลือกสกิล</option>{Array.from(new Map(allCharacters.flatMap(character => character.skills || []).map(skill => [skill.id, skill])).values()).map(skill => <option key={skill.id} value={skill.id}>{skill.name}</option>)}</select></label>}
 <label className="text-[10px] text-slate-400">เรท (%)<input className={inputClass + ' mt-1'} type="number" min="0.001" step="0.001" value={randomRewardRate} onChange={event => setRandomRewardRate(event.target.value)} /></label>
 </div>
@@ -916,10 +916,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     {botDropType === 'coin' ? (
       <div className="flex items-center rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs font-bold text-amber-300">จำนวน Coins</div>
     ) : (
-      <select className={inputClass} value={botDropItemId} onChange={event => setBotDropItemId(event.target.value)}>
-        <option value="">เลือกไอเทมที่จะดรอป</option>
-        {shopItems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
-      </select>
+      <ItemPicker items={shopItems} value={botDropItemId} onChange={setBotDropItemId} emptyLabel="เลือกไอเทมที่จะดรอป" placeholder="ค้นหาไอเทมดรอปด้วยชื่อหรือ ID..." />
     )}
     <input className={inputClass} type="number" min="1" value={botDropAmount} onChange={event => setBotDropAmount(event.target.value)} placeholder={botDropType === 'coin' ? 'จำนวน Coins' : 'จำนวนชิ้น'} /><input className={inputClass} type="number" min="0" max="100" value={botDropChance} onChange={event => setBotDropChance(event.target.value)} placeholder="โอกาสดรอป %" />
     <button type="button" className={buttonClass + ' bg-emerald-500 text-slate-950'} onClick={addBotDrop}>+ เพิ่ม</button>
