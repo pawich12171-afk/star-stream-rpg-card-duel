@@ -61,7 +61,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState(0);
-  const [category, setCategory] = useState<'consumable'|'equipment'>('consumable');
+  const [category, setCategory] = useState<'consumable'|'equipment'|'material'>('consumable');
   const [rarity, setRarity] = useState<GachaRarity>('common');
   const [effectType, setEffectType] = useState<'heal_hp'|'boost_max_hp'|'buff_stat'|'enhance_skill'|'custom'>('heal_hp');
   const [effectValue, setEffectValue] = useState(10);
@@ -140,7 +140,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const edit = (item: Item) => {
     if (!item || !item.id) return;
     setEditingId(item.id); setName(item.name); setDescription(item.description || '');
-    setPrice(item.price || 0); setCategory(item.category); setRarity(item.rarity as GachaRarity);
+    setPrice(item.price || 0); setCategory(item.category === 'material' ? 'material' : item.category); setRarity(item.rarity as GachaRarity);
     setEffectType(item.effectType || 'custom'); setEffectValue(item.effectValue || 0);
     setIcon(typeof item.icon === 'string' ? item.icon : 'Package'); setIconPreview(isImageIcon(item.icon) ? item.icon : null); setTargetStat(item.targetStat || 'strength');
     setInShop(item.inShop === true && !item.adminOnly);
@@ -278,13 +278,21 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
 
             <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-3 space-y-3">
               <div className="text-sm font-black text-cyan-200">ประเภทไอเทม</div>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={()=>setCategory('consumable')} className={`rounded-xl py-3 text-sm font-black border ${category==='consumable'?'bg-emerald-500/20 border-emerald-400 text-emerald-200':'bg-slate-900 border-slate-700 text-slate-400'}`}>ไอเทมใช้งาน</button>
-                <button type="button" onClick={()=>setCategory('equipment')} className={`rounded-xl py-3 text-sm font-black border ${category==='equipment'?'bg-purple-500/20 border-purple-400 text-purple-200':'bg-slate-900 border-slate-700 text-slate-400'}`}>อุปกรณ์สวมใส่</button>
+              <div className="grid grid-cols-3 gap-2">
+                <button type="button" onClick={()=>setCategory('consumable')} className={`rounded-xl py-3 text-xs font-black border ${category==='consumable'?'bg-emerald-500/20 border-emerald-400 text-emerald-200':'bg-slate-900 border-slate-700 text-slate-400'}`}>ไอเทมใช้งาน</button>
+                <button type="button" onClick={()=>setCategory('equipment')} className={`rounded-xl py-3 text-xs font-black border ${category==='equipment'?'bg-purple-500/20 border-purple-400 text-purple-200':'bg-slate-900 border-slate-700 text-slate-400'}`}>อุปกรณ์สวมใส่</button>
+                <button type="button" onClick={()=>setCategory('material')} className={`rounded-xl py-3 text-xs font-black border ${category==='material'?'bg-amber-500/20 border-amber-400 text-amber-200':'bg-slate-900 border-slate-700 text-slate-400'}`}>🧱 วัตถุดิบ / Crafting</button>
               </div>
             </div>
 
-            {category === 'equipment' && (
+            {category === 'material' && (
+      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+        <div className="text-sm font-black text-amber-200">🧱 วัตถุดิบ (Materials / Crafting)</div>
+        <p className="text-xs text-slate-400 mt-1">เก็บสะสมไว้สำหรับสูตรคราฟต์หรือใช้เป็นวัตถุดิบในการอัปเกรดไอเทมอื่น ไม่สามารถสวมใส่หรือใช้ต่อสู้โดยตรง</p>
+      </div>
+    )}
+
+    {category === 'equipment' && (
               <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 p-4 space-y-3">
                 <div>
                   <div className="text-sm font-black text-purple-200">🛡️ ค่าพลังเมื่อสวมใส่</div>
