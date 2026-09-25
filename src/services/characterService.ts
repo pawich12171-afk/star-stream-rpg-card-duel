@@ -2938,7 +2938,7 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
     if (Math.random() * 100 >= chance) continue;
     const label = effect.label || effect.kind;
     const value = Math.max(0, Number(effect.value) || 0);
-    const duration = Math.max(1, Math.min(99, Math.floor(Number(effect.duration) || 1)));
+    const duration = Math.max(1, Math.floor(Number(effect.duration) || 1));
     const target = effect.target === 'self' ? attacker : defender;
     const isStatusEffect = ['stun', 'freeze', 'poison', 'burn', 'bleeding', 'slow', 'curse', 'weakness'].includes(effect.kind);
     if (isStatusEffect && target.statusImmunityTurns && target.statusImmunityTurns > 0) {
