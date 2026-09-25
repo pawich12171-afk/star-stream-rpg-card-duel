@@ -17,5 +17,14 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Diagnose StatusWindow parser
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const src = fs.readFileSync('src/components/StatusWindow.tsx', 'utf8');
+          fs.writeFileSync('src/components/__StatusWindowTest.tsx', src + '\n}');
+          NODE
+          pnpm exec tsc --noEmit src/components/__StatusWindowTest.tsx --jsx react-jsx --module ESNext --moduleResolution Bundler --target ES2022 --skipLibCheck --allowImportingTsExtensions --esModuleInterop --isolatedModules 2>&1 | tail -80 || true
+          rm -f src/components/__StatusWindowTest.tsx
       - run: pnpm run typecheck
       - run: pnpm run build
