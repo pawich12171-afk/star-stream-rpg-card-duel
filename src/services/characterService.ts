@@ -1791,7 +1791,9 @@ export async function grantItemToPlayer(
       instanceId: raw.instanceId || `legacy-stack-${raw.id}-${currentInventory.length}`,
       quantity: Math.max(1, Number(raw.quantity) || 1),
       equippedQuantity: raw.category === 'equipment'
-        ? Math.max(0, Number(raw.equippedQuantity) || (raw.isEquipped ? 1 : 0))
+        ? raw.isEquipped === true
+          ? Math.max(0, Number(raw.equippedQuantity) || 1)
+          : 0
         : raw.equippedQuantity,
     };
     const key = getItemStackKey(normalized);
@@ -1806,8 +1808,12 @@ export async function grantItemToPlayer(
     const existing = currentInventory[existingIndex];
     existing.quantity += normalized.quantity;
     if (existing.category === 'equipment') {
-      const equipped = Math.max(0, Number(existing.equippedQuantity) || (existing.isEquipped ? 1 : 0));
-      const incomingEquipped = Math.max(0, Number(normalized.equippedQuantity) || (normalized.isEquipped ? 1 : 0));
+      const equipped = existing.isEquipped === true
+        ? Math.max(0, Number(existing.equippedQuantity) || 1)
+        : 0;
+      const incomingEquipped = normalized.isEquipped === true
+        ? Math.max(0, Number(normalized.equippedQuantity) || 1)
+        : 0;
       existing.equippedQuantity = Math.min(existing.quantity, equipped + incomingEquipped);
       existing.isEquipped = existing.equippedQuantity > 0;
     }
@@ -1820,10 +1826,9 @@ export async function grantItemToPlayer(
     const existing = currentInventory[existingIndex];
     existing.quantity += incomingQuantity;
     if (existing.category === 'equipment') {
-      existing.equippedQuantity = Math.min(
-        existing.quantity,
-        Math.max(0, Number(existing.equippedQuantity) || (existing.isEquipped ? 1 : 0))
-      );
+      existing.equippedQuantity = existing.isEquipped === true
+        ? Math.min(existing.quantity, Math.max(0, Number(existing.equippedQuantity) || 1))
+        : 0;
       existing.isEquipped = existing.equippedQuantity > 0;
     }
   } else {
