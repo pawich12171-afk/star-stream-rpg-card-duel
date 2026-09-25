@@ -263,30 +263,70 @@ function saveLocalAll() {
 }
 
 export function calculatePowerScore(char: CharacterProfile): number {
-  const statTotal = 
-    (char.stats?.strength || 0) * 15 +
-    (char.stats?.durability || 0) * 15 +
-    (char.stats?.agility || 0) * 15 +
-    (char.stats?.magic || 0) * 20;
+  // Power is a readable combat index, not a raw sum of every stored number.
+  // Keep multiplicative progression (skill ascension) from exploding the ranking.
+  const stat = char.stats || { strength: 0, durability: 0, agility: 0, magic: 0 };
+  const statTotal =
+    Math.max(0, Number(stat.strength) || 0) * 8 +
+    Math.max(0, Number(stat.durability) || 0) * 8 +
+    Math.max(0, Number(stat.agility) || 0) * 8 +
+    Math.max(0, Number(stat.magic) || 0) * 10;
 
   let skillTotal = 0;
-  char.skills?.forEach(s => {
-    const effectiveLvl = (s.level || 1) * (s.multiplier || 1);
-    skillTotal += effectiveLvl * 80;
-  });
+  for (const skill of char.skills || []) {
+    const level = Math.max(1, Number(skill.level) || 1);
+    const multiplier = Math.max(1, Number(skill.multiplier) || 1);
+    const upgradeCount = Math.max(0, Number(skill.upgradeCount) || 0);
+    const battlePower = Math.max(0, Number(skill.battlePower) || 0);
+    const crit = Math.max(0, Number(skill.battleCriticalChance) || 0);
+    const repeat = Math.max(0, Number(skill.repeatAttackChance) || 0);
 
-  let equipBonus = 0;
-  char.inventory?.forEach(inv => {
-    if (inv.isEquipped) {
-      equipBonus += 300;
-      if (inv.effectType === "buff_stat" && inv.effectValue) {
-        equipBonus += inv.effectValue * 20;
-      }
-    }
-  });
+    // Level gives steady value; ascension uses log2 so x2/x4/x8 does not
+    // double the whole character score each time.
+    skillTotal += level * 24;
+    skillTotal += (1 + Math.log2(multiplier)) * 55;
+    skillTotal += Math.sqrt(upgradeCount) * 8;
+    skillTotal += Math.min(150, battlePower) * 2;
+    skillTotal += Math.min(100, crit) * 0.8;
+    skillTotal += Math.min(100, repeat) * 0.5;
+  }
 
-  const transcendenceBonus = (char.statUpgradeCount || 0) * 500;
-  return Math.round(statTotal + skillTotal + equipBonus + (char.hp || 0) / 2 + transcendenceBonus);
+  let equipmentTotal = 0;
+  for (const item of char.inventory || []) {
+    if (!(item.isEquipped || item.equipped)) continue;
+    const copies = Math.max(1, Number(item.equippedQuantity) || 1);
+    const positive =
+      80 +
+      Math.max(0, Number(item.equipmentStrengthBonus) || 0) * 3 +
+      Math.max(0, Number(item.equipmentDurabilityBonus) || 0) * 3 +
+      Math.max(0, Number(item.equipmentAgilityBonus) || 0) * 3 +
+      Math.max(0, Number(item.equipmentMagicBonus) || 0) * 4 +
+      Math.max(0, Number(item.equipmentMaxHpBonus) || 0) * 0.08 +
+      Math.max(0, Number(item.equipmentAttackPercent) || 0) * 2 +
+      Math.max(0, Number(item.equipmentDefensePercent) || 0) * 1.5 +
+      Math.max(0, Number(item.equipmentMagicPercent) || 0) * 1.5 +
+      Math.max(0, Number(item.battleCriticalChancePercent) || 0) * 1 +
+      Math.max(0, Number(item.battleRepeatAttackChancePercent) || 0) * 1;
+
+    const drawbackPenalty = (item.battleDrawbacks || []).reduce((sum, effect) => {
+      const value = Math.max(0, Number(effect.value) || 0);
+      const weight =
+        effect.kind === 'reduce_max_hp_percent' ? 4 :
+        effect.kind === 'reduce_defense_percent' ? 2.5 :
+        effect.kind === 'damage_percent' ? 3 :
+        effect.kind === 'stun' || effect.kind === 'freeze' ? 2.5 :
+        1.5;
+      return sum + value * weight;
+    }, 0);
+
+    equipmentTotal += Math.max(0, positive - drawbackPenalty) * copies;
+  }
+
+  // HP is deliberately soft-scaled so large HP pools do not dominate rankings.
+  const hpScore = Math.sqrt(Math.max(0, Number(char.hp) || 0)) * 10;
+  const transcendenceBonus = Math.sqrt(Math.max(0, Number(char.statUpgradeCount) || 0)) * 80;
+
+  return Math.max(0, Math.round(statTotal + skillTotal + equipmentTotal + hpScore + transcendenceBonus));
 }
 
 // Seed initial data if Firestore is empty
@@ -2830,8 +2870,14 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
       continue;
     }
     if (effect.kind === 'damage_percent') {
-      result.damage += Math.max(0, Math.round(result.damage * value / 100));
-      result.message += ` • ${label} +${value}% ดาเมจ`;
+      if (effect.target === 'self') {
+        const selfDamage = Math.max(1, Math.round(target.maxHp * value / 100));
+        target.hp = Math.max(0, target.hp - selfDamage);
+        result.message += ` • ⚠️ ${target.name} เสีย HP ${value}% (-${selfDamage})`;
+      } else {
+        result.damage += Math.max(0, Math.round(result.damage * value / 100));
+        result.message += ` • ${label} +${value}% ดาเมจ`;
+      }
     } else if (effect.kind === 'heal_percent') {
       result.heal += Math.max(0, Math.round(target.maxHp * value / 100));
       result.message += ` • ${label} ฟื้น HP ${value}%`;
@@ -3429,6 +3475,10 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
     }
     if (statusTick.message) result.message = statusTick.message + ' • ' + result.message;
     applyItemPassiveEffects(current, defender, result, 'turn_start');
+    if (current.equippedDrawbacks?.length) {
+      applyBattleExtraEffects(current, current, current.equippedDrawbacks.map(effect => ({ ...effect, target: 'self' })), result);
+      if (current.equippedDrawbacks.length) result.message += ' • ⚠️ ข้อเสียจากอุปกรณ์ทำงาน';
+    }
     if (skillProfile) {
       result.skillEffect = skillProfile.effect;
       result.skillPower = skillProfile.power;
