@@ -1689,6 +1689,10 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                     <option value="damage">⚔️ โจมตี / ดาเมจ</option><option value="heal">❤️ ฟื้น HP</option><option value="defense">🛡️ ป้องกัน</option><option value="reflect">↩️ สะท้อน</option><option value="stun">💫 สตัน</option><option value="copy_ability">🧬 คัดลอกความสามารถ</option><option value="immortal">♾️ อมตะ</option><option value="damage_reduction">🛡️ ลดความเสียหาย</option>
                   </select>
                 </label>
+                <SkillBattleOptions
+                  config={editingSkillDraft}
+                  onChange={(patch) => setEditingSkillDraft(prev => prev ? { ...prev, ...patch } : prev)}
+                />
                 <div className="rounded-xl border border-violet-500/20 bg-violet-950/10 p-3 space-y-2">
                   <div className="text-[10px] font-black text-violet-200">⚙️ ตั้งค่าผลหลัก</div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
