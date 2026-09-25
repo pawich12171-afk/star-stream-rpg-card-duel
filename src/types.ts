@@ -59,6 +59,12 @@ export interface Skill {
   /** ข้อเสีย/ผลย้อนกลับของสกิลที่ผู้สร้างกำหนด และมีผลจริงในสนามรบ */
   battleDrawbacks?: BattleExtraEffect[];
   battleStats?: BattleSkillStat[];
+  /** เป้าหมายของผลหลัก เช่น ฮีลตัวเอง/ฮีลหมู่/บัฟหมู่ */
+  targetMode?: BattleSkillTarget;
+  /** ค่าบัฟสเตตัสชั่วคราวของสกิล */
+  buffStat?: keyof CharacterStats;
+  buffAmount?: number;
+  buffDuration?: number;
   /** ตั้งค่าสำหรับสกิลเสกลูกน้องของมอน/บอส */
   summonName?: string;
   summonMaxCount?: number;
@@ -66,7 +72,11 @@ export interface Skill {
   summonPerUse?: number;
   summonHp?: number;
   summonDamage?: number;
+  summonStrength?: number;
+  summonDurability?: number;
   summonAgility?: number;
+  summonMagic?: number;
+  summonIsBoss?: boolean;
   summonSkills?: BattleBotSkill[];
   summonAvatarUrl?: string;
   summonAvatarFileName?: string;
@@ -529,7 +539,8 @@ export interface CardDuelRoom {
 }
 
 export type BattleMode = 'pvp' | 'pve' | 'random';
-export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect' | 'stun' | 'copy_ability' | 'immortal' | 'damage_reduction' | 'summon';
+export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect' | 'stun' | 'copy_ability' | 'immortal' | 'damage_reduction' | 'summon' | 'buff_stat';
+export type BattleSkillTarget = 'self' | 'enemy' | 'all_allies' | 'all_enemies' | 'all_combatants';
 
 export type BattleExtraEffectKind = 'bleeding' | 'burn' | 'poison' | 'freeze' | 'stun' | 'reduce_max_hp_percent' | 'reduce_defense_percent' | 'damage_percent' | 'heal_percent' | 'shield' | 'reflect' | 'damage_reduction';
 
