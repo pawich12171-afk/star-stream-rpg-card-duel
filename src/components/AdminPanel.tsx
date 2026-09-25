@@ -32,6 +32,7 @@ import {
   ScrollText
 } from 'lucide-react';
 import { syncCharacterHealth } from '../utils/healthSystem';
+import { ItemPicker } from './ItemPicker';
 
 interface AdminPanelProps {
   characters: CharacterProfile[];
@@ -1790,17 +1791,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs text-slate-300 block mb-1">เลือกไอเทมที่จะเสก:</label>
-                    <select
+                    <ItemPicker
+                      items={shopItems}
                       value={selectedShopItemToSpawnId}
-                      onChange={(e) => setSelectedShopItemToSpawnId(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none"
-                    >
-                      {shopItems.map(item => (
-                        <option key={item.id} value={item.id}>
-                          {item.name} [{item.rarity || 'common'}] - {formatCoins(item.price)} C
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setSelectedShopItemToSpawnId}
+                      emptyLabel="เลือกไอเทมที่จะเสก"
+                      placeholder="ค้นหาไอเทมที่จะเสกด้วยชื่อหรือ ID..."
+                    />
                   </div>
 
                   <div>
@@ -2054,7 +2051,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div><label className="text-xs text-slate-300 block mb-1">รายละเอียดภารกิจ</label><textarea value={questDescription} onChange={e => setQuestDescription(e.target.value)} rows={2} placeholder="อธิบายสิ่งที่ผู้เล่นต้องทำ" className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none focus:border-cyan-400 resize-none" /></div>
               {questKind === 'question' && <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl bg-purple-500/5 border border-purple-500/20 p-3"><div><label className="text-xs text-purple-200 block mb-1">คำถาม *</label><textarea value={questQuestion} onChange={e => setQuestQuestion(e.target.value)} rows={3} placeholder="เช่น ดาวเคราะห์ใดอยู่ใกล้ดวงอาทิตย์ที่สุด" className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none resize-none" /></div><div><label className="text-xs text-purple-200 block mb-1">คำตอบที่ถูกต้อง *</label><input value={questAnswer} onChange={e => setQuestAnswer(e.target.value)} placeholder="เช่น ดาวพุธ" className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none" /></div></div>}
               {questKind !== 'question' && <div><label className="text-xs text-slate-300 block mb-1">จำนวนครั้งที่ต้องส่งหลักฐาน</label><input type="number" min="1" value={questTargetCount} onChange={e => setQuestTargetCount(Number(e.target.value))} className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono outline-none focus:border-cyan-400" /></div>}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="text-xs text-slate-300 block mb-1">รางวัล Coins</label><input type="number" min="0" value={questRewardCoins} onChange={e => setQuestRewardCoins(Number(e.target.value))} className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono outline-none focus:border-amber-400" /></div><div><label className="text-xs text-slate-300 block mb-1">ไอเทมรางวัล</label><select value={questRewardItemName} onChange={e => setQuestRewardItemName(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none focus:border-purple-400"><option value="">ไม่รับไอเทม</option>{shopItems.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}</select></div></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="text-xs text-slate-300 block mb-1">รางวัล Coins</label><input type="number" min="0" value={questRewardCoins} onChange={e => setQuestRewardCoins(Number(e.target.value))} className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono outline-none focus:border-amber-400" /></div><div><label className="text-xs text-slate-300 block mb-1">ไอเทมรางวัล</label><ItemPicker
+                    items={shopItems}
+                    value={shopItems.find(item => item.name === questRewardItemName)?.id || ''}
+                    onChange={itemId => setQuestRewardItemName(shopItems.find(item => item.id === itemId)?.name || '')}
+                    emptyLabel="ไม่รับไอเทม"
+                    placeholder="ค้นหาไอเทมรางวัลด้วยชื่อหรือ ID..."
+                  /></div></div>
               <button type="submit" className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-2"><ScrollText className="w-4 h-4" />มอบภารกิจให้ผู้เล่น</button>
             </form>
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl"><h3 className="text-sm font-bold text-white">วิธีทำงาน</h3><div className="space-y-3 text-xs text-slate-400 leading-relaxed"><p>• ตอบคำถาม: ผู้เล่นพิมพ์คำตอบและระบบตรวจทันที</p><p>• ส่งรูปหลักฐาน: แอดมินต้องอนุมัติก่อนภารกิจสำเร็จ</p><p>• เพิ่มความคืบหน้า: ทุกครั้งที่ส่งรูปจะเพิ่ม 1 ครั้ง</p></div></div>
@@ -2367,17 +2370,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {newRewardType === 'item' && (
                   <div>
                     <label className="text-xs text-slate-300 block mb-1">เลือกไอเทมจากคลังรางวัล (รวมไอเทมพิเศษ):</label>
-                    <select
+                    <ItemPicker
+                      items={shopItems}
                       value={newRewardSelectedShopItemId}
-                      onChange={(e) => setNewRewardSelectedShopItemId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs outline-none"
-                    >
-                      {shopItems.map(item => (
-                        <option key={item.id} value={item.id}>
-                          {item.adminOnly ? '🎁 [ไอเทมพิเศษ] ' : ''}{item.name} [{item.rarity || 'common'}]
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setNewRewardSelectedShopItemId}
+                      emptyLabel="เลือกไอเทมจากคลังรางวัล"
+                      placeholder="ค้นหาไอเทมรางวัลกาชาด้วยชื่อหรือ ID..."
+                    />
                   </div>
                 )}
 
