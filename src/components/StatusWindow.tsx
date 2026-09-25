@@ -2153,7 +2153,6 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               </div>
             </div>
           </div>
-        </div>
       )}
     </div>
   );
