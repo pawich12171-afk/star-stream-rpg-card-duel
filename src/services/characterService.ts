@@ -485,16 +485,18 @@ export function subscribeToCharacters(callback: (chars: CharacterProfile[]) => v
         }
       }
 
-      // Preserve a custom avatar selected in Profile Customizer while the
-      // server snapshot catches up. This is intentionally limited to avatarUrl
-      // so server changes to stats, coins, inventory, skills, etc. are untouched.
+      // Re-apply a locally persisted custom avatar after every realtime snapshot.
+      // Profile images are intentionally kept in a small dedicated localStorage
+      // key as a safety net. Without this step, Firestore can briefly/actually
+      // repaint the character with the bundled avatar after the Profile
+      // Customizer saves, making the new image disappear from Status/Profile.
+      // Only avatarUrl is overlaid; all other server fields remain authoritative.
       const reconciledList = preserveLocalCustomAvatars(list);
       reconciledList.sort((a, b) => (b.powerScore || 0) - (a.powerScore || 0));
-      // The shared database is authoritative. A deleted character must never
-      // come back from localStorage or the bundled seed.
-      localCharacters = list;
+      // A deleted character must never come back from localStorage or the bundled seed.
+      localCharacters = reconciledList;
       saveLocalAll();
-      callback(list);
+      callback(reconciledList);
     }, (err) => {
       // Keep the app usable while the API/Supabase connection is unavailable.
       // The next successful poll will replace this fallback with server data.
