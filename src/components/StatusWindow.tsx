@@ -23,10 +23,7 @@ import {
 import confetti from '../utils/confetti';
 import { 
   calculateCharacterHealth, 
-  syncCharacterHealth, 
-  getSkillHpBonus, 
-  getSkillPotencyPercent, 
-  BASE_HP 
+  syncCharacterHealth 
 } from '../utils/healthSystem';
 import { 
   getSkillORVRank, 
@@ -35,7 +32,6 @@ import {
   getUpgradePreview, 
   getLevel10Perk,
   ORV_RANKS,
-  COMPOUND_RATE,
   STAT_COMPOUND_RATE
 } from '../utils/orvSkillSystem';
 
