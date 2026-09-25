@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import type { Item, GachaRarity, ItemPassiveEffect, BattleExtraEffect } from '../types';
+import type { Item, GachaRarity, ItemPassiveEffect, BattleExtraEffect, BattleBotSkill } from '../types';
 import { Package, Search, Store, Gift, Layers, Edit3, Trash2, Save, X, UploadCloud, Eye } from 'lucide-react';
 
 interface ItemManagementPanelProps {
@@ -63,7 +63,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const [price, setPrice] = useState(0);
   const [category, setCategory] = useState<'consumable'|'equipment'|'material'>('consumable');
   const [rarity, setRarity] = useState<GachaRarity>('common');
-  const [effectType, setEffectType] = useState<'heal_hp'|'boost_max_hp'|'buff_stat'|'enhance_skill'|'custom'>('heal_hp');
+  const [effectType, setEffectType] = useState<'heal_hp'|'boost_max_hp'|'buff_stat'|'enhance_skill'|'custom'|'summon'>('heal_hp');
   const [effectValue, setEffectValue] = useState(10);
   const [icon, setIcon] = useState('HeartPulse');
   const [iconPreview, setIconPreview] = useState<string | null>(null);
@@ -109,6 +109,21 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const [equipmentAttackDuration, setEquipmentAttackDuration] = useState(0);
   const [equipmentDefenseDuration, setEquipmentDefenseDuration] = useState(0);
   const [equipmentMagicDuration, setEquipmentMagicDuration] = useState(0);
+  const [summonName, setSummonName] = useState('ลูกน้อง');
+  const [summonMaxCount, setSummonMaxCount] = useState(1);
+  const [summonHp, setSummonHp] = useState(50);
+  const [summonStrength, setSummonStrength] = useState(10);
+  const [summonDurability, setSummonDurability] = useState(5);
+  const [summonAgility, setSummonAgility] = useState(5);
+  const [summonMagic, setSummonMagic] = useState(0);
+  const [summonSkills, setSummonSkills] = useState<NonNullable<Item['summonSkills']>>([]);
+  const [summonSkillName, setSummonSkillName] = useState('');
+  const [summonSkillDescription, setSummonSkillDescription] = useState('');
+  const [summonSkillPower, setSummonSkillPower] = useState(10);
+  const [summonSkillChance, setSummonSkillChance] = useState(100);
+  const [summonSkillCooldown, setSummonSkillCooldown] = useState(0);
+  const [summonSkillEffect, setSummonSkillEffect] = useState<NonNullable<NonNullable<Item['summonSkills']>[number]['battleEffect']>>('damage');
+  const [summonIsBoss, setSummonIsBoss] = useState(false);
   const [passiveEffects, setPassiveEffects] = useState<ItemPassiveEffect[]>([]);
   const [battleDrawbacks, setBattleDrawbacks] = useState<NonNullable<Item['battleDrawbacks']>>([]);
   const [drawbackKind, setDrawbackKind] = useState<BattleExtraEffect['kind']>('bleeding');
@@ -134,6 +149,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     setEquipmentStrengthBonus(0); setEquipmentDurabilityBonus(0); setEquipmentAgilityBonus(0); setEquipmentMagicBonus(0); setEquipmentMaxHpBonus(0);
     setEquipmentAttackPercent(0); setEquipmentDefensePercent(0); setEquipmentMagicPercent(0); setEquipmentAttackDuration(0); setEquipmentDefenseDuration(0); setEquipmentMagicDuration(0);
     setBattleDrawbacks([]); setDrawbackKind('bleeding'); setDrawbackValue(10); setDrawbackDuration(1); setDrawbackChance(100);
+    setSummonName('ลูกน้อง'); setSummonMaxCount(1); setSummonHp(50); setSummonStrength(10); setSummonDurability(5); setSummonAgility(5); setSummonMagic(0); setSummonSkills([]); setSummonSkillName(''); setSummonSkillDescription(''); setSummonSkillPower(10); setSummonSkillChance(100); setSummonSkillCooldown(0); setSummonSkillEffect('damage'); setSummonIsBoss(false);
     setInShop(false); setRewardEligible(true); setStackable(true);
   };
 
@@ -153,6 +169,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     setEquipmentAttackPercent(item.equipmentAttackPercent || 0); setEquipmentDefensePercent(item.equipmentDefensePercent || 0); setEquipmentMagicPercent(item.equipmentMagicPercent || 0);
     setEquipmentAttackDuration(item.equipmentAttackDuration || 0); setEquipmentDefenseDuration(item.equipmentDefenseDuration || 0); setEquipmentMagicDuration(item.equipmentMagicDuration || 0);
     setBattleDrawbacks(Array.isArray(item.battleDrawbacks) ? item.battleDrawbacks.map(x => ({ ...x })) : []);
+    setSummonName(item.summonName || 'ลูกน้อง'); setSummonMaxCount(Math.max(1, Number(item.summonMaxCount) || 1)); setSummonHp(Math.max(1, Number(item.summonHp) || 50)); setSummonStrength(Math.max(0, Number(item.summonStrength) || 10)); setSummonDurability(Math.max(0, Number(item.summonDurability) || 5)); setSummonAgility(Math.max(0, Number(item.summonAgility) || 5)); setSummonMagic(Math.max(0, Number(item.summonMagic) || 0)); setSummonSkills(Array.isArray(item.summonSkills) ? item.summonSkills.map(x => ({ ...x })) : []); setSummonIsBoss(item.summonIsBoss === true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -197,6 +214,15 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
       healPercent: effectType === 'heal_hp' && healPercent > 0 ? healPercent : undefined,
       skillEnhanceTarget: effectType === 'enhance_skill' ? skillTarget : undefined,
       skillEnhanceDesc: effectType === 'enhance_skill' ? skillDesc : undefined,
+      summonName: effectType === 'summon' ? (summonName.trim() || 'ลูกน้อง') : undefined,
+      summonMaxCount: effectType === 'summon' ? Math.max(1, Math.min(20, Math.floor(summonMaxCount || 1))) : undefined,
+      summonHp: effectType === 'summon' ? Math.max(1, Math.floor(summonHp || 1)) : undefined,
+      summonStrength: effectType === 'summon' ? Math.max(0, Math.floor(summonStrength || 0)) : undefined,
+      summonDurability: effectType === 'summon' ? Math.max(0, Math.floor(summonDurability || 0)) : undefined,
+      summonAgility: effectType === 'summon' ? Math.max(0, Math.floor(summonAgility || 0)) : undefined,
+      summonMagic: effectType === 'summon' ? Math.max(0, Math.floor(summonMagic || 0)) : undefined,
+      summonSkills: effectType === 'summon' && summonSkills.length ? summonSkills.slice(0, 20) : undefined,
+      summonIsBoss: effectType === 'summon' ? summonIsBoss : undefined,
       battleDamagePercent: category === 'consumable' && battleDamagePercent > 0 ? n(battleDamagePercent, 0, 1000) : undefined, battleDamageDuration: category === 'consumable' && battleDamagePercent > 0 ? Math.max(1, Math.floor(n(battleDamageDuration))) : undefined,
       battleCriticalChancePercent: category === 'consumable' && battleCriticalChancePercent > 0 ? n(battleCriticalChancePercent, 0, 100) : undefined, battleRepeatAttackChancePercent: category === 'consumable' && battleRepeatAttackChancePercent > 0 ? n(battleRepeatAttackChancePercent, 0, 100) : undefined,
       battleLuckMultiplier: battleLuckMultiplier || undefined, battleLuckDuration: battleLuckDuration || undefined, battlePassiveChanceMultiplier: battlePassiveChanceMultiplier || undefined,
@@ -396,6 +422,43 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
               )}
             </div>
 
+            {effectType === 'summon' && (
+              <div className="rounded-2xl border border-violet-500/30 bg-violet-500/5 p-4 space-y-3">
+                <div>
+                  <div className="text-sm font-black text-violet-200">🧿 ตั้งค่าไอเทมเสกมอนสเตอร์ / ลูกน้อง</div>
+                  <p className="text-[10px] text-slate-400 mt-1">ผู้เล่นใช้ไอเทมนี้ได้เฉพาะในสนามรบ และลูกน้องจะเข้าทีมของผู้ใช้</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input className="rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" placeholder="ชื่อลูกน้อง" value={summonName} onChange={e=>setSummonName(e.target.value)}/>
+                  <input className="rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="1" max="20" placeholder="จำนวนสูงสุด" value={summonMaxCount} onChange={e=>setSummonMaxCount(Number(e.target.value)||1)}/>
+                  <label className="text-[10px] text-slate-400">❤️ HP<input className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="1" value={summonHp} onChange={e=>setSummonHp(Number(e.target.value)||1)}/></label>
+                  <label className="text-[10px] text-slate-400">💪 Strength / พลังโจมตี<input className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="0" value={summonStrength} onChange={e=>setSummonStrength(Number(e.target.value)||0)}/></label>
+                  <label className="text-[10px] text-slate-400">🛡️ Durability<input className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="0" value={summonDurability} onChange={e=>setSummonDurability(Number(e.target.value)||0)}/></label>
+                  <label className="text-[10px] text-slate-400">⚡ Agility<input className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="0" value={summonAgility} onChange={e=>setSummonAgility(Number(e.target.value)||0)}/></label>
+                  <label className="text-[10px] text-slate-400">🔮 Magic<input className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="0" value={summonMagic} onChange={e=>setSummonMagic(Number(e.target.value)||0)}/></label>
+                  <label className="col-span-2 flex items-center gap-2 rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white"><input type="checkbox" checked={summonIsBoss} onChange={e=>setSummonIsBoss(e.target.checked)}/> ถือเป็นมอนสเตอร์ระดับ Boss</label>
+                </div>
+                <div className="rounded-xl border border-violet-500/20 bg-slate-950/50 p-3 space-y-2">
+                  <div className="text-xs font-black text-violet-200">⚔️ สกิลของลูกน้อง</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" placeholder="ชื่อสกิล" value={summonSkillName} onChange={e=>setSummonSkillName(e.target.value)}/>
+                    <select className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" value={summonSkillEffect} onChange={e=>setSummonSkillEffect(e.target.value as any)}>
+                      <option value="damage">โจมตี</option><option value="heal">ฮีล</option><option value="defense">ป้องกัน</option><option value="reflect">สะท้อน</option><option value="stun">สตัน</option><option value="immortal">อมตะ</option><option value="damage_reduction">ลดดาเมจ</option><option value="summon">เสกลูกน้องต่อ</option>
+                    </select>
+                    <input className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" placeholder="คำอธิบาย" value={summonSkillDescription} onChange={e=>setSummonSkillDescription(e.target.value)}/>
+                    <input className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" type="number" min="0" placeholder="พลังสกิล" value={summonSkillPower} onChange={e=>setSummonSkillPower(Number(e.target.value)||0)}/>
+                    <input className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" type="number" min="0" max="100" placeholder="AI โอกาสใช้ %" value={summonSkillChance} onChange={e=>setSummonSkillChance(Number(e.target.value)||0)}/>
+                    <input className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" type="number" min="0" max="99" placeholder="คูลดาวน์" value={summonSkillCooldown} onChange={e=>setSummonSkillCooldown(Number(e.target.value)||0)}/>
+                  </div>
+                  <button type="button" className="w-full rounded-lg bg-violet-600/20 border border-violet-500/30 py-2 text-xs font-bold text-violet-100" onClick={()=>{
+                    if(!summonSkillName.trim()){alert('กรุณาใส่ชื่อสกิล');return;}
+                    setSummonSkills(prev=>[...prev,{id:'item-summon-skill-'+Date.now(),name:summonSkillName.trim(),level:1,multiplier:1,type:'battle',description:summonSkillDescription.trim()||'สกิลของลูกน้อง',battleEffect:summonSkillEffect,battlePower:Math.max(0,summonSkillPower),battleUseLimit:'unlimited',cooldownTurns:Math.max(0,Math.floor(summonSkillCooldown)),aiChancePercent:Math.max(0,Math.min(100,summonSkillChance))} as BattleBotSkill]);
+                    setSummonSkillName(''); setSummonSkillDescription('');
+                  }}>+ เพิ่มสกิลให้ลูกน้อง</button>
+                  {summonSkills.map((s,i)=><div key={s.id} className="flex items-center justify-between gap-2 text-[10px] text-violet-100 bg-slate-950/70 p-2 rounded-lg"><span>{s.name} · {s.battleEffect} · พลัง {s.battlePower || 0} · AI {s.aiChancePercent ?? 100}%</span><button type="button" className="text-rose-300" onClick={()=>setSummonSkills(prev=>prev.filter((_,j)=>j!==i))}>ลบ</button></div>)}
+                </div>
+              </div>
+            )}
             <div className="rounded-2xl border border-rose-500/25 bg-rose-500/5 p-4 space-y-3">
               <div>
                 <div className="text-sm font-black text-rose-200">❤️ เอฟเฟกต์ที่คุณต้องการ</div>
