@@ -3235,6 +3235,7 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
       })),
     summonName: String(item.summonName || 'ลูกน้อง').slice(0, 80),
     summonMaxCount: Math.max(1, Math.min(20, Math.floor(safeNum(item.summonMaxCount, 1, 20)))),
+    summonPerUse: Math.max(1, Math.min(20, Math.floor(safeNum(item.summonPerUse, 1, 20)))),
     summonHp: Math.max(1, Math.floor(safeNum(item.summonHp, 1, 1000000000))),
     summonStrength: Math.max(0, Math.floor(safeNum(item.summonStrength, 0, 1000000000))),
     summonDurability: Math.max(0, Math.floor(safeNum(item.summonDurability, 0, 1000000000))),
@@ -3305,14 +3306,38 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
 
   const itemKey = String(item.instanceId || item.id || requestedId);
 
+  if (Array.isArray(normalizedItem.useConditions) && normalizedItem.useConditions.length) {
+    const allies = [...normalizedRoom.teamA, ...normalizedRoom.teamB].filter(u => u.team === actor.team);
+    const summonCount = allies.filter(u => u.type === 'bot' && String(u.sourceId || '').startsWith('summon-item:')).length;
+    const failed = normalizedItem.useConditions.filter((condition: any) => condition && condition.enabled !== false).some((condition: any) => {
+      const value = Number(condition.value) || 0;
+      const hpPercent = actor.maxHp > 0 ? (actor.hp / actor.maxHp) * 100 : 0;
+      const statValue = Number(actor.stats?.[condition.stat]) || 0;
+      switch (condition.type) {
+        case 'hp_below_percent': return !(hpPercent < value);
+        case 'hp_above_percent': return !(hpPercent > value);
+        case 'turn_at_least': return !(currentUses + 1 >= value);
+        case 'stat_at_least': return !(statValue >= value);
+        case 'stat_below': return !(statValue < value);
+        case 'summon_count_below': return !(summonCount < value);
+        case 'summon_count_at_least': return !(summonCount >= value);
+        default: return false;
+      }
+    });
+    if (failed) throw new Error('ไม่ผ่านเงื่อนไขการใช้ไอเทม');
+  }
+
   // Summon items create temporary allied bot combatants directly in the current battle room.
   if (item.effectType === 'summon') {
     const prefix = 'summon-item:' + actor.id + ':' + requestedId;
     const currentCount = [...normalizedRoom.teamA, ...normalizedRoom.teamB]
       .filter(unit => unit.type === 'bot' && unit.team === actor.team && String(unit.sourceId || '').startsWith(prefix + ':')).length;
     const maxCount = Math.max(1, Math.min(20, Number(normalizedItem.summonMaxCount) || 1));
+    const perUse = Math.max(1, Math.min(20, Number(normalizedItem.summonPerUse) || 1));
     if (currentCount >= maxCount) throw new Error('ไอเทมนี้เสกได้สูงสุด ' + maxCount + ' ตัวในสนาม');
-    const summonId = prefix + ':' + (currentCount + 1);
+    const spawnCount = Math.min(perUse, maxCount - currentCount);
+    for (let spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++) {
+    const summonId = prefix + ':' + (currentCount + spawnIndex + 1);
     const summon: BattleCombatant = {
       id: summonId,
       sourceId: summonId,
@@ -3340,6 +3365,7 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
       actorName: actor.name,
       message: '🧿 ' + actor.name + ' ใช้ "' + item.name + '" และเสก ' + summon.name + ' · HP ' + summon.hp + ' · STR ' + summon.stats.strength,
     }, ...(normalizedRoom.log || [])];
+    }
   }
 
   // Ally revive is a targeted battle effect. The battle item menu currently
