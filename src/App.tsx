@@ -170,7 +170,7 @@ export default function App() {
   const [characters, setCharacters] = useState<CharacterProfile[]>(() => []);
   const [coinDisplayMode, setCoinDisplayMode] = useState<CoinDisplayMode>(() => getCoinDisplayMode());
   const [currentUserId, setCurrentUserId] = useState<string>(() => {
-    const fallback = INITIAL_CHARACTERS[0]?.id || '';
+    const fallback = '';
     try {
       // Keep the selected character in the URL as a second persistence layer.
       // This prevents a hard refresh from falling back to the first bundled
@@ -338,18 +338,18 @@ export default function App() {
       hp: Number.isFinite(Number(candidate.hp)) ? Number(candidate.hp) : 0,
       maxHp: Number.isFinite(Number(candidate.maxHp)) ? Number(candidate.maxHp) : 1,
       lastUpdated: Number(candidate.lastUpdated) || 0,
-      role: candidate.role === 'admin' ? 'admin' : 'player',
+      role: candidate?.role === 'admin' ? 'admin' : 'player',
     } as CharacterProfile;
   })();
   // Momi is the permanent owner. Other profiles can only use Admin Mode after Momi grants them the admin role.
-  const isMomiProfile = (character: CharacterProfile | undefined): boolean => {
+  const isMomiProfile = (character: CharacterProfile | null | undefined): boolean => {
     if (!character) return false;
     const id = String(character.id || '').trim().toLowerCase();
     const username = String(character.username || '').trim().toLowerCase();
     const displayName = String(character.displayName || '').trim().toLowerCase();
     return id === '001' || username === '001' || id === 'momi' || username === 'momi' || displayName === 'momi' || displayName === 'โมมิ' || displayName.includes('(momi)');
   };
-  const canUseAdminMode = isMomiProfile(currentUser) || currentUser?.role === 'admin';
+  const canUseAdminMode = Boolean(currentUser && (isMomiProfile(currentUser) || currentUser.role === 'admin'));
 
   // If the active profile is no longer allowed to use Admin Mode (for example
   // after switching characters or having the role revoked), immediately leave
