@@ -1,4 +1,4 @@
-import { CharacterProfile, AdminBalanceModifier, AdminBalanceSnapshot } from '../types';
+import type { CharacterProfile, AdminBalanceModifier, AdminBalanceSnapshot } from '../types';
 
 export const BASE_HP = 20;
 
@@ -118,10 +118,9 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   const legacySkillHp = hasPerSkillProgress
     ? 0
     : Math.max(0, Number(character.skillUpgradeProgress?.hpBonus) || 0);
+  const totalSkillHp = skillProgressHp + legacySkillHp;
   if (totalSkillHp > 0) itemsList.push({ name: 'โบนัส HP จากสกิล', bonus: totalSkillHp, source: 'skill' });
   if (consumedMaxHp > 0) itemsList.push({ name: 'โอสถทองคำ/แก่นพลังชีวิตถาวรที่ดื่ม', bonus: consumedMaxHp, source: 'item' });
-
-  const totalSkillHp = skillProgressHp + legacySkillHp;
   const baseCalculatedMaxHp = BASE_HP + statBonusHp + titleBonusHp + storyBonusHp + skillBonusHp + equipHpBonus + consumedMaxHp + totalSkillHp;
   const adminMaxHpDelta = (character.adminBalanceModifiers || [])
     .filter(m => m.kind === 'hp' && m.id.startsWith('admin-maxhp-'))
