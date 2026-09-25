@@ -408,7 +408,13 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     }
     const teamA = teamMembers.slice(0, 3).map(character => makePlayerCombatant(character, 'a'));
     const selectedBots = (mode === 'pve' || mode === 'random') ? enemies.slice(0, 3).map(bot => bot as BattleBot) : [];
-    const teamB = (mode === 'pve' || mode === 'random') ? [makeBotCombatant(selectedBots[0], 'b')] : enemies.slice(0, 3).map(character => makePlayerCombatant(character as CharacterProfile, 'b'));
+    // PVE: ถ้าเลือกมอน/บอสมากกว่า 1 ตัว ให้ทุกตัวที่เลือกเข้าสนามพร้อมกันทันที
+    // ไม่ต้องรอให้ตัวแรกตายก่อนเหมือนระบบคิวเดิม
+    const teamB = mode === 'pve'
+      ? selectedBots.map(bot => makeBotCombatant(bot, 'b'))
+      : mode === 'random'
+        ? [makeBotCombatant(selectedBots[0], 'b')]
+        : enemies.slice(0, 3).map(character => makePlayerCombatant(character as CharacterProfile, 'b'));
     const randomBattleQueue = mode === 'random' ? selectedBots.slice(1).map(bot => makeBotCombatant(bot, 'b')) : undefined;
     const battleDrops = (mode === 'pve' || mode === 'random')
       ? selectedBots.flatMap(bot => (bot.drops || []).map(drop => ({ ...drop, itemData: drop.itemData ? { ...drop.itemData } : undefined })))
@@ -1256,7 +1262,9 @@ setBotSummonName(skill.summonName||'ลูกน้อง');setBotSummonMaxCount
 
             <div className="border-t border-slate-800 bg-slate-950/20 px-4 py-3 text-xs text-slate-300">
               <span className="mr-2 rounded-lg bg-slate-800 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-200">ล่าสุด</span>
-              {room.log?.[0]?.message || 'ยังไม่มีการเคลื่อนไหว'}
+              {room.log?.[0]?.targetName
+                ? <>⚔️ <strong className="text-white">{room.log[0].actorName}</strong> → <strong className="text-amber-200">{room.log[0].targetName}</strong> · {room.log[0].message}</>
+                : room.log?.[0]?.message || 'ยังไม่มีการเคลื่อนไหว'}
             </div>
 
             <div className="flex flex-wrap items-center gap-2 border-t border-slate-800 p-4">
@@ -1388,6 +1396,7 @@ setBotSummonName(skill.summonName||'ลูกน้อง');setBotSummonMaxCount
                 <div key={entry.id} className={'mb-2 flex items-start gap-2 rounded-xl border px-3 py-2 text-xs leading-5 ' + effectStyle(entry.effect)}>
                   <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-slate-950/40 px-1 text-[10px] font-black">{entry.roll ? 'D' + entry.roll : '•'}</span>
                   <span className="font-black">{entry.actorName}</span>
+                  {entry.targetName && <span className="font-black text-amber-200"> → {entry.targetName}</span>}
                   <span className="opacity-90">{entry.message}</span>
                 </div>
               ))}
