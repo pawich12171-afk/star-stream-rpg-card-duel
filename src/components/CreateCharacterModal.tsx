@@ -23,6 +23,7 @@ interface CreateCharacterModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (newChar: CharacterProfile) => void | Promise<void>;
+  mode?: 'character' | 'constellation';
 }
 
 const SUGGESTED_CONSTELLATIONS = [
@@ -40,7 +41,9 @@ export const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
   isOpen,
   onClose,
   onCreate,
+  mode = 'character',
 }) => {
+  const isConstellation = mode === 'constellation';
   const [displayName, setDisplayName] = useState('');
   const [nickname, setNickname] = useState('');
   const [username, setUsername] = useState('');
@@ -74,12 +77,12 @@ export const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
       id: `char-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       username: username.trim() || `user_${Date.now().toString().slice(-4)}`,
       displayName: displayName.trim(),
-      nickname: nickname.trim() || 'ผู้อวตารคนใหม่',
+      nickname: nickname.trim() || (isConstellation ? 'ฉายาของกลุ่มดาว' : 'ผู้อวตารคนใหม่'),
       avatarUrl: avatarUrl.trim() || DEFAULT_AVATAR_FALLBACK,
-      constellation: constellation.trim() || 'ไม่มีผู้สนับสนุน (ผู้อวตารอิสระ)',
+      constellation: constellation.trim() || (isConstellation ? 'สถานะของกลุ่มดาว' : 'ไม่มีผู้สนับสนุน (ผู้อวตารอิสระ)'),
       coins: 50000,
-      hp: 20,
-      maxHp: 20,
+      hp: isConstellation ? 50 : 20,
+      maxHp: isConstellation ? 50 : 20,
       powerScore: 1200,
       stats: {
         strength: 10,
@@ -125,7 +128,7 @@ export const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
           type: 'system',
         }
       ],
-      characteristics: ['ผู้อวตารเริ่มต้น [ทั่วไป]'],
+      characteristics: [isConstellation ? 'กลุ่มดาวเริ่มต้น [ทั่วไป]' : 'ผู้อวตารเริ่มต้น [ทั่วไป]'],
       quests: [],
       lastUpdated: Date.now(),
       statUpgradeCount: 0,
@@ -167,7 +170,7 @@ export const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
               </div>
               <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
-                สร้างตัวละครผู้อวตารใหม่
+                {isConstellation ? 'สร้างกลุ่มดาวใหม่' : 'สร้างตัวละครผู้อวตารใหม่'}
               </h2>
             </div>
           </div>
@@ -192,18 +195,18 @@ export const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-black text-white truncate">
-                  {displayName || 'ตั้งชื่อผู้อวตาร...'}
+                  {displayName || (isConstellation ? 'ตั้งชื่อกลุ่มดาว...' : 'ตั้งชื่อผู้อวตาร...')}
                 </h4>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono">
                   Lv.1
                 </span>
               </div>
               <p className="text-cyan-400 text-xs truncate">
-                {nickname || 'ยังไม่ได้กำหนดสมญานาม'}
+                {nickname || (isConstellation ? 'ยังไม่ได้กำหนดฉายาของกลุ่มดาว' : 'ยังไม่ได้กำหนดสมญานาม')}
               </p>
               <div className="text-[11px] text-slate-400 flex items-center gap-1 truncate">
                 <Star className="w-3 h-3 text-amber-400 shrink-0" />
-                <span className="text-amber-300 font-semibold">{constellation || 'ไม่มีผู้สนับสนุน'}</span>
+                <span className="text-amber-300 font-semibold">{constellation || (isConstellation ? 'ยังไม่ได้กำหนดสถานะของกลุ่มดาว' : 'ไม่มีผู้สนับสนุน')}</span>
               </div>
             </div>
           </div>
@@ -211,24 +214,24 @@ export const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
           {/* Inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-slate-300 font-bold block mb-1">ชื่อตัวละคร (Display Name) *</label>
+              <label className="text-slate-300 font-bold block mb-1">{isConstellation ? 'ชื่อกลุ่มดาว (Display Name) *' : 'ชื่อตัวละคร (Display Name) *'}</label>
               <input
                 type="text"
                 required
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="เช่น ยู ซังอา, คิม ดกจา..."
+                placeholder="เช่น กลุ่มดาวแห่งดวงอาทิตย์, ราชันแห่งความว่างเปล่า..."
                 className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-semibold outline-none focus:border-cyan-500"
               />
             </div>
 
             <div>
-              <label className="text-slate-300 font-bold block mb-1">สมญานาม (Nickname)</label>
+              <label className="text-slate-300 font-bold block mb-1">{isConstellation ? 'ฉายาของกลุ่มดาว (Nickname)' : 'สมญานาม (Nickname)'}</label>
               <input
                 type="text"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                placeholder="เช่น ผู้เดินทางแห่งค่ำคืน..."
+                placeholder="เช่น ผู้เฝ้ามองเหนือกาลเวลา..."
                 className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-cyan-500"
               />
             </div>
@@ -316,14 +319,14 @@ export const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
             </div>
           </div>
 
-          {/* Sponsor Constellation */}
+          {/* Sponsor Constellation / Constellation Status */}
           <div className="space-y-1.5">
-            <label className="text-slate-300 font-bold block">กลุ่มดาวผู้สนับสนุน (Constellation)</label>
+            <label className="text-slate-300 font-bold block">{isConstellation ? 'สถานะของกลุ่มดาว (Constellation)' : 'กลุ่มดาวผู้สนับสนุน (Constellation)'}</label>
             <input
               type="text"
               value={constellation}
               onChange={(e) => setConstellation(e.target.value)}
-              placeholder="พิมพ์เองหรือเลือกจากด้านล่าง..."
+              placeholder={isConstellation ? 'เช่น ราชัน, ผู้พิทักษ์, เทพแห่งดวงดาว...' : 'พิมพ์เองหรือเลือกจากด้านล่าง...'}
               className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-cyan-500"
             />
             <div className="flex flex-wrap gap-1 pt-1">
@@ -348,11 +351,11 @@ export const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
           <div className="p-3 rounded-2xl bg-cyan-950/30 border border-cyan-900/50 flex items-center justify-between text-[11px] text-cyan-300">
             <div className="flex items-center gap-1.5">
               <Coins className="w-4 h-4 text-amber-400" />
-              <span>เงินสนับสนุนเริ่มต้น: <strong>50,000 Coins</strong></span>
+              <span>{isConstellation ? 'เลือดเริ่มต้น: ' : 'เงินสนับสนุนเริ่มต้น: '}<strong>{isConstellation ? '50 HP' : '50,000 Coins'}</strong></span>
             </div>
             <div className="flex items-center gap-1.5">
               <Heart className="w-4 h-4 text-rose-400" />
-              <span>HP เริ่มต้น: <strong>20/20</strong></span>
+              <span>HP เริ่มต้น: <strong>{isConstellation ? '50/50' : '20/20'}</strong></span>
             </div>
           </div>
 
@@ -370,7 +373,7 @@ export const CreateCharacterModal: React.FC<CreateCharacterModalProps> = ({
               className="px-5 py-2 font-black text-slate-950 bg-gradient-to-r from-cyan-400 via-teal-300 to-cyan-400 hover:from-cyan-300 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)] cursor-pointer flex items-center gap-1.5"
             >
               <Check className="w-4 h-4 stroke-[3]" />
-              ลงทะเบียนตัวละคร
+              {isConstellation ? 'สร้างกลุ่มดาว' : 'ลงทะเบียนตัวละคร'}
             </button>
           </div>
         </form>
