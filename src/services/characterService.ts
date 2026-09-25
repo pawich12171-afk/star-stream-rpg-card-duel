@@ -3307,7 +3307,7 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
 
   // Summon items create temporary allied bot combatants directly in the current battle room.
   if (item.effectType === 'summon') {
-    const prefix = 'summon-item:' + actor.id + ':' + itemKey;
+    const prefix = 'summon-item:' + actor.id + ':' + requestedId;
     const currentCount = [...normalizedRoom.teamA, ...normalizedRoom.teamB]
       .filter(unit => unit.type === 'bot' && unit.team === actor.team && String(unit.sourceId || '').startsWith(prefix + ':')).length;
     const maxCount = Math.max(1, Math.min(20, Number(normalizedItem.summonMaxCount) || 1));
