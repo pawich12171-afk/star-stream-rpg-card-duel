@@ -3746,8 +3746,9 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
           const flatHeal = Math.max(0, skillProfile.power);
           const percentHeal = healPercent > 0 ? Math.round(healTarget.maxHp * healPercent / 100) : 0;
           const totalHeal = flatHeal + percentHeal;
+          const beforeHeal = healTarget.hp;
           healTarget.hp = Math.min(healTarget.maxHp, healTarget.hp + totalHeal);
-          result.heal += Math.max(0, healTarget.hp - (healTarget.hp - totalHeal));
+          result.heal += Math.max(0, healTarget.hp - beforeHeal);
           result.message += ` • ใช้สกิล ${skillName} ฟื้นฟู ${totalHeal} HP${healPercent > 0 ? ` (${healPercent}% Max HP)` : ''}`;
         }
       } else if (skillProfile.effect === "buff_stat") {
