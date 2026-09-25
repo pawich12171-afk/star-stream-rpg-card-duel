@@ -2984,8 +2984,29 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
       const mode = 'nerf' as const;
       const existing = target.adminStatusEffects || [];
       const kind = effect.kind === 'freeze' ? 'stun' : effect.kind;
-      const status = { id: `battle-effect-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, kind: kind as AdminStatusEffect['kind'], name: label, mode, power: value, duration, remaining: duration, appliedAt: Date.now(), source: 'admin' as const, description: label };
-      target.adminStatusEffects = [...existing, status];
+      // เอฟเฟกต์ชื่อเดิมต้องสะสมเวลา "ตามระยะเวลาที่ตั้งไว้" ของเอฟเฟกต์นี้
+      // ไม่เอา remaining เก่าที่อาจเสีย/ค้างจากข้อมูลเดิม (เช่น 100T) มาบวกตรง ๆ
+      // ดังนั้นเอฟเฟกต์ที่ตั้งไว้ 3T และติดซ้ำจะเป็น 6T ไม่ใช่ 103T
+      const sameEffectIndex = existing.findIndex(item =>
+        item.name.trim().toLowerCase() === label.trim().toLowerCase() && item.kind === kind
+      );
+      if (sameEffectIndex >= 0) {
+        const nextEffects = [...existing];
+        const current = nextEffects[sameEffectIndex];
+        const safeExistingDuration = Math.max(1, Math.min(99, Math.floor(Number(current.duration) || duration)));
+        const safeExistingRemaining = Math.max(0, Math.min(safeExistingDuration, Math.floor(Number(current.remaining) || 0)));
+        nextEffects[sameEffectIndex] = {
+          ...current,
+          value,
+          duration,
+          remaining: Math.min(99, safeExistingRemaining + duration),
+          appliedAt: Date.now(),
+        };
+        target.adminStatusEffects = nextEffects;
+      } else {
+        const status = { id: `battle-effect-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, kind: kind as AdminStatusEffect['kind'], name: label, mode, power: value, duration, remaining: duration, appliedAt: Date.now(), source: 'admin' as const, description: label };
+        target.adminStatusEffects = [...existing, status];
+      }
       if (effect.kind === 'freeze' || effect.kind === 'stun') target.stunnedTurns = Math.max(target.stunnedTurns || 0, duration);
       result.message += ` • ${label} ${duration} เทิร์น`;
     }
