@@ -94,7 +94,7 @@ function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): Batt
     equippedPassives,
     activeSkillPassives: skillPassives,
     passiveStacks: {},
-    skills: [...(character.skills || [])],
+    skills: [...(character.skills || [])] as BattleBotSkill[],
     traits: [...(character.characteristics || [])],
   };
 }
