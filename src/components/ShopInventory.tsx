@@ -32,6 +32,7 @@ interface ShopInventoryProps {
   shopItems: Item[];
   onUpdateCharacter: (updated: CharacterProfile) => void | Promise<boolean | void>;
   onAddShopItem?: (item: Item) => void | Promise<void>;
+  onUpdateShopItem?: (item: Item) => void | Promise<void>;
   onDeleteShopItem?: (itemId: string) => void;
   isAdmin: boolean;
   marketplaceListings?: MarketplaceListing[];
