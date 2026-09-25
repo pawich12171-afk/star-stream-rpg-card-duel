@@ -397,8 +397,6 @@ export interface GachaBanner {
   /** จำนวนสุ่มแบบเลือกค่าเดียวจากช่องตั้งค่า Admin */
   multiPullCount?: number;
   enabled: boolean;
-  pullCostPossibility?: number;
-  tenPullCostPossibility?: number;
   bannerTitle: string;
   bannerDescription: string;
   createdAt: number;
@@ -424,6 +422,8 @@ export interface GachaReward {
 export interface GachaConfig {
   pullCost: number;
   tenPullCost: number;
+  pullCostPossibility?: number;
+  tenPullCostPossibility?: number;
   /** จำนวนครั้งแบบหลายสุ่มที่ผู้เล่นเลือกได้ */
   multiPullCounts?: number[];
   /** จำนวนสุ่มแบบเลือกค่าเดียวจากช่องตั้งค่า Admin */
@@ -638,7 +638,6 @@ export interface BattleCombatant {
   shieldTurns?: number;
   copiedAbility?: Skill;
   copiedAbilityTurns?: number;
-  skills?: Skill[];
 }
 
 export interface BattleLogEntry {
