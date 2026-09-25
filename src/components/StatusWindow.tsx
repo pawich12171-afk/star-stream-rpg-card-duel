@@ -1365,6 +1365,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                 nextMultiplier *= 2;
                 // upgradeCount เป็นตัวนับต้นทุนสะสมต่อเนื่อง ห้ามรีเซ็ตเมื่อจุติ
                 // เพื่อให้ราคาทบต้นจริงทุกครั้งที่อัปสกิล
+              }
               skillCostCursor = { ...skillCostCursor, level: nextLevel, multiplier: nextMultiplier, upgradeCount: nextUpgradeCount };
             }
             const skillBalance = selectedSkillCurrency === 'coins' ? (Number(character.coins) || 0) : (Number(character.possibility) || 0);
