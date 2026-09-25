@@ -713,14 +713,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     let parsedEffects: BattleExtraEffect[] = [];
     let parsedPassives: ItemPassiveEffect[] = [];
     try {
-      if (editingSkillAdvancedMode === 'form') {
-        parsedDrawbacks = getEditingList<BattleExtraEffect>(editingSkillDrawbacksText);
-        parsedEffects = getEditingList<BattleExtraEffect>(editingSkillEffectsText);
-        parsedPassives = getEditingList<ItemPassiveEffect>(editingSkillPassivesText);
-
-      if (!Array.isArray(parsedDrawbacks)) throw new Error('drawbacks');
-      if (!Array.isArray(parsedEffects)) throw new Error('effects');
-      if (!Array.isArray(parsedPassives)) throw new Error('passives');
+      parsedDrawbacks = getEditingList<BattleExtraEffect>(editingSkillDrawbacksText);
+      parsedEffects = getEditingList<BattleExtraEffect>(editingSkillEffectsText);
+      parsedPassives = getEditingList<ItemPassiveEffect>(editingSkillPassivesText);
     } catch (error) {
       const message = String(error);
       if (message.includes('drawbacks')) alert('JSON ข้อเสียไม่ถูกต้อง');
