@@ -2073,7 +2073,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div key={b.id} className={`rounded-2xl border p-3 ${selectedBannerId === b.id ? 'border-amber-400 bg-amber-500/10' : 'border-slate-700 bg-slate-800/50'}`}>
                   <button type="button" onClick={() => setSelectedBannerId(b.id)} className="w-full text-left">
                     <div className="text-xs font-black text-white">{b.name}</div>
-                    <div className="text-[10px] text-slate-400">{b.pullCost.toLocaleString()} Possibility / 10 = {b.tenPullCost.toLocaleString()} C</div>
+                    <div className="text-[10px] text-slate-400">C: {b.pullCost.toLocaleString()} / 10 = {b.tenPullCost.toLocaleString()} • P: {(b.pullCostPossibility ?? 1).toLocaleString()} / 10 = {(b.tenPullCostPossibility ?? 10).toLocaleString()}</div>
                     <div className={`text-[9px] mt-1 ${b.enabled ? 'text-emerald-400' : 'text-rose-400'}`}>{b.enabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}</div>
                   </button>
                   <button type="button" onClick={async () => { if (!confirm(`ลบตู้ "${b.name}" หรือไม่?`)) return; try { await onDeleteGachaBanner(b.id); if (selectedBannerId === b.id) setSelectedBannerId(safeGachaBanners.find(x => x.id !== b.id)?.id || 'main'); } catch (e: any) { alert(e?.message || 'ลบตู้ไม่สำเร็จ'); } }} className="mt-2 text-[10px] text-rose-400 hover:text-rose-300 flex items-center gap-1">
