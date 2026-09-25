@@ -41,6 +41,7 @@ interface AdminPanelProps {
   gachaBanners?: GachaBanner[];
   onUpdateCharacterCoins: (characterId: string, deltaCoins: number) => void;
   onSetCharacterCoins: (characterId: string, newCoins: number) => void;
+  onUpdateCharacterPossibility?: (characterId: string, delta: number) => void | Promise<void>;
   onAddShopItem: (item: Item) => void | Promise<void>;
   onUpdateShopItem: (item: Item) => void | Promise<void>;
   onDeleteShopItem: (itemId: string) => void;
@@ -209,6 +210,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   gachaConfig,
   onUpdateCharacterCoins,
   onSetCharacterCoins,
+  onUpdateCharacterPossibility,
   onAddShopItem,
   onUpdateShopItem,
   onDeleteShopItem,
@@ -466,6 +468,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (amount < 0) return alert('กรุณาระบุจำนวนเหรียญที่ถูกต้อง เช่น 1m หรือ 1,000,000');
     onSetCharacterCoins(selectedCharId, amount);
     alert(`กำหนดเหรียญให้ "${selectedChar?.displayName}" เป็น ${formatCoins(coinInput)} Coins เรียบร้อยแล้ว!`);
+  };
+
+  const handleAddPossibility = async () => {
+    if (!selectedCharId || !onUpdateCharacterPossibility) return;
+    const amount = parseCoinAmount(coinInput);
+    if (amount <= 0) return alert('กรุณาระบุจำนวนความเป็นไปได้ที่ถูกต้อง');
+    await onUpdateCharacterPossibility(selectedCharId, amount);
+    alert(`เสกความเป็นไปได้ +${formatCoins(amount)} ให้ "${selectedChar?.displayName}" เรียบร้อยแล้ว!`);
   };
 
   // Add Item to Shop Handler
@@ -1026,14 +1036,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                     <div className="text-[11px] text-slate-400 font-serif">"{selectedChar.nickname}"</div>
                     <div className="text-xs font-mono font-bold text-amber-300 mt-0.5">
-                      เหรียญปัจจุบัน: {formatCoins(selectedChar.coins)} Coins
+                      เหรียญปัจจุบัน: {formatCoins(selectedChar.coins)} Coins<br />ความเป็นไปได้: {formatCoins(selectedChar.possibility || 0)}
                     </div>
                   </div>
                 </div>
               )}
 
               <div>
-                <label className="text-xs text-slate-300 block mb-1">จำนวนเหรียญ:</label>
+                <label className="text-xs text-slate-300 block mb-1">จำนวน Coins / ความเป็นไปได้:</label>
                 <input
                   type="text"
                   inputMode="text"
@@ -1058,6 +1068,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="pt-2 space-y-2">
+                {onUpdateCharacterPossibility && (
+                  <button type="button" onClick={handleAddPossibility} className="w-full py-2.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-black text-xs shadow transition-all cursor-pointer flex items-center justify-center gap-1.5">
+                    <Sparkles className="w-4 h-4" /> ✨ เสกความเป็นไปได้ +{coinInput || 0}
+                  </button>
+                )}
                 <button
                   onClick={handleAddCoins}
                   className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition-all cursor-pointer flex items-center justify-center gap-1.5"
@@ -2048,7 +2063,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div key={b.id} className={`rounded-2xl border p-3 ${selectedBannerId === b.id ? 'border-amber-400 bg-amber-500/10' : 'border-slate-700 bg-slate-800/50'}`}>
                   <button type="button" onClick={() => setSelectedBannerId(b.id)} className="w-full text-left">
                     <div className="text-xs font-black text-white">{b.name}</div>
-                    <div className="text-[10px] text-slate-400">{b.pullCost.toLocaleString()} C / 10 = {b.tenPullCost.toLocaleString()} C</div>
+                    <div className="text-[10px] text-slate-400">{b.pullCost.toLocaleString()} Possibility / 10 = {b.tenPullCost.toLocaleString()} C</div>
                     <div className={`text-[9px] mt-1 ${b.enabled ? 'text-emerald-400' : 'text-rose-400'}`}>{b.enabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}</div>
                   </button>
                   <button type="button" onClick={async () => { if (!confirm(`ลบตู้ "${b.name}" หรือไม่?`)) return; try { await onDeleteGachaBanner(b.id); if (selectedBannerId === b.id) setSelectedBannerId(safeGachaBanners.find(x => x.id !== b.id)?.id || 'main'); } catch (e: any) { alert(e?.message || 'ลบตู้ไม่สำเร็จ'); } }} className="mt-2 text-[10px] text-rose-400 hover:text-rose-300 flex items-center gap-1">
