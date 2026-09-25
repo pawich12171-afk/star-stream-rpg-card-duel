@@ -185,7 +185,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
           {/* Amount Input */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-slate-300 font-bold">จำนวนที่ต้องการโอน (${currency === 'coins' ? 'Coins' : 'ความเป็นไปได้'}) *</label>
+              <label className="text-slate-300 font-bold">จำนวนที่ต้องการโอน ({currency === 'coins' ? 'Coins' : 'ความเป็นไปได้'}) *</label>
               <span className="text-[11px] font-mono text-amber-400">
                 เหลือหลังจากโอน: <strong>{formatCoins(Math.max(0, balance - (amount || 0)))} C</strong>
               </span>
