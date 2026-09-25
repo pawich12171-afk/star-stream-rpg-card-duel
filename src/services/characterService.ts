@@ -4011,7 +4011,18 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
     }
     if (result.heal > 0 && !['all_allies','all_combatants'].includes(String(skill?.targetMode || 'enemy'))) current.hp = Math.min(current.maxHp, current.hp + result.heal);
     if (result.face.effect === "stun" && defender.hp > 0) defender.stunnedTurns = 1;
-    nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: result.message + (result.face.effect === "stun" ? " และทำให้เป้าหมายติดสตัน" : ""), roll: result.roll, damage: result.damage, effect: result.face.effect });
+    nextRoom.log.unshift({
+      id: "battle-log-" + Date.now(),
+      timestamp: Date.now(),
+      actorName: current.name,
+      targetName: defender.name,
+      actorType: current.type,
+      targetType: defender.type,
+      message: "⚔️ " + current.name + " → " + defender.name + " | " + result.message + (result.face.effect === "stun" ? " และทำให้เป้าหมายติดสตัน" : ""),
+      roll: result.roll,
+      damage: result.damage,
+      effect: result.face.effect
+    });
   }
   const remainingOpponent = opponentTeam.filter(item => item.hp > 0);
   if (remainingOpponent.length === 0) {
@@ -4023,9 +4034,15 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       const queue = [...(nextRoom.randomBattleQueue || [])];
       const nextEnemy = queue.shift()!;
       const stage = Math.max(1, Number(nextRoom.randomBattleStage) || 1) + 1;
-      nextRoom.randomBattleQueue = queue;
+      nextRoom.randomBattleQueue = [];
       nextRoom.randomBattleStage = stage;
-      nextRoom.teamB = [nextEnemy];
+      // เมื่อ Admin/ผู้เล่นเลือกศัตรูมากกว่า 1 ตัว ให้ศัตรูที่เหลือเข้าพร้อมกัน
+      // ไม่ต้องรอให้ตัวก่อนหน้าตายทีละตัวเหมือนระบบคิวเดิม
+      nextRoom.teamB = queue.map((enemy) => ({
+        ...enemy,
+        skillCooldowns: { ...(enemy.skillCooldowns || {}) },
+        skillUses: { ...(enemy.skillUses || {}) },
+      }));
       nextRoom.status = "active";
       nextRoom.winnerTeam = undefined;
       nextRoom.turnActorId = current.id;
@@ -4033,7 +4050,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         id: "battle-log-" + Date.now(),
         timestamp: Date.now(),
         actorName: "SYSTEM",
-        message: "🎲 ชนะศัตรูตัวที่ " + (stage - 1) + "/3 แล้ว — เตรียมพบ " + nextEnemy.name + " ตัวที่ " + stage + "/3!",
+        message: "🎲 กำจัดศัตรูตัวแรกแล้ว — ศัตรูที่เลือกไว้ที่เหลือ " + queue.length + " ตัวเข้าสนามพร้อมกัน: " + queue.map((enemy) => enemy.name).join(", "),
       });
       return { room: nextRoom, result };
     }
