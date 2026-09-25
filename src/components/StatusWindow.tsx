@@ -687,10 +687,13 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     progress.totalUpgrades = progress.totalUpgrades + requestedTimes;
 
     const progressionApplied = hpGained + durabilityGained + strengthGained + agilityGained + magicGained + slotUnlocked;
-    if (progressionApplied <= 0) {
-      alert('ความคืบหน้ารางวัลยังไม่มีโบนัสใหม่ในรอบนี้');
-      return;
-    }
+    // A skill upgrade is still a valid upgrade even when the current reward
+    // progress has not crossed the next bonus threshold. Do not abort here:
+    // otherwise the player pays nothing and the skill level never advances,
+    // which incorrectly looks like the upgrade button is broken.
+    const rewardMessage = progressionApplied > 0
+      ? ''
+      : ' • รอบรางวัลนี้ยังไม่มีโบนัสใหม่ (ความคืบหน้าถูกเก็บไว้)';
 
     const now = Date.now();
     const progressMessage = [
@@ -717,7 +720,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       notifications: [{
         id: `notif-skill-up-${now}-${startUpgradeCount + requestedTimes}`,
         title: ascensionCount ? 'สกิลจุติสวรรค์ (Ascension)!' : 'อัปเกรดสกิลสำเร็จ',
-        message: `อัปเกรด "${targetSkill.name}" +${requestedTimes} ขั้น → Lv.${finalSkill.level} • ${progressMessage || 'อัปเกรดระดับสกิลแล้ว'} • ใช้ ${formatCoins(totalCost)} ${upgradeCurrency === 'coins' ? 'Coins' : 'Possibility'}${ascensionCount ? ` • จุติ ${ascensionCount} ครั้ง → x${finalSkill.multiplier}` : ''}`,
+        message: `อัปเกรด "${targetSkill.name}" +${requestedTimes} ขั้น → Lv.${finalSkill.level} • ${progressMessage || 'อัปเกรดระดับสกิลแล้ว'}${rewardMessage} • ใช้ ${formatCoins(totalCost)} ${upgradeCurrency === 'coins' ? 'Coins' : 'Possibility'}${ascensionCount ? ` • จุติ ${ascensionCount} ครั้ง → x${finalSkill.multiplier}` : ''}`,
         timestamp: now,
         read: false,
         type: 'system',
