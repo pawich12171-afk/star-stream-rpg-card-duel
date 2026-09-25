@@ -384,119 +384,23 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
             <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-4 space-y-3">
               <div>
                 <div className="text-sm font-black text-emerald-200">✨ เอฟเฟกต์หลักของไอเทม</div>
-                <p className="text-[10px] text-slate-400 mt-1">เลือกประเภทก่อน แล้วกรอกเฉพาะค่าที่ต้องการ</p>
+                <p className="text-[10px] text-slate-400 mt-1">ช่องเอฟเฟกต์ที่ไม่เลือกจะไม่ถูกบันทึกเป็นเอฟเฟกต์ของไอเทม</p>
               </div>
               <select className="w-full rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white text-sm" value={effectType} onChange={e=>setEffectType(e.target.value as any)}>
-                <option value="heal_hp">❤️ ฟื้น HP</option>
-                <option value="boost_max_hp">❤️ เพิ่ม Max HP</option>
-                <option value="buff_stat">💪 เพิ่ม STR / DUR / AGI / MAG</option>
-                <option value="enhance_skill">⚔️ เสริมสกิล</option>
-                <option value="summon">🧿 เสกมอนสเตอร์ / ลูกน้อง</option>
-                <option value="custom">✨ เอฟเฟกต์อื่น / กำหนดเอง</option>
+                <option value="">ไม่เลือกเอฟเฟกต์หลัก</option>
+                <option value="heal_hp">❤️ ฟื้น HP</option><option value="boost_max_hp">❤️ เพิ่ม Max HP</option>
+                <option value="buff_stat">💪 บัพสเตตัส</option><option value="enhance_skill">⚔️ เสริมสกิล</option><option value="summon">🧿 เสกมอนสเตอร์ / ลูกน้อง</option>
               </select>
-
-              {(effectType === 'heal_hp' || effectType === 'buff_stat') && <SkillBattleOptions
-  config={{battleEffect: effectType === 'heal_hp' ? 'heal' : 'buff_stat', targetMode, buffStat: targetStat, buffAmount: effectValue, buffDuration: 3}}
-  onChange={(patch) => {
-    if (patch.targetMode) setTargetMode(patch.targetMode);
-    if (patch.buffStat) setTargetStat(patch.buffStat);
-    if (patch.buffAmount != null) setEffectValue(Number(patch.buffAmount));
-  }}
-/>}
-
-{effectType === 'heal_hp' && (
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="text-[10px] text-slate-400">❤️ ฟื้น HP เป็นหน่วย
-                    <input type="number" min="0" className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" placeholder="เช่น 10" value={effectValue || ''} onChange={e=>setEffectValue(Number(e.target.value)||0)}/>
-                  </label>
-                  <label className="text-[10px] text-slate-400">❤️ ฟื้น HP เป็น % Max HP
-                    <input type="number" min="0" max="100" className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" placeholder="เช่น 20" value={healPercent || ''} onChange={e=>setHealPercent(Number(e.target.value)||0)}/>
-                  </label>
-                </div>
-              )}
-
-              {effectType === 'boost_max_hp' && (
-                <label className="text-[10px] text-slate-400 block">❤️ เพิ่ม Max HP ถาวร
-                  <input type="number" min="0" className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" placeholder="เช่น 100" value={hpBonus || ''} onChange={e=>setHpBonus(Number(e.target.value)||0)}/>
-                </label>
-              )}
-
-              {effectType === 'buff_stat' && (
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="text-[10px] text-slate-400">Stat ที่เพิ่ม
-                    <select className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" value={targetStat} onChange={e=>setTargetStat(e.target.value as any)}>
-                      <option value="strength">STR — ความแข็งแกร่ง</option><option value="durability">DUR — ความทนทาน</option><option value="agility">AGI — ความคล่องตัว</option><option value="magic">MAG — พลังเวท</option>
-                    </select>
-                  </label>
-                  <label className="text-[10px] text-slate-400">จำนวนที่เพิ่ม
-                    <input type="number" min="0" className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" placeholder="เช่น 10" value={effectValue || ''} onChange={e=>setEffectValue(Number(e.target.value)||0)}/>
-                  </label>
-                </div>
-              )}
-
-              {effectType === 'enhance_skill' && (
-                <div className="space-y-2">
-                  <label className="text-[10px] text-slate-400">ชื่อ/ID สกิล
-                    <input className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" placeholder="เช่น Fire Slash" value={skillTarget} onChange={e=>setSkillTarget(e.target.value)}/>
-                  </label>
-                  <label className="text-[10px] text-slate-400">รายละเอียดการเสริมสกิล
-                    <textarea className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white min-h-20" placeholder="เช่น Damage +25%, ลดคูลดาวน์ 1 เทิร์น" value={skillDesc} onChange={e=>setSkillDesc(e.target.value)}/>
-                  </label>
-                </div>
-              )}
-            </div>
-
-            {effectType === 'summon' && (
-              <div className="rounded-2xl border border-violet-500/30 bg-violet-500/5 p-4 space-y-3">
-                <div>
-                  <div className="text-sm font-black text-violet-200">🧿 ตั้งค่าไอเทมเสกมอนสเตอร์ / ลูกน้อง</div>
-                  <p className="text-[10px] text-slate-400 mt-1">ผู้เล่นใช้ไอเทมนี้ได้เฉพาะในสนามรบ และลูกน้องจะเข้าทีมของผู้ใช้</p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <input className="rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" placeholder="ชื่อลูกน้อง" value={summonName} onChange={e=>setSummonName(e.target.value)}/>
-                  <input className="rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="1" max="20" placeholder="จำนวนสูงสุด" value={summonMaxCount} onChange={e=>setSummonMaxCount(Number(e.target.value)||1)}/><input className="rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="1" max="20" placeholder="เสกกี่ตัวต่อการใช้ 1 ครั้ง" value={summonPerUse} onChange={e=>setSummonPerUse(Number(e.target.value)||1)}/>
-                  <label className="text-[10px] text-slate-400">❤️ HP<input className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="1" value={summonHp} onChange={e=>setSummonHp(Number(e.target.value)||1)}/></label>
-                  <label className="text-[10px] text-slate-400">💪 Strength / พลังโจมตี<input className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="0" value={summonStrength} onChange={e=>setSummonStrength(Number(e.target.value)||0)}/></label>
-                  <label className="text-[10px] text-slate-400">🛡️ Durability<input className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="0" value={summonDurability} onChange={e=>setSummonDurability(Number(e.target.value)||0)}/></label>
-                  <label className="text-[10px] text-slate-400">⚡ Agility<input className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="0" value={summonAgility} onChange={e=>setSummonAgility(Number(e.target.value)||0)}/></label>
-                  <label className="text-[10px] text-slate-400">🔮 Magic<input className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="0" value={summonMagic} onChange={e=>setSummonMagic(Number(e.target.value)||0)}/></label>
-                  <label className="col-span-2 flex items-center gap-2 rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white"><input type="checkbox" checked={summonIsBoss} onChange={e=>setSummonIsBoss(e.target.checked)}/> ถือเป็นมอนสเตอร์ระดับ Boss</label>
-                </div>
-                <SkillBattleOptions
-  config={{battleEffect:'summon',summonName,summonMaxCount,summonPerUse,summonHp,summonStrength,summonDurability,summonAgility,summonMagic,summonIsBoss,summonUnits}}
-  onChange={(patch) => { if(patch.summonUnits) setSummonUnits(patch.summonUnits as any); }}
-/>
-<div className="rounded-xl border border-violet-500/20 bg-slate-950/50 p-3 space-y-2">
-                  <div className="text-xs font-black text-violet-200">⚔️ สกิลของลูกน้อง</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" placeholder="ชื่อสกิล" value={summonSkillName} onChange={e=>setSummonSkillName(e.target.value)}/>
-                    <select className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" value={summonSkillEffect} onChange={e=>setSummonSkillEffect(e.target.value as any)}>
-                      <option value="damage">โจมตี</option><option value="heal">ฮีล</option><option value="defense">ป้องกัน</option><option value="reflect">สะท้อน</option><option value="stun">สตัน</option><option value="immortal">อมตะ</option><option value="damage_reduction">ลดดาเมจ</option><option value="summon">เสกลูกน้องต่อ</option>
-                    </select>
-                    <input className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" placeholder="คำอธิบาย" value={summonSkillDescription} onChange={e=>setSummonSkillDescription(e.target.value)}/>
-                    <input className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" type="number" min="0" placeholder="พลังสกิล" value={summonSkillPower} onChange={e=>setSummonSkillPower(Number(e.target.value)||0)}/>
-                    <input className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" type="number" min="0" max="99" placeholder="คูลดาวน์" value={summonSkillCooldown} onChange={e=>setSummonSkillCooldown(Number(e.target.value)||0)}/>
-                  </div>
-                  <button type="button" className="w-full rounded-lg bg-violet-600/20 border border-violet-500/30 py-2 text-xs font-bold text-violet-100" onClick={()=>{
-                    if(!summonSkillName.trim()){alert('กรุณาใส่ชื่อสกิล');return;}
-                    setSummonSkills(prev=>[...prev,{id:'item-summon-skill-'+Date.now(),name:summonSkillName.trim(),level:1,multiplier:1,type:'battle',description:summonSkillDescription.trim()||'สกิลของลูกน้อง',battleEffect:summonSkillEffect,battlePower:Math.max(0,summonSkillPower),battleUseLimit:'unlimited',cooldownTurns:Math.max(0,Math.floor(summonSkillCooldown))} as BattleBotSkill]);
-                    setSummonSkillName(''); setSummonSkillDescription('');
-                  }}>+ เพิ่มสกิลให้ลูกน้อง</button>
-                  {summonSkills.map((s,i)=><div key={s.id} className="flex items-center justify-between gap-2 text-[10px] text-violet-100 bg-slate-950/70 p-2 rounded-lg"><span>{s.name} · {s.battleEffect} · พลัง {s.battlePower || 0}</span><button type="button" className="text-rose-300" onClick={()=>setSummonSkills(prev=>prev.filter((_,j)=>j!==i))}>ลบ</button></div>)}
-                </div>
-              </div>
-            )}
-            <div className="rounded-2xl border border-amber-500/25 bg-amber-500/5 p-4 space-y-3">
-              <div><div className="text-sm font-black text-amber-200">🔒 เงื่อนไขการใช้ไอเทม</div><p className="text-[10px] text-slate-400">กำหนดได้หลายเงื่อนไข ผู้เล่นต้องผ่านทุกเงื่อนไขก่อนใช้ไอเทม</p></div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <select className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" value={conditionType} onChange={e=>setConditionType(e.target.value as ItemUseCondition['type'])}>
-                  <option value="hp_below_percent">HP ต่ำกว่า %</option><option value="hp_above_percent">HP สูงกว่า %</option><option value="turn_at_least">เริ่มใช้ได้ตั้งแต่เทิร์น</option><option value="stat_at_least">Stat ต้องถึงอย่างน้อย</option><option value="stat_below">Stat ต้องต่ำกว่า</option><option value="summon_count_below">จำนวนลูกน้องต่ำกว่า</option><option value="summon_count_at_least">จำนวนลูกน้องอย่างน้อย</option>
-                </select>
-                {(conditionType==='stat_at_least'||conditionType==='stat_below') && <select className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" value={conditionStat} onChange={e=>setConditionStat(e.target.value as any)}><option value="strength">STR</option><option value="durability">DUR</option><option value="agility">AGI</option><option value="magic">MAG</option></select>}
-                <input type="number" min="0" className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" value={conditionValue} onChange={e=>setConditionValue(Number(e.target.value)||0)} placeholder="ค่าเงื่อนไข"/>
-              </div>
-              <button type="button" className="rounded-lg bg-amber-500/20 border border-amber-400/30 px-3 py-2 text-xs font-bold text-amber-100" onClick={()=>setUseConditions(prev=>[...prev,{id:'item-condition-'+Date.now(),type:conditionType,value:conditionValue,stat:(conditionType==='stat_at_least'||conditionType==='stat_below')?conditionStat:undefined,enabled:true}])}>＋ เพิ่มเงื่อนไข</button>
-              {useConditions.map((condition,index)=><div key={condition.id||index} className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/70 p-2 text-[10px] text-slate-200"><span>#{index+1} {condition.type} {condition.stat ? condition.stat+' ' : ''}{condition.value}</span><button type="button" className="text-rose-300" onClick={()=>setUseConditions(prev=>prev.filter((_,i)=>i!==index))}>ลบ</button></div>)}
+              {effectType === 'heal_hp' && <div className="grid grid-cols-2 gap-2">
+                <label className="text-[10px] text-slate-400">❤️ ฟื้น HP เป็นหน่วย<input type="number" min="0" className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" value={effectValue || ''} onChange={e=>setEffectValue(Number(e.target.value)||0)} /></label>
+                <label className="text-[10px] text-slate-400">❤️ ฟื้น HP เป็น % Max HP<input type="number" min="0" max="100" className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" value={healPercent || ''} onChange={e=>setHealPercent(Number(e.target.value)||0)} /></label>
+              </div>}
+              {effectType === 'buff_stat' && <div className="grid grid-cols-2 gap-2">
+                <label className="text-[10px] text-slate-400">Stat ที่เพิ่ม<select className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" value={targetStat} onChange={e=>setTargetStat(e.target.value as any)}><option value="strength">STR</option><option value="durability">DUR</option><option value="agility">AGI</option><option value="magic">MAG</option></select></label>
+                <label className="text-[10px] text-slate-400">จำนวนที่เพิ่ม<input type="number" min="0" className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" value={effectValue || ''} onChange={e=>setEffectValue(Number(e.target.value)||0)} /></label>
+              </div>}
+              {effectType === 'boost_max_hp' && <label className="text-[10px] text-slate-400">❤️ เพิ่ม Max HP<input type="number" min="0" className="w-full mt-1 rounded-xl bg-slate-900 border border-slate-700 p-2.5 text-white" value={hpBonus || ''} onChange={e=>setHpBonus(Number(e.target.value)||0)} /></label>}
+              {effectType === 'summon' && <SkillBattleOptions config={{battleEffect:'summon',summonName,summonMaxCount,summonPerUse,summonHp,summonStrength,summonDurability,summonAgility,summonMagic,summonIsBoss,summonUnits}} onChange={patch=>{if(patch.summonName!=null)setSummonName(String(patch.summonName));if(patch.summonMaxCount!=null)setSummonMaxCount(Number(patch.summonMaxCount));if(patch.summonPerUse!=null)setSummonPerUse(Number(patch.summonPerUse));if(patch.summonHp!=null)setSummonHp(Number(patch.summonHp));if(patch.summonStrength!=null)setSummonStrength(Number(patch.summonStrength));if(patch.summonDurability!=null)setSummonDurability(Number(patch.summonDurability));if(patch.summonAgility!=null)setSummonAgility(Number(patch.summonAgility));if(patch.summonMagic!=null)setSummonMagic(Number(patch.summonMagic));if(patch.summonIsBoss!=null)setSummonIsBoss(Boolean(patch.summonIsBoss));if(patch.summonUnits)setSummonUnits(patch.summonUnits as any)}} />}
             </div>
 
             <div className="rounded-2xl border border-rose-500/25 bg-rose-500/5 p-4 space-y-3">
