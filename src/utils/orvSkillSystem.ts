@@ -140,18 +140,30 @@ export function getSkillORVRank(skill: Skill): ORVRankDetails {
 }
 
 export const BASE_SKILL_UPGRADE_COST = 1; // Possibility
-export const BASE_STAT_UPGRADE_COST = 1000; // Coins
-export const COMPOUND_RATE = 1.01; // skill upgrades compound +1% per upgrade
-export const STAT_COMPOUND_RATE = 1.05; // transcendence stat upgrades: +5% compounded per upgrade
+export const BASE_SKILL_UPGRADE_COST_COINS = 500; // Coins
+export const COMPOUND_RATE = 1.01; // Possibility skill upgrades compound +1% per upgrade
+export const SKILL_COIN_COMPOUND_RATE = 1.10; // Coins skill upgrades compound +10% per upgrade
+export const BASE_STAT_UPGRADE_COST = 500; // Coins
+export const BASE_STAT_UPGRADE_COST_POSSIBILITY = 1; // Possibility
+export const STAT_COMPOUND_RATE = 1.10; // Coins stat upgrades: +10% compounded per upgrade
+export const STAT_POSSIBILITY_COMPOUND_RATE = 1.01; // Possibility stat upgrades: +1% compounded per upgrade
 
 export function calculateSkillUpgradeCost(skill: Skill): number {
-  // เริ่มที่ 500 Coins และทบต้น +10% ตามจำนวนครั้งที่สกิลนั้นอัป
-  const upgradeCount = Math.max(0, Math.floor(Number(skill.upgradeCount) || 0));
-  return Math.round(Math.pow(COMPOUND_RATE, upgradeCount));
+    const upgradeCount = Math.max(0, Math.floor(Number(skill.upgradeCount) || 0));
+  return Number((BASE_SKILL_UPGRADE_COST * Math.pow(COMPOUND_RATE, upgradeCount)).toFixed(6));
 }
 
-export function calculateStatUpgradeCost(timesUpgraded: number = 0): number {
-  return Math.round(BASE_STAT_UPGRADE_COST * Math.pow(STAT_COMPOUND_RATE, timesUpgraded));
+export function calculateStatUpgradeCost(timesUpgraded: number = 0, currency: 'coins' | 'possibility' = 'coins'): number {
+  const base = currency === 'possibility' ? BASE_STAT_UPGRADE_COST_POSSIBILITY : BASE_STAT_UPGRADE_COST;
+  const rate = currency === 'possibility' ? STAT_POSSIBILITY_COMPOUND_RATE : STAT_COMPOUND_RATE;
+  return Number((base * Math.pow(rate, Math.max(0, Math.floor(timesUpgraded)))).toFixed(currency === 'possibility' ? 6 : 0));
+}
+
+export function calculateSkillUpgradeCostByCurrency(skill: Skill, currency: 'coins' | 'possibility'): number {
+  const upgradeCount = Math.max(0, Math.floor(Number(skill.upgradeCount) || 0));
+  const base = currency === 'possibility' ? BASE_SKILL_UPGRADE_COST : BASE_SKILL_UPGRADE_COST_COINS;
+  const rate = currency === 'possibility' ? COMPOUND_RATE : SKILL_COIN_COMPOUND_RATE;
+  return Number((base * Math.pow(rate, upgradeCount)).toFixed(currency === 'possibility' ? 6 : 0));
 }
 
 export function getLevel10Perk(skill: Skill): string {
