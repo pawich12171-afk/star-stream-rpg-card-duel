@@ -2995,41 +2995,24 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
       if (sameEffectIndex >= 0) {
         const nextEffects = [...existing];
         const current = nextEffects[sameEffectIndex];
-        const safeExistingDuration = Math.max(1, Math.min(99, Math.floor(Number(current.duration) || duration)));
-        // Stacked effects may exceed one application duration, but must never
-        // exceed the global 99-turn cap. This prevents 99T + 3T from becoming 102T.
-        const safeExistingRemaining = Math.max(0, Math.min(99, Math.floor(Number(current.remaining) || 0)));
-        // Control effects cannot be repeatedly refreshed/stacked while active.
-        // Damage/heal/debuff-style effects may still accumulate their duration.
-        const nonStackingControlEffect =
-          effect.kind === 'stun' ||
-          effect.kind === 'freeze' ||
-          effect.kind === 'reflect';
-        nextEffects[sameEffectIndex] = nonStackingControlEffect
-          ? {
-              ...current,
-              value,
-              duration,
-              remaining: safeExistingRemaining > 99 ? duration : (safeExistingRemaining > 0 ? safeExistingRemaining : duration),
-              appliedAt: Date.now(),
-            }
-          : {
-              ...current,
-              value,
-              duration,
-              remaining: Math.min(99, safeExistingRemaining + duration),
-              appliedAt: Date.now(),
-            };
+        const safeExistingRemaining = Math.max(0, Math.floor(Number(current.remaining) || 0));
+        nextEffects[sameEffectIndex] = {
+          ...current,
+          value,
+          duration,
+          remaining: safeExistingRemaining + duration,
+          appliedAt: Date.now(),
+        };
         target.adminStatusEffects = nextEffects;
       } else {
         const status = { id: `battle-effect-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, kind: kind as AdminStatusEffect['kind'], name: label, mode, power: value, duration, remaining: duration, appliedAt: Date.now(), source: 'admin' as const, description: label };
         target.adminStatusEffects = [...existing, status];
       }
       if (effect.kind === 'freeze' || effect.kind === 'stun') {
-        // Duration is the actual time this status remains active. Reapplying a
-        // stun refreshes it to the configured duration; it must not accumulate
-        // into 50/100+ turns just because the skill hits repeatedly.
-        target.stunnedTurns = duration;
+        const activeStuns = (target.adminStatusEffects || [])
+          .filter(item => item.kind === 'stun')
+          .map(item => Math.max(0, Math.floor(Number(item.remaining) || 0)));
+        target.stunnedTurns = Math.max(...activeStuns, duration);
       }
       result.message += ` • ${label} ${duration} เทิร์น`;
     }
