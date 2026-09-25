@@ -66,6 +66,12 @@ export function getCoinDisplayMode(): CoinDisplayMode {
   }
 }
 
+export function formatPossibility(value: number | string | null | undefined): string {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return '0.0';
+  return (Math.round(amount * 10) / 10).toFixed(1);
+}
+
 export function formatCoins(value: number | string | null | undefined, mode?: CoinDisplayMode): string {
   const displayMode = mode || getCoinDisplayMode();
   return displayMode === 'full' ? formatFullNumber(value) : formatCompactNumber(value);
