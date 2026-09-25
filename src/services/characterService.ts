@@ -116,7 +116,7 @@ function applyAvatarOverrides(chars: CharacterProfile[]): CharacterProfile[] {
 }
 
 let localCharacters: CharacterProfile[] = applyAvatarOverrides(
-  readLocalArray('starstream_characters', INITIAL_CHARACTERS)
+  readLocalArray('starstream_characters', [])
 );
 let localShopItems: Item[] = readLocalArray('starstream_shop_items', INITIAL_SHOP_ITEMS);
 
