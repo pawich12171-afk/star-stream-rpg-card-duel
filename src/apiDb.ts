@@ -69,6 +69,9 @@ export async function deleteDoc(ref: DocumentReference) {
   await request(docPath(ref), { method: 'DELETE' });
 }
 
+export function onSnapshot(ref: CollectionReference, callback: (snapshot: QuerySnapshot) => void, errorCallback?: (error: unknown) => void): () => void;
+export function onSnapshot(ref: DocumentReference, callback: (snapshot: DocSnapshot) => void, errorCallback?: (error: unknown) => void): () => void;
+export function onSnapshot(ref: CollectionReference | DocumentReference, options: any, callback: (snapshot: QuerySnapshot | DocSnapshot) => void, errorCallback?: (error: unknown) => void): () => void;
 export function onSnapshot(ref: CollectionReference | DocumentReference, optionsOrCallback: any, maybeCallback?: any, maybeError?: any) {
   const callback = typeof optionsOrCallback === 'function' ? optionsOrCallback : maybeCallback;
   const errorCallback = typeof optionsOrCallback === 'function' ? maybeCallback : maybeError;
