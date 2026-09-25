@@ -43,5 +43,17 @@ jobs:
           walk(sf);
           console.log('DIAGNOSTICS', sf.parseDiagnostics.map(d=>ts.flattenDiagnosticMessageText(d.messageText,' ')));
           NODE
+      - name: Inspect StatusWindow AST
+        run: |
+          node - <<'NODE'
+          const ts=require('typescript'),fs=require('fs');
+          const src=fs.readFileSync('src/components/StatusWindow.tsx','utf8')+'\n}';
+          const sf=ts.createSourceFile('StatusWindow.tsx',src,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+          const vd=sf.statements.find(s=>s.kind===ts.SyntaxKind.FirstStatement);
+          const decl=vd?.declarationList?.declarations?.find(d=>d.name?.getText(sf)==='StatusWindow');
+          const body=decl?.initializer?.body;
+          console.log('BODY',body?.kind, body && sf.getLineAndCharacterOfPosition(body.pos));
+          if(body?.statements) for(const s of body.statements) console.log('STMT',ts.SyntaxKind[s.kind],sf.getLineAndCharacterOfPosition(s.pos).line+1,s.getText(sf).slice(0,120).replace(/\n/g,' '));
+          NODE
       - run: pnpm run typecheck
       - run: pnpm run build
