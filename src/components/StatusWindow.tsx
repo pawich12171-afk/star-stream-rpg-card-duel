@@ -309,26 +309,41 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       ? Math.max(0, Number(source.rewardValue))
       : Math.max(0, phaseValues[phase] || 0);
     let hp = 0, durability = 0, strength = 0, agility = 0, magic = 0, slots = 0;
-    const maxes = [20000, 100, 100, 100, 100, 2];
-    const firsts = [1, 0.01, 0.01, 0.01, 0.01, 1];
+    let cycle = Math.max(0, Math.floor(Number(source.cycleCount) || 0));
+    let multiplier = Math.max(1, Number(skill.multiplier) || 1);
     for (let i = 0; i < count; i += 1) {
+      const hpCap = 20000 * (cycle + 1);
+      const statCap = 100 * (cycle + 1);
+      const slotCap = 2 * (cycle + 1);
       if (phase === 5) {
-        slots += 1; value += 1;
-        if (value >= 2) { phase = 0; value = 0; }
+        const slotProgress = multiplier / (50 * Math.pow(cycle + 1, 2));
+        value += slotProgress;
+        if (value >= 1) {
+          const gainedSlots = Math.floor(value);
+          slots += gainedSlots;
+          value -= gainedSlots;
+        }
+        if (phaseValues[5] + slots >= slotCap) { cycle += 1; phase = 0; value = 0; }
         continue;
       }
-      const upgradeNumber = i + 1;
-      const rawGain = value <= 0
-        ? firsts[phase]
-        : value * (upgradeNumber % 5 === 0 ? 2 : 1.1);
-      const gain = Math.max(1, Math.round(rawGain));
-      if (phase === 0) hp += gain;
-      else if (phase === 1) durability += gain;
-      else if (phase === 2) strength += gain;
-      else if (phase === 3) agility += gain;
-      else if (phase === 4) magic += gain;
-      value = gain;
-      if (phaseValues[phase] + gain >= maxes[phase]) { phase += 1; value = 0; }
+      if (phase === 0) {
+        hp += multiplier;
+        value = phaseValues[0] + hp;
+        if (value >= hpCap) { phase = 1; value = 0; }
+      } else {
+        const statProgress = multiplier / (100 * Math.pow(cycle + 1, 2));
+        value += statProgress;
+        if (value >= 1) {
+          const gained = Math.floor(value);
+          if (phase === 1) durability += gained;
+          else if (phase === 2) strength += gained;
+          else if (phase === 3) agility += gained;
+          else if (phase === 4) magic += gained;
+          value -= gained;
+        }
+        const currentGain = phase === 1 ? durability : phase === 2 ? strength : phase === 3 ? agility : magic;
+        if (phaseValues[phase] + currentGain >= statCap) { phase += 1; value = 0; }
+      }
     }
     return [
       hp ? `HP +${hp.toLocaleString()}` : '',
@@ -529,50 +544,74 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
     let hpGained = 0, durabilityGained = 0, strengthGained = 0, agilityGained = 0, magicGained = 0, slotUnlocked = 0;
     let completedCycles = 0;
-    const maxes = [20000, 100, 100, 100, 100, 2];
-    const firsts = [1, 0.01, 0.01, 0.01, 0.01, 1];
+    // เพดานขยายทุกครั้งที่วนครบลูป: HP 20,000 → 40,000 → 60,000...
+    // สเตตัส 100 → 200 → 300... และช่องสวมใส่ 2 → 4 → 6...
+    // สเตตัส/ช่องใช้ความคืบหน้าแบบเศษส่วนเพื่อให้รอบสูง ๆ อัปได้ยากขึ้น
+    let rewardProgress = Math.max(0, Number(progress.rewardValue) || 0);
+    const rewardMultiplier = Math.max(1, Number(finalSkill.multiplier) || 1);
 
     for (let i = 0; i < requestedTimes; i += 1) {
       const phase = progress.rewardPhase;
+      const cycle = Math.max(0, Math.floor(Number(progress.cycleCount) || 0));
+      const hpCap = 20000 * (cycle + 1);
+      const statCap = 100 * (cycle + 1);
+      const slotCap = 2 * (cycle + 1);
+
       if (phase === 5) {
-        progress.equipmentSlots += 1;
-        slotUnlocked += 1;
-        progress.rewardValue += 1;
-        if (progress.rewardValue >= 2) {
+        // ช่องใหม่ยิ่งสูงยิ่งใช้การอัปสกิลมากขึ้น: 50 × รอบ² ครั้งต่อ 1 ช่อง
+        rewardProgress += rewardMultiplier / (50 * Math.pow(cycle + 1, 2));
+        if (rewardProgress >= 1) {
+          const gainedSlots = Math.floor(rewardProgress);
+          progress.equipmentSlots += gainedSlots;
+          slotUnlocked += gainedSlots;
+          rewardProgress -= gainedSlots;
+        }
+        if (progress.equipmentSlots >= slotCap) {
           progress.rewardPhase = 0;
-          progress.rewardValue = 0;
-          progress.cycleCount += 1;
+          rewardProgress = 0;
+          progress.cycleCount = cycle + 1;
           completedCycles += 1;
         }
         continue;
       }
-      const currentPhaseValue = Math.max(0, Number(progress.rewardValue) || 0);
-      const upgradeNumber = progress.totalUpgrades + i + 1;
-      const rawGain = currentPhaseValue <= 0
-        ? firsts[phase]
-        : currentPhaseValue * (upgradeNumber % 5 === 0 ? 2 : 1.1);
-      // เก็บโบนัสสเตตัสเป็นจำนวนเต็มเสมอ ป้องกันค่าทศนิยมไหลไปคำนวณพลังรบ/HP
-      const nextGain = Math.max(1, Math.round(rawGain));
-      if (phase === 0) { progress.hpBonus += nextGain; hpGained += nextGain; }
-      else if (phase === 1) { progress.durability += nextGain; durabilityGained += nextGain; }
-      else if (phase === 2) { progress.strength += nextGain; strengthGained += nextGain; }
-      else if (phase === 3) { progress.agility += nextGain; agilityGained += nextGain; }
-      else if (phase === 4) { progress.magic += nextGain; magicGained += nextGain; }
-      progress.rewardValue = nextGain;
-      const phaseTotal = phase === 0
-        ? progress.hpBonus
-        : phase === 1
-          ? progress.durability
-          : phase === 2
-            ? progress.strength
-            : phase === 3
-              ? progress.agility
-              : progress.magic;
-      if (phaseTotal >= maxes[phase]) {
+
+      if (phase === 0) {
+        // HP ยังคง +1 ต่อครั้งตามระบบเดิม และใช้ multiplier จากจุติ
+        const hpGain = rewardMultiplier;
+        progress.hpBonus += hpGain;
+        hpGained += hpGain;
+        if (progress.hpBonus >= hpCap) {
+          progress.rewardPhase = 1;
+          rewardProgress = 0;
+        }
+        continue;
+      }
+
+      // สเตตัสอื่นไม่พุ่งตาม HP: ต้องสะสมความคืบหน้าจนครบ 1 ก่อน +1
+      // รอบใหม่จะยากขึ้นแบบกำลังสอง ทำให้ STR/DEF/AGI/MAG ไม่เฟ้อ
+      rewardProgress += rewardMultiplier / (100 * Math.pow(cycle + 1, 2));
+      if (rewardProgress >= 1) {
+        const gained = Math.floor(rewardProgress);
+        if (phase === 1) { progress.durability += gained; durabilityGained += gained; }
+        else if (phase === 2) { progress.strength += gained; strengthGained += gained; }
+        else if (phase === 3) { progress.agility += gained; agilityGained += gained; }
+        else if (phase === 4) { progress.magic += gained; magicGained += gained; }
+        rewardProgress -= gained;
+      }
+
+      const phaseTotal = phase === 1
+        ? progress.durability
+        : phase === 2
+          ? progress.strength
+          : phase === 3
+            ? progress.agility
+            : progress.magic;
+      if (phaseTotal >= statCap) {
         progress.rewardPhase = phase + 1;
-        progress.rewardValue = 0;
+        rewardProgress = 0;
       }
     }
+    progress.rewardValue = rewardProgress;
 
     const newStats = {
       ...base.stats,
@@ -586,7 +625,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
     const progressionApplied = hpGained + durabilityGained + strengthGained + agilityGained + magicGained + slotUnlocked;
     if (progressionApplied <= 0) {
-      alert('ความคืบหน้ารางวัลจากการอัปสกิลเต็มแล้ว: HP 20,000 → ทนทาน 100 → STR 100 → ความเร็ว 100 → เวท 100 → ช่องสวมใส่ +2');
+      alert('ความคืบหน้ารางวัลยังไม่มีโบนัสใหม่ในรอบนี้');
       return;
     }
 
