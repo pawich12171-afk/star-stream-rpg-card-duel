@@ -480,6 +480,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         multiplier *= 2;
         ascensionCount += 1;
         // ต้นทุนต้องทบต้นต่อเนื่องข้ามรอบจุติ ไม่รีเซ็ต upgradeCount
+      }
       finalSkill = { ...finalSkill, level, multiplier, upgradeCount };
     }
     // ย้ายความคืบหน้าเดิมมาสู่สกิลนี้โดยไม่ทิ้งโบนัส HP ที่เคยอัปไว้
