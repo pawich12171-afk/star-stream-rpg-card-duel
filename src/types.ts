@@ -334,6 +334,8 @@ export interface CharacterProfile {
   skillUpgradeResetVersion?: number;
   /** เวอร์ชันการปรับสมดุลโบนัสสกิลล่าสุด */
   skillUpgradeBalanceVersion?: number;
+  /** เวอร์ชันล้าง progress อัปสกิลแบบเก่าที่ค้างอยู่ระดับตัวละคร */
+  legacySkillProgressCleanupVersion?: number;
   consumedMaxHpBonus?: number;
   avatarFrame?: string;
   bannerTheme?: string;
