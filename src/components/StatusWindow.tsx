@@ -380,7 +380,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         continue;
       }
       if (phase === 0) {
-        hp += Math.min(rewardPower, Math.max(0, hpCap - (sourceHp + hp)));
+        const hpGainPerUpgrade = Math.max(1, Math.floor(rewardPower / Math.pow(cycle + 1, 2)));
+        hp += Math.min(hpGainPerUpgrade, Math.max(0, hpCap - (sourceHp + hp)));
         if (sourceHp + hp >= hpCap) { phase = 1; value = 0; }
         continue;
       }
@@ -634,7 +635,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       if (phase === 0) {
         // HP ได้จากพลังจุติแบบ soft-scaled ไม่ใช่ multiplier ตรง ๆ
         // x1 = +1 ต่อครั้ง, x2 = +2, x4 = +3 ... เพื่อไม่ให้ HP เฟ้อ
-        const hpGain = Math.min(rewardPower, Math.max(0, hpCap - progress.hpBonus));
+        const hpGainPerUpgrade = Math.max(1, Math.floor(rewardPower / Math.pow(cycle + 1, 2)));
+        const hpGain = Math.min(hpGainPerUpgrade, Math.max(0, hpCap - progress.hpBonus));
         progress.hpBonus += hpGain;
         hpGained += hpGain;
         if (progress.hpBonus >= hpCap) {
