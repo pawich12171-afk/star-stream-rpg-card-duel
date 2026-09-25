@@ -2000,8 +2000,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
       {/* MODAL: Player Customize Own Stats */}
       {showStatEditModal && (
-        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-cyan-500/40 rounded-3xl max-w-lg w-full shadow-[0_0_50px_rgba(6,182,212,0.25)] flex flex-col my-4 max-h-[90vh] overflow-hidden">
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex flex-col items-center justify-center p-3 sm:p-4 overflow-y-auto bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-cyan-500/40 rounded-3xl max-w-lg w-full shadow-[0_0_50px_rgba(6,182,212,0.25)] my-4 max-h-[90vh] overflow-hidden">
             <div className="px-5 py-4 border-b border-cyan-900/40 bg-slate-900/80 flex items-center justify-between">
               <h3 className="text-base font-black text-white flex items-center gap-2">
                 <Zap className="w-5 h-5 text-cyan-400" />
@@ -2154,7 +2153,6 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               </div>
             </div>
           </div>
-        </div>
         </div>
       )}
     </div>
