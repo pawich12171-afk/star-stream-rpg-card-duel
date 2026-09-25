@@ -542,6 +542,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       itemToGrant = found;
     }
 
+    if (!itemToGrant) {
+      alert('กรุณาเลือกไอเทมจากร้านค้าก่อน');
+      return;
+    }
+
     if (onGrantItem) {
       const res = await onGrantItem(spawnerTargetChar.id, itemToGrant, spawnQuantity);
       alert(res.message);
