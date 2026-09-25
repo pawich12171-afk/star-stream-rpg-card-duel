@@ -3325,6 +3325,13 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     hp = Math.min(maxHp, hp + bonus);
   }
 
+  // Keep the acting character's local patch in sync after an AoE item also affected them.
+  if (itemTargets.some(target => target.id === actor.id) && itemTargets.length > 1) {
+    hp = Math.max(0, Number(actor.hp) || hp);
+    maxHp = Math.max(1, Number(actor.maxHp) || maxHp);
+    Object.assign(stats, actor.stats || {});
+  }
+
   const itemKey = String(item.instanceId || item.id || requestedId);
 
   if (Array.isArray(normalizedItem.useConditions) && normalizedItem.useConditions.length) {
