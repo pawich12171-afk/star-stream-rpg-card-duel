@@ -3,6 +3,7 @@ import { formatCoins } from '../utils/formatNumber';
 import React, { useEffect, useRef, useState } from 'react';
 // Build trigger: StatusWindow JSX fix is present on main.
 import { CharacterProfile, Skill, ORVSkillRank, BattleExtraEffect, ItemPassiveEffect } from '../types';
+import { calculatePowerScore } from '../services/characterService';
 import { 
   Sparkles, 
   Zap, 
@@ -53,6 +54,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   onOpenCharacterSelect,
   isAdmin,
 }) => {
+  const livePowerScore = calculatePowerScore(character);
   const [showAddSkillModal, setShowAddSkillModal] = useState(false);
   const [editingSkillDraft, setEditingSkillDraft] = useState<Skill | null>(null);
   const [editingSkillDrawbacksText, setEditingSkillDrawbacksText] = useState('[]');
@@ -945,7 +947,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                 <span>เปลี่ยนรูป</span>
               </div>
               <span className="absolute -bottom-2 -right-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs px-2.5 py-0.5 rounded-full border border-yellow-200 shadow">
-                RANK #{character.powerScore ? Math.floor(character.powerScore / 1000) : 1}
+                RANK #{character.powerScore ? Math.floor(livePowerScore / 1000) : 1}
               </span>
             </div>
             <div>
@@ -1293,7 +1295,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               ค่าสถานะโดยรวม (Overall Status)
             </h2>
             <span className="text-xs text-cyan-400 font-mono">
-              พลังรบรวม: <strong className="text-white text-sm">{character.powerScore?.toLocaleString() || 0}</strong>
+              พลังรบรวม: <strong className="text-white text-sm">{livePowerScore.toLocaleString()}</strong>
             </span>
           </div>
 
