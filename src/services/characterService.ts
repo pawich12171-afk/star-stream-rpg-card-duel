@@ -2969,9 +2969,11 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
       target.defenseTurns = Math.max(target.defenseTurns || 0, duration);
       result.message += ` • ${label} ลดป้องกัน ${value}%`;
     } else if (effect.kind === 'shield') {
-      target.defenseValue = Math.max(target.defenseValue || 0, Math.round(value));
+      const currentShield = Math.max(0, Number(target.defenseValue) || 0);
+      const addedShield = Math.max(0, Math.round(value));
+      target.defenseValue = currentShield + addedShield;
       target.defenseTurns = Math.max(target.defenseTurns || 0, duration);
-      result.message += ` • ${label} ป้องกัน ${Math.round(value)}`;
+      result.message += ` • ${label} เพิ่มโล่ +${addedShield} (รวม ${Math.round(target.defenseValue)})`;
     } else if (effect.kind === 'damage_reduction') {
       target.damageReductionPercent = Math.min(100, Math.max(0, value));
       target.damageReductionTurns = Math.max(target.damageReductionTurns || 0, duration);
