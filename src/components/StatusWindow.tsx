@@ -88,6 +88,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [newSkillBattleEffect, setNewSkillBattleEffect] = useState<NonNullable<Skill['battleEffect']>>('damage');
   const [newSkillBattlePower, setNewSkillBattlePower] = useState(5);
   const [newSkillTargetMode, setNewSkillTargetMode] = useState<NonNullable<Skill['targetMode']>>('enemy');
+  const [newSkillBattleCategory, setNewSkillBattleCategory] = useState<NonNullable<Skill['skillCategory']>>('attack');
+  const [newSkillTargetConfig, setNewSkillTargetConfig] = useState<NonNullable<Skill['targetConfig']> | undefined>(undefined);
+  const [newSkillModifiers, setNewSkillModifiers] = useState<NonNullable<Skill['skillModifiers']>>([]);
   const [newSkillBuffStat, setNewSkillBuffStat] = useState<'strength'|'durability'|'agility'|'magic'>('strength');
   const [newSkillBuffAmount, setNewSkillBuffAmount] = useState(10);
   const [newSkillBuffDuration, setNewSkillBuffDuration] = useState(3);
@@ -802,6 +805,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       description: newSkillDesc.trim() || 'วิชาพิเศษที่สร้างสรรค์โดยผู้ใช้งาน',
       battleEffect: newSkillBattleEffect,
       targetMode: newSkillTargetMode,
+      skillCategory: newSkillBattleCategory,
+      targetConfig: newSkillTargetConfig,
+      skillModifiers: newSkillModifiers.length ? [...newSkillModifiers] : undefined,
       buffStat: newSkillBattleEffect === 'buff_stat' ? newSkillBuffStat : undefined,
       buffAmount: newSkillBattleEffect === 'buff_stat' ? Math.max(0, newSkillBuffAmount) : undefined,
       buffDuration: newSkillBattleEffect === 'buff_stat' ? Math.max(1, newSkillBuffDuration) : undefined,
@@ -841,7 +847,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     setNewSkillDesc('');
     setNewSkillPerk10('');
     setNewSkillBattleEffect('damage');
-    setNewSkillTargetMode('enemy'); setNewSkillBuffStat('strength'); setNewSkillBuffAmount(10); setNewSkillBuffDuration(3); setNewSkillSummonUnits([]);
+    setNewSkillTargetMode('enemy'); setNewSkillBattleCategory('attack'); setNewSkillTargetConfig(undefined); setNewSkillModifiers([]); setNewSkillBuffStat('strength'); setNewSkillBuffAmount(10); setNewSkillBuffDuration(3); setNewSkillSummonUnits([]);
     setNewSkillBattlePower(5);
     setNewSkillCooldownTurns(3);
     setNewSkillCritChance(0);
@@ -2039,9 +2045,12 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                   </div>
                 </div>
                 <SkillBattleOptions
-                  config={{ battleEffect: newSkillBattleEffect, targetMode: newSkillTargetMode, buffStat: newSkillBuffStat, buffAmount: newSkillBuffAmount, buffDuration: newSkillBuffDuration, summonUnits: newSkillSummonUnits }}
+                  config={{ skillCategory: newSkillBattleCategory, targetMode: newSkillTargetMode, targetConfig: newSkillTargetConfig, skillModifiers: newSkillModifiers, battleEffect: newSkillBattleEffect, buffStat: newSkillBuffStat, buffAmount: newSkillBuffAmount, buffDuration: newSkillBuffDuration, summonUnits: newSkillSummonUnits }}
                   onChange={(patch) => {
+                    if (patch.skillCategory) setNewSkillBattleCategory(patch.skillCategory);
                     if (patch.targetMode) setNewSkillTargetMode(patch.targetMode);
+                    if (patch.targetConfig) setNewSkillTargetConfig(patch.targetConfig);
+                    if (patch.skillModifiers) setNewSkillModifiers(patch.skillModifiers);
                     if (patch.buffStat) setNewSkillBuffStat(patch.buffStat);
                     if (patch.buffAmount != null) setNewSkillBuffAmount(Number(patch.buffAmount));
                     if (patch.buffDuration != null) setNewSkillBuffDuration(Number(patch.buffDuration));
