@@ -401,9 +401,16 @@ function getPreservedCustomAvatar(_charId: string, incomingAvatar: unknown): str
 }
 
 function preserveLocalCustomAvatars(serverCharacters: CharacterProfile[]): CharacterProfile[] {
-  // Kept as a compatibility wrapper for older callers. Server data is now
-  // authoritative; avatar persistence belongs to the shared character record.
-  return serverCharacters;
+  const overrides = readAvatarOverrides();
+  if (!overrides || Object.keys(overrides).length === 0) return serverCharacters;
+
+  return serverCharacters.map(char => {
+    const localAvatar = String(overrides[char.id] || '').trim();
+    // Only restore valid persistent custom avatars. Never restore blob: URLs
+    // because those are tied to the previous browser session.
+    if (!isCustomProfileAvatar(localAvatar)) return char;
+    return { ...char, avatarUrl: localAvatar };
+  });
 }
 
 // Subscribe to characters
