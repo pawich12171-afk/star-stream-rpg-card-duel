@@ -247,6 +247,35 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     void onUpdateCharacter(syncCharacterHealth(cleaned));
   }, [character.id, character.skillUpgradeBalanceVersion]);
 
+  // Migration: remove orphaned character-level skill reward progress.
+  // This field belonged to the old system and can contain HP/stat rewards from
+  // a skill that was deleted. Never transfer it to a current/new skill.
+  useEffect(() => {
+    const LEGACY_SKILL_PROGRESS_CLEANUP_VERSION = 1;
+    const cleanupVersion = Number(character.legacySkillProgressCleanupVersion || 0);
+    if (cleanupVersion >= LEGACY_SKILL_PROGRESS_CLEANUP_VERSION) return;
+    if (!character.skillUpgradeProgress) {
+      const marked = {
+        ...character,
+        legacySkillProgressCleanupVersion: LEGACY_SKILL_PROGRESS_CLEANUP_VERSION,
+      };
+      latestCharacterRef.current = marked;
+      void onUpdateCharacter(syncCharacterHealth(marked));
+      return;
+    }
+
+    const cleaned: CharacterProfile = {
+      ...character,
+      // Keep every current skill's own progress intact. Only remove the
+      // orphaned character-level progress from the deleted/old skill system.
+      skillUpgradeProgress: undefined,
+      legacySkillProgressCleanupVersion: LEGACY_SKILL_PROGRESS_CLEANUP_VERSION,
+      lastUpdated: Math.max(Date.now(), Number(character.lastUpdated || 0) + 1),
+    };
+    latestCharacterRef.current = cleaned;
+    void onUpdateCharacter(syncCharacterHealth(cleaned));
+  }, [character.id, character.legacySkillProgressCleanupVersion, character.skillUpgradeProgress]);
+
   useEffect(() => {
     // Keep the edit form aligned with the newest character snapshot.
     // A realtime update must not leave the modal editing an older copy.
