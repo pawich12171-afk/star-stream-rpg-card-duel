@@ -621,6 +621,13 @@ export default function App() {
     });
   };
 
+  const handleUpdateCharacterPossibility = async (characterId: string, delta: number) => {
+    const target = charactersRef.current.find(character => character.id === characterId);
+    if (!target) return;
+    const next = Math.max(0, (Number(target.possibility) || 0) + delta);
+    await handleUpdateCharacter({ ...target, possibility: next, lastUpdated: Date.now() });
+  };
+
   const handleTransferCoins = async (senderId: string, recipientId: string, amount: number, currency: 'coins' | 'possibility' = 'coins') => {
     try {
       if (currency === 'coins') {
@@ -1022,6 +1029,7 @@ export default function App() {
             gachaBanners={gachaBanners}
             onUpdateCharacterCoins={handleUpdateCharacterCoins}
             onSetCharacterCoins={handleSetCharacterCoins}
+            onUpdateCharacterPossibility={handleUpdateCharacterPossibility}
             onAddShopItem={handleAddShopItem}
             onUpdateShopItem={handleUpdateShopItem}
             onDeleteShopItem={handleDeleteShopItem}
