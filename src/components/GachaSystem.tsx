@@ -17,7 +17,7 @@ interface GachaSystemProps {
   gachaRewards: GachaReward[];
   gachaConfig: GachaConfig;
   gachaBanners: GachaBanner[];
-  onUpdateCharacter: (updated: CharacterProfile) => void;
+  onUpdateCharacter: (updated: CharacterProfile) => void | Promise<boolean>;
   shopItems?: Item[];
 }
 
