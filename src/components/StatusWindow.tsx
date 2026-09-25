@@ -1215,7 +1215,6 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
             const orvRankInfo = getSkillORVRank(skill);
             const upgradePreview = getUpgradePreview(skill);
             const skillBatchCount = Math.max(1, Math.min(1000, Math.floor(Number(skillBatchCounts[skill.id]) || 1)));
-            const skillUpgradeCurrency = 'possibility';
             const skillBatchCost = Array.from({ length: skillBatchCount }, (_, index) =>
               calculateSkillUpgradeCost({ ...skill, upgradeCount: Math.max(0, Math.floor(Number(skill.upgradeCount ?? (skill.level - 1)) || 0)) + index })
             ).reduce((sum, cost) => sum + cost, 0);
