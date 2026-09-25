@@ -1865,9 +1865,22 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                   </div>
                 )}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="rounded-2xl border-2 border-cyan-400/40 bg-cyan-950/20 p-4 mb-3 shadow-[0_0_18px_rgba(34,211,238,0.12)]">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">⏱️</span>
+                  <div>
+                    <div className="font-black text-cyan-100">คูลดาวน์สกิล</div>
+                    <div className="text-[10px] text-cyan-200/60">กำหนดจำนวนเทิร์นที่ต้องรอก่อนใช้สกิลนี้ได้อีกครั้ง</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input type="number" min="0" max="99" step="1" value={editingSkillDraft.cooldownTurns ?? 0} onChange={e=>setEditingSkillDraft({...editingSkillDraft,cooldownTurns:Math.max(0,Math.min(99,Math.round(Number(e.target.value)||0)))})} className="w-28 rounded-xl bg-slate-950 border-2 border-cyan-500/40 px-3 py-2.5 text-lg font-black text-cyan-100 text-center"/>
+                  <span className="text-sm font-bold text-slate-300">เทิร์น</span>
+                  <span className="text-[10px] text-slate-500">0 = ใช้ได้ทุกเทิร์น</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 <label className="text-slate-400"><span className="font-bold text-violet-200">พลังของผลหลัก</span><span className="block text-[9px] text-slate-500">ไม่ใช่ค่าคริติคอล — เป็นค่าหลักของผลที่เลือก เช่น ดาเมจ 50 = ทำดาเมจ 50, Heal 100 = ฟื้น 100 HP, ป้องกัน 20 = เพิ่ม/ลดตามระบบป้องกัน 20</span><input type="number" value={editingSkillDraft.battlePower ?? 0} onChange={e=>setEditingSkillDraft({...editingSkillDraft,battlePower:Number(e.target.value)})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"/></label>
-                <label className="text-slate-400"><span className="font-bold">คูลดาวน์ (เทิร์น)</span><span className="block text-[9px] text-slate-500">ต้องรอกี่เทิร์นก่อนใช้สกิลนี้ได้อีกครั้ง — 0 = ใช้ได้ทุกเทิร์น</span><input type="number" min="0" max="99" step="1" value={editingSkillDraft.cooldownTurns ?? 0} onChange={e=>setEditingSkillDraft({...editingSkillDraft,cooldownTurns:Math.max(0,Math.min(99,Math.round(Number(e.target.value)||0)))})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"/></label>
                 <label className="text-slate-400"><span className="font-bold">โอกาสตีซ้ำ (%)</span><span className="block text-[9px] text-slate-500">โอกาสที่สกิลจะโจมตีซ้ำอีกครั้ง เช่น 20 = มีโอกาส 20%</span><input type="number" step="0.001" min="0" max="100" value={editingSkillDraft.repeatAttackChance ?? 0} onChange={e=>setEditingSkillDraft({...editingSkillDraft,repeatAttackChance:Number(e.target.value)})} className="mt-1 w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-2 text-white"/></label>
               </div>
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-800"><button type="button" onClick={()=>setEditingSkillDraft(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">ยกเลิก</button><button type="button" onClick={()=>void saveEditedSkill()} className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-black">💾 บันทึกการแก้ไข</button></div>
