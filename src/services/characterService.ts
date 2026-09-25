@@ -2938,7 +2938,7 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
     if (Math.random() * 100 >= chance) continue;
     const label = effect.label || effect.kind;
     const value = Math.max(0, Number(effect.value) || 0);
-    const duration = Math.max(1, Math.floor(Number(effect.duration) || 1));
+    const duration = Math.max(1, Math.min(99, Math.floor(Number(effect.duration) || 1)));
     const target = effect.target === 'self' ? attacker : defender;
     const isStatusEffect = ['stun', 'freeze', 'poison', 'burn', 'bleeding', 'slow', 'curse', 'weakness'].includes(effect.kind);
     if (isStatusEffect && target.statusImmunityTurns && target.statusImmunityTurns > 0) {
@@ -3008,7 +3008,7 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
               ...current,
               value,
               duration,
-              remaining: safeExistingRemaining > 0 ? safeExistingRemaining : duration,
+              remaining: safeExistingRemaining > 99 ? duration : (safeExistingRemaining > 0 ? safeExistingRemaining : duration),
               appliedAt: Date.now(),
             }
           : {
@@ -3844,7 +3844,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         const adjustedEffects = skill.battleEffects.map(effect => ({
           ...effect,
           chance: effect.chance == null ? Math.min(100, 100 + statusChanceBonus) : Math.min(100, Math.max(0, Number(effect.chance) + statusChanceBonus)),
-          duration: Math.max(1, Math.round((Number(effect.duration) || 1) + durationBonus)),
+          duration: Math.max(1, Math.min(99, Math.round((Number(effect.duration) || 1) + durationBonus))),
         }));
         applyBattleExtraEffects(current, defender, adjustedEffects, result);
       }
