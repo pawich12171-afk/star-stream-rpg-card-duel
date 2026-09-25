@@ -614,6 +614,8 @@ export interface BattleCombatant {
   traits?: string[];
   adminStatusEffects?: AdminStatusEffect[];
   equippedPassives?: ItemPassiveEffect[];
+  /** ข้อเสียจากไอเทมที่สวมใส่ ซึ่งมีผลจริงในสนามรบ */
+  equippedDrawbacks?: BattleExtraEffect[];
   activeSkillPassives?: ItemPassiveEffect[];
   passiveStacks?: Record<string, number>;
   /** โบนัสโจมตีจากไอเทมที่ใช้ระหว่างต่อสู้ */
