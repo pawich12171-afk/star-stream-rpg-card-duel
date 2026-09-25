@@ -18,7 +18,7 @@ interface TransferModalProps {
   onClose: () => void;
   sender: CharacterProfile;
   allCharacters: CharacterProfile[];
-  onTransfer: (senderId: string, recipientId: string, amount: number) => void;
+  onTransfer: (senderId: string, recipientId: string, amount: number, currency: 'coins' | 'possibility') => void;
 }
 
 export const TransferModal: React.FC<TransferModalProps> = ({
@@ -30,7 +30,9 @@ export const TransferModal: React.FC<TransferModalProps> = ({
 }) => {
   const [recipientId, setRecipientId] = useState('');
   const [amountInput, setAmountInput] = useState('500');
+  const [currency, setCurrency] = useState<'coins' | 'possibility'>('coins');
   const amount = parseCoinAmount(amountInput);
+  const balance = currency === 'coins' ? Number(sender.coins) || 0 : Number(sender.possibility) || 0;
 
   if (!isOpen) return null;
 
@@ -47,12 +49,12 @@ export const TransferModal: React.FC<TransferModalProps> = ({
       alert('กรุณาระบุจำนวนเหรียญที่มากกว่า 0');
       return;
     }
-    if (amount > sender.coins) {
-      alert(`เหรียญไม่เพียงพอ! คุณมี ${formatCoins(sender.coins)} Coins แต่ระบุ ${formatCoins(amount)} Coins`);
+    if (amount > balance) {
+      alert(`เหรียญไม่เพียงพอ! คุณมี ${formatCoins(balance)} Coins แต่ระบุ ${formatCoins(amount)} Coins`);
       return;
     }
 
-    onTransfer(sender.id, recipientId, amount);
+    onTransfer(sender.id, recipientId, amount, currency);
     confetti({
       particleCount: 70,
       spread: 60,
@@ -90,7 +92,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
               </div>
               <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
-                โอนเหรียญกลุ่มดาว (Transfer Coins)
+                โอนเงินกลุ่มดาว (Transfer Currency)
               </h2>
             </div>
           </div>
@@ -175,12 +177,17 @@ export const TransferModal: React.FC<TransferModalProps> = ({
             </select>
           </div>
 
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => { setCurrency('coins'); setAmountInput('500'); }} className={`rounded-xl px-3 py-2 font-black ${currency === 'coins' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>Coins</button>
+            <button type="button" onClick={() => { setCurrency('possibility'); setAmountInput('1'); }} className={`rounded-xl px-3 py-2 font-black ${currency === 'possibility' ? 'bg-fuchsia-500 text-white' : 'bg-slate-800 text-slate-400'}`}>ความเป็นไปได้</button>
+          </div>
+
           {/* Amount Input */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-slate-300 font-bold">จำนวนเหรียญที่ต้องการโอน (Coins) *</label>
+              <label className="text-slate-300 font-bold">จำนวนที่ต้องการโอน (${currency === 'coins' ? 'Coins' : 'ความเป็นไปได้'}) *</label>
               <span className="text-[11px] font-mono text-amber-400">
-                เหลือหลังจากโอน: <strong>{formatCoins(Math.max(0, sender.coins - (amount || 0)))} C</strong>
+                เหลือหลังจากโอน: <strong>{formatCoins(Math.max(0, balance - (amount || 0)))} C</strong>
               </span>
             </div>
 
@@ -195,7 +202,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 className="w-full px-4 py-3 rounded-xl bg-slate-950 border-2 border-slate-700 focus:border-amber-500 text-white font-mono text-base font-black outline-none shadow-inner"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-amber-400">
-                COINS
+                {currency === 'coins' ? 'COINS' : 'POSSIBILITY'}
               </span>
             </div>
 
@@ -270,7 +277,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
               className="px-6 py-2.5 font-black text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 hover:from-amber-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.5)] cursor-pointer flex items-center gap-2"
             >
               <Send className="w-4 h-4 stroke-[2.5]" />
-              <span>ยืนยันการโอน {amount ? formatCoins(amount) : 0} C</span>
+              <span>ยืนยันการโอน {amount ? formatCoins(amount) : 0} {currency === 'coins' ? 'C' : 'P'}</span>
             </button>
           </div>
         </form>
