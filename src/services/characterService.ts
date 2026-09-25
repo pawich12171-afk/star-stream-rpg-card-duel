@@ -3233,6 +3233,25 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
         maxStacks: Math.max(1, Math.floor(safeNum(p.maxStacks, 1, 1000))),
         stackKey: String(p.stackKey || p.id || `item-passive-${index}`),
       })),
+    summonName: String(item.summonName || 'ลูกน้อง').slice(0, 80),
+    summonMaxCount: Math.max(1, Math.min(20, Math.floor(safeNum(item.summonMaxCount, 1, 20)))),
+    summonHp: Math.max(1, Math.floor(safeNum(item.summonHp, 1, 1000000000))),
+    summonStrength: Math.max(0, Math.floor(safeNum(item.summonStrength, 0, 1000000000))),
+    summonDurability: Math.max(0, Math.floor(safeNum(item.summonDurability, 0, 1000000000))),
+    summonAgility: Math.max(0, Math.floor(safeNum(item.summonAgility, 0, 1000000000))),
+    summonMagic: Math.max(0, Math.floor(safeNum(item.summonMagic, 0, 1000000000))),
+    summonIsBoss: Boolean(item.summonIsBoss),
+    summonSkills: (Array.isArray(item.summonSkills) ? item.summonSkills : []).slice(0, 20).map((s: any, index: number) => ({
+      ...s,
+      id: String(s.id || 'item-summon-skill-' + item.id + '-' + index),
+      name: String(s.name || 'สกิลลูกน้อง'),
+      level: Math.max(1, Math.floor(Number(s.level) || 1)),
+      multiplier: Number.isFinite(Number(s.multiplier)) ? Number(s.multiplier) : 1,
+      description: String(s.description || ''),
+      battlePower: Math.max(0, Number(s.battlePower) || 0),
+      cooldownTurns: Math.max(0, Math.floor(Number(s.cooldownTurns) || 0)),
+      aiChancePercent: Math.max(0, Math.min(100, Number(s.aiChancePercent) || 0)),
+    })),
     battleDrawbacks: (Array.isArray(item.battleDrawbacks) ? item.battleDrawbacks : [])
       .filter(Boolean)
       .slice(0, 20)
@@ -3285,6 +3304,43 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
   }
 
   const itemKey = String(item.instanceId || item.id || requestedId);
+
+  // Summon items create temporary allied bot combatants directly in the current battle room.
+  if (item.effectType === 'summon') {
+    const prefix = 'summon-item:' + actor.id + ':' + itemKey;
+    const currentCount = [...normalizedRoom.teamA, ...normalizedRoom.teamB]
+      .filter(unit => unit.type === 'bot' && unit.team === actor.team && String(unit.sourceId || '').startsWith(prefix + ':')).length;
+    const maxCount = Math.max(1, Math.min(20, Number(normalizedItem.summonMaxCount) || 1));
+    if (currentCount >= maxCount) throw new Error('ไอเทมนี้เสกได้สูงสุด ' + maxCount + ' ตัวในสนาม');
+    const summonId = prefix + ':' + (currentCount + 1);
+    const summon: BattleCombatant = {
+      id: summonId,
+      sourceId: summonId,
+      name: (normalizedItem.summonName || 'ลูกน้อง') + ' #' + (currentCount + 1),
+      avatarUrl: normalizedItem.summonAvatarUrl || actor.avatarUrl || '/avatars/system.svg',
+      type: 'bot',
+      team: actor.team,
+      stats: {
+        strength: Math.max(0, Number(normalizedItem.summonStrength) || 0),
+        durability: Math.max(0, Number(normalizedItem.summonDurability) || 0),
+        agility: Math.max(0, Number(normalizedItem.summonAgility) || 0),
+        magic: Math.max(0, Number(normalizedItem.summonMagic) || 0),
+      },
+      hp: Math.max(1, Number(normalizedItem.summonHp) || 1),
+      maxHp: Math.max(1, Number(normalizedItem.summonHp) || 1),
+      isBoss: Boolean(normalizedItem.summonIsBoss),
+      skillCooldowns: {},
+      skillUses: {},
+      skills: Array.isArray(normalizedItem.summonSkills) ? normalizedItem.summonSkills.map((s: any) => ({ ...s })) : [],
+    } as BattleCombatant;
+    if (actor.team === 'a') normalizedRoom.teamA.push(summon); else normalizedRoom.teamB.push(summon);
+    normalizedRoom.log = [{
+      id: 'battle-log-summon-item-' + Date.now(),
+      timestamp: Date.now(),
+      actorName: actor.name,
+      message: '🧿 ' + actor.name + ' ใช้ "' + item.name + '" และเสก ' + summon.name + ' · HP ' + summon.hp + ' · STR ' + summon.stats.strength,
+    }, ...(normalizedRoom.log || [])];
+  }
 
   // Ally revive is a targeted battle effect. The battle item menu currently
   // selects the item (not a separate target), so use the first defeated ally
