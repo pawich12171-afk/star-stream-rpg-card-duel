@@ -409,9 +409,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       }
       costSkill = { ...costSkill, level: nextLevel, multiplier: nextMultiplier, upgradeCount: nextUpgradeCount };
     }
-    const currentCoins = Number(base.coins) || 0;
-    if (currentCoins < totalCost) {
-      alert(`เหรียญไม่เพียงพอ ต้องการ ${formatCoins(totalCost)} Coins (คุณมี ${formatCoins(currentCoins)} Coins)`);
+    const currentPossibility = Number(base.possibility) || 0;
+    if (currentPossibility < totalCost) {
+      alert('ความเป็นไปได้ไม่เพียงพอ ต้องการ ' + formatCoins(totalCost) + ' Possibility (คุณมี ' + formatCoins(currentPossibility) + ')');
       return;
     }
     let finalSkill = { ...targetSkill };
@@ -539,7 +539,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
     const updatedChar: CharacterProfile = {
       ...base,
-      coins: currentCoins - totalCost,
+      coins: Number(base.coins) || 0,
+      possibility: currentPossibility - totalCost,
       skills: (base.skills || []).map(skill => skill.id === skillId
         ? { ...finalSkill, skillUpgradeProgress: progress }
         : skill),
