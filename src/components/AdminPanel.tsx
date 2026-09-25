@@ -709,21 +709,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const reward = gachaRewards.find(item => item.id === editingSkillRewardId);
     if (!reward?.skillData) return;
     const oldSkill = reward.skillData;
-    let parsedDrawbacks: BattleExtraEffect[] = [];
-    let parsedEffects: BattleExtraEffect[] = [];
-    let parsedPassives: ItemPassiveEffect[] = [];
-    try {
-      parsedDrawbacks = getEditingList<BattleExtraEffect>(editingSkillDrawbacksText);
-      parsedEffects = getEditingList<BattleExtraEffect>(editingSkillEffectsText);
-      parsedPassives = getEditingList<ItemPassiveEffect>(editingSkillPassivesText);
-    } catch (error) {
-      const message = String(error);
-      if (message.includes('drawbacks')) alert('JSON ข้อเสียไม่ถูกต้อง');
-      else if (message.includes('effects')) alert('JSON เอฟเฟกต์ไม่ถูกต้อง');
-      else if (message.includes('passives')) alert('JSON Passive ไม่ถูกต้อง');
-      else alert('JSON ของสกิลไม่ถูกต้อง');
-      return;
-    }
+    const parsedDrawbacks = getEditingList<BattleExtraEffect>(editingSkillDrawbacksText);
+    const parsedEffects = getEditingList<BattleExtraEffect>(editingSkillEffectsText);
+    const parsedPassives = getEditingList<ItemPassiveEffect>(editingSkillPassivesText);
     const skill: Skill = {
       ...oldSkill,
       name: editingSkillName.trim() || oldSkill.name,
