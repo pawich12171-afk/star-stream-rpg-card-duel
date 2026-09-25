@@ -377,6 +377,7 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
                 <option value="boost_max_hp">❤️ เพิ่ม Max HP</option>
                 <option value="buff_stat">💪 เพิ่ม STR / DUR / AGI / MAG</option>
                 <option value="enhance_skill">⚔️ เสริมสกิล</option>
+                <option value="summon">🧿 เสกมอนสเตอร์ / ลูกน้อง</option>
                 <option value="custom">✨ เอฟเฟกต์อื่น / กำหนดเอง</option>
               </select>
 
