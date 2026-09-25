@@ -1353,5 +1353,6 @@ setBotSummonName(skill.summonName||'ลูกน้อง');setBotSummonMaxCount
         );
       })}
     </section>
+  </div>
   </div>;
 }
