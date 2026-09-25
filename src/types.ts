@@ -322,6 +322,8 @@ export interface CharacterProfile {
     rank?: string;
   }[];
   statUpgradeCount?: number;
+  /** เวอร์ชันการรีเซ็ตระบบอัปสกิลครั้งล่าสุด ใช้ migration ครั้งเดียวต่อข้อมูลตัวละคร */
+  skillUpgradeResetVersion?: number;
   consumedMaxHpBonus?: number;
   avatarFrame?: string;
   bannerTheme?: string;
