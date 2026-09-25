@@ -27,7 +27,6 @@ import {
 } from '../utils/healthSystem';
 import { 
   getSkillORVRank, 
-  calculateSkillUpgradeCost, 
   calculateStatUpgradeCost, 
   getUpgradePreview, 
   getLevel10Perk,
@@ -126,7 +125,6 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [skillBatchCounts, setSkillBatchCounts] = useState<Record<string, number>>({});
   const [skillUpgradeCurrencies, setSkillUpgradeCurrencies] = useState<Record<string, 'coins' | 'possibility'>>({});
   const [isUpgradingSkill, setIsUpgradingSkill] = useState(false);
-  const [statUpgradeCurrency, setStatUpgradeCurrency] = useState<'coins' | 'possibility'>('coins');
   const [showExchangeModal, setShowExchangeModal] = useState(false);
   const [exchangeDirection, setExchangeDirection] = useState<'coinsToPossibility' | 'possibilityToCoins'>('coinsToPossibility');
   const [exchangeAmount, setExchangeAmount] = useState(1);
@@ -1026,7 +1024,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               <div>
                 <span className="text-[10px] text-slate-400 block">ราคาต่อ 1 ขั้น:</span>
                 <span className="text-sm font-black text-amber-300 font-mono">
-                  {formatCoins(currentStatUpgradeCost)} {statUpgradeCurrency === 'coins' ? 'Coins' : 'Possibility'}
+                  {formatCoins(currentStatUpgradeCost)} Coins
                 </span>
               </div>
 
@@ -1087,8 +1085,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                         {(() => {
                           const count = Math.max(1, Math.min(1000, Math.floor(Number(transcendenceBatchCounts[statKey]) || 1)));
                           const start = Math.max(0, Math.floor(Number(character.statUpgradeCount) || 0));
-                          const firstCost = calculateStatUpgradeCost(start, statUpgradeCurrency);
-                          const total = Array.from({ length: count }, (_, index) => calculateStatUpgradeCost(start + index, statUpgradeCurrency)).reduce((sum, cost) => sum + cost, 0);
+                          const firstCost = calculateStatUpgradeCost(start, 'coins');
+                          const total = Array.from({ length: count }, (_, index) => calculateStatUpgradeCost(start + index, 'coins')).reduce((sum, cost) => sum + cost, 0);
                           return (
                             <>
                               <div className="flex items-center justify-between gap-2">
@@ -1351,10 +1349,23 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
             const orvRankInfo = getSkillORVRank(skill);
             const upgradePreview = getUpgradePreview(skill);
             const skillBatchCount = Math.max(1, Math.min(1000, Math.floor(Number(skillBatchCounts[skill.id]) || 1)));
-            const skillBatchCost = Array.from({ length: skillBatchCount }, (_, index) =>
-              calculateSkillUpgradeCostByCurrency({ ...skill, upgradeCount: Math.max(0, Math.floor(Number(skill.upgradeCount ?? (skill.level - 1)) || 0)) + index }, skillUpgradeCurrencies[skill.id] || 'coins')
-            ).reduce((sum, cost) => sum + cost, 0);
-            const canAfford = (Number(character.possibility) || 0) >= skillBatchCost;
+            const selectedSkillCurrency = skillUpgradeCurrencies[skill.id] || 'coins';
+            let skillCostCursor = { ...skill, upgradeCount: Math.max(0, Math.floor(Number(skill.upgradeCount ?? (skill.level - 1)) || 0)) };
+            let skillBatchCost = 0;
+            for (let index = 0; index < skillBatchCount; index += 1) {
+              skillBatchCost += calculateSkillUpgradeCostByCurrency(skillCostCursor, selectedSkillCurrency);
+              let nextLevel = Number(skillCostCursor.level || 1) + 1;
+              let nextMultiplier = Number(skillCostCursor.multiplier || 1);
+              let nextUpgradeCount = Math.max(0, Number(skillCostCursor.upgradeCount || 0)) + 1;
+              if (nextLevel > 10) {
+                nextLevel = 1;
+                nextMultiplier *= 2;
+                nextUpgradeCount = 0;
+              }
+              skillCostCursor = { ...skillCostCursor, level: nextLevel, multiplier: nextMultiplier, upgradeCount: nextUpgradeCount };
+            }
+            const skillBalance = selectedSkillCurrency === 'coins' ? (Number(character.coins) || 0) : (Number(character.possibility) || 0);
+            const canAfford = skillBalance >= skillBatchCost;
             const perk10 = getLevel10Perk(skill);
             return (
               <div
@@ -1487,14 +1498,14 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                       </div>
                       <div className="flex min-w-0 gap-2 flex-wrap">
                         <div className="min-w-0 flex-1 rounded-xl border border-amber-500/20 bg-slate-950/70 px-2.5 py-1.5 text-[10px] font-mono overflow-hidden">
-                          <span className="text-slate-500">อัป {skillBatchCount} ขั้น = </span><strong className="text-fuchsia-300">{formatCoins(skillBatchCost)} {skillUpgradeCurrencies[skill.id] === 'possibility' ? 'Possibility' : 'Coins'}</strong>
+                          <span className="text-slate-500">อัป {skillBatchCount} ขั้น = </span><strong className="text-fuchsia-300">{formatCoins(skillBatchCost)} {selectedSkillCurrency === 'possibility' ? 'Possibility' : 'Coins'}</strong>
                         </div>
 
                         <button type="button" id={`btn-upgrade-skill-${skill.id}`} onClick={() => handleUpgradeSkill(skill.id)}
                           disabled={!canAfford || isUpgradingSkill}
                           className={`flex-1 min-w-0 max-w-full px-3 sm:px-4 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md overflow-hidden ${canAfford && !isUpgradingSkill ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
                           <ArrowUpCircle className="w-4 h-4 shrink-0" />
-                          <span className="truncate">{skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`} • {formatCoins(skillBatchCost)} {skillUpgradeCurrencies[skill.id] === 'possibility' ? 'Possibility' : 'Coins'}</span>
+                          <span className="truncate">{skill.level >= 10 ? `จุติสวรรค์ / +${skillBatchCounts[skill.id] || 1} ขั้น` : `อัปเกรด +${skillBatchCounts[skill.id] || 1} ขั้น`} • {formatCoins(skillBatchCost)} {selectedSkillCurrency === 'possibility' ? 'Possibility' : 'Coins'}</span>
                         </button>
                       </div>
                     </div>
