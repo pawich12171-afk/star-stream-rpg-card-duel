@@ -184,6 +184,8 @@ export interface Item {
   usableByPlayers: boolean;
   rarity?: GachaRarity;
   passiveEffects?: ItemPassiveEffect[];
+  /** ข้อเสีย/ผลย้อนกลับของไอเทมที่ผู้สร้างกำหนด */
+  battleDrawbacks?: BattleExtraEffect[];
   /** ไอเทมนี้สร้างโดย Admin สำหรับรางวัล/กาชาเท่านั้น ไม่แสดงในร้านค้า */
   adminOnly?: boolean;
   /** ไอเทมชนิดนี้รวมจำนวนในช่องเดียวกันได้ */
@@ -330,6 +332,8 @@ export interface CharacterProfile {
   statUpgradeCount?: number;
   /** เวอร์ชันการรีเซ็ตระบบอัปสกิลครั้งล่าสุด ใช้ migration ครั้งเดียวต่อข้อมูลตัวละคร */
   skillUpgradeResetVersion?: number;
+  /** เวอร์ชันการปรับสมดุลโบนัสสกิลล่าสุด */
+  skillUpgradeBalanceVersion?: number;
   consumedMaxHpBonus?: number;
   avatarFrame?: string;
   bannerTheme?: string;
