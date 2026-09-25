@@ -587,7 +587,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         name: editBannerName.trim() || selectedBanner.name,
         bannerTitle: editBannerTitle.trim() || selectedBanner.bannerTitle,
         bannerDescription: editBannerDesc.trim() || selectedBanner.bannerDescription,
-        pullCost: Math.max(10, Number(editBannerPullCost) || 10),
+        pullCost: Math.max(1, Number(editBannerPullCost) || 1),
         tenPullCost: Math.max(100, Number(editBannerTenCost) || 100),
         multiPullCounts: parseMultiPullCounts(editBannerMultiPullCounts),
         multiPullCount: Math.max(11, Math.floor(Number(editBannerMultiPullCount) || 20)),
@@ -604,7 +604,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const banner: GachaBanner = {
       id: `banner-${Date.now()}`,
       name: newBannerName.trim(),
-      pullCost: Math.max(10, Number(newBannerPullCost) || 10),
+      pullCost: Math.max(1, Number(newBannerPullCost) || 1),
       tenPullCost: Math.max(100, Number(newBannerTenCost) || 100),
       multiPullCounts: parseMultiPullCounts(newBannerMultiPullCounts),
         multiPullCount: Math.max(11, Math.floor(Number(newBannerMultiPullCount) || 20)),
@@ -636,7 +636,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       await onSaveGachaBanner({
         ...mainBanner,
-        pullCost: Math.max(10, Number(pullCostInput) || 10),
+        pullCost: Math.max(1, Number(pullCostInput) || 1),
         tenPullCost: Math.max(100, Number(tenPullCostInput) || 100),
         bannerTitle: bannerTitleInput.trim() || mainBanner.name,
         bannerDescription: bannerDescInput.trim() || 'ตู้กาชาพิเศษ',
