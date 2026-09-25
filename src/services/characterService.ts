@@ -2994,7 +2994,9 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
         const nextEffects = [...existing];
         const current = nextEffects[sameEffectIndex];
         const safeExistingDuration = Math.max(1, Math.min(99, Math.floor(Number(current.duration) || duration)));
-        const safeExistingRemaining = Math.max(0, Math.min(safeExistingDuration, Math.floor(Number(current.remaining) || 0)));
+        // Stacked effects may exceed one application duration, but must never
+        // exceed the global 99-turn cap. This prevents 99T + 3T from becoming 102T.
+        const safeExistingRemaining = Math.max(0, Math.min(99, Math.floor(Number(current.remaining) || 0)));
         // Control effects cannot be repeatedly refreshed/stacked while active.
         // Damage/heal/debuff-style effects may still accumulate their duration.
         const nonStackingControlEffect =
