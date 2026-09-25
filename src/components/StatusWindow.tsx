@@ -131,6 +131,27 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   useEffect(() => {
     latestCharacterRef.current = character;
   }, [character]);
+
+  // Migration ครั้งเดียว: ย้อนการอัปสกิลเดิมของทุกสกิลกลับ Lv.1
+  // ไม่ลบ skillUpgradeProgress/โบนัส HP ที่สะสมไว้
+  useEffect(() => {
+    const RESET_VERSION = 2;
+    if (Number(character.skillUpgradeResetVersion || 0) >= RESET_VERSION) return;
+    const resetSkills = (character.skills || []).map(skill => ({
+      ...skill,
+      level: 1,
+      multiplier: 1,
+      upgradeCount: 0,
+    }));
+    const resetCharacter: CharacterProfile = {
+      ...character,
+      skills: resetSkills,
+      skillUpgradeResetVersion: RESET_VERSION,
+      lastUpdated: Math.max(Date.now(), Number(character.lastUpdated || 0) + 1),
+    };
+    latestCharacterRef.current = resetCharacter;
+    void onUpdateCharacter(resetCharacter);
+  }, [character.id, character.skillUpgradeResetVersion]);
   useEffect(() => {
     // Keep the edit form aligned with the newest character snapshot.
     // A realtime update must not leave the modal editing an older copy.
@@ -208,7 +229,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       }
       const gain = value <= 0
         ? firsts[phase]
-        : Math.min(Math.max(0, maxes[phase] - value), value * 2);
+        : Math.min(Math.max(0, maxes[phase] - value), value * 1.3);
       if (phase === 0) hp += gain;
       else if (phase === 1) durability += gain;
       else if (phase === 2) strength += gain;
@@ -433,7 +454,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       const currentPhaseValue = Math.max(0, Number(progress.rewardValue) || 0);
       const nextGain = currentPhaseValue <= 0
         ? firsts[phase]
-        : Math.min(Math.max(0, maxes[phase] - currentPhaseValue), currentPhaseValue * 2);
+        : Math.min(Math.max(0, maxes[phase] - currentPhaseValue), currentPhaseValue * 1.3);
       if (phase === 0) { progress.hpBonus += nextGain; hpGained += nextGain; }
       else if (phase === 1) { progress.durability += nextGain; durabilityGained += nextGain; }
       else if (phase === 2) { progress.strength += nextGain; strengthGained += nextGain; }
