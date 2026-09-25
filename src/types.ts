@@ -120,7 +120,7 @@ export interface Item {
   category: 'consumable' | 'equipment' | 'material';
   icon?: string;
   equipped?: boolean;
-  effectType: 'heal_hp' | 'buff_stat' | 'enhance_skill' | 'custom' | 'boost_max_hp';
+  effectType: 'heal_hp' | 'buff_stat' | 'enhance_skill' | 'custom' | 'boost_max_hp' | 'summon';
   effectValue?: number;
   /** ฟื้น HP เป็นเปอร์เซ็นต์ของ Max HP เมื่อใช้ไอเทม */
   healPercent?: number;
@@ -186,6 +186,30 @@ export interface Item {
   passiveEffects?: ItemPassiveEffect[];
   /** ข้อเสีย/ผลย้อนกลับของไอเทมที่ผู้สร้างกำหนด */
   battleDrawbacks?: BattleExtraEffect[];
+  /** ตั้งค่าสำหรับไอเทมเสกมอนสเตอร์/ลูกน้องระหว่างการต่อสู้ */
+  summonName?: string;
+  summonMaxCount?: number;
+  summonHp?: number;
+  summonStrength?: number;
+  summonDurability?: number;
+  summonAgility?: number;
+  summonMagic?: number;
+  summonSkills?: BattleBotSkill[];
+  summonAvatarUrl?: string;
+  summonAvatarFileName?: string;
+  summonIsBoss?: boolean;
+  summonUnits?: Array<{
+    id: string;
+    name: string;
+    hp: number;
+    strength: number;
+    durability: number;
+    agility: number;
+    magic: number;
+    avatarUrl?: string;
+    avatarFileName?: string;
+    skills?: BattleBotSkill[];
+  }>;
   /** ไอเทมนี้สร้างโดย Admin สำหรับรางวัล/กาชาเท่านั้น ไม่แสดงในร้านค้า */
   adminOnly?: boolean;
   /** ไอเทมชนิดนี้รวมจำนวนในช่องเดียวกันได้ */
