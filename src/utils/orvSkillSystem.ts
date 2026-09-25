@@ -141,13 +141,13 @@ export function getSkillORVRank(skill: Skill): ORVRankDetails {
 
 export const BASE_SKILL_UPGRADE_COST = 500; // Coins — fixed cost per skill upgrade
 export const BASE_STAT_UPGRADE_COST = 1000; // Coins
-export const COMPOUND_RATE = 1.10; // skill upgrades start at 500 Coins and compound +10% each upgrade
+export const COMPOUND_RATE = 1.10; // skill upgrades use 1 Possibility and compound +10% per upgrade
 export const STAT_COMPOUND_RATE = 1.05; // transcendence stat upgrades: +5% compounded per upgrade
 
 export function calculateSkillUpgradeCost(skill: Skill): number {
   // เริ่มที่ 500 Coins และทบต้น +10% ตามจำนวนครั้งที่สกิลนั้นอัป
   const upgradeCount = Math.max(0, Math.floor(Number(skill.upgradeCount) || 0));
-  return Math.round(BASE_SKILL_UPGRADE_COST * Math.pow(COMPOUND_RATE, upgradeCount));
+  return Math.round(Math.pow(COMPOUND_RATE, upgradeCount));
 }
 
 export function calculateStatUpgradeCost(timesUpgraded: number = 0): number {
