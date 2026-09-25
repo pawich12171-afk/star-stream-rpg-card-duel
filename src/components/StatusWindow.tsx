@@ -320,7 +320,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       const upgradeNumber = i + 1;
       const gain = value <= 0
         ? firsts[phase]
-        : value * (upgradeNumber % 5 === 0 ? 2 : 1);
+        : value * (upgradeNumber % 5 === 0 ? 2 : 1.1);
       if (phase === 0) hp += gain;
       else if (phase === 1) durability += gain;
       else if (phase === 2) strength += gain;
@@ -478,8 +478,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         level = 1;
         multiplier *= 2;
         ascensionCount += 1;
-        upgradeCount = 0;
-      }
+        // ต้นทุนต้องทบต้นต่อเนื่องข้ามรอบจุติ ไม่รีเซ็ต upgradeCount
       finalSkill = { ...finalSkill, level, multiplier, upgradeCount };
     }
     // ย้ายความคืบหน้าเดิมมาสู่สกิลนี้โดยไม่ทิ้งโบนัส HP ที่เคยอัปไว้
@@ -547,9 +546,11 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       }
       const currentPhaseValue = Math.max(0, Number(progress.rewardValue) || 0);
       const upgradeNumber = progress.totalUpgrades + i + 1;
-      const nextGain = currentPhaseValue <= 0
+      const rawGain = currentPhaseValue <= 0
         ? firsts[phase]
-        : currentPhaseValue * (upgradeNumber % 5 === 0 ? 2 : 1);
+        : currentPhaseValue * (upgradeNumber % 5 === 0 ? 2 : 1.1);
+      // เก็บโบนัสสเตตัสเป็นจำนวนเต็มเสมอ ป้องกันค่าทศนิยมไหลไปคำนวณพลังรบ/HP
+      const nextGain = Math.max(1, Math.round(rawGain));
       if (phase === 0) { progress.hpBonus += nextGain; hpGained += nextGain; }
       else if (phase === 1) { progress.durability += nextGain; durabilityGained += nextGain; }
       else if (phase === 2) { progress.strength += nextGain; strengthGained += nextGain; }
@@ -1361,8 +1362,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               if (nextLevel > 10) {
                 nextLevel = 1;
                 nextMultiplier *= 2;
-                nextUpgradeCount = 0;
-              }
+                // upgradeCount เป็นตัวนับต้นทุนสะสมต่อเนื่อง ห้ามรีเซ็ตเมื่อจุติ
+                // เพื่อให้ราคาทบต้นจริงทุกครั้งที่อัปสกิล
               skillCostCursor = { ...skillCostCursor, level: nextLevel, multiplier: nextMultiplier, upgradeCount: nextUpgradeCount };
             }
             const skillBalance = selectedSkillCurrency === 'coins' ? (Number(character.coins) || 0) : (Number(character.possibility) || 0);
