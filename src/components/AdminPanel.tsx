@@ -370,6 +370,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newRewardBattleEffect, setNewRewardBattleEffect] = useState<NonNullable<Skill['battleEffect']>>('damage');
   const [newRewardBattlePower, setNewRewardBattlePower] = useState(5);
   const [newRewardTargetMode, setNewRewardTargetMode] = useState<NonNullable<Skill['targetMode']>>('enemy');
+  const [newRewardSkillCategory, setNewRewardSkillCategory] = useState<NonNullable<Skill['skillCategory']>>('attack');
+  const [newRewardTargetConfig, setNewRewardTargetConfig] = useState<NonNullable<Skill['targetConfig']> | undefined>(undefined);
+  const [newRewardSkillModifiers, setNewRewardSkillModifiers] = useState<NonNullable<Skill['skillModifiers']>>([]);
   const [newRewardBuffStat, setNewRewardBuffStat] = useState<'strength'|'durability'|'agility'|'magic'>('strength');
   const [newRewardBuffAmount, setNewRewardBuffAmount] = useState(10);
   const [newRewardBuffDuration, setNewRewardBuffDuration] = useState(3);
@@ -388,6 +391,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editingSkillEffect, setEditingSkillEffect] = useState<NonNullable<Skill['battleEffect']>>('damage');
   const [editingSkillPower, setEditingSkillPower] = useState(5);
   const [editingSkillTargetMode, setEditingSkillTargetMode] = useState<NonNullable<Skill['targetMode']>>('enemy');
+  const [editingSkillCategory, setEditingSkillCategory] = useState<NonNullable<Skill['skillCategory']>>('attack');
+  const [editingSkillTargetConfig, setEditingSkillTargetConfig] = useState<NonNullable<Skill['targetConfig']> | undefined>(undefined);
+  const [editingSkillModifiers, setEditingSkillModifiers] = useState<NonNullable<Skill['skillModifiers']>>([]);
   const [editingSkillBuffStat, setEditingSkillBuffStat] = useState<'strength'|'durability'|'agility'|'magic'>('strength');
   const [editingSkillBuffAmount, setEditingSkillBuffAmount] = useState(10);
   const [editingSkillBuffDuration, setEditingSkillBuffDuration] = useState(3);
@@ -687,6 +693,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setEditingSkillDesc(skill.description || reward.description || '');
     setEditingSkillEffect(skill.battleEffect || 'damage');
     setEditingSkillTargetMode(skill.targetMode || 'enemy');
+    setEditingSkillCategory(skill.skillCategory || 'attack');
+    setEditingSkillTargetConfig(skill.targetConfig);
+    setEditingSkillModifiers(Array.isArray(skill.skillModifiers) ? skill.skillModifiers.map(item => ({ ...item })) : []);
     setEditingSkillBuffStat(skill.buffStat || 'strength');
     setEditingSkillBuffAmount(Math.max(0, Number(skill.buffAmount) || 10));
     setEditingSkillBuffDuration(Math.max(1, Number(skill.buffDuration) || 3));
@@ -734,6 +743,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       description: editingSkillDesc.trim() || oldSkill.description,
       battleEffect: editingSkillEffect,
       targetMode: editingSkillTargetMode,
+      skillCategory: editingSkillCategory,
+      targetConfig: editingSkillTargetConfig,
+      skillModifiers: editingSkillModifiers.length ? [...editingSkillModifiers] : undefined,
       buffStat: editingSkillEffect === 'buff_stat' ? editingSkillBuffStat : undefined,
       buffAmount: editingSkillEffect === 'buff_stat' ? Math.max(0, editingSkillBuffAmount) : undefined,
       buffDuration: editingSkillEffect === 'buff_stat' ? Math.max(1, editingSkillBuffDuration) : undefined,
@@ -800,6 +812,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         description: newRewardDesc.trim() || 'สกิลต่อสู้ที่ได้รับจากตู้กาชา',
         battleEffect: newRewardBattleEffect,
         targetMode: newRewardTargetMode,
+        skillCategory: newRewardSkillCategory,
+        targetConfig: newRewardTargetConfig,
+        skillModifiers: newRewardSkillModifiers.length ? [...newRewardSkillModifiers] : undefined,
         buffStat: newRewardBattleEffect === 'buff_stat' ? newRewardBuffStat : undefined,
         buffAmount: newRewardBattleEffect === 'buff_stat' ? Math.max(0, newRewardBuffAmount) : undefined,
         buffDuration: newRewardBattleEffect === 'buff_stat' ? Math.max(1, newRewardBuffDuration) : undefined,
@@ -827,7 +842,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setNewRewardDesc('');
       setNewRewardCharacteristic('');
       setNewRewardBattleEffect('damage');
-      setNewRewardTargetMode('enemy'); setNewRewardBuffStat('strength'); setNewRewardBuffAmount(10); setNewRewardBuffDuration(3); setNewRewardSummonUnits([]);
+      setNewRewardTargetMode('enemy'); setNewRewardSkillCategory('attack'); setNewRewardTargetConfig(undefined); setNewRewardSkillModifiers([]); setNewRewardBuffStat('strength'); setNewRewardBuffAmount(10); setNewRewardBuffDuration(3); setNewRewardSummonUnits([]);
       setNewRewardBattlePower(5);
       setNewRewardCooldownTurns(0);
       setNewRewardEffectDuration(1);
@@ -2567,10 +2582,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                     </div>
 
-                    {newRewardBattleEffect === 'summon' && <SkillBattleOptions
-  config={{battleEffect:newRewardBattleEffect,targetMode:newRewardTargetMode,summonName:newSummonName,summonMaxCount:newSummonMaxCount,summonHp:newSummonHp,summonDamage:newSummonDamage,summonAgility:newSummonAgility,summonUnits:newRewardSummonUnits}}
+                    <SkillBattleOptions
+  config={{skillCategory:newRewardSkillCategory,targetMode:newRewardTargetMode,targetConfig:newRewardTargetConfig,skillModifiers:newRewardSkillModifiers,battleEffect:newRewardBattleEffect,summonName:newSummonName,summonMaxCount:newSummonMaxCount,summonHp:newSummonHp,summonDamage:newSummonDamage,summonAgility:newSummonAgility,summonUnits:newRewardSummonUnits}}
   onChange={(patch) => {
+    if(patch.skillCategory) setNewRewardSkillCategory(patch.skillCategory);
     if(patch.targetMode) setNewRewardTargetMode(patch.targetMode);
+    if(patch.targetConfig) setNewRewardTargetConfig(patch.targetConfig);
+    if(patch.skillModifiers) setNewRewardSkillModifiers(patch.skillModifiers);
     if(patch.summonName != null) setNewSummonName(String(patch.summonName));
     if(patch.summonMaxCount != null) setNewSummonMaxCount(Number(patch.summonMaxCount));
     if(patch.summonHp != null) setNewSummonHp(Number(patch.summonHp));
@@ -2578,7 +2596,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if(patch.summonAgility != null) setNewSummonAgility(Number(patch.summonAgility));
     if(patch.summonUnits) setNewRewardSummonUnits(patch.summonUnits);
   }}
-/>}
+/>
 
 {newRewardBattleEffect === 'damage' && (
                       <div className="rounded-lg border border-amber-500/20 bg-amber-950/10 p-2">
