@@ -35,6 +35,10 @@ import {
   seedInitialDataIfNeeded,
   subscribeToMarketplace,
   subscribeToMarketplaceAuctions,
+  subscribeToCraftingRecipes,
+  saveCraftingRecipe,
+  deleteCraftingRecipe,
+  craftRecipe,
   createMarketplaceListing,
   transferInventoryItem,
   createMarketplaceAuction,
@@ -51,6 +55,7 @@ import { GachaSystem } from './components/GachaSystem';
 import { Leaderboard } from './components/Leaderboard';
 import { QuestNotification } from './components/QuestNotification';
 import { QuestBoard } from './components/QuestBoard';
+import { CraftingPanel } from './components/CraftingPanel';
 import { AdminPanel } from './components/AdminPanel';
 const ItemManagementPanel = lazy(() => import('./components/ItemManagementPanel').then(m => ({ default: m.ItemManagementPanel })));
 import { AdminCharacterBalancePanel } from './components/AdminCharacterBalancePanel';
@@ -144,9 +149,9 @@ class ItemPanelErrorBoundary extends React.Component<{children: React.ReactNode}
 
 export default function App() {
   // Deployment sync checkpoint: keep main/Vercel source aligned.
-  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'admin' | 'items'>(() => {
+  const [activeTab, setActiveTab] = useState<'status' | 'shop' | 'games' | 'gacha' | 'rankings' | 'notifications' | 'quests' | 'battle' | 'crafting' | 'admin' | 'items'>(() => {
     const fallback = 'status' as const;
-    const allowed = ['status', 'shop', 'games', 'gacha', 'rankings', 'notifications', 'quests', 'battle', 'admin', 'items'] as const;
+    const allowed = ['status', 'shop', 'games', 'gacha', 'rankings', 'notifications', 'quests', 'battle', 'crafting', 'admin', 'items'] as const;
     try {
       // URL hash is the primary source because it survives a hard refresh
       // even when browser storage is unavailable/cleared by the environment.
@@ -194,6 +199,7 @@ export default function App() {
   const [duelRooms, setDuelRooms] = useState<CardDuelRoom[]>(() => []);
   const [marketplaceListings, setMarketplaceListings] = useState<import('./types').MarketplaceListing[]>(() => []);
   const [marketplaceAuctions, setMarketplaceAuctions] = useState<import('./types').MarketplaceAuction[]>(() => []);
+  const [craftingRecipes, setCraftingRecipes] = useState<import('./types').CraftingRecipe[]>(() => []);
   const [isRealtimeLinked, setIsRealtimeLinked] = useState(false);
   const charactersRef = useRef<CharacterProfile[]>([]);
 
@@ -290,6 +296,7 @@ export default function App() {
       }));
       cleanups.push(subscribeToMarketplace((listings) => setMarketplaceListings(listings)));
       cleanups.push(subscribeToMarketplaceAuctions((auctions) => setMarketplaceAuctions(auctions)));
+      cleanups.push(subscribeToCraftingRecipes((recipes) => setCraftingRecipes(recipes)));
     };
 
     void initializeRealtimeData();
@@ -882,6 +889,14 @@ export default function App() {
             <ScrollText className="w-4 h-4" />
             ภารกิจ
           </button>
+          <button
+            id="nav-tab-crafting"
+            onClick={() => setActiveTab('crafting')}
+            className={`star-nav-tab px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'crafting' ? 'is-active text-cyan-200 font-black shadow-[0_0_20px_rgba(34,211,238,0.24)]' : 'text-cyan-300 hover:bg-cyan-950/40 border border-cyan-500/40'}`}
+          >
+            <Package className="w-4 h-4" />
+            คราฟต์ / วัตถุดิบ
+          </button>
           {canUseAdminMode && isAdminMode && (
             <button
               id="nav-tab-items"
@@ -956,6 +971,26 @@ export default function App() {
             onFinalizeMarketplaceAuction={(auctionId) => finalizeMarketplaceAuction(auctionId)}
             onCancelMarketplaceAuction={(auctionId) => cancelMarketplaceAuction(auctionId, currentUser.id)}
             isAdmin={isAdminMode}
+          />
+        )}
+
+        {activeTab === 'crafting' && (
+          <CraftingPanel
+            character={currentUser}
+            shopItems={shopItems}
+            recipes={craftingRecipes}
+            isAdmin={canUseAdminMode && isAdminMode}
+            onCraft={async (recipe) => {
+              const result = await craftRecipe(currentUser.id, recipe, shopItems);
+              if (!result.success) { alert(result.message); return; }
+              if (result.updatedChar) {
+                charactersRef.current = charactersRef.current.map(c => c.id === result.updatedChar!.id ? result.updatedChar! : c);
+                setCharacters([...charactersRef.current]);
+              }
+              alert('คราฟต์สำเร็จ: ' + recipe.name);
+            }}
+            onSaveRecipe={async (recipe) => { await saveCraftingRecipe(recipe); }}
+            onDeleteRecipe={async (id) => { await deleteCraftingRecipe(id); }}
           />
         )}
 
