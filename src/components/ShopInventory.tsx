@@ -949,7 +949,6 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
 
   const equipmentStatTotal = getEquipmentStatTotal();
   const equipmentSlots = getEquipmentSlots();
-  const nextSlotRequirement = getNextEquipmentSlotRequirement();
 
   // Admin create new item in shop
   const handleAdminSubmitItem = async (e: React.FormEvent) => {
