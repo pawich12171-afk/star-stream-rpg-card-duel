@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import type { Item, GachaRarity, ItemPassiveEffect } from '../types';
+import type { Item, GachaRarity, ItemPassiveEffect, BattleExtraEffect } from '../types';
 import { Package, Search, Store, Gift, Layers, Edit3, Trash2, Save, X, UploadCloud, Eye } from 'lucide-react';
 
 interface ItemManagementPanelProps {
@@ -48,6 +48,7 @@ const getItemExtraDetails = (item: Partial<Item>) => {
   if (item.equipmentDefensePercent) d.push('🛡️ พลังป้องกัน +' + item.equipmentDefensePercent + '%' + (item.equipmentDefenseDuration ? ' / ' + item.equipmentDefenseDuration + ' เทิร์น' : ''));
   if (item.equipmentMagicPercent) d.push('🔮 พลังเวท +' + item.equipmentMagicPercent + '%' + (item.equipmentMagicDuration ? ' / ' + item.equipmentMagicDuration + ' เทิร์น' : ''));
   if (item.passiveEffects?.length) item.passiveEffects.forEach(p => d.push('✨ Passive: ' + p.name + ' · ' + p.kind + ' ' + p.value + (p.chance != null ? ' · โอกาส ' + p.chance + '%' : '') + (p.duration ? ' · ' + p.duration + ' เทิร์น' : '')));
+  if (item.battleDrawbacks?.length) item.battleDrawbacks.forEach(drw => d.push('⚠️ ข้อเสีย: ' + (drw.label || drw.kind) + ' · ' + drw.value + (drw.chance != null ? ' · โอกาส ' + drw.chance + '%' : '') + (drw.duration ? ' · ' + drw.duration + ' เทิร์น' : '')));
   return d;
 };
 
@@ -109,6 +110,11 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const [equipmentDefenseDuration, setEquipmentDefenseDuration] = useState(0);
   const [equipmentMagicDuration, setEquipmentMagicDuration] = useState(0);
   const [passiveEffects, setPassiveEffects] = useState<ItemPassiveEffect[]>([]);
+  const [battleDrawbacks, setBattleDrawbacks] = useState<NonNullable<Item['battleDrawbacks']>>([]);
+  const [drawbackKind, setDrawbackKind] = useState<BattleExtraEffect['kind']>('bleeding');
+  const [drawbackValue, setDrawbackValue] = useState(10);
+  const [drawbackDuration, setDrawbackDuration] = useState(1);
+  const [drawbackChance, setDrawbackChance] = useState(100);
   const [passiveName, setPassiveName] = useState('Passive');
   const [passiveTrigger, setPassiveTrigger] = useState<ItemPassiveEffect['trigger']>('attack');
   const [passiveKind, setPassiveKind] = useState<ItemPassiveEffect['kind']>('stack');
@@ -127,6 +133,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     setRevivePercent(0); setReviveAlly(false); setCleanseNegative(false); setShieldPercent(0); setShieldDuration(0); setDamageReductionPercent(0); setDamageReductionDuration(0); setDodgeChancePercent(0); setLifestealPercent(0); setCooldownReductionPercent(0); setStunDuration(0); setStatusImmunityDuration(0); setPassiveEffects([]);
     setEquipmentStrengthBonus(0); setEquipmentDurabilityBonus(0); setEquipmentAgilityBonus(0); setEquipmentMagicBonus(0); setEquipmentMaxHpBonus(0);
     setEquipmentAttackPercent(0); setEquipmentDefensePercent(0); setEquipmentMagicPercent(0); setEquipmentAttackDuration(0); setEquipmentDefenseDuration(0); setEquipmentMagicDuration(0);
+    setBattleDrawbacks([]); setDrawbackKind('bleeding'); setDrawbackValue(10); setDrawbackDuration(1); setDrawbackChance(100);
     setInShop(false); setRewardEligible(true); setStackable(true);
   };
 
@@ -145,6 +152,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     setEquipmentStrengthBonus(item.equipmentStrengthBonus || 0); setEquipmentDurabilityBonus(item.equipmentDurabilityBonus || 0); setEquipmentAgilityBonus(item.equipmentAgilityBonus || 0); setEquipmentMagicBonus(item.equipmentMagicBonus || 0); setEquipmentMaxHpBonus(item.equipmentMaxHpBonus || 0);
     setEquipmentAttackPercent(item.equipmentAttackPercent || 0); setEquipmentDefensePercent(item.equipmentDefensePercent || 0); setEquipmentMagicPercent(item.equipmentMagicPercent || 0);
     setEquipmentAttackDuration(item.equipmentAttackDuration || 0); setEquipmentDefenseDuration(item.equipmentDefenseDuration || 0); setEquipmentMagicDuration(item.equipmentMagicDuration || 0);
+    setBattleDrawbacks(Array.isArray(item.battleDrawbacks) ? item.battleDrawbacks.map(x => ({ ...x })) : []);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -160,6 +168,14 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
       const x = Number(value);
       return Number.isFinite(x) ? Math.min(max, Math.max(min, x)) : 0;
     };
+    const cleanDrawbacks: BattleExtraEffect[] = battleDrawbacks.filter(Boolean).slice(0, 20).map((d, index) => ({
+      kind: d.kind,
+      value: n(d.value, 0, 1000000),
+      duration: Math.floor(n(d.duration, 0, 1000)),
+      chance: n(d.chance, 0, 100),
+      target: d.target || 'self',
+      label: safeText(d.label, '') || undefined,
+    }));
     const cleanPassiveEffects: ItemPassiveEffect[] = passiveEffects.filter(Boolean).slice(0, 50).map((p, index) => ({
       ...p,
       id: String(p.id || `item-passive-${Date.now()}-${index}`),
@@ -188,6 +204,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
       damageReductionPercent: damageReductionPercent || undefined, damageReductionDuration: damageReductionDuration || undefined, dodgeChancePercent: dodgeChancePercent || undefined, lifestealPercent: lifestealPercent || undefined,
 cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: stunDuration || undefined, statusImmunityDuration: statusImmunityDuration || undefined,
       passiveEffects: cleanPassiveEffects.length ? cleanPassiveEffects : undefined,
+      battleDrawbacks: cleanDrawbacks.length ? cleanDrawbacks : undefined,
       equipmentStrengthBonus: category === 'equipment' ? Math.max(0, equipmentStrengthBonus) : undefined,
       equipmentDurabilityBonus: category === 'equipment' ? Math.max(0, equipmentDurabilityBonus) : undefined,
       equipmentAgilityBonus: category === 'equipment' ? Math.max(0, equipmentAgilityBonus) : undefined,
@@ -496,6 +513,20 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
               </div>
             </div>
 
+            <div className="rounded-2xl border border-rose-500/25 bg-rose-500/5 p-4 space-y-3">
+              <div className="text-sm font-black text-rose-200">⚠️ ข้อเสีย / ผลย้อนกลับของไอเทม (ใส่หรือไม่ใส่ก็ได้)</div>
+              <div className="grid grid-cols-2 gap-2">
+                <select className="rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" value={drawbackKind} onChange={e=>setDrawbackKind(e.target.value as BattleExtraEffect['kind'])}>
+                  <option value="bleeding">🩸 เลือดไหล</option><option value="burn">🔥 เผาไหม้</option><option value="poison">☠️ พิษ</option><option value="freeze">❄️ แช่แข็ง</option><option value="stun">💫 สตัน</option><option value="damage_percent">💥 เสีย HP %</option><option value="reduce_max_hp_percent">❤️ ลด Max HP %</option><option value="reduce_defense_percent">🛡️ ลดพลังป้องกัน %</option>
+                </select>
+                <input className="rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="0" placeholder="ค่า" value={drawbackValue || ''} onChange={e=>setDrawbackValue(Number(e.target.value)||0)}/>
+                <input className="rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="0" max="100" placeholder="โอกาส %" value={drawbackChance} onChange={e=>setDrawbackChance(Number(e.target.value)||0)}/>
+                <input className="rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="1" max="1000" placeholder="ระยะเวลาเทิร์น" value={drawbackDuration} onChange={e=>setDrawbackDuration(Number(e.target.value)||1)}/>
+              </div>
+              <button type="button" className="w-full rounded-lg bg-rose-600/20 border border-rose-500/30 py-2 text-xs font-bold text-rose-200" onClick={()=>setBattleDrawbacks(p=>[...p,{kind:drawbackKind,value:Math.max(0,drawbackValue),chance:Math.max(0,Math.min(100,drawbackChance)),duration:Math.max(1,drawbackDuration),target:'self',label:drawbackKind}])}>+ เพิ่มข้อเสีย</button>
+              {battleDrawbacks.map((d,i)=><div key={i} className="flex items-center justify-between gap-2 text-[10px] text-rose-100 bg-slate-950/50 p-2 rounded-lg"><span className="min-w-0">⚠️ {d.label || d.kind} · ค่า {d.value} · โอกาส {d.chance ?? 100}% · {d.duration || 1} เทิร์น</span><button type="button" className="text-rose-300 shrink-0" onClick={()=>setBattleDrawbacks(prev=>prev.filter((_,j)=>j!==i))}>ลบ</button></div>)}
+            </div>
+
             <div className="rounded-2xl border border-fuchsia-500/25 bg-fuchsia-500/5 p-4 space-y-3">
               <div className="text-sm font-black text-fuchsia-200">✨ Passive ติดตัว (ใส่หรือไม่ใส่ก็ได้)</div>
               <div className="grid grid-cols-2 gap-2">
@@ -587,7 +618,7 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
                 <p className="mt-4 text-sm text-slate-300 leading-relaxed">{description || 'คำอธิบายไอเทมจะแสดงตรงนี้...'}</p>
                 <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
                   <div className="text-sm font-black text-emerald-300">{getItemEffectSummary({effectType,effectValue,healPercent,hpBonus,targetStat,skillEnhanceTarget:skillTarget})}</div>
-                  {getItemExtraDetails({battleDamagePercent,battleDamageDuration,battleCriticalChancePercent,battleRepeatAttackChancePercent,battleLuckMultiplier,battleLuckDuration,gachaRateMultiplier,gachaRateMinRarity,battlePassiveChanceMultiplier,revivePercent,reviveAlly,cleanseNegative,shieldPercent,shieldDuration,damageReductionPercent,damageReductionDuration,dodgeChancePercent,lifestealPercent,cooldownReductionPercent,statusImmunityDuration,stunDuration,equipmentStrengthBonus,equipmentDurabilityBonus,equipmentAgilityBonus,equipmentMagicBonus,equipmentMaxHpBonus,equipmentAttackPercent,equipmentAttackDuration,equipmentDefensePercent,equipmentDefenseDuration,equipmentMagicPercent,equipmentMagicDuration,passiveEffects}).length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{getItemExtraDetails({battleDamagePercent,battleDamageDuration,battleCriticalChancePercent,battleRepeatAttackChancePercent,battleLuckMultiplier,battleLuckDuration,gachaRateMultiplier,gachaRateMinRarity,battlePassiveChanceMultiplier,revivePercent,reviveAlly,cleanseNegative,shieldPercent,shieldDuration,damageReductionPercent,damageReductionDuration,dodgeChancePercent,lifestealPercent,cooldownReductionPercent,statusImmunityDuration,stunDuration,equipmentStrengthBonus,equipmentDurabilityBonus,equipmentAgilityBonus,equipmentMagicBonus,equipmentMaxHpBonus,equipmentAttackPercent,equipmentAttackDuration,equipmentDefensePercent,equipmentDefenseDuration,equipmentMagicPercent,equipmentMagicDuration,passiveEffects}).map((d,i)=><span key={i} className="text-[10px] px-2 py-1 rounded-full bg-slate-950 border border-slate-700 text-slate-300">{d}</span>)}</div>}
+                  {getItemExtraDetails({battleDamagePercent,battleDamageDuration,battleCriticalChancePercent,battleRepeatAttackChancePercent,battleLuckMultiplier,battleLuckDuration,gachaRateMultiplier,gachaRateMinRarity,battlePassiveChanceMultiplier,revivePercent,reviveAlly,cleanseNegative,shieldPercent,shieldDuration,damageReductionPercent,damageReductionDuration,dodgeChancePercent,lifestealPercent,cooldownReductionPercent,statusImmunityDuration,stunDuration,equipmentStrengthBonus,equipmentDurabilityBonus,equipmentAgilityBonus,equipmentMagicBonus,equipmentMaxHpBonus,equipmentAttackPercent,equipmentAttackDuration,equipmentDefensePercent,equipmentDefenseDuration,equipmentMagicPercent,equipmentMagicDuration,passiveEffects,battleDrawbacks}).length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{getItemExtraDetails({battleDamagePercent,battleDamageDuration,battleCriticalChancePercent,battleRepeatAttackChancePercent,battleLuckMultiplier,battleLuckDuration,gachaRateMultiplier,gachaRateMinRarity,battlePassiveChanceMultiplier,revivePercent,reviveAlly,cleanseNegative,shieldPercent,shieldDuration,damageReductionPercent,damageReductionDuration,dodgeChancePercent,lifestealPercent,cooldownReductionPercent,statusImmunityDuration,stunDuration,equipmentStrengthBonus,equipmentDurabilityBonus,equipmentAgilityBonus,equipmentMagicBonus,equipmentMaxHpBonus,equipmentAttackPercent,equipmentAttackDuration,equipmentDefensePercent,equipmentDefenseDuration,equipmentMagicPercent,equipmentMagicDuration,passiveEffects,battleDrawbacks}).map((d,i)=><span key={i} className="text-[10px] px-2 py-1 rounded-full bg-slate-950 border border-slate-700 text-slate-300">{d}</span>)}</div>}
                 </div>
                 <div className="mt-4 flex items-center justify-between border-t border-slate-800 pt-4">
                   <div className="text-xl font-black text-amber-300">{Number(price || 0).toLocaleString()} <span className="text-xs text-slate-400">Coins</span></div>
