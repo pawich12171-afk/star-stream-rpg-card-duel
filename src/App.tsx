@@ -719,6 +719,10 @@ export default function App() {
               </div>
             </div>
 
+            <div className="flex min-w-0 items-center gap-1.5 px-2 py-1.5 rounded-xl bg-fuchsia-950/40 border border-fuchsia-500/40 text-fuchsia-300 text-xs font-mono font-bold">
+              ✨ {formatCoins(currentUser.possibility || 0)} P
+            </div>
+
             {/* Character Selector Button */}
             <button
               id="btn-character-switcher"
