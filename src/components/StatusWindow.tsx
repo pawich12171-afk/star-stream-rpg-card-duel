@@ -561,21 +561,13 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       }
       finalSkill = { ...finalSkill, level, multiplier, upgradeCount };
     }
-    // ย้ายความคืบหน้าเดิมมาสู่สกิลนี้โดยไม่ทิ้งโบนัส HP ที่เคยอัปไว้
-    // รองรับข้อมูลเก่าที่เคยเก็บ progress ไว้ระดับตัวละครด้วย
-    // ข้อมูลเก่าระดับตัวละครใช้สำหรับย้ายเข้าระบบแยกสกิลครั้งแรกเท่านั้น
-    // หลังจากย้ายแล้วจะไม่ใช้เป็นโบนัสร่วมของสกิลอื่น
-    const legacyProgress = base.skillUpgradeProgress;
-    const legacyHasProgress = !!legacyProgress && (
-      Number(legacyProgress.hpBonus) > 0 || Number(legacyProgress.durability) > 0 ||
-      Number(legacyProgress.strength) > 0 || Number(legacyProgress.agility) > 0 ||
-      Number(legacyProgress.magic) > 0 || Number(legacyProgress.equipmentSlots) > 0
-    );
-    const previousProgress = targetSkill.skillUpgradeProgress || (
-      legacyHasProgress
-        ? legacyProgress!
-        : { hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0 }
-    );
+    // ความคืบหน้ารางวัลเป็นของ "สกิลที่กำลังกดอัป" เท่านั้น
+    // ห้ามนำ skillUpgradeProgress ระดับตัวละครกลับมาแจกให้สกิลใหม่
+    // เพราะค่าดังกล่าวอาจเป็นโบนัสของสกิลที่ถูกลบไปแล้ว และจะทำให้โบนัส HP
+    // ของสกิลที่เหลืออยู่รับโบนัสของสกิลเก่ามาผิดตัว
+    const previousProgress = targetSkill.skillUpgradeProgress || {
+      hpBonus: 0, durability: 0, strength: 0, agility: 0, magic: 0, equipmentSlots: 0
+    };
     const storedHp = Math.max(0, Number(previousProgress.hpBonus) || 0);
     const storedDurability = Math.max(0, Number(previousProgress.durability) || 0);
     const storedStrength = Math.max(0, Number(previousProgress.strength) || 0);
@@ -1526,9 +1518,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                       </span>
                       <span className="font-bold font-mono text-emerald-400 text-right">
                         {(() => {
-                          const p = skill.skillUpgradeProgress || (
-                            skill.upgradeCount && skill.upgradeCount > 0 ? character.skillUpgradeProgress : undefined
-                          );
+                          // โบนัสต้องมาจากสกิลนี้เท่านั้น ห้าม fallback ไปยัง progress ระดับตัวละคร
+                          // เพราะ progress นั้นอาจเป็นของสกิลที่ถูกลบไปแล้ว
+                          const p = skill.skillUpgradeProgress;
                           const hp = Math.max(0, Number(p?.hpBonus) || 0);
                           const durability = Math.max(0, Number(p?.durability) || 0);
                           const strength = Math.max(0, Number(p?.strength) || 0);
