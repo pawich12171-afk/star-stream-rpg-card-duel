@@ -287,6 +287,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   };
 
   const healthData = calculateCharacterHealth(character);
+  // Overall Status ต้องอ่าน Max HP จากสูตรปัจจุบัน ไม่ใช้ค่า maxHp เก่าที่ค้างอยู่ในโปรไฟล์
+  const liveMaxHp = Math.max(1, Number(healthData.totalMaxHp) || 1);
+  const liveHp = Math.min(Math.max(0, Number(character.hp) || 0), liveMaxHp);
   const exchangeCoinsToPossibility = async (amount = 1) => {
     const quantity = Math.max(1, Math.floor(Number(amount) || 1));
     const coins = Number(latestCharacterRef.current.coins) || 0;
@@ -354,12 +357,11 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     const hasStoredPhase = Number.isFinite(Number(source.rewardPhase));
     let phase = hasStoredPhase
       ? Math.max(0, Math.min(5, Math.floor(Number(source.rewardPhase))))
-      : sourceHp < 20000 ? 0
+      : sourceHp < 1000 ? 0
       : sourceDurability < 100 ? 1
       : sourceStrength < 100 ? 2
       : sourceAgility < 100 ? 3
       : sourceMagic < 100 ? 4 : 5;
-    const phaseValues = [sourceHp, sourceDurability, sourceStrength, sourceAgility, sourceMagic, Math.max(0, Number(source.equipmentSlots) || 0)];
     let value = Number.isFinite(Number(source.rewardValue)) ? Math.max(0, Number(source.rewardValue)) : 0;
     let hp = 0, durability = 0, strength = 0, agility = 0, magic = 0, slots = 0;
     let cycle = Math.max(0, Math.floor(Number(source.cycleCount) || 0));
@@ -368,7 +370,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     // จุติยังมีผล แต่ไม่ทำให้ x256/x65536/x262144 ทำให้ HP ระเบิด
     const rewardPower = 1 + Math.floor(Math.log2(multiplier));
     for (let i = 0; i < count; i += 1) {
-      const hpCap = 20000 * (cycle + 1);
+      const hpCap = 1000 * (cycle + 1);
       const statCap = 100 * (cycle + 1);
       if (phase === 5) {
         if (source.equipmentSlots + slots >= 12) { cycle += 1; phase = 0; value = 0; continue; }
@@ -606,7 +608,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     for (let i = 0; i < requestedTimes; i += 1) {
       const phase = progress.rewardPhase;
       const cycle = Math.max(0, Math.floor(Number(progress.cycleCount) || 0));
-      const hpCap = 20000 * (cycle + 1);
+      const hpCap = 1000 * (cycle + 1);
       const statCap = 100 * (cycle + 1);
 
       if (phase === 5) {
@@ -635,7 +637,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       }
 
       if (phase === 0) {
-        // HP ได้จากพลังจุติแบบ soft-scaled ไม่ใช่ multiplier ตรง ๆ
+        // HP ต่อรอบมีเพดาน 1,000 และเมื่อครบทุกค่าสถานะ/ช่องอุปกรณ์แล้ววนรอบใหม่เป็น 2,000, 3,000, ...
         // x1 = +1 ต่อครั้ง, x2 = +2, x4 = +3 ... เพื่อไม่ให้ HP เฟ้อ
         const hpGainPerUpgrade = Math.max(1, Math.floor(rewardPower / Math.pow(cycle + 1, 2)));
         const hpGain = Math.min(hpGainPerUpgrade, Math.max(0, hpCap - progress.hpBonus));
@@ -1306,7 +1308,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               </span>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-rose-300 text-xs">
-                  {character.hp} / {character.maxHp} HP
+                  {liveHp} / {liveMaxHp} HP
                 </span>
                 <button
                   type="button"
@@ -1320,7 +1322,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
             <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700">
               <div 
                 className="bg-gradient-to-r from-rose-600 to-red-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, Math.max(0, (character.hp / character.maxHp) * 100))}%` }}
+                style={{ width: `${Math.min(100, Math.max(0, (liveHp / liveMaxHp) * 100))}%` }}
               />
             </div>
 
@@ -1329,7 +1331,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                 <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
                   <span className="font-bold text-slate-200">สูตรคำนวณ Max HP:</span>
                   <span className="font-mono text-rose-400 font-black">
-                    ผลลัพธ์: {healthData.totalMaxHp} HP
+                    ผลลัพธ์: {liveMaxHp} HP
                   </span>
                 </div>
                 <div className="space-y-1 text-[11px]">
