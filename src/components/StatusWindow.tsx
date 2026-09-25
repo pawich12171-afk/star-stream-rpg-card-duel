@@ -31,8 +31,7 @@ import {
   calculateStatUpgradeCost, 
   getUpgradePreview, 
   getLevel10Perk,
-  ORV_RANKS,
-  STAT_COMPOUND_RATE
+  ORV_RANKS
 } from '../utils/orvSkillSystem';
 
 interface StatusWindowProps {
