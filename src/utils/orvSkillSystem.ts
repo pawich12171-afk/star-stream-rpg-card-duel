@@ -139,9 +139,9 @@ export function getSkillORVRank(skill: Skill): ORVRankDetails {
   return ORV_RANKS.general;
 }
 
-export const BASE_SKILL_UPGRADE_COST = 500; // Coins — fixed cost per skill upgrade
+export const BASE_SKILL_UPGRADE_COST = 1; // Possibility
 export const BASE_STAT_UPGRADE_COST = 1000; // Coins
-export const COMPOUND_RATE = 1.10; // skill upgrades use 1 Possibility and compound +10% per upgrade
+export const COMPOUND_RATE = 1.01; // skill upgrades compound +1% per upgrade
 export const STAT_COMPOUND_RATE = 1.05; // transcendence stat upgrades: +5% compounded per upgrade
 
 export function calculateSkillUpgradeCost(skill: Skill): number {
