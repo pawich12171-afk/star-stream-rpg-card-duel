@@ -208,7 +208,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
       ...(old || {}),
       id: editingId || `item-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
       name: name.trim(), description: description.trim() || 'ไอเทม Star Stream',
-      price: Math.max(0, price), category, rarity, effectType, effectValue: Math.max(0, effectValue),
+      price: Math.max(0, price), category: effectType === 'summon' ? 'consumable' : category, rarity, effectType, effectValue: Math.max(0, effectValue),
       icon: iconPreview || icon, itemClass, limitedStock: itemClass === 'limited' ? Math.max(0, limitedStock) : undefined,
       targetStat: effectType === 'buff_stat' ? targetStat : undefined,
       hpBonus: hpBonus > 0 ? Math.max(0, hpBonus) : undefined,
