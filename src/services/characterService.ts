@@ -3116,7 +3116,6 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
       target: d.target === 'enemy' ? 'enemy' : 'self',
       label: String(d.label || d.kind || 'ข้อเสีย'),
     })) : [],
-    })) : [],
   };
 
   const inventory = (character.inventory || [])
