@@ -3646,6 +3646,15 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
     if (skillProfile) {
       result.skillEffect = skillProfile.effect;
       result.skillPower = skillProfile.power;
+      const targetMode = skill?.targetMode || 'enemy';
+      const allCombatants = [...nextRoom.teamA, ...nextRoom.teamB];
+      const skillAllies = allCombatants.filter(unit => unit.team === current.team && unit.hp > 0);
+      const skillEnemies = allCombatants.filter(unit => unit.team !== current.team && unit.hp > 0);
+      const skillTargets = targetMode === 'all_allies' ? skillAllies
+        : targetMode === 'all_enemies' ? skillEnemies
+        : targetMode === 'all_combatants' ? allCombatants.filter(unit => unit.hp > 0)
+        : targetMode === 'self' ? [current]
+        : [defender];
       if (skillProfile.effect === "damage") {
         const scaling = skill?.damageScaling || 'fixed';
         const scalingStat = scaling === 'strength' ? current.stats.strength
@@ -3663,9 +3672,29 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         result.message += ` • ใช้สกิล ${skillName} เพิ่มดาเมจ ${skillDamage} [${scalingLabel}]`;
       } else if (skillProfile.effect === "heal") {
         const healPercent = getSkillStat(skill, 'heal_percent');
-        const bonusHeal = healPercent > 0 ? Math.round(current.maxHp * healPercent / 100) : 0;
-        result.heal += skillProfile.power + bonusHeal;
-        result.message += ` • ใช้สกิล ${skillName} ฟื้นฟู ${skillProfile.power + bonusHeal}`;
+        const baseHeal = Math.max(0, skillProfile.power + (healPercent > 0 ? Math.round(current.maxHp * healPercent / 100) : 0));
+        const healTargets = skillTargets.filter(unit => unit.hp > 0);
+        if (healTargets.length > 1) {
+          let totalHealed = 0;
+          healTargets.forEach(unit => {
+            const before = unit.hp;
+            unit.hp = Math.min(unit.maxHp, unit.hp + baseHeal);
+            totalHealed += Math.max(0, unit.hp - before);
+          });
+          result.heal += totalHealed;
+          result.message += ` • ใช้สกิล ${skillName} ฮีลหมู่ ${healTargets.length} คน รวม +${totalHealed} HP`;
+        } else {
+          result.heal += baseHeal;
+          result.message += ` • ใช้สกิล ${skillName} ฟื้นฟู ${baseHeal}`;
+        }
+      } else if (skillProfile.effect === "buff_stat") {
+        const stat = skill?.buffStat || 'strength';
+        const amount = Math.max(0, Number(skill?.buffAmount) || skillProfile.power);
+        const buffTargets = skillTargets.filter(unit => unit.hp > 0);
+        buffTargets.forEach(unit => {
+          unit.stats = { ...unit.stats, [stat]: Math.max(0, Number(unit.stats?.[stat]) || 0) + amount };
+        });
+        result.message += ` • ใช้สกิล ${skillName} บัพ ${stat.toUpperCase()} +${amount} ให้ ${buffTargets.length > 1 ? 'ทีม' : buffTargets[0]?.name || current.name}` + (skill?.buffDuration ? ` ${skill.buffDuration} เทิร์น` : '');
       } else if (skillProfile.effect === "defense") {
         current.defenseValue = Math.max(0, skillProfile.power + getSkillStat(skill, 'defense_power'));
         current.defenseTurns = skillProfile.duration;
@@ -3687,39 +3716,46 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       } else if (skillProfile.effect === "summon") {
         const summonName = String(skill?.summonName || 'ลูกน้อง').trim() || 'ลูกน้อง';
         const maxCount = Math.max(1, Math.min(20, Math.round(Number(skill?.summonMaxCount) || 1)));
+        const perUse = Math.max(1, Math.min(20, Math.round(Number(skill?.summonPerUse) || 1)));
         const prefix = `summon:${current.id}:${String(skill?.id || skill?.name || 'skill')}`;
         const currentCount = getBattleCombatants(nextRoom).filter(unit => unit.type === 'bot' && unit.team === current.team && String(unit.sourceId || '').startsWith(prefix + ':')).length;
         if (currentCount >= maxCount) {
           result.message += ` • 🧿 ${skillName} เรียกลูกน้องไม่ได้ — ครบจำนวนสูงสุด ${maxCount} ตัวแล้ว`;
         } else {
-          const summonHp = Math.max(1, Math.round(Number(skill?.summonHp) || 10));
-          const summonDamage = Math.max(1, Math.round(Number(skill?.summonDamage) || skillProfile.power || 1));
-          const summonAgility = Math.max(0, Math.round(Number(skill?.summonAgility) || 1));
-          const summonSkills = Array.isArray(skill?.summonSkills) ? skill.summonSkills.map(item => ({ ...item })) : [];
-          const summonId = `${prefix}:${currentCount + 1}`;
-          const summoned: BattleCombatant = {
-            id: summonId,
-            sourceId: summonId,
-            name: `${summonName} #${currentCount + 1}`,
-            avatarUrl: skill?.summonAvatarUrl || current.avatarUrl || '/avatars/system.svg',
-            type: 'bot',
-            team: current.team,
-            stats: {
-              strength: summonDamage,
-              durability: 0,
-              agility: summonAgility,
-              magic: 0,
-            },
-            hp: summonHp,
-            maxHp: summonHp,
-            isBoss: false,
-            skillCooldowns: {},
-            skills: summonSkills,
-          } as BattleCombatant & { skills?: BattleBotSkill[] };
-          if (current.team === 'a') nextRoom.teamA.push(summoned); else nextRoom.teamB.push(summoned);
-          result.message += ` • 🧿 ${current.name} เสก ${summoned.name} (HP ${summonHp} / DMG ${summonDamage}) ${currentCount + 1}/${maxCount}`;
+          const unitTemplates = Array.isArray(skill?.summonUnits) ? skill.summonUnits : [];
+          const spawnCount = Math.min(perUse, maxCount - currentCount);
+          for (let spawnIndex = 0; spawnIndex < spawnCount; spawnIndex += 1) {
+            const template = unitTemplates.length ? unitTemplates[(currentCount + spawnIndex) % unitTemplates.length] : undefined;
+            const summonHp = Math.max(1, Math.round(Number(template?.hp ?? skill?.summonHp) || 10));
+            const summonStrength = Math.max(0, Math.round(Number(template?.strength ?? skill?.summonStrength ?? skill?.summonDamage) || skillProfile.power || 1));
+            const summonDurability = Math.max(0, Math.round(Number(template?.durability ?? skill?.summonDurability) || 0));
+            const summonAgility = Math.max(0, Math.round(Number(template?.agility ?? skill?.summonAgility) || 1));
+            const summonMagic = Math.max(0, Math.round(Number(template?.magic ?? skill?.summonMagic) || 0));
+            const summonSkills = Array.isArray(template?.skills) && template.skills.length
+              ? template.skills.map(item => ({ ...item }))
+              : (Array.isArray(skill?.summonSkills) ? skill.summonSkills.map(item => ({ ...item })) : []);
+            const ordinal = currentCount + spawnIndex + 1;
+            const summonId = `${prefix}:${ordinal}`;
+            const summoned: BattleCombatant = {
+              id: summonId,
+              sourceId: summonId,
+              name: `${String(template?.name || summonName)} #${ordinal}`,
+              avatarUrl: template?.avatarUrl || skill?.summonAvatarUrl || current.avatarUrl || '/avatars/system.svg',
+              type: 'bot',
+              team: current.team,
+              stats: { strength: summonStrength, durability: summonDurability, agility: summonAgility, magic: summonMagic },
+              hp: summonHp,
+              maxHp: summonHp,
+              isBoss: Boolean(skill?.summonIsBoss),
+              skillCooldowns: {},
+              skillUses: {},
+              skills: summonSkills,
+            } as BattleCombatant;
+            if (current.team === 'a') nextRoom.teamA.push(summoned); else nextRoom.teamB.push(summoned);
+          }
+          result.message += ` • 🧿 ${current.name} เสกลูกน้อง ${spawnCount} ตัว (รวม ${currentCount + spawnCount}/${maxCount})`;
         }
-      } else if (skillProfile.effect === "copy_ability") {
+      } else if (skillProfile.effect === "copy_ability") {      } else if (skillProfile.effect === "copy_ability") {
         const sourceSkill = defender.skills?.[0];
         if (sourceSkill) {
           current.copiedAbility = { ...sourceSkill };
