@@ -1194,23 +1194,20 @@ setBotSummonName(skill.summonName||'ลูกน้อง');setBotSummonMaxCount
                             const hpWidth = Math.min(100, Math.max(0, (Math.max(0, unit.hp) / totalBar) * 100));
                             const shieldWidth = Math.min(100 - hpWidth, Math.max(0, (shield / totalBar) * 100));
                             const activeEffects = (unit.adminStatusEffects || []).filter(effect => effect.remaining > 0);
-                            // รวม effect ซ้ำให้เป็นป้ายเดียว: พลังรวมกัน แต่ระยะเวลาคงเหลือใช้ค่าที่มากที่สุด
-                            // และจำกัดจำนวนป้ายที่แสดง เพื่อไม่ให้แถบ HP รกเมื่อมี effect จำนวนมาก
+                            // แสดง effect ได้หลายรายการตามปกติ แต่ถ้า "ชื่อเหมือนกัน" ให้รวมเป็นรายการเดียว
+                            // และสะสมเวลาเพิ่มเข้าไปทุกครั้งที่ได้รับ effect ชื่อเดิม
                             const groupedEffects = Array.from(
                               activeEffects.reduce((map, effect) => {
-                                const key = `${effect.mode}:${effect.kind}:${effect.name}`;
+                                const key = effect.name.trim().toLowerCase();
                                 const existing = map.get(key);
                                 if (existing) {
-                                  existing.power += Number(effect.power) || 0;
-                                  existing.remaining = Math.max(existing.remaining, Number(effect.remaining) || 0);
+                                  existing.remaining += Math.max(0, Number(effect.remaining) || 0);
                                 } else {
-                                  map.set(key, { ...effect, power: Number(effect.power) || 0 });
+                                  map.set(key, { ...effect });
                                 }
                                 return map;
                               }, new Map<string, (typeof activeEffects)[number]>()).values()
                             );
-                            const visibleEffects = groupedEffects.slice(0, 5);
-                            const hiddenEffectCount = Math.max(0, groupedEffects.length - visibleEffects.length);
                             return (
                               <>
                                 <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-800 ring-1 ring-slate-700/60">
@@ -1225,7 +1222,7 @@ setBotSummonName(skill.summonName||'ลูกน้อง');setBotSummonMaxCount
                                     {unit.damageReductionTurns ? <span className="inline-flex items-center gap-0.5 rounded-md border border-blue-400/30 bg-blue-400/10 px-1.5 py-0.5 text-[9px] font-black text-blue-200">🛡️ ลดดาเมจ {Math.round(unit.damageReductionPercent || 0)}%</span> : null}
                                     {unit.reflectTurns ? <span className="inline-flex items-center gap-0.5 rounded-md border border-rose-400/30 bg-rose-400/10 px-1.5 py-0.5 text-[9px] font-black text-rose-200">↩️ สะท้อน {Math.round(unit.reflectPercent || 0)}%</span> : null}
                                     {unit.stunnedTurns ? <span className="inline-flex items-center gap-0.5 rounded-md border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-black text-amber-200">⚡ STUN {unit.stunnedTurns}T</span> : null}
-                                    {visibleEffects.map(effect => <span key={`${effect.mode}-${effect.kind}-${effect.name}`} className={`inline-flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[9px] font-black ${effect.mode === 'buff' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-200'}`}>{effect.mode === 'buff' ? '✨' : '⚠️'} {effect.name}{effect.power ? ` +${Math.round(effect.power)}` : ''} {effect.remaining}T</span>)}{hiddenEffectCount > 0 && <span className="inline-flex items-center rounded-md border border-slate-600/40 bg-slate-800/50 px-1.5 py-0.5 text-[9px] font-black text-slate-300">+{hiddenEffectCount} effect</span>}
+                                    {groupedEffects.map(effect => <span key={`${effect.mode}-${effect.kind}-${effect.name}`} className={`inline-flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[9px] font-black ${effect.mode === 'buff' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-200'}`}>{effect.mode === 'buff' ? '✨' : '⚠️'} {effect.name}{effect.power ? ` +${Math.round(effect.power)}` : ''} {effect.remaining}T</span>)}
                                   </div>
                                 )}
                               </>
