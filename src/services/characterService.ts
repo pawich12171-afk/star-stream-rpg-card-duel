@@ -2118,7 +2118,7 @@ export async function resetDatabaseToDefaults(): Promise<void> {
   broadcast?.postMessage({ type: 'DUEL_ROOMS_UPDATE' });
 
   try {
-    const [charsSnap, shopSnap, rewardsSnap, configSnap, duelSnap] = await Promise.all([
+    const [charsSnap, shopSnap, rewardsSnap, configSnap, gachaBannersSnap, duelSnap] = await Promise.all([
       getDocs(collection(db, CHARACTERS_COLLECTION)),
       getDocs(collection(db, SHOP_ITEMS_COLLECTION)),
       getDocs(collection(db, GACHA_REWARDS_COLLECTION)),
