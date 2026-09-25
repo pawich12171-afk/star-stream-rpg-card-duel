@@ -127,7 +127,6 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [skillBatchCounts, setSkillBatchCounts] = useState<Record<string, number>>({});
   const [isUpgradingSkill, setIsUpgradingSkill] = useState(false);
   const [statUpgradeCurrency, setStatUpgradeCurrency] = useState<'coins' | 'possibility'>('coins');
-  const [skillUpgradeCurrencies, setSkillUpgradeCurrencies] = useState<Record<string, 'coins' | 'possibility'>>({});
   const latestCharacterRef = useRef<CharacterProfile>(character);
 
   useEffect(() => {
@@ -408,7 +407,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     if (!targetSkill) return;
     const requestedTimes = Math.max(1, Math.min(1000, Math.floor(Number(skillBatchCounts[skillId]) || 1)));
     const startUpgradeCount = Math.max(0, Math.floor(Number(targetSkill.upgradeCount ?? (targetSkill.level - 1)) || 0));
-    const upgradeCurrency = skillUpgradeCurrencies[skillId] || 'possibility';
+    const upgradeCurrency = 'possibility';
     let totalCost = 0;
     let costSkill = { ...targetSkill, upgradeCount: startUpgradeCount };
     for (let i = 0; i < requestedTimes; i += 1) {
@@ -560,8 +559,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
 
     const updatedChar: CharacterProfile = {
       ...base,
-      coins: upgradeCurrency === 'coins' ? (Number(base.coins) || 0) - totalCost : (Number(base.coins) || 0),
-      possibility: upgradeCurrency === 'possibility' ? currentBalance - totalCost : (Number(base.possibility) || 0),
+      coins: Number(base.coins) || 0,
+      possibility: currentBalance - totalCost,
       skills: (base.skills || []).map(skill => skill.id === skillId
         ? { ...finalSkill, skillUpgradeProgress: progress }
         : skill),
@@ -1217,11 +1216,11 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
             const orvRankInfo = getSkillORVRank(skill);
             const upgradePreview = getUpgradePreview(skill);
             const skillBatchCount = Math.max(1, Math.min(1000, Math.floor(Number(skillBatchCounts[skill.id]) || 1)));
-            const skillUpgradeCurrency = skillUpgradeCurrencies[skill.id] || 'possibility';
+            const skillUpgradeCurrency = 'possibility';
             const skillBatchCost = Array.from({ length: skillBatchCount }, (_, index) =>
-              calculateSkillUpgradeCostByCurrency({ ...skill, upgradeCount: Math.max(0, Math.floor(Number(skill.upgradeCount ?? (skill.level - 1)) || 0)) + index }, skillUpgradeCurrency)
+              calculateSkillUpgradeCost({ ...skill, upgradeCount: Math.max(0, Math.floor(Number(skill.upgradeCount ?? (skill.level - 1)) || 0)) + index })
             ).reduce((sum, cost) => sum + cost, 0);
-            const canAfford = (skillUpgradeCurrency === 'coins' ? Number(character.coins) || 0 : Number(character.possibility) || 0) >= skillBatchCost;
+            const canAfford = (Number(character.possibility) || 0) >= skillBatchCost;
             const perk10 = getLevel10Perk(skill);
             return (
               <div
@@ -1352,12 +1351,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                       </div>
                       <div className="flex min-w-0 gap-2 flex-wrap">
                         <div className="min-w-0 flex-1 rounded-xl border border-amber-500/20 bg-slate-950/70 px-2.5 py-1.5 text-[10px] font-mono overflow-hidden">
-                          <span className="text-slate-500">อัป {skillBatchCount} ขั้น = </span><strong className="text-fuchsia-300">{formatCoins(skillBatchCost)} {skillUpgradeCurrency === 'coins' ? 'Coins' : 'Possibility'}</strong>
+                          <span className="text-slate-500">อัป {skillBatchCount} ขั้น = </span><strong className="text-fuchsia-300">{formatCoins(skillBatchCost)} Possibility</strong>
                         </div>
-                        <div className="flex gap-1 w-full sm:w-auto">
-                          <button type="button" onClick={() => setSkillUpgradeCurrencies(prev => ({ ...prev, [skill.id]: 'coins' }))} className={`flex-1 sm:flex-none px-2 py-1.5 rounded-lg text-[10px] font-black ${skillUpgradeCurrency === 'coins' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>Coins</button>
-                          <button type="button" onClick={() => setSkillUpgradeCurrencies(prev => ({ ...prev, [skill.id]: 'possibility' }))} className={`flex-1 sm:flex-none px-2 py-1.5 rounded-lg text-[10px] font-black ${skillUpgradeCurrency === 'possibility' ? 'bg-fuchsia-500 text-white' : 'bg-slate-800 text-slate-400'}`}>P</button>
-                        </div>
+
                         <button type="button" id={`btn-upgrade-skill-${skill.id}`} onClick={() => handleUpgradeSkill(skill.id)}
                           disabled={!canAfford || isUpgradingSkill}
                           className={`flex-1 min-w-0 max-w-full px-3 sm:px-4 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md overflow-hidden ${canAfford && !isUpgradingSkill ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
