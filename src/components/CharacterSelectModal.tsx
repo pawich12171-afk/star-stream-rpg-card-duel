@@ -167,17 +167,33 @@ export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
 
         {/* Footer */}
         <div className="px-5 py-3.5 border-t border-slate-800 bg-slate-950/80 backdrop-blur-md flex items-center justify-between shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onOpenCreate();
-            }}
-            className="px-4 py-2 text-xs font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-800/60 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all"
-          >
-            <UserPlus className="w-4 h-4" />
-            สร้างผู้อวตารคนใหม่
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenCreate();
+              }}
+              className="px-4 py-2 text-xs font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-800/60 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all"
+            >
+              <UserPlus className="w-4 h-4" />
+              สร้างผู้อวตารคนใหม่
+            </button>
+
+            {onOpenCreateConstellation && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenCreateConstellation();
+                }}
+                className="px-4 py-2 text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-950/40 hover:bg-amber-900/50 border border-amber-800/60 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all"
+              >
+                <Star className="w-4 h-4" />
+                สร้างตัวละครกลุ่มดาว
+              </button>
+            )}
+          </div>
           
           <button
             type="button"
