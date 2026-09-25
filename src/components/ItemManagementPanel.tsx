@@ -112,6 +112,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const [equipmentMagicDuration, setEquipmentMagicDuration] = useState(0);
   const [summonName, setSummonName] = useState('ลูกน้อง');
   const [summonMaxCount, setSummonMaxCount] = useState(1);
+  const [summonPerUse, setSummonPerUse] = useState(1);
   const [summonHp, setSummonHp] = useState(50);
   const [summonStrength, setSummonStrength] = useState(10);
   const [summonDurability, setSummonDurability] = useState(5);
@@ -147,6 +148,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const reset = () => {
     setEditingId(null); setName(''); setDescription(''); setPrice(0);
     setCategory('consumable'); setRarity('common'); setEffectType('heal_hp');
+    setSummonMaxCount(1); setSummonPerUse(1);
     setEffectValue(10); setIcon('HeartPulse'); setIconPreview(null); setTargetStat('strength');
     setItemClass('normal'); setLimitedStock(0); setHealPercent(0); setHpBonus(0); setSkillTarget(''); setSkillDesc('');
     setUseConditions([]); setConditionType('hp_below_percent'); setConditionValue(50); setConditionStat('strength');
@@ -222,6 +224,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
       skillEnhanceDesc: effectType === 'enhance_skill' ? skillDesc : undefined,
       summonName: effectType === 'summon' ? (summonName.trim() || 'ลูกน้อง') : undefined,
       summonMaxCount: effectType === 'summon' ? Math.max(1, Math.min(20, Math.floor(summonMaxCount || 1))) : undefined,
+      summonPerUse: effectType === 'summon' ? Math.max(1, Math.min(20, Math.floor(summonPerUse || 1))) : undefined,
       summonHp: effectType === 'summon' ? Math.max(1, Math.floor(summonHp || 1)) : undefined,
       summonStrength: effectType === 'summon' ? Math.max(0, Math.floor(summonStrength || 0)) : undefined,
       summonDurability: effectType === 'summon' ? Math.max(0, Math.floor(summonDurability || 0)) : undefined,
@@ -438,7 +441,7 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <input className="rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" placeholder="ชื่อลูกน้อง" value={summonName} onChange={e=>setSummonName(e.target.value)}/>
-                  <input className="rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="1" max="20" placeholder="จำนวนสูงสุด" value={summonMaxCount} onChange={e=>setSummonMaxCount(Number(e.target.value)||1)}/>
+                  <input className="rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="1" max="20" placeholder="จำนวนสูงสุด" value={summonMaxCount} onChange={e=>setSummonMaxCount(Number(e.target.value)||1)}/><input className="rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="1" max="20" placeholder="เสกกี่ตัวต่อการใช้ 1 ครั้ง" value={summonPerUse} onChange={e=>setSummonPerUse(Number(e.target.value)||1)}/>
                   <label className="text-[10px] text-slate-400">❤️ HP<input className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="1" value={summonHp} onChange={e=>setSummonHp(Number(e.target.value)||1)}/></label>
                   <label className="text-[10px] text-slate-400">💪 Strength / พลังโจมตี<input className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="0" value={summonStrength} onChange={e=>setSummonStrength(Number(e.target.value)||0)}/></label>
                   <label className="text-[10px] text-slate-400">🛡️ Durability<input className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="0" value={summonDurability} onChange={e=>setSummonDurability(Number(e.target.value)||0)}/></label>
