@@ -1538,8 +1538,8 @@ export function subscribeToGachaConfig(callback: (config: GachaConfig) => void) 
     const unsub = onSnapshot(docRef, { includeMetadataChanges: true }, (snap) => {
       if (snap.metadata.fromCache && !snap.metadata.hasPendingWrites) return;
 
-      if (snap.exists()) {
-        const serverConfig = snap.data() as GachaConfig;
+      if ((snap as any).exists()) {
+        const serverConfig = (snap as any).data() as GachaConfig;
         if (pendingGachaConfig && valuesMatch(serverConfig, pendingGachaConfig)) {
           pendingGachaConfig = null;
         }
@@ -2356,8 +2356,8 @@ export function subscribeToBattleConfig(callback: (config: BattleConfig) => void
   try {
     const unsub = onSnapshot(doc(db, BATTLE_CONFIG_COLLECTION, "main"), { includeMetadataChanges: true }, (snapshot) => {
       if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) return;
-      if (snapshot.exists()) {
-        const serverConfig = { ...DEFAULT_BATTLE_CONFIG, ...snapshot.data(), id: "main" } as BattleConfig;
+      if ((snapshot as any).exists()) {
+        const serverConfig = { ...DEFAULT_BATTLE_CONFIG, ...(snapshot as any).data(), id: "main" } as BattleConfig;
         if (pendingBattleConfig && (valuesMatch(serverConfig, pendingBattleConfig) || !isPendingNewer(pendingBattleConfig, serverConfig))) {
           pendingBattleConfig = null;
         }
@@ -3430,7 +3430,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       } else if (skillProfile.effect === "summon") {
         const summonName = String(skill?.summonName || 'ลูกน้อง').trim() || 'ลูกน้อง';
         const maxCount = Math.max(1, Math.min(20, Math.round(Number(skill?.summonMaxCount) || 1)));
-        const prefix = `summon:${current.id}:${String(skill.id || skill.name || 'skill')}`;
+        const prefix = `summon:${current.id}:${String(skill?.id || skill?.name || 'skill')}`;
         const currentCount = getBattleCombatants(nextRoom).filter(unit => unit.type === 'bot' && unit.team === current.team && String(unit.sourceId || '').startsWith(prefix + ':')).length;
         if (currentCount >= maxCount) {
           result.message += ` • 🧿 ${skillName} เรียกลูกน้องไม่ได้ — ครบจำนวนสูงสุด ${maxCount} ตัวแล้ว`;
