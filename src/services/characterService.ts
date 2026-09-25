@@ -3144,24 +3144,30 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     cooldownReductionPercent: safeNum(item.cooldownReductionPercent, 0, 100),
     statusImmunityDuration: Math.floor(safeNum(item.statusImmunityDuration, 0, 1000)),
     stunDuration: Math.floor(safeNum(item.stunDuration, 0, 1000)),
-    passiveEffects: Array.isArray(item.passiveEffects) ? item.passiveEffects.filter(Boolean).slice(0, 50).map((p, index) => ({
-      ...p,
-      id: String(p.id || `item-passive-${item.id}-${index}`),
-      name: String(p.name || 'Passive'),
-      value: safeNum(p.value, 0, 1000000),
-      chance: safeNum(p.chance, 0, 100),
-      duration: Math.floor(safeNum(p.duration, 0, 1000)),
-      maxStacks: Math.max(1, Math.floor(safeNum(p.maxStacks, 1, 1000))),
-      stackKey: String(p.stackKey || p.id || `item-passive-${index}`),
-    })),
-    battleDrawbacks: Array.isArray(item.battleDrawbacks) ? item.battleDrawbacks.filter(Boolean).slice(0, 20).map((d, index) => ({
-      kind: String(d.kind || 'bleeding') as any,
-      value: safeNum(d.value, 0, 1000000),
-      duration: Math.floor(safeNum(d.duration, 0, 1000)),
-      chance: safeNum(d.chance, 0, 100),
-      target: d.target === 'enemy' ? 'enemy' : 'self',
-      label: String(d.label || d.kind || 'ข้อเสีย'),
-    })) : [],
+    passiveEffects: (Array.isArray(item.passiveEffects) ? item.passiveEffects : [])
+      .filter(Boolean)
+      .slice(0, 50)
+      .map((p, index) => ({
+        ...p,
+        id: String(p.id || `item-passive-${item.id}-${index}`),
+        name: String(p.name || 'Passive'),
+        value: safeNum(p.value, 0, 1000000),
+        chance: safeNum(p.chance, 0, 100),
+        duration: Math.floor(safeNum(p.duration, 0, 1000)),
+        maxStacks: Math.max(1, Math.floor(safeNum(p.maxStacks, 1, 1000))),
+        stackKey: String(p.stackKey || p.id || `item-passive-${index}`),
+      })),
+    battleDrawbacks: (Array.isArray(item.battleDrawbacks) ? item.battleDrawbacks : [])
+      .filter(Boolean)
+      .slice(0, 20)
+      .map((d) => ({
+        kind: String(d.kind || 'bleeding'),
+        value: safeNum(d.value, 0, 1000000),
+        duration: Math.floor(safeNum(d.duration, 0, 1000)),
+        chance: safeNum(d.chance, 0, 100),
+        target: d.target === 'enemy' ? 'enemy' : 'self',
+        label: String(d.label || d.kind || 'ข้อเสีย'),
+      })),
   };
 
   const inventory = (character.inventory || [])
