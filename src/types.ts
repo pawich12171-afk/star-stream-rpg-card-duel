@@ -117,7 +117,7 @@ export interface Item {
   name: string;
   price: number;
   description: string;
-  category: 'consumable' | 'equipment';
+  category: 'consumable' | 'equipment' | 'material';
   icon?: string;
   equipped?: boolean;
   effectType: 'heal_hp' | 'buff_stat' | 'enhance_skill' | 'custom' | 'boost_max_hp';
