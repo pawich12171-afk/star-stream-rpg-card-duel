@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, Check, Crown, Dice5, Heart, Package, Plus, Settings2, Shield, Skull, Sparkles, Swords, Target, Trash2, UsersRound, Zap } from 'lucide-react';
+import { ItemPicker } from './ItemPicker';
 import { BattleBot, BattleCombatant, BattleConfig, BattleDiceConfig, BattleDiceFace, BattleExtraEffect, BattleRandomReward, BattleBotDrop, BattleRoom, CharacterProfile, Skill, BattleBotSkill, BattleSkillCondition, Item } from '../types';
 import {
   DEFAULT_BATTLE_CONFIG,
