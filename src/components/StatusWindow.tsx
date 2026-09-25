@@ -1764,10 +1764,18 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                             <div key={index} className="rounded-lg border border-rose-500/15 bg-black/20 p-2 space-y-2">
                               <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-bold text-rose-200">ข้อเสีย #{index + 1}</span><button type="button" onClick={()=>removeEditingDrawback(index)} className="text-[9px] text-rose-300">ลบ</button></div>
                               <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                                <select value={item.kind} onChange={e=>updateEditingDrawback(index,{kind:e.target.value as BattleExtraEffect['kind']})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"><option value="bleeding">เสียเลือด</option><option value="burn">เผาไหม้</option><option value="poison">พิษ</option><option value="stun">สตัน</option><option value="damage_percent">เพิ่มดาเมจที่ได้รับ %</option><option value="damage_reduction">ลดความเสียหาย</option><option value="reduce_defense_percent">ลดป้องกัน %</option></select>
-                                <input type="number" value={Number(item.value ?? 0)} onChange={e=>updateEditingDrawback(index,{value:Number(e.target.value)})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="ค่า"/>
-                                <input type="number" min="1" max="10" value={Number(item.duration ?? 1)} onChange={e=>updateEditingDrawback(index,{duration:Math.max(1,Math.min(10,Number(e.target.value)||1))})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="เทิร์น"/>
-                                <input type="number" min="0" max="100" step="0.1" value={Number(item.chance ?? 100)} onChange={e=>updateEditingDrawback(index,{chance:Math.max(0,Math.min(100,Number(e.target.value)||0))})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="โอกาส %"/>
+                                <label className="text-[8px] text-rose-300/80">ประเภท
+                                  <select value={item.kind} onChange={e=>updateEditingDrawback(index,{kind:e.target.value as BattleExtraEffect['kind']})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"><option value="bleeding">เสียเลือด</option><option value="burn">เผาไหม้</option><option value="poison">พิษ</option><option value="stun">สตัน</option><option value="damage_percent">เพิ่มดาเมจที่ได้รับ %</option><option value="damage_reduction">ลดความเสียหาย</option><option value="reduce_defense_percent">ลดป้องกัน %</option></select>
+                                </label>
+                                <label className="text-[8px] text-rose-300/80">ค่าผลเสีย
+                                  <input type="number" value={Number(item.value ?? 0)} onChange={e=>updateEditingDrawback(index,{value:Number(e.target.value)})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"/>
+                                </label>
+                                <label className="text-[8px] text-rose-300/80">ระยะเวลา (เทิร์น)
+                                  <input type="number" min="1" max="10" value={Number(item.duration ?? 1)} onChange={e=>updateEditingDrawback(index,{duration:Math.max(1,Math.min(10,Number(e.target.value)||1))})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"/>
+                                </label>
+                                <label className="text-[8px] text-rose-300/80">โอกาสทำงาน (%)
+                                  <input type="number" min="0" max="100" step="0.1" value={Number(item.chance ?? 100)} onChange={e=>updateEditingDrawback(index,{chance:Math.max(0,Math.min(100,Number(e.target.value)||0))})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"/>
+                                </label>
                               </div>
                             </div>
                           )) : <div className="text-[9px] text-slate-500">ยังไม่มีข้อเสีย — ใช้ปุ่ม ＋ เพิ่มข้อเสีย ด้านบน</div>;
@@ -1791,11 +1799,21 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                             <div key={index} className="rounded-lg border border-cyan-500/15 bg-black/20 p-2 space-y-2">
                               <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-bold text-cyan-200">เอฟเฟกต์ #{index + 1}</span><button type="button" onClick={()=>removeEditingEffect(index)} className="text-[9px] text-rose-300">ลบ</button></div>
                               <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
-                                <select value={item.kind} onChange={e=>updateEditingEffect(index,{kind:e.target.value as BattleExtraEffect['kind']})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"><option value="bleeding">เลือดออก</option><option value="burn">เผาไหม้</option><option value="poison">พิษ</option><option value="freeze">แช่แข็ง</option><option value="stun">สตัน</option><option value="reduce_max_hp_percent">ลด Max HP %</option><option value="reduce_defense_percent">ลดป้องกัน %</option><option value="damage_percent">Damage %</option><option value="heal_percent">Heal %</option><option value="shield">Shield</option><option value="reflect">Reflect</option><option value="damage_reduction">ลดความเสียหาย</option></select>
-                                <input type="number" value={Number(item.value ?? 0)} onChange={e=>updateEditingEffect(index,{value:Number(e.target.value)})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="ค่า"/>
-                                <input type="number" min="1" max="10" value={Number(item.duration ?? 1)} onChange={e=>updateEditingEffect(index,{duration:Math.max(1,Math.min(10,Number(e.target.value)||1))})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="เทิร์น"/>
-                                <input type="number" min="0" max="100" step="0.1" value={Number(item.chance ?? 100)} onChange={e=>updateEditingEffect(index,{chance:Math.max(0,Math.min(100,Number(e.target.value)||0))})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white" placeholder="โอกาส %"/>
-                                <select value={item.target === 'self' ? 'self' : 'enemy'} onChange={e=>updateEditingEffect(index,{target:e.target.value as 'self'|'enemy'})} className="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"><option value="enemy">ศัตรู</option><option value="self">ตัวเอง</option></select>
+                                <label className="text-[8px] text-cyan-300/80">ประเภท
+                                  <select value={item.kind} onChange={e=>updateEditingEffect(index,{kind:e.target.value as BattleExtraEffect['kind']})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"><option value="bleeding">เลือดออก</option><option value="burn">เผาไหม้</option><option value="poison">พิษ</option><option value="freeze">แช่แข็ง</option><option value="stun">สตัน</option><option value="reduce_max_hp_percent">ลด Max HP %</option><option value="reduce_defense_percent">ลดป้องกัน %</option><option value="damage_percent">Damage %</option><option value="heal_percent">Heal %</option><option value="shield">Shield</option><option value="reflect">Reflect</option><option value="damage_reduction">ลดความเสียหาย</option></select>
+                                </label>
+                                <label className="text-[8px] text-cyan-300/80">ค่าเอฟเฟกต์
+                                  <input type="number" value={Number(item.value ?? 0)} onChange={e=>updateEditingEffect(index,{value:Number(e.target.value)})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"/>
+                                </label>
+                                <label className="text-[8px] text-cyan-300/80">ระยะเวลา (เทิร์น)
+                                  <input type="number" min="1" max="10" value={Number(item.duration ?? 1)} onChange={e=>updateEditingEffect(index,{duration:Math.max(1,Math.min(10,Number(e.target.value)||1))})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"/>
+                                </label>
+                                <label className="text-[8px] text-cyan-300/80">โอกาสทำงาน (%)
+                                  <input type="number" min="0" max="100" step="0.1" value={Number(item.chance ?? 100)} onChange={e=>updateEditingEffect(index,{chance:Math.max(0,Math.min(100,Number(e.target.value)||0))})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"/>
+                                </label>
+                                <label className="text-[8px] text-cyan-300/80">เป้าหมาย
+                                  <select value={item.target === 'self' ? 'self' : 'enemy'} onChange={e=>updateEditingEffect(index,{target:e.target.value as 'self'|'enemy'})} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-[9px] text-white"><option value="enemy">ศัตรู</option><option value="self">ตัวเอง</option></select>
+                                </label>
                               </div>
                             </div>
                           )) : <div className="text-[9px] text-slate-500">ยังไม่มีเอฟเฟกต์ — ใช้ปุ่ม ＋ เพิ่มเอฟเฟกต์ ด้านบน</div>;
