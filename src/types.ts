@@ -516,6 +516,8 @@ export interface BattleConfig {
   bossDice: BattleDiceConfig;
   /** ค่าเข้าโหมดสุ่มมอน/บอส */
   randomBattleEntryFee?: number;
+  /** ค่าเข้าโหมด PVE เป็น Possibility */
+  battleEntryFeePossibility?: number;
   /** ค่าเข้าสนามโหมดสุ่มเป็น Possibility */
   randomBattleEntryFeePossibility?: number;
   /** ตารางรางวัลสุ่มของโหมดสุ่มมอน/บอส */
