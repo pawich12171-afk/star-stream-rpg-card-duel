@@ -56,6 +56,12 @@ function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): Batt
       ...effect,
       stackKey: effect.stackKey || `skill:${skill.id}:${effect.id}`,
     })));
+  const equippedDrawbacks = (character.inventory || [])
+    .filter(item => item.isEquipped && item.battleDrawbacks?.length)
+    .flatMap(item => {
+      const copies = Math.max(1, Number(item.equippedQuantity) || 1);
+      return Array.from({ length: copies }, () => (item.battleDrawbacks || []).map(effect => ({ ...effect, target: 'self' as const })) ).flat();
+    });
   const allPassives = [...equippedPassives, ...skillPassives];
   // Normalize legacy character data before battle calculations.
   // Older saved characters may have a missing/partial stats object.
@@ -92,6 +98,7 @@ function makePlayerCombatant(character: CharacterProfile, team: 'a' | 'b'): Batt
     maxHp: character.maxHp,
     adminStatusEffects: character.adminStatusEffects?.map(effect => ({ ...effect })),
     equippedPassives,
+    equippedDrawbacks,
     activeSkillPassives: skillPassives,
     passiveStacks: {},
     skills: [...(character.skills || [])] as BattleBotSkill[],
