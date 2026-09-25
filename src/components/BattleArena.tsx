@@ -1188,9 +1188,32 @@ setBotSummonName(skill.summonName||'ลูกน้อง');setBotSummonMaxCount
                             <span className="truncate font-bold text-white">{unit.name}</span>
                             <span className="text-slate-400">{unit.hp}/{unit.maxHp}</span>
                           </div>
-                          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-800">
-                            <div className={`h-full ${team === 'a' ? 'bg-cyan-400' : 'bg-rose-400'}`} style={{ width: healthPercent(unit) + '%' }} />
-                          </div>
+                          {(() => {
+                            const shield = unit.defenseTurns && Number(unit.defenseValue) > 0 ? Math.max(0, Number(unit.defenseValue) || 0) : 0;
+                            const totalBar = Math.max(1, Number(unit.maxHp) || 1) + shield;
+                            const hpWidth = Math.min(100, Math.max(0, (Math.max(0, unit.hp) / totalBar) * 100));
+                            const shieldWidth = Math.min(100 - hpWidth, Math.max(0, (shield / totalBar) * 100));
+                            const activeEffects = (unit.adminStatusEffects || []).filter(effect => effect.remaining > 0);
+                            return (
+                              <>
+                                <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-800 ring-1 ring-slate-700/60">
+                                  <div className="flex h-full">
+                                    <div className={`h-full ${team === 'a' ? 'bg-cyan-400' : 'bg-rose-400'} transition-all`} style={{ width: hpWidth + '%' }} />
+                                    {shield > 0 && <div className="h-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)] transition-all" style={{ width: shieldWidth + '%' }} />}
+                                  </div>
+                                </div>
+                                {(shield > 0 || activeEffects.length > 0 || unit.damageReductionTurns || unit.reflectTurns || unit.stunnedTurns) && (
+                                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                                    {shield > 0 && <span className="inline-flex items-center gap-0.5 rounded-md border border-sky-400/40 bg-sky-400/10 px-1.5 py-0.5 text-[9px] font-black text-sky-200">🛡️ โล่ +{Math.round(shield)}</span>}
+                                    {unit.damageReductionTurns ? <span className="inline-flex items-center gap-0.5 rounded-md border border-blue-400/30 bg-blue-400/10 px-1.5 py-0.5 text-[9px] font-black text-blue-200">🛡️ ลดดาเมจ {Math.round(unit.damageReductionPercent || 0)}%</span> : null}
+                                    {unit.reflectTurns ? <span className="inline-flex items-center gap-0.5 rounded-md border border-rose-400/30 bg-rose-400/10 px-1.5 py-0.5 text-[9px] font-black text-rose-200">↩️ สะท้อน {Math.round(unit.reflectPercent || 0)}%</span> : null}
+                                    {unit.stunnedTurns ? <span className="inline-flex items-center gap-0.5 rounded-md border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-black text-amber-200">⚡ STUN {unit.stunnedTurns}T</span> : null}
+                                    {activeEffects.map(effect => <span key={effect.id} className={`inline-flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[9px] font-black ${effect.mode === 'buff' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-200'}`}>{effect.mode === 'buff' ? '✨' : '⚠️'} {effect.name} {effect.remaining}T</span>)}
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                         {unit.isBoss && <Crown className="h-3.5 w-3.5 text-amber-300" />}
                         {unit.defenseTurns ? <span className="text-[10px] text-sky-300">GUARD</span> : null}
