@@ -1211,7 +1211,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
             const skillBatchCost = Array.from({ length: skillBatchCount }, (_, index) =>
               calculateSkillUpgradeCost({ ...skill, upgradeCount: Math.max(0, Math.floor(Number(skill.upgradeCount ?? (skill.level - 1)) || 0)) + index })
             ).reduce((sum, cost) => sum + cost, 0);
-            const canAfford = character.coins >= skillBatchCost;
+            const canAfford = (Number(character.possibility) || 0) >= skillBatchCost;
             const perk10 = getLevel10Perk(skill);
             return (
               <div
