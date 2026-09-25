@@ -412,7 +412,13 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     ].filter(Boolean).join(' • ') || 'ถัดไป: HP +1';
   };
 
-  const equippedItems = character.inventory?.filter(i => i.isEquipped || (Number(i.equippedQuantity) || 0) > 0) || [];
+  // โบนัสจากอุปกรณ์ต้องนับเฉพาะไอเทมที่สถานะ "สวมใส่" เป็นจริงเท่านั้น
+  // ป้องกัน equippedQuantity เก่าที่ค้างอยู่ในฐานข้อมูลถูกนำกลับมาคิดเป็นโบนัส
+  const equippedItems = character.inventory?.filter(i =>
+    i.category === 'equipment' &&
+    i.isEquipped === true &&
+    (Number(i.equippedQuantity) || 0) > 0
+  ) || [];
   const statBonus = {
     strength: 0,
     durability: 0,
