@@ -200,6 +200,23 @@ export interface Item {
   inShop?: boolean;
 }
 
+export interface CraftingIngredient {
+  itemId: string;
+  quantity: number;
+}
+
+export interface CraftingRecipe {
+  id: string;
+  name: string;
+  description?: string;
+  ingredients: CraftingIngredient[];
+  outputItemId: string;
+  outputQuantity: number;
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface InventoryItem extends Item {
   quantity: number;
   instanceId: string;
