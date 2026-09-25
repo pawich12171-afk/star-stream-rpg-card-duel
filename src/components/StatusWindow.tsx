@@ -333,8 +333,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     character.stats.magic >= 100;
 
   const currentStatUpgradeTimes = character.statUpgradeCount || 0;
-  const currentStatUpgradeCost = calculateStatUpgradeCost(currentStatUpgradeTimes);
-  const nextStatUpgradeCost = Math.round(currentStatUpgradeCost * STAT_COMPOUND_RATE);
+  const currentStatUpgradeCost = calculateStatUpgradeCost(currentStatUpgradeTimes, statUpgradeCurrency);
+  const nextStatUpgradeCost = calculateStatUpgradeCost(currentStatUpgradeTimes + 1, statUpgradeCurrency);
 
   const handleUpgradeTranscendenceStat = async (statName: 'strength' | 'durability' | 'agility' | 'magic') => {
     if (isSavingStats) return;
@@ -573,7 +573,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       notifications: [{
         id: `notif-skill-up-${now}-${startUpgradeCount + requestedTimes}`,
         title: ascensionCount ? 'สกิลจุติสวรรค์ (Ascension)!' : 'อัปเกรดสกิลสำเร็จ',
-        message: `อัปเกรด "${targetSkill.name}" +${requestedTimes} ขั้น → Lv.${finalSkill.level} • ${progressMessage || 'อัปเกรดระดับสกิลแล้ว'} • ใช้ ${formatCoins(totalCost)} Possibility${ascensionCount ? ` • จุติ ${ascensionCount} ครั้ง → x${finalSkill.multiplier}` : ''}`,
+        message: `อัปเกรด "${targetSkill.name}" +${requestedTimes} ขั้น → Lv.${finalSkill.level} • ${progressMessage || 'อัปเกรดระดับสกิลแล้ว'} • ใช้ ${formatCoins(totalCost)} ${upgradeCurrency === 'coins' ? 'Coins' : 'Possibility'}${ascensionCount ? ` • จุติ ${ascensionCount} ครั้ง → x${finalSkill.multiplier}` : ''}`,
         timestamp: now,
         read: false,
         type: 'system',
@@ -959,7 +959,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
                 {isAllStats100 
-                  ? `อัปเกรดสเตตัสได้ไม่จำกัดโดยใช้เหรียญ Coins แบบดอกเบี้ยทบต้น 5% ต่อครั้ง`
+                  ? `เลือกใช้ Coins 500 (+10% ต่อครั้ง) หรือ Possibility 1 (+1% ต่อครั้ง)`
                   : `เมื่อสเตตัสทั้ง 4 ค่าแตะ 100 จะสามารถอัปเกรดทะลุขีดจำกัดได้`}
               </p>
             </div>
@@ -970,11 +970,12 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
               <div>
                 <span className="text-[10px] text-slate-400 block">ราคาต่อ 1 ขั้น:</span>
                 <span className="text-sm font-black text-amber-300 font-mono">
-                  {formatCoins(currentStatUpgradeCost)} Coins
+                  {formatCoins(currentStatUpgradeCost)} {statUpgradeCurrency === 'coins' ? 'Coins' : 'Possibility'}
                 </span>
               </div>
-              <div className="text-[10px] text-emerald-400 bg-emerald-950/60 px-2 py-1 rounded-lg border border-emerald-800">
-                +5% รอบถัดไป ({formatCoins(nextStatUpgradeCost)} C)
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setStatUpgradeCurrency('coins')} className={`px-2 py-1 rounded-lg text-[10px] font-black ${statUpgradeCurrency === 'coins' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>Coins 500 +10%</button>
+                <button type="button" onClick={() => setStatUpgradeCurrency('possibility')} className={`px-2 py-1 rounded-lg text-[10px] font-black ${statUpgradeCurrency === 'possibility' ? 'bg-fuchsia-500 text-white' : 'bg-slate-800 text-slate-400'}`}>P 1 +1%</button>
               </div>
             </div>
           )}
@@ -1027,7 +1028,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                               </div>
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-slate-400">อัป {count} ขั้น</span>
-                                <span className="text-yellow-300 font-black">รวม {formatCoins(total)} Coins</span>
+                                <span className="text-yellow-300 font-black">รวม {formatCoins(total)} {statUpgradeCurrency === 'coins' ? 'Coins' : 'P'}</span>
                               </div>
                             </>
                           );
@@ -1216,10 +1217,11 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
             const orvRankInfo = getSkillORVRank(skill);
             const upgradePreview = getUpgradePreview(skill);
             const skillBatchCount = Math.max(1, Math.min(1000, Math.floor(Number(skillBatchCounts[skill.id]) || 1)));
+            const skillUpgradeCurrency = skillUpgradeCurrencies[skill.id] || 'possibility';
             const skillBatchCost = Array.from({ length: skillBatchCount }, (_, index) =>
-              calculateSkillUpgradeCost({ ...skill, upgradeCount: Math.max(0, Math.floor(Number(skill.upgradeCount ?? (skill.level - 1)) || 0)) + index })
+              calculateSkillUpgradeCostByCurrency({ ...skill, upgradeCount: Math.max(0, Math.floor(Number(skill.upgradeCount ?? (skill.level - 1)) || 0)) + index }, skillUpgradeCurrency)
             ).reduce((sum, cost) => sum + cost, 0);
-            const canAfford = (Number(character.possibility) || 0) >= skillBatchCost;
+            const canAfford = (skillUpgradeCurrency === 'coins' ? Number(character.coins) || 0 : Number(character.possibility) || 0) >= skillBatchCost;
             const perk10 = getLevel10Perk(skill);
             return (
               <div
@@ -1317,7 +1319,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                 <div className="mt-4 pt-3 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-2">
                   <div className="text-[11px] text-slate-400 flex items-center gap-1">
                     <Coins className="w-3.5 h-3.5 text-amber-400" />
-                    <span>ราคา 1 ขั้น: <strong className="text-amber-300">{formatCoins(upgradePreview.cost)} Coins</strong></span>
+                    <span>ราคา 1 ขั้น: <strong className="text-amber-300">{formatCoins(calculateSkillUpgradeCostByCurrency(skill, skillUpgradeCurrency))} {skillUpgradeCurrency === 'coins' ? 'Coins' : 'Possibility'}</strong></span>
                   </div>
                   <div className="flex flex-col gap-2 min-w-0 w-full">
                     <div className="flex items-center gap-2 min-w-0 w-full">
@@ -1348,9 +1350,13 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                       <div className="mt-2 rounded-xl border border-emerald-500/20 bg-emerald-950/20 px-2 py-1.5 text-[10px] font-mono text-emerald-200 leading-tight">
                         <span className="text-slate-500">+{skillBatchCount} ขั้น: </span>{getSkillRewardPreview(skill, skillBatchCount)}
                       </div>
-                      <div className="flex min-w-0 gap-2">
+                      <div className="flex min-w-0 gap-2 flex-wrap">
                         <div className="min-w-0 flex-1 rounded-xl border border-amber-500/20 bg-slate-950/70 px-2.5 py-1.5 text-[10px] font-mono overflow-hidden">
-                          <span className="text-slate-500">อัป {skillBatchCount} ขั้น = </span><strong className="text-fuchsia-300">{formatCoins(skillBatchCost)} Possibility</strong>
+                          <span className="text-slate-500">อัป {skillBatchCount} ขั้น = </span><strong className="text-fuchsia-300">{formatCoins(skillBatchCost)} {skillUpgradeCurrency === 'coins' ? 'Coins' : 'Possibility'}</strong>
+                        </div>
+                        <div className="flex gap-1 w-full sm:w-auto">
+                          <button type="button" onClick={() => setSkillUpgradeCurrencies(prev => ({ ...prev, [skill.id]: 'coins' }))} className={`flex-1 sm:flex-none px-2 py-1.5 rounded-lg text-[10px] font-black ${skillUpgradeCurrency === 'coins' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>Coins</button>
+                          <button type="button" onClick={() => setSkillUpgradeCurrencies(prev => ({ ...prev, [skill.id]: 'possibility' }))} className={`flex-1 sm:flex-none px-2 py-1.5 rounded-lg text-[10px] font-black ${skillUpgradeCurrency === 'possibility' ? 'bg-fuchsia-500 text-white' : 'bg-slate-800 text-slate-400'}`}>P</button>
                         </div>
                         <button type="button" id={`btn-upgrade-skill-${skill.id}`} onClick={() => handleUpgradeSkill(skill.id)}
                           disabled={!canAfford || isUpgradingSkill}
