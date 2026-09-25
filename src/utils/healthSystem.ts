@@ -112,13 +112,10 @@ export function calculateCharacterHealth(character: CharacterProfile): HealthBre
   const skillProgressHp = skills.reduce((sum, skill) => (
     sum + Math.max(0, Number(skill.skillUpgradeProgress?.hpBonus) || 0)
   ), 0);
-  // รองรับข้อมูลเก่าที่เคยเก็บโบนัส HP รวมไว้ที่ตัวละคร
-  // ใช้ legacy เฉพาะตอนที่ยังไม่มี progress รายสกิล เพื่อไม่ให้ HP ถูกนับซ้ำ
-  const hasPerSkillProgress = skills.some(skill => skill.skillUpgradeProgress);
-  const legacySkillHp = hasPerSkillProgress
-    ? 0
-    : Math.max(0, Number(character.skillUpgradeProgress?.hpBonus) || 0);
-  const totalSkillHp = skillProgressHp + legacySkillHp;
+  // โบนัส HP ต้องผูกกับสกิลที่ยังมีอยู่เท่านั้น
+  // ห้ามนำ skillUpgradeProgress ระดับตัวละครมาคำนวณอีก เพราะค่านั้นอาจ
+  // เป็นโบนัสตกค้างจากสกิลที่ถูกลบแล้ว และจะถูกโอนไปยังสกิลใหม่โดยไม่ตั้งใจ
+  const totalSkillHp = skillProgressHp;
   if (totalSkillHp > 0) itemsList.push({ name: 'โบนัส HP จากสกิล', bonus: totalSkillHp, source: 'skill' });
   if (consumedMaxHp > 0) itemsList.push({ name: 'โอสถทองคำ/แก่นพลังชีวิตถาวรที่ดื่ม', bonus: consumedMaxHp, source: 'item' });
   const baseCalculatedMaxHp = BASE_HP + statBonusHp + titleBonusHp + storyBonusHp + skillBonusHp + equipHpBonus + consumedMaxHp + totalSkillHp;
