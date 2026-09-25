@@ -312,9 +312,8 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const bossFaces = useMemo(() => makeDiceFaces(bossDice.faces, bossDice.sides), [bossDice.faces, bossDice.sides]);
   const BOT_VICTORY_REWARD = 7000;
   const BOSS_VICTORY_REWARD = 10000;
-  const BATTLE_ENTRY_FEE = 5000;
-  // Random Monster/Boss mode has a fixed entry fee, independent from Gacha pricing/rates.
-  const RANDOM_BATTLE_ENTRY_FEE = 15000;
+  const BATTLE_ENTRY_FEE = Math.max(0, Number(config.battleEntryFeePossibility ?? 5000) || 0);
+  const RANDOM_BATTLE_ENTRY_FEE = Math.max(0, Number(config.randomBattleEntryFeePossibility ?? 15000) || 0);
   const randomRewards = config.randomBattleRewards || [];
 
   const normalizeRandomReward = (reward: BattleRandomReward): BattleRandomReward | null => {
@@ -352,9 +351,9 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       return;
     }
     try {
-      if (mode === 'random' && Number(currentUser.coins) < RANDOM_BATTLE_ENTRY_FEE) {
-        const balance = Math.max(0, Math.floor(Number(currentUser.coins) || 0));
-        throw new Error('Coins ไม่พอ ต้องใช้ ' + RANDOM_BATTLE_ENTRY_FEE.toLocaleString() + ' Coins แต่คุณมี ' + balance.toLocaleString() + ' Coins');
+      if (mode === 'random' && Number(currentUser.possibility) < RANDOM_BATTLE_ENTRY_FEE) {
+        const balance = Math.max(0, Math.floor(Number(currentUser.possibility) || 0));
+        throw new Error('ความเป็นไปได้ไม่พอ ต้องใช้ ' + RANDOM_BATTLE_ENTRY_FEE.toLocaleString() + ' Possibility แต่คุณมี ' + balance.toLocaleString());
       }
 
       const teamMembers = allCharacters.filter(character => selectedTeamIds.includes(character.id));
@@ -432,9 +431,9 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
           ...(unit.activeSkillPassives || []).map(passive => ({ id: `battle-skill-passive-${unit.id}-${passive.id}-${now}`, timestamp: now, actorName: unit.name, message: `🌸 SKILL PASSIVE พร้อมทำงาน: ${passive.name} · ${passive.description || passive.kind}` })),
           ...(unit.equippedPassives || []).map(passive => ({ id: `battle-item-passive-${unit.id}-${passive.id}-${now}`, timestamp: now, actorName: unit.name, message: `⚙️ ITEM PASSIVE พร้อมทำงาน: ${passive.name} · ${passive.description || passive.kind}` })),
         ]),
-        { id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pvp' ? 'ส่งคำท้าแล้ว — รอผู้เล่นฝ่ายตรงข้ามยืนยันก่อนเริ่มการต่อสู้' : mode === 'pve' || mode === 'random' ? `เริ่มการต่อสู้ — หักค่าเข้า ${(mode === 'random' ? RANDOM_BATTLE_ENTRY_FEE : BATTLE_ENTRY_FEE).toLocaleString()} Coins · รางวัลสุ่ม ${victoryReward.toLocaleString()} Coins` : 'เริ่มการต่อสู้ — Passive/TRAIT พร้อมทำงาน · เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' },
+        { id: 'battle-log-' + now, timestamp: now, actorName: 'SYSTEM', message: mode === 'pvp' ? 'ส่งคำท้าแล้ว — รอผู้เล่นฝ่ายตรงข้ามยืนยันก่อนเริ่มการต่อสู้' : mode === 'pve' || mode === 'random' ? `เริ่มการต่อสู้ — หักค่าเข้า ${(mode === 'random' ? RANDOM_BATTLE_ENTRY_FEE : BATTLE_ENTRY_FEE).toLocaleString()} Possibility · รางวัลสุ่ม ${victoryReward.toLocaleString()} Coins` : 'เริ่มการต่อสู้ — Passive/TRAIT พร้อมทำงาน · เลือกสกิลเพื่อใช้พร้อมการทอยลูกเต๋า' },
       ],
-      entryFeeCoins: mode === 'random' ? RANDOM_BATTLE_ENTRY_FEE : (mode === 'pve' ? BATTLE_ENTRY_FEE : 0), victoryRewardCoins: victoryReward, randomReward, battleDrops, randomBattleQueue, randomBattleStage: mode === 'random' ? 1 : undefined, createdAt: now, updatedAt: now
+      entryFeePossibility: mode === 'random' ? RANDOM_BATTLE_ENTRY_FEE : (mode === 'pve' ? BATTLE_ENTRY_FEE : 0), victoryRewardCoins: victoryReward, randomReward, battleDrops, randomBattleQueue, randomBattleStage: mode === 'random' ? 1 : undefined, createdAt: now, updatedAt: now
     };
       await (mode === 'pve' || mode === 'random' ? createBattleRoomWithEntryFee(room, currentUser.id, mode === 'random' ? RANDOM_BATTLE_ENTRY_FEE : BATTLE_ENTRY_FEE) : createBattleRoom(room));
       setSelectedBotIds([]);
