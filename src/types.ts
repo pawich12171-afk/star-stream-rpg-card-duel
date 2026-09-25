@@ -112,6 +112,16 @@ export interface ItemPassiveEffect {
   description?: string;
 }
 
+export type ItemUseConditionType = 'hp_below_percent' | 'hp_above_percent' | 'turn_at_least' | 'stat_at_least' | 'stat_below' | 'summon_count_below' | 'summon_count_at_least';
+
+export interface ItemUseCondition {
+  id?: string;
+  type: ItemUseConditionType;
+  value: number;
+  stat?: keyof CharacterStats;
+  enabled?: boolean;
+}
+
 export interface Item {
   id: string;
   name: string;
@@ -216,6 +226,8 @@ export interface Item {
   stackable?: boolean;
   /** อนุญาตให้นำไอเทมนี้ไปใช้เป็นรางวัลแบบกำหนดเอง */
   rewardEligible?: boolean;
+  /** เงื่อนไขที่ต้องผ่านก่อนผู้เล่นจะใช้ไอเทมได้ */
+  useConditions?: ItemUseCondition[];
   /** ประเภทการเผยแพร่ของไอเทม */
   itemClass?: 'normal' | 'special' | 'limited';
   /** จำนวน Stock สูงสุดสำหรับไอเทม Limited */
