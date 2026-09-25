@@ -280,16 +280,14 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       const upgradeNumber = i + 1;
       const gain = value <= 0
         ? firsts[phase]
-        : upgradeNumber % 5 === 0
-          ? Math.min(Math.max(0, maxes[phase] - value), value)
-          : Math.min(Math.max(0, maxes[phase] - value), value * 0.1);
+        : value * (upgradeNumber % 5 === 0 ? 2 : 1);
       if (phase === 0) hp += gain;
       else if (phase === 1) durability += gain;
       else if (phase === 2) strength += gain;
       else if (phase === 3) agility += gain;
       else if (phase === 4) magic += gain;
-      value += gain;
-      if (value >= maxes[phase]) { phase += 1; value = 0; }
+      value = gain;
+      if (phaseValues[phase] + gain >= maxes[phase]) { phase += 1; value = 0; }
     }
     return [
       hp ? `HP +${hp.toLocaleString()}` : '',
@@ -508,17 +506,23 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       const upgradeNumber = progress.totalUpgrades + i + 1;
       const nextGain = currentPhaseValue <= 0
         ? firsts[phase]
-        : upgradeNumber % 5 === 0
-          ? Math.min(Math.max(0, maxes[phase] - currentPhaseValue), currentPhaseValue)
-          : Math.min(Math.max(0, maxes[phase] - currentPhaseValue), currentPhaseValue * 0.1);
+        : currentPhaseValue * (upgradeNumber % 5 === 0 ? 2 : 1);
       if (phase === 0) { progress.hpBonus += nextGain; hpGained += nextGain; }
       else if (phase === 1) { progress.durability += nextGain; durabilityGained += nextGain; }
       else if (phase === 2) { progress.strength += nextGain; strengthGained += nextGain; }
       else if (phase === 3) { progress.agility += nextGain; agilityGained += nextGain; }
       else if (phase === 4) { progress.magic += nextGain; magicGained += nextGain; }
-      progress.rewardValue = currentPhaseValue + nextGain;
-      if (progress.rewardValue >= maxes[phase]) {
-        progress.rewardValue = maxes[phase];
+      progress.rewardValue = nextGain;
+      const phaseTotal = phase === 0
+        ? progress.hpBonus
+        : phase === 1
+          ? progress.durability
+          : phase === 2
+            ? progress.strength
+            : phase === 3
+              ? progress.agility
+              : progress.magic;
+      if (phaseTotal >= maxes[phase]) {
         progress.rewardPhase = phase + 1;
         progress.rewardValue = 0;
       }
