@@ -528,8 +528,8 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       if (nextLevel > 10) {
         nextLevel = 1;
         nextMultiplier *= 2;
-        // จุติแล้วเริ่มต้นต้นทุนรอบใหม่ที่ค่าเริ่มต้น
-        nextUpgradeCount = 0;
+        // upgradeCount is lifetime progression and keeps compounding across ascensions.
+        // This makes batched upgrades cost the same as individual upgrades.
       }
       costSkill = { ...costSkill, level: nextLevel, multiplier: nextMultiplier, upgradeCount: nextUpgradeCount };
     }
