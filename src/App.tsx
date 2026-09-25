@@ -238,6 +238,7 @@ export default function App() {
   const [isTransferOpen, setIsTransferOpen] = useState<boolean>(false);
   const [isCharSelectOpen, setIsCharSelectOpen] = useState<boolean>(false);
   const [isCreateCharOpen, setIsCreateCharOpen] = useState<boolean>(false);
+  const [createCharacterMode, setCreateCharacterMode] = useState<'character' | 'constellation'>('character');
   const [isProfileCustomizerOpen, setIsProfileCustomizerOpen] = useState<boolean>(false);
 
   // Wait for Firebase's initial read/seed before starting realtime listeners.
@@ -1116,13 +1117,15 @@ export default function App() {
         characters={characters}
         currentCharacterId={currentUser.id}
         onSelect={(c) => handleSelectCharacter(c.id)}
-        onOpenCreate={() => setIsCreateCharOpen(true)}
+        onOpenCreate={() => { setCreateCharacterMode('character'); setIsCreateCharOpen(true); }}
+        onOpenCreateConstellation={() => { setCreateCharacterMode('constellation'); setIsCreateCharOpen(true); }}
       />
 
       <CreateCharacterModal
         isOpen={isCreateCharOpen}
         onClose={() => setIsCreateCharOpen(false)}
         onCreate={handleCreateCharacter}
+        mode={createCharacterMode}
       />
 
       <ProfileCustomizerModal
