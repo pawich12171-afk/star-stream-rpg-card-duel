@@ -1317,7 +1317,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                 <div className="mt-4 pt-3 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-2">
                   <div className="text-[11px] text-slate-400 flex items-center gap-1">
                     <Coins className="w-3.5 h-3.5 text-amber-400" />
-                    <span>ราคา 1 ขั้น: <strong className="text-amber-300">{formatCoins(calculateSkillUpgradeCostByCurrency(skill, skillUpgradeCurrency))} {skillUpgradeCurrency === 'coins' ? 'Coins' : 'Possibility'}</strong></span>
+                    <span>ราคา 1 ขั้น: <strong className="text-amber-300">{formatCoins(calculateSkillUpgradeCost(skill))} Possibility</strong></span>
                   </div>
                   <div className="flex flex-col gap-2 min-w-0 w-full">
                     <div className="flex items-center gap-2 min-w-0 w-full">
