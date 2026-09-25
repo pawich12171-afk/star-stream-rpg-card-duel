@@ -3976,7 +3976,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       result.message += ` • 💠 True Damage ${appliedTrueDamage}`;
       result.trueDamage = appliedTrueDamage;
     }
-    if (result.heal > 0) current.hp = Math.min(current.maxHp, current.hp + result.heal);
+    if (result.heal > 0 && !['all_allies','all_combatants'].includes(String(skill?.targetMode || 'enemy'))) current.hp = Math.min(current.maxHp, current.hp + result.heal);
     if (result.face.effect === "stun" && defender.hp > 0) defender.stunnedTurns = (defender.stunnedTurns || 0) + 1;
     nextRoom.log.unshift({ id: "battle-log-" + Date.now(), timestamp: Date.now(), actorName: current.name, message: result.message + (result.face.effect === "stun" ? " และทำให้เป้าหมายติดสตัน" : ""), roll: result.roll, damage: result.damage, effect: result.face.effect });
   }
