@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import type { Item, GachaRarity, ItemPassiveEffect, BattleExtraEffect, BattleBotSkill } from '../types';
+import type { Item, GachaRarity, ItemPassiveEffect, BattleExtraEffect, BattleBotSkill, ItemUseCondition } from '../types';
 import { Package, Search, Store, Gift, Layers, Edit3, Trash2, Save, X, UploadCloud, Eye } from 'lucide-react';
 
 interface ItemManagementPanelProps {
@@ -127,6 +127,10 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const [summonIsBoss, setSummonIsBoss] = useState(false);
   const [passiveEffects, setPassiveEffects] = useState<ItemPassiveEffect[]>([]);
   const [battleDrawbacks, setBattleDrawbacks] = useState<NonNullable<Item['battleDrawbacks']>>([]);
+  const [useConditions, setUseConditions] = useState<ItemUseCondition[]>([]);
+  const [conditionType, setConditionType] = useState<ItemUseCondition['type']>('hp_below_percent');
+  const [conditionValue, setConditionValue] = useState(50);
+  const [conditionStat, setConditionStat] = useState<NonNullable<ItemUseCondition['stat']>>('strength');
   const [drawbackKind, setDrawbackKind] = useState<BattleExtraEffect['kind']>('bleeding');
   const [drawbackValue, setDrawbackValue] = useState(10);
   const [drawbackDuration, setDrawbackDuration] = useState(1);
@@ -145,6 +149,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     setCategory('consumable'); setRarity('common'); setEffectType('heal_hp');
     setEffectValue(10); setIcon('HeartPulse'); setIconPreview(null); setTargetStat('strength');
     setItemClass('normal'); setLimitedStock(0); setHealPercent(0); setHpBonus(0); setSkillTarget(''); setSkillDesc('');
+    setUseConditions([]); setConditionType('hp_below_percent'); setConditionValue(50); setConditionStat('strength');
     setBattleDamagePercent(0); setBattleDamageDuration(0); setBattleCriticalChancePercent(0); setBattleRepeatAttackChancePercent(0); setBattleLuckMultiplier(0); setBattleLuckDuration(0); setGachaRateMultiplier(0); setBattlePassiveChanceMultiplier(0);
     setRevivePercent(0); setReviveAlly(false); setCleanseNegative(false); setShieldPercent(0); setShieldDuration(0); setDamageReductionPercent(0); setDamageReductionDuration(0); setDodgeChancePercent(0); setLifestealPercent(0); setCooldownReductionPercent(0); setStunDuration(0); setStatusImmunityDuration(0); setPassiveEffects([]);
     setEquipmentStrengthBonus(0); setEquipmentDurabilityBonus(0); setEquipmentAgilityBonus(0); setEquipmentMagicBonus(0); setEquipmentMaxHpBonus(0);
@@ -224,6 +229,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
       summonMagic: effectType === 'summon' ? Math.max(0, Math.floor(summonMagic || 0)) : undefined,
       summonSkills: effectType === 'summon' && summonSkills.length ? summonSkills.slice(0, 20) : undefined,
       summonIsBoss: effectType === 'summon' ? summonIsBoss : undefined,
+      useConditions: useConditions.length ? useConditions.slice(0, 20).map(c => ({ ...c, value: Math.max(0, Number(c.value) || 0), enabled: c.enabled !== false })) : undefined,
       battleDamagePercent: category === 'consumable' && battleDamagePercent > 0 ? n(battleDamagePercent, 0, 1000) : undefined, battleDamageDuration: category === 'consumable' && battleDamagePercent > 0 ? Math.max(1, Math.floor(n(battleDamageDuration))) : undefined,
       battleCriticalChancePercent: category === 'consumable' && battleCriticalChancePercent > 0 ? n(battleCriticalChancePercent, 0, 100) : undefined, battleRepeatAttackChancePercent: category === 'consumable' && battleRepeatAttackChancePercent > 0 ? n(battleRepeatAttackChancePercent, 0, 100) : undefined,
       battleLuckMultiplier: battleLuckMultiplier || undefined, battleLuckDuration: battleLuckDuration || undefined, battlePassiveChanceMultiplier: battlePassiveChanceMultiplier || undefined,
@@ -460,6 +466,19 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
                 </div>
               </div>
             )}
+            <div className="rounded-2xl border border-amber-500/25 bg-amber-500/5 p-4 space-y-3">
+              <div><div className="text-sm font-black text-amber-200">🔒 เงื่อนไขการใช้ไอเทม</div><p className="text-[10px] text-slate-400">กำหนดได้หลายเงื่อนไข ผู้เล่นต้องผ่านทุกเงื่อนไขก่อนใช้ไอเทม</p></div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <select className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" value={conditionType} onChange={e=>setConditionType(e.target.value as ItemUseCondition['type'])}>
+                  <option value="hp_below_percent">HP ต่ำกว่า %</option><option value="hp_above_percent">HP สูงกว่า %</option><option value="turn_at_least">เริ่มใช้ได้ตั้งแต่เทิร์น</option><option value="stat_at_least">Stat ต้องถึงอย่างน้อย</option><option value="stat_below">Stat ต้องต่ำกว่า</option><option value="summon_count_below">จำนวนลูกน้องต่ำกว่า</option><option value="summon_count_at_least">จำนวนลูกน้องอย่างน้อย</option>
+                </select>
+                {(conditionType==='stat_at_least'||conditionType==='stat_below') && <select className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" value={conditionStat} onChange={e=>setConditionStat(e.target.value as any)}><option value="strength">STR</option><option value="durability">DUR</option><option value="agility">AGI</option><option value="magic">MAG</option></select>}
+                <input type="number" min="0" className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" value={conditionValue} onChange={e=>setConditionValue(Number(e.target.value)||0)} placeholder="ค่าเงื่อนไข"/>
+              </div>
+              <button type="button" className="rounded-lg bg-amber-500/20 border border-amber-400/30 px-3 py-2 text-xs font-bold text-amber-100" onClick={()=>setUseConditions(prev=>[...prev,{id:'item-condition-'+Date.now(),type:conditionType,value:conditionValue,stat:(conditionType==='stat_at_least'||conditionType==='stat_below')?conditionStat:undefined,enabled:true}])}>＋ เพิ่มเงื่อนไข</button>
+              {useConditions.map((condition,index)=><div key={condition.id||index} className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/70 p-2 text-[10px] text-slate-200"><span>#{index+1} {condition.type} {condition.stat ? condition.stat+' ' : ''}{condition.value}</span><button type="button" className="text-rose-300" onClick={()=>setUseConditions(prev=>prev.filter((_,i)=>i!==index))}>ลบ</button></div>)}
+            </div>
+
             <div className="rounded-2xl border border-rose-500/25 bg-rose-500/5 p-4 space-y-3">
               <div>
                 <div className="text-sm font-black text-rose-200">❤️ เอฟเฟกต์ที่คุณต้องการ</div>
