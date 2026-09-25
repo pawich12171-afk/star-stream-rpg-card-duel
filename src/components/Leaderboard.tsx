@@ -1,6 +1,7 @@
 import React from 'react';
 import { CharacterProfile } from '../types';
 import { formatCoins } from '../utils/formatNumber';
+import { calculatePowerScore } from '../services/characterService';
 import { Trophy, Coins, Zap, Star, ShieldCheck } from 'lucide-react';
 
 interface LeaderboardProps {
@@ -14,7 +15,8 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   currentUserId,
   onSelectCharacter,
 }) => {
-  const sorted = [...characters].sort((a, b) => (b.powerScore || 0) - (a.powerScore || 0));
+  const scored = characters.map(character => ({ character, power: calculatePowerScore(character) }));
+  const sorted = [...scored].sort((a, b) => b.power - a.power);
 
   return (
     <div className="bg-slate-900/90 rounded-3xl p-6 md:p-8 border border-slate-800 shadow-2xl space-y-6">
@@ -31,7 +33,9 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
       </div>
 
       <div className="space-y-3">
-        {sorted.map((char, index) => {
+        {sorted.map((entry, index) => {
+          const char = entry.character;
+          const livePowerScore = entry.power;
           const isCurrentUser = char.id === currentUserId;
           return (
             <div
@@ -114,7 +118,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
                     <span className="text-[10px] text-slate-400 block">พลังรบรวม</span>
                     <span className="text-base font-black text-white font-mono flex items-center gap-1">
                       <Zap className="w-3.5 h-3.5 text-cyan-400" />
-                      {char.powerScore?.toLocaleString() || 0}
+                      {livePowerScore.toLocaleString()}
                     </span>
                   </div>
                 </div>
