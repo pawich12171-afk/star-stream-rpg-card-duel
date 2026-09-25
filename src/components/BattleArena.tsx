@@ -1014,11 +1014,11 @@ setBotSummonName(skill.summonName||'ลูกน้อง');setBotSummonMaxCount
             {activeBots.length < 3 && <div className="mt-2 text-xs text-rose-200">ต้องมีมอนหรือบอสที่ใช้งานได้อย่างน้อย 3 ตัว</div>}
             <div className="mb-3 rounded-2xl border-2 border-amber-400/50 bg-amber-500/10 p-4 shadow-lg shadow-amber-500/10">
               <div className="text-base font-black text-amber-100">🎲 โหมดสุ่มมอน / Boss</div>
-              <div className="mt-2 text-xl font-black text-yellow-300">💰 ค่าเข้า: 15,000 Coins</div>
-              <div className="mt-1 text-xs font-bold text-slate-200">💳 Coin ของคุณ: {Math.max(0, Math.floor(Number(currentUser.coins) || 0)).toLocaleString()} Coins</div>
-              <div className="mt-2 text-xs font-bold text-amber-200/90">⚠️ ต้องมีอย่างน้อย 15,000 Coins เพื่อเริ่ม ระบบจะตรวจ Coin ก่อนเริ่มและหัก 15,000 Coins เมื่อเริ่มสำเร็จ</div>
-            </div>
-            <div className="mt-3 rounded-xl border border-cyan-400/20 bg-slate-950/50 p-3">
+              <div className="mt-2 text-xl font-black text-yellow-300">💰 ค่าเข้า: {RANDOM_BATTLE_ENTRY_FEE.toLocaleString()} {battleEntryCurrency === 'coins' ? 'Coins' : 'Possibility'}</div>
+               <div className="mt-1 text-xs font-bold text-slate-200">💳 ยอดคงเหลือ: {Math.max(0, Math.floor(Number(battleEntryCurrency === 'coins' ? currentUser.coins : currentUser.possibility) || 0)).toLocaleString()} {battleEntryCurrency === 'coins' ? 'Coins' : 'Possibility'}</div>
+               <div className="mt-2 text-xs font-bold text-amber-200/90">⚠️ ต้องมีอย่างน้อย {RANDOM_BATTLE_ENTRY_FEE.toLocaleString()} {battleEntryCurrency === 'coins' ? 'Coins' : 'Possibility'} เพื่อเริ่ม ระบบจะตรวจยอดก่อนเริ่มและหักค่าเข้าเมื่อเริ่มสำเร็จ</div>
+             </div>
+             <div className="mt-3 rounded-xl border border-cyan-400/20 bg-slate-950/50 p-3">
               <div className="mb-2 text-xs font-black text-cyan-200">🎁 รางวัลที่มีโอกาสได้รับ</div>
               {randomRewards.length > 0 ? (
                 <div className="space-y-1">
