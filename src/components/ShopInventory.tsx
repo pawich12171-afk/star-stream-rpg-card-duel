@@ -152,6 +152,7 @@ const getItemDetailLines = (item: Item): string[] => {
   add(item.reviveAlly === true, 'สามารถชุบเพื่อน/สมาชิกทีมได้');
   add(item.cleanseNegative === true, 'ล้างสถานะผิดปกติด้านลบ');
   add(n(item.gachaRateMultiplier) > 1, `เพิ่มเรทกาชา ×${n(item.gachaRateMultiplier)}${item.gachaRateMinRarity ? ` สำหรับ ${item.gachaRateMinRarity} ขึ้นไป` : ''}`);
+  add(item.effectType === 'summon', `🧿 เสก ${item.summonName || 'ลูกน้อง'} · HP ${n(item.summonHp)} · STR ${n(item.summonStrength)} · AGI ${n(item.summonAgility)}${n(item.summonSkills?.length) ? ` · สกิล ${n(item.summonSkills?.length)} รายการ` : ''}`);
 
   if (item.effectType === 'enhance_skill' && (item.skillEnhanceTarget || item.skillEnhanceDesc)) {
     lines.push(`เสริมสกิล: ${item.skillEnhanceTarget || 'สกิลที่กำหนด'}${item.skillEnhanceDesc ? ` — ${item.skillEnhanceDesc}` : ''}`);
@@ -705,6 +706,10 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   const handleUseItem = async (invItem: InventoryItem) => {
     if (invItem.category === 'material') {
       alert('ไอเทมวัตถุดิบไม่สามารถใช้ต่อสู้หรือกดใช้โดยตรงได้ กรุณานำไปคราฟต์ในเมนู คราฟต์ / วัตถุดิบ');
+      return;
+    }
+    if (invItem.effectType === 'summon') {
+      alert('🧿 ไอเทมเสกมอนสเตอร์/ลูกน้องต้องใช้ในสนามรบ กรุณาเข้า Battle Arena แล้วเลือกไอเทมนี้จากช่องไอเทมต่อสู้');
       return;
     }
     let updatedChar = { ...character };
