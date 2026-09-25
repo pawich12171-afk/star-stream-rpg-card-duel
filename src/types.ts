@@ -295,6 +295,8 @@ export interface CharacterProfile {
   storySummary?: string;
   statusBuffs?: string;
   coins: number;
+  /** ค่าเงินพิเศษสำหรับความเป็นไปได้ (Possibility) */
+  possibility: number;
   /** รูปแบบการแสดง Coins ของผู้เล่น: compact = 1K/1M, full = 1,000/1,000,000 */
   coinDisplayMode?: 'compact' | 'full';
   hp: number;
@@ -383,6 +385,9 @@ export interface GachaBanner {
   name: string;
   pullCost: number;
   tenPullCost: number;
+  /** ค่าใช้จ่ายกาชาเป็น Possibility */
+  pullCostPossibility?: number;
+  tenPullCostPossibility?: number;
   /** จำนวนครั้งแบบหลายสุ่มที่ผู้เล่นเลือกได้ นอกเหนือจาก 1 และ 10 */
   multiPullCounts?: number[];
   /** จำนวนสุ่มแบบเลือกค่าเดียวจากช่องตั้งค่า Admin */
@@ -511,6 +516,8 @@ export interface BattleConfig {
   bossDice: BattleDiceConfig;
   /** ค่าเข้าโหมดสุ่มมอน/บอส */
   randomBattleEntryFee?: number;
+  /** ค่าเข้าสนามโหมดสุ่มเป็น Possibility */
+  randomBattleEntryFeePossibility?: number;
   /** ตารางรางวัลสุ่มของโหมดสุ่มมอน/บอส */
   randomBattleRewards?: BattleRandomReward[];
   updatedAt: number;
