@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Ban, Flame, Heart, Minus, Plus, RotateCcw, Shield, Skull, Sparkles, Swords, Trash2, Zap } from 'lucide-react';
-import { CharacterProfile, AdminBalanceModifier, AdminBalanceSnapshot, AdminStatusEffectKind, BattleExtraEffect } from '../types';
+import { CharacterProfile, AdminBalanceModifier, AdminBalanceSnapshot, AdminStatusEffectKind, BattleExtraEffect, BattleSkillStat } from '../types';
 
 interface Props { characters: CharacterProfile[]; onUpdateCharacter: (character: CharacterProfile) => Promise<boolean>; }
 type StatKey = 'strength' | 'durability' | 'agility' | 'magic';
