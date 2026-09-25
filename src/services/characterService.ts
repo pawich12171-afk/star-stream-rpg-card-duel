@@ -2565,7 +2565,7 @@ export async function createBattleRoomWithEntryFee(room: BattleRoom, playerId: s
   const next = { ...room, id, entryFeePossibility: fee, entryFeeCoins: 0, createdAt: room.createdAt || Date.now(), updatedAt: Date.now() };
   await setDoc(doc(db, BATTLE_ROOMS_COLLECTION, id), sanitizeForFirestore(next));
   localCharacters = localCharacters.map(character => character.id === playerId ? nextCharacter : character);
-  saveCharactersLocal();
+  localStorage.setItem('starstream_characters', JSON.stringify(localCharacters));
   notifyCharacters();
   localBattleRooms = [next, ...localBattleRooms.filter(item => item.id !== id)];
   saveBattleLocal();
