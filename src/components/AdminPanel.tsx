@@ -325,6 +325,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newBannerDesc, setNewBannerDesc] = useState('ตู้กาชาพิเศษ');
   const [newBannerPullCost, setNewBannerPullCost] = useState(500);
   const [newBannerTenCost, setNewBannerTenCost] = useState(4500);
+  const [newBannerPullCostPossibility, setNewBannerPullCostPossibility] = useState(1);
+  const [newBannerTenCostPossibility, setNewBannerTenCostPossibility] = useState(10);
   const [newBannerMultiPullCounts, setNewBannerMultiPullCounts] = useState('20,30,50');
   const [newBannerMultiPullCount, setNewBannerMultiPullCount] = useState(20);
   const [newBannerEnabled, setNewBannerEnabled] = useState(true);
@@ -344,13 +346,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editBannerDesc, setEditBannerDesc] = useState('');
   const [editBannerPullCost, setEditBannerPullCost] = useState(500);
   const [editBannerTenCost, setEditBannerTenCost] = useState(4500);
+  const [editBannerPullCostPossibility, setEditBannerPullCostPossibility] = useState(1);
+  const [editBannerTenCostPossibility, setEditBannerTenCostPossibility] = useState(10);
   const [editBannerMultiPullCounts, setEditBannerMultiPullCounts] = useState('20,30,50');
   const [editBannerMultiPullCount, setEditBannerMultiPullCount] = useState(20);
   const [editBannerEnabled, setEditBannerEnabled] = useState(true);
   useEffect(() => {
     if (!selectedBanner) return;
     setEditBannerName(selectedBanner.name); setEditBannerTitle(selectedBanner.bannerTitle); setEditBannerDesc(selectedBanner.bannerDescription);
-    setEditBannerPullCost(selectedBanner.pullCost); setEditBannerTenCost(selectedBanner.tenPullCost); setEditBannerMultiPullCounts((selectedBanner.multiPullCounts || [20, 30, 50]).join(',')); setEditBannerMultiPullCount(selectedBanner.multiPullCount || 20); setEditBannerEnabled(selectedBanner.enabled);
+    setEditBannerPullCost(selectedBanner.pullCost); setEditBannerTenCost(selectedBanner.tenPullCost); setEditBannerPullCostPossibility(selectedBanner.pullCostPossibility ?? selectedBanner.pullCost); setEditBannerTenCostPossibility(selectedBanner.tenPullCostPossibility ?? selectedBanner.tenPullCost); setEditBannerMultiPullCounts((selectedBanner.multiPullCounts || [20, 30, 50]).join(',')); setEditBannerMultiPullCount(selectedBanner.multiPullCount || 20); setEditBannerEnabled(selectedBanner.enabled);
   }, [selectedBannerId, safeGachaBanners]);
 
   // New Gacha Reward Form
@@ -589,6 +593,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         bannerDescription: editBannerDesc.trim() || selectedBanner.bannerDescription,
         pullCost: Math.max(1, Number(editBannerPullCost) || 1),
         tenPullCost: Math.max(100, Number(editBannerTenCost) || 100),
+        pullCostPossibility: Math.max(1, Number(editBannerPullCostPossibility) || 1),
+        tenPullCostPossibility: Math.max(1, Number(editBannerTenCostPossibility) || 1),
         multiPullCounts: parseMultiPullCounts(editBannerMultiPullCounts),
         multiPullCount: Math.max(11, Math.floor(Number(editBannerMultiPullCount) || 20)),
         enabled: editBannerEnabled,
@@ -606,6 +612,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       name: newBannerName.trim(),
       pullCost: Math.max(1, Number(newBannerPullCost) || 1),
       tenPullCost: Math.max(100, Number(newBannerTenCost) || 100),
+      pullCostPossibility: Math.max(1, Number(newBannerPullCostPossibility) || 1),
+      tenPullCostPossibility: Math.max(1, Number(newBannerTenCostPossibility) || 1),
       multiPullCounts: parseMultiPullCounts(newBannerMultiPullCounts),
         multiPullCount: Math.max(11, Math.floor(Number(newBannerMultiPullCount) || 20)),
       enabled: newBannerEnabled,
@@ -638,6 +646,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         ...mainBanner,
         pullCost: Math.max(1, Number(pullCostInput) || 1),
         tenPullCost: Math.max(100, Number(tenPullCostInput) || 100),
+        pullCostPossibility: Math.max(1, Number(gachaConfig.pullCostPossibility) || 1),
+        tenPullCostPossibility: Math.max(1, Number(gachaConfig.tenPullCostPossibility) || 10),
         bannerTitle: bannerTitleInput.trim() || mainBanner.name,
         bannerDescription: bannerDescInput.trim() || 'ตู้กาชาพิเศษ',
         multiPullCounts: parseMultiPullCounts(multiPullCountsInput),
