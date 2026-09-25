@@ -122,6 +122,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
   const [summonAgility, setSummonAgility] = useState(5);
   const [summonMagic, setSummonMagic] = useState(0);
   const [summonSkills, setSummonSkills] = useState<NonNullable<Item['summonSkills']>>([]);
+  const [summonUnits, setSummonUnits] = useState<NonNullable<Item['summonUnits']>>([]);
   const [summonSkillName, setSummonSkillName] = useState('');
   const [summonSkillDescription, setSummonSkillDescription] = useState('');
   const [summonSkillPower, setSummonSkillPower] = useState(10);
@@ -160,7 +161,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     setEquipmentStrengthBonus(0); setEquipmentDurabilityBonus(0); setEquipmentAgilityBonus(0); setEquipmentMagicBonus(0); setEquipmentMaxHpBonus(0);
     setEquipmentAttackPercent(0); setEquipmentDefensePercent(0); setEquipmentMagicPercent(0); setEquipmentAttackDuration(0); setEquipmentDefenseDuration(0); setEquipmentMagicDuration(0);
     setBattleDrawbacks([]); setDrawbackKind('bleeding'); setDrawbackValue(10); setDrawbackDuration(1); setDrawbackChance(100);
-    setSummonName('ลูกน้อง'); setSummonMaxCount(1); setSummonHp(50); setSummonStrength(10); setSummonDurability(5); setSummonAgility(5); setSummonMagic(0); setSummonSkills([]); setSummonSkillName(''); setSummonSkillDescription(''); setSummonSkillPower(10); setSummonSkillChance(100); setSummonSkillCooldown(0); setSummonSkillEffect('damage'); setSummonIsBoss(false);
+    setSummonName('ลูกน้อง'); setSummonMaxCount(1); setSummonHp(50); setSummonUnits([]); setSummonStrength(10); setSummonDurability(5); setSummonAgility(5); setSummonMagic(0); setSummonSkills([]); setSummonSkillName(''); setSummonSkillDescription(''); setSummonSkillPower(10); setSummonSkillChance(100); setSummonSkillCooldown(0); setSummonSkillEffect('damage'); setSummonIsBoss(false);
     setInShop(false); setRewardEligible(true); setStackable(true);
   };
 
@@ -180,7 +181,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
     setEquipmentAttackPercent(item.equipmentAttackPercent || 0); setEquipmentDefensePercent(item.equipmentDefensePercent || 0); setEquipmentMagicPercent(item.equipmentMagicPercent || 0);
     setEquipmentAttackDuration(item.equipmentAttackDuration || 0); setEquipmentDefenseDuration(item.equipmentDefenseDuration || 0); setEquipmentMagicDuration(item.equipmentMagicDuration || 0);
     setBattleDrawbacks(Array.isArray(item.battleDrawbacks) ? item.battleDrawbacks.map(x => ({ ...x })) : []);
-    setSummonName(item.summonName || 'ลูกน้อง'); setSummonMaxCount(Math.max(1, Number(item.summonMaxCount) || 1)); setSummonHp(Math.max(1, Number(item.summonHp) || 50)); setSummonStrength(Math.max(0, Number(item.summonStrength) || 10)); setSummonDurability(Math.max(0, Number(item.summonDurability) || 5)); setSummonAgility(Math.max(0, Number(item.summonAgility) || 5)); setSummonMagic(Math.max(0, Number(item.summonMagic) || 0)); setSummonSkills(Array.isArray(item.summonSkills) ? item.summonSkills.map(x => ({ ...x })) : []); setSummonIsBoss(item.summonIsBoss === true);
+    setSummonName(item.summonName || 'ลูกน้อง'); setSummonMaxCount(Math.max(1, Number(item.summonMaxCount) || 1)); setSummonHp(Math.max(1, Number(item.summonHp) || 50)); setSummonStrength(Math.max(0, Number(item.summonStrength) || 10)); setSummonDurability(Math.max(0, Number(item.summonDurability) || 5)); setSummonAgility(Math.max(0, Number(item.summonAgility) || 5)); setSummonMagic(Math.max(0, Number(item.summonMagic) || 0)); setSummonSkills(Array.isArray(item.summonSkills) ? item.summonSkills.map(x => ({ ...x })) : []); setSummonUnits(Array.isArray(item.summonUnits) ? item.summonUnits.map(u => ({...u, skills: Array.isArray(u.skills) ? u.skills.map(x=>({...x})) : []})) : []); setSummonIsBoss(item.summonIsBoss === true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -234,6 +235,7 @@ export const ItemManagementPanel: React.FC<ItemManagementPanelProps> = ({
       summonAgility: effectType === 'summon' ? Math.max(0, Math.floor(summonAgility || 0)) : undefined,
       summonMagic: effectType === 'summon' ? Math.max(0, Math.floor(summonMagic || 0)) : undefined,
       summonSkills: effectType === 'summon' && summonSkills.length ? summonSkills.slice(0, 20) : undefined,
+      summonUnits: effectType === 'summon' && summonUnits.length ? summonUnits.slice(0, 20) : undefined,
       summonIsBoss: effectType === 'summon' ? summonIsBoss : undefined,
       useConditions: useConditions.length ? useConditions.slice(0, 20).map(c => ({ ...c, value: Math.max(0, Number(c.value) || 0), enabled: c.enabled !== false })) : undefined,
       battleDamagePercent: category === 'consumable' && battleDamagePercent > 0 ? n(battleDamagePercent, 0, 1000) : undefined, battleDamageDuration: category === 'consumable' && battleDamagePercent > 0 ? Math.max(1, Math.floor(n(battleDamageDuration))) : undefined,
@@ -461,7 +463,11 @@ cooldownReductionPercent: cooldownReductionPercent || undefined, stunDuration: s
                   <label className="text-[10px] text-slate-400">🔮 Magic<input className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white" type="number" min="0" value={summonMagic} onChange={e=>setSummonMagic(Number(e.target.value)||0)}/></label>
                   <label className="col-span-2 flex items-center gap-2 rounded-lg bg-slate-950 border border-slate-700 p-2 text-xs text-white"><input type="checkbox" checked={summonIsBoss} onChange={e=>setSummonIsBoss(e.target.checked)}/> ถือเป็นมอนสเตอร์ระดับ Boss</label>
                 </div>
-                <div className="rounded-xl border border-violet-500/20 bg-slate-950/50 p-3 space-y-2">
+                <SkillBattleOptions
+  config={{battleEffect:'summon',summonName,summonMaxCount,summonPerUse,summonHp,summonStrength,summonDurability,summonAgility,summonMagic,summonIsBoss,summonUnits}}
+  onChange={(patch) => { if(patch.summonUnits) setSummonUnits(patch.summonUnits as any); }}
+/>
+<div className="rounded-xl border border-violet-500/20 bg-slate-950/50 p-3 space-y-2">
                   <div className="text-xs font-black text-violet-200">⚔️ สกิลของลูกน้อง</div>
                   <div className="grid grid-cols-2 gap-2">
                     <input className="rounded-lg bg-slate-900 border border-slate-700 p-2 text-xs text-white" placeholder="ชื่อสกิล" value={summonSkillName} onChange={e=>setSummonSkillName(e.target.value)}/>
