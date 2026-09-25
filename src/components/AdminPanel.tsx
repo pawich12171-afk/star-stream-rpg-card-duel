@@ -690,6 +690,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setEditingSkillAdvancedMode('form');
   };
 
+  const getEditingList = <T,>(text: string): T[] => {
+    try {
+      const parsed = JSON.parse(text || '[]');
+      return Array.isArray(parsed) ? parsed as T[] : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const removeEditingListItem = (setter: React.Dispatch<React.SetStateAction<string>>, text: string, index: number) => {
+    const list = getEditingList<unknown>(text);
+    list.splice(index, 1);
+    setter(JSON.stringify(list, null, 2));
+  };
+
   const saveEditedSkill = async () => {
     const reward = gachaRewards.find(item => item.id === editingSkillRewardId);
     if (!reward?.skillData) return;
@@ -699,14 +714,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     let parsedPassives: ItemPassiveEffect[] = [];
     try {
       if (editingSkillAdvancedMode === 'form') {
-        parsedDrawbacks = JSON.parse(editingSkillDrawbacksText || '[]');
-        parsedEffects = JSON.parse(editingSkillEffectsText || '[]');
-        parsedPassives = JSON.parse(editingSkillPassivesText || '[]');
-      } else {
-        parsedDrawbacks = JSON.parse(editingSkillDrawbacksText || '[]');
-        parsedEffects = JSON.parse(editingSkillEffectsText || '[]');
-        parsedPassives = JSON.parse(editingSkillPassivesText || '[]');
-      }
+        parsedDrawbacks = getEditingList<BattleExtraEffect>(editingSkillDrawbacksText);
+        parsedEffects = getEditingList<BattleExtraEffect>(editingSkillEffectsText);
+        parsedPassives = getEditingList<ItemPassiveEffect>(editingSkillPassivesText);
+
       if (!Array.isArray(parsedDrawbacks)) throw new Error('drawbacks');
       if (!Array.isArray(parsedEffects)) throw new Error('effects');
       if (!Array.isArray(parsedPassives)) throw new Error('passives');
@@ -2780,13 +2791,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div className="text-[11px] font-black text-violet-200">🧩 ข้อเสีย / เอฟเฟกต์เพิ่มเติม / Passive</div>
                     <div className="text-[10px] text-slate-400">เลือกได้ว่าจะใช้แบบฟอร์มสำเร็จรูปเหมือนตอนสร้างสกิล หรือแก้ JSON โดยตรง</div>
                   </div>
-                  <div className="flex rounded-lg border border-slate-700 bg-slate-900 p-1">
-                    <button type="button" onClick={() => setEditingSkillAdvancedMode('form')} className={`rounded-md px-3 py-1 text-[10px] font-black ${editingSkillAdvancedMode === 'form' ? 'bg-violet-600 text-white' : 'text-slate-400'}`}>🧩 แบบเลือก</button>
-                    <button type="button" onClick={() => setEditingSkillAdvancedMode('json')} className={`rounded-md px-3 py-1 text-[10px] font-black ${editingSkillAdvancedMode === 'json' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>{"</>"} JSON</button>
-                  </div>
+
                 </div>
-                {editingSkillAdvancedMode === 'form' ? (
-                  <div className="space-y-3">
+                <div className="space-y-3">
                     <div className="rounded-xl border border-rose-500/20 bg-rose-950/10 p-3 space-y-2">
                       <div className="text-[10px] font-black text-rose-200">⚠️ ข้อเสียของสกิล</div>
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
@@ -2797,8 +2804,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <input type="number" min={1} max={10} value={editingDrawbackDuration} onChange={e=>setEditingDrawbackDuration(Number(e.target.value))} placeholder="เทิร์น" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
                         <input type="number" min={0} max={100} value={editingDrawbackChance} onChange={e=>setEditingDrawbackChance(Number(e.target.value))} placeholder="โอกาส %" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
                       </div>
-                      <button type="button" onClick={()=>{const e={kind:editingDrawbackKind,value:Math.max(0,Number(editingDrawbackValue)||0),duration:Math.max(1,Math.min(10,Math.round(Number(editingDrawbackDuration)||1))),chance:Math.max(0,Math.min(100,Number(editingDrawbackChance)||0)),target:'self'}; setEditingSkillDrawbacksText(JSON.stringify([...JSON.parse(editingSkillDrawbacksText||'[]'),e],null,2));}} className="rounded-lg bg-rose-500/20 px-3 py-2 text-[10px] font-black text-rose-100">＋ เพิ่มข้อเสีย</button>
-                      <pre className="max-h-24 overflow-auto rounded-lg bg-black/20 p-2 text-[9px] text-rose-200">{editingSkillDrawbacksText}</pre>
+                      <button type="button" onClick={()=>{const e={kind:editingDrawbackKind,value:Math.max(0,Number(editingDrawbackValue)||0),duration:Math.max(1,Math.min(10,Math.round(Number(editingDrawbackDuration)||1))),chance:Math.max(0,Math.min(100,Number(editingDrawbackChance)||0)),target:'self'}; setEditingSkillDrawbacksText(JSON.stringify([...getEditingList<BattleExtraEffect>(editingSkillDrawbacksText),e],null,2));}} className="rounded-lg bg-rose-500/20 px-3 py-2 text-[10px] font-black text-rose-100">＋ เพิ่มข้อเสีย</button>
+                      <div className="space-y-1">{getEditingList<BattleExtraEffect>(editingSkillDrawbacksText).map((item,index)=><div key={index} className="flex items-center justify-between gap-2 rounded-lg bg-black/20 px-2 py-2 text-[9px] text-rose-100"><span>⚠️ {item.label || item.kind} · ค่า {item.value} · {item.duration || 1} เทิร์น · {item.chance ?? 100}%</span><button type="button" onClick={()=>removeEditingListItem(setEditingSkillDrawbacksText,editingSkillDrawbacksText,index)} className="shrink-0 rounded bg-rose-500/20 px-2 py-1 font-black text-rose-200">ลบ</button></div>)}{getEditingList<BattleExtraEffect>(editingSkillDrawbacksText).length===0 && <div className="text-[9px] text-slate-500">ยังไม่มีข้อเสีย</div>}</div>
                     </div>
 
                     <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-3 space-y-2">
@@ -2812,8 +2819,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <input type="number" min={0} max={100} value={editingEffectChance} onChange={e=>setEditingEffectChance(Number(e.target.value))} placeholder="โอกาส %" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
                         <select value={editingEffectTarget} onChange={e=>setEditingEffectTarget(e.target.value as 'self'|'enemy')} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"><option value="enemy">ศัตรู</option><option value="self">ตัวเอง</option></select>
                       </div>
-                      <button type="button" onClick={()=>{const e={kind:editingEffectKind,value:Math.max(0,Number(editingEffectValue)||0),duration:Math.max(1,Math.min(10,Math.round(Number(editingEffectDuration)||1))),chance:Math.max(0,Math.min(100,Number(editingEffectChance)||0)),target:editingEffectTarget}; setEditingSkillEffectsText(JSON.stringify([...JSON.parse(editingSkillEffectsText||'[]'),e],null,2));}} className="rounded-lg bg-cyan-500/20 px-3 py-2 text-[10px] font-black text-cyan-100">＋ เพิ่มเอฟเฟกต์</button>
-                      <pre className="max-h-24 overflow-auto rounded-lg bg-black/20 p-2 text-[9px] text-cyan-200">{editingSkillEffectsText}</pre>
+                      <button type="button" onClick={()=>{const e={kind:editingEffectKind,value:Math.max(0,Number(editingEffectValue)||0),duration:Math.max(1,Math.min(10,Math.round(Number(editingEffectDuration)||1))),chance:Math.max(0,Math.min(100,Number(editingEffectChance)||0)),target:editingEffectTarget}; setEditingSkillEffectsText(JSON.stringify([...getEditingList<BattleExtraEffect>(editingSkillEffectsText),e],null,2));}} className="rounded-lg bg-cyan-500/20 px-3 py-2 text-[10px] font-black text-cyan-100">＋ เพิ่มเอฟเฟกต์</button>
+                      <div className="space-y-1">{getEditingList<BattleExtraEffect>(editingSkillEffectsText).map((item,index)=><div key={index} className="flex items-center justify-between gap-2 rounded-lg bg-black/20 px-2 py-2 text-[9px] text-cyan-100"><span>✨ {item.kind} · ค่า {item.value} · {item.duration || 1} เทิร์น · {item.chance ?? 100}% · {item.target === 'self' ? 'ตัวเอง' : 'ศัตรู'}</span><button type="button" onClick={()=>removeEditingListItem(setEditingSkillEffectsText,editingSkillEffectsText,index)} className="shrink-0 rounded bg-rose-500/20 px-2 py-1 font-black text-rose-200">ลบ</button></div>)}{getEditingList<BattleExtraEffect>(editingSkillEffectsText).length===0 && <div className="text-[9px] text-slate-500">ยังไม่มีเอฟเฟกต์เพิ่มเติม</div>}</div>
                     </div>
 
                     <div className="rounded-xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-3 space-y-2">
@@ -2834,24 +2841,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <input value={editingPassiveStackKey} onChange={e=>setEditingPassiveStackKey(e.target.value)} placeholder="Stack Key เช่น flower" className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"/>
                         <select value={editingPassiveTargetStat} onChange={e=>setEditingPassiveTargetStat(e.target.value as any)} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-[10px] text-white"><option value="strength">STR</option><option value="durability">DUR</option><option value="agility">AGI</option><option value="magic">MAG</option></select>
-                        <button type="button" onClick={()=>{const e={id:`skill-passive-edit-${Date.now()}`,name:editingPassiveName.trim()||'Skill Passive',trigger:editingPassiveTrigger,kind:editingPassiveKind,value:Math.max(0,Number(editingPassiveValue)||0),chance:Math.max(0,Math.min(100,Number(editingPassiveChance)||0)),maxStacks:Math.max(1,Math.round(Number(editingPassiveMaxStacks)||1)),stackKey:editingPassiveStackKey.trim()||'flower',duration:Math.max(1,Math.round(Number(editingPassiveDuration)||1)),targetStat:editingPassiveKind==='buff_stat'?editingPassiveTargetStat:undefined}; setEditingSkillPassivesText(JSON.stringify([...JSON.parse(editingSkillPassivesText||'[]'),e],null,2));}} className="rounded-lg bg-fuchsia-500/20 px-3 py-2 text-[10px] font-black text-fuchsia-100">＋ เพิ่ม Passive</button>
+                        <button type="button" onClick={()=>{const e={id:`skill-passive-edit-${Date.now()}`,name:editingPassiveName.trim()||'Skill Passive',trigger:editingPassiveTrigger,kind:editingPassiveKind,value:Math.max(0,Number(editingPassiveValue)||0),chance:Math.max(0,Math.min(100,Number(editingPassiveChance)||0)),maxStacks:Math.max(1,Math.round(Number(editingPassiveMaxStacks)||1)),stackKey:editingPassiveStackKey.trim()||'flower',duration:Math.max(1,Math.round(Number(editingPassiveDuration)||1)),targetStat:editingPassiveKind==='buff_stat'?editingPassiveTargetStat:undefined}; setEditingSkillPassivesText(JSON.stringify([...getEditingList<ItemPassiveEffect>(editingSkillPassivesText),e],null,2));}} className="rounded-lg bg-fuchsia-500/20 px-3 py-2 text-[10px] font-black text-fuchsia-100">＋ เพิ่ม Passive</button>
                       </div>
-                      <pre className="max-h-32 overflow-auto rounded-lg bg-black/20 p-2 text-[9px] text-fuchsia-200">{editingSkillPassivesText}</pre>
+                      <div className="space-y-1">{getEditingList<ItemPassiveEffect>(editingSkillPassivesText).map((item,index)=><div key={item.id || index} className="flex items-center justify-between gap-2 rounded-lg bg-black/20 px-2 py-2 text-[9px] text-fuchsia-100"><span>✨ {item.name || 'Passive'} · {item.kind} · ค่า {item.value} · {item.chance ?? 100}% · {item.duration || 1} เทิร์น</span><button type="button" onClick={()=>removeEditingListItem(setEditingSkillPassivesText,editingSkillPassivesText,index)} className="shrink-0 rounded bg-rose-500/20 px-2 py-1 font-black text-rose-200">ลบ</button></div>)}{getEditingList<ItemPassiveEffect>(editingSkillPassivesText).length===0 && <div className="text-[9px] text-slate-500">ยังไม่มี Passive</div>}</div>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <label className="text-[10px] text-rose-200 block">⚠️ ข้อเสีย (JSON)
-                      <textarea value={editingSkillDrawbacksText} onChange={e=>setEditingSkillDrawbacksText(e.target.value)} rows={5} className="mt-1 w-full rounded-xl border border-rose-500/20 bg-slate-800 px-2 py-2 text-[10px] text-rose-100 font-mono"/>
-                    </label>
-                    <label className="text-[10px] text-cyan-200 block">เอฟเฟกต์เพิ่มเติม (JSON)
-                      <textarea value={editingSkillEffectsText} onChange={e=>setEditingSkillEffectsText(e.target.value)} rows={5} className="mt-1 w-full rounded-xl border border-cyan-500/20 bg-slate-800 px-2 py-2 text-[10px] text-cyan-100 font-mono"/>
-                    </label>
-                    <label className="text-[10px] text-fuchsia-200 block">Passive ของสกิล (JSON)
-                      <textarea value={editingSkillPassivesText} onChange={e=>setEditingSkillPassivesText(e.target.value)} rows={5} className="mt-1 w-full rounded-xl border border-fuchsia-500/20 bg-slate-800 px-2 py-2 text-[10px] text-fuchsia-100 font-mono"/>
-                    </label>
-                  </div>
-                )}
               </div>
             </div>
               <label className="text-[10px] text-slate-400">โอกาสตีซ้ำ %<input type="number" min={0} max={100} step={0.1} value={editingSkillRepeatChance} onChange={e => setEditingSkillRepeatChance(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
