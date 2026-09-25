@@ -340,6 +340,7 @@ export default function App() {
       quests: Array.isArray(candidate.quests) ? candidate.quests : [],
       notifications: Array.isArray(candidate.notifications) ? candidate.notifications : [],
       coins: Number.isFinite(Number(candidate.coins)) ? Number(candidate.coins) : 0,
+      possibility: Number.isFinite(Number(candidate.possibility)) ? Number(candidate.possibility) : 0,
       hp: Number.isFinite(Number(candidate.hp)) ? Number(candidate.hp) : fallback.hp,
       maxHp: Number.isFinite(Number(candidate.maxHp)) ? Number(candidate.maxHp) : fallback.maxHp,
       lastUpdated: Number(candidate.lastUpdated) || 0,
@@ -620,17 +621,29 @@ export default function App() {
     });
   };
 
-  const handleTransferCoins = async (senderId: string, recipientId: string, amount: number) => {
+  const handleTransferCoins = async (senderId: string, recipientId: string, amount: number, currency: 'coins' | 'possibility' = 'coins') => {
     try {
-      const result = await transferCoinsBetweenCharacters(senderId, recipientId, amount);
-      if (!result.success) {
-        alert(result.message);
+      if (currency === 'coins') {
+        const result = await transferCoinsBetweenCharacters(senderId, recipientId, amount);
+        if (!result.success) { alert(result.message); return; }
+        confetti({ particleCount: 60, spread: 50 });
+        alert(result.message || `โอนเหรียญ ${formatCoins(amount)} Coins สำเร็จแล้ว!`);
         return;
       }
+      const sender = charactersRef.current.find(c => c.id === senderId);
+      const recipient = charactersRef.current.find(c => c.id === recipientId);
+      if (!sender || !recipient) { alert('ไม่พบตัวละครผู้โอนหรือผู้รับ'); return; }
+      const balance = Number(sender.possibility) || 0;
+      if (amount <= 0 || amount > balance) { alert('ความเป็นไปได้ไม่เพียงพอ'); return; }
+      const now = Date.now();
+      const savedSender = await handleUpdateCharacter({ ...sender, possibility: balance - amount, lastUpdated: now });
+      if (!savedSender) return;
+      const savedRecipient = await handleUpdateCharacter({ ...recipient, possibility: (Number(recipient.possibility) || 0) + amount, lastUpdated: now + 1 });
+      if (!savedRecipient) return;
       confetti({ particleCount: 60, spread: 50 });
-      alert(result.message || `โอนเหรียญ ${formatCoins(amount)} Coins สำเร็จแล้ว!`);
+      alert(`โอนความเป็นไปได้ ${formatCoins(amount)} สำเร็จแล้ว!`);
     } catch (err: any) {
-      alert(err.message || 'เกิดข้อผิดพลาดในการโอนเหรียญ');
+      alert(err.message || 'เกิดข้อผิดพลาดในการโอน');
     }
   };
 
