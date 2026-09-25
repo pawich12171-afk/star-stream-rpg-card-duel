@@ -318,9 +318,10 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
         continue;
       }
       const upgradeNumber = i + 1;
-      const gain = value <= 0
+      const rawGain = value <= 0
         ? firsts[phase]
         : value * (upgradeNumber % 5 === 0 ? 2 : 1.1);
+      const gain = Math.max(1, Math.round(rawGain));
       if (phase === 0) hp += gain;
       else if (phase === 1) durability += gain;
       else if (phase === 2) strength += gain;
@@ -1427,13 +1428,15 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                           const agility = Math.max(0, Number(p?.agility) || 0);
                           const magic = Math.max(0, Number(p?.magic) || 0);
                           const slots = Math.max(0, Number(p?.equipmentSlots) || 0);
-                          if (hp > 0) return `❤️ HP +${hp.toLocaleString()}`;
-                          if (durability > 0) return `🛡️ ทนทาน +${durability.toFixed(2)}`;
-                          if (strength > 0) return `💪 STR +${strength.toFixed(2)}`;
-                          if (agility > 0) return `⚡ ความเร็ว +${agility.toFixed(2)}`;
-                          if (magic > 0) return `✨ เวท +${magic.toFixed(2)}`;
-                          if (slots > 0) return `🎒 ช่อง +${Math.floor(slots)}`;
-                          return 'ยังไม่มีโบนัสสะสม';
+                          const details = [
+                            hp > 0 ? `❤️ HP +${Math.round(hp).toLocaleString()}` : '',
+                            durability > 0 ? `🛡️ ทนทาน +${Math.round(durability)}` : '',
+                            strength > 0 ? `💪 STR +${Math.round(strength)}` : '',
+                            agility > 0 ? `⚡ ความเร็ว +${Math.round(agility)}` : '',
+                            magic > 0 ? `✨ เวท +${Math.round(magic)}` : '',
+                            slots > 0 ? `🎒 ช่อง +${Math.round(slots)}` : '',
+                          ].filter(Boolean);
+                          return details.length > 0 ? details.join(' • ') : 'ยังไม่มีโบนัสสะสม';
                         })()}
                       </span>
                     </div>
