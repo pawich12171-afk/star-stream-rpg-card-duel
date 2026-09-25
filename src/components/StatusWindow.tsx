@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 // Build trigger: StatusWindow JSX fix is present on main.
 import { CharacterProfile, Skill, ORVSkillRank, BattleExtraEffect, ItemPassiveEffect } from '../types';
 import { calculatePowerScore } from '../services/characterService';
+import { SkillBattleOptions } from './SkillBattleOptions';
 import { 
   Sparkles, 
   Zap, 
@@ -86,6 +87,11 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   const [newSkillPerk10, setNewSkillPerk10] = useState('');
   const [newSkillBattleEffect, setNewSkillBattleEffect] = useState<NonNullable<Skill['battleEffect']>>('damage');
   const [newSkillBattlePower, setNewSkillBattlePower] = useState(5);
+  const [newSkillTargetMode, setNewSkillTargetMode] = useState<NonNullable<Skill['targetMode']>>('enemy');
+  const [newSkillBuffStat, setNewSkillBuffStat] = useState<'strength'|'durability'|'agility'|'magic'>('strength');
+  const [newSkillBuffAmount, setNewSkillBuffAmount] = useState(10);
+  const [newSkillBuffDuration, setNewSkillBuffDuration] = useState(3);
+  const [newSkillSummonUnits, setNewSkillSummonUnits] = useState<NonNullable<Skill['summonUnits']>>([]);
   const [newSkillCooldownTurns, setNewSkillCooldownTurns] = useState(3);
   const [newSkillCritChance, setNewSkillCritChance] = useState(0);
   const [newSkillCritMultiplier, setNewSkillCritMultiplier] = useState(2);
@@ -795,6 +801,11 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
       perkLevel10: newSkillPerk10.trim() || undefined,
       description: newSkillDesc.trim() || 'วิชาพิเศษที่สร้างสรรค์โดยผู้ใช้งาน',
       battleEffect: newSkillBattleEffect,
+      targetMode: newSkillTargetMode,
+      buffStat: newSkillBattleEffect === 'buff_stat' ? newSkillBuffStat : undefined,
+      buffAmount: newSkillBattleEffect === 'buff_stat' ? Math.max(0, newSkillBuffAmount) : undefined,
+      buffDuration: newSkillBattleEffect === 'buff_stat' ? Math.max(1, newSkillBuffDuration) : undefined,
+      summonUnits: newSkillBattleEffect === 'summon' && newSkillSummonUnits.length ? [...newSkillSummonUnits] : undefined,
       battleEffectDuration: Math.max(1, Math.min(10, Math.round(Number(newSkillEffectDuration) || 1))),
       battlePower: Math.max(1, Number(newSkillBattlePower) || 1),
       cooldownTurns: Math.max(0, Math.min(99, Number(newSkillCooldownTurns) || 0)),
@@ -830,6 +841,7 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
     setNewSkillDesc('');
     setNewSkillPerk10('');
     setNewSkillBattleEffect('damage');
+    setNewSkillTargetMode('enemy'); setNewSkillBuffStat('strength'); setNewSkillBuffAmount(10); setNewSkillBuffDuration(3); setNewSkillSummonUnits([]);
     setNewSkillBattlePower(5);
     setNewSkillCooldownTurns(3);
     setNewSkillCritChance(0);
@@ -1990,6 +2002,16 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
                     </div>
                   </div>
                 </div>
+                <SkillBattleOptions
+                  config={{ battleEffect: newSkillBattleEffect, targetMode: newSkillTargetMode, buffStat: newSkillBuffStat, buffAmount: newSkillBuffAmount, buffDuration: newSkillBuffDuration, summonUnits: newSkillSummonUnits }}
+                  onChange={(patch) => {
+                    if (patch.targetMode) setNewSkillTargetMode(patch.targetMode);
+                    if (patch.buffStat) setNewSkillBuffStat(patch.buffStat);
+                    if (patch.buffAmount != null) setNewSkillBuffAmount(Number(patch.buffAmount));
+                    if (patch.buffDuration != null) setNewSkillBuffDuration(Number(patch.buffDuration));
+                    if (patch.summonUnits) setNewSkillSummonUnits(patch.summonUnits);
+                  }}
+                />
                 <div className="rounded-xl border border-cyan-400/15 bg-slate-950/35 px-3 py-2 text-[10px] leading-relaxed text-cyan-100/65">
                   เคล็ดลับ: ตั้งค่า <strong className="text-cyan-200">ค่าพลัง</strong> ให้สอดคล้องกับคำอธิบายด้านบน เพื่อให้ผู้เล่นเข้าใจผลของสกิลได้ทันที
                 </div>
