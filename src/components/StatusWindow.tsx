@@ -229,6 +229,19 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
   };
 
   const healthData = calculateCharacterHealth(character);
+  const exchangeCoinsToPossibility = async () => {
+    const coins = Number(latestCharacterRef.current.coins) || 0;
+    if (coins < 100000) { alert('ต้องใช้ 100,000 Coins เพื่อแลก 1 ความเป็นไปได้'); return; }
+    const base = latestCharacterRef.current;
+    await onUpdateCharacter({ ...base, coins: coins - 100000, possibility: (Number(base.possibility) || 0) + 1, lastUpdated: Date.now() });
+  };
+  const exchangePossibilityToCoins = async () => {
+    const possibility = Number(latestCharacterRef.current.possibility) || 0;
+    if (possibility < 1) { alert('ต้องมีความเป็นไปได้อย่างน้อย 1 เพื่อแลกเป็น Coins'); return; }
+    const base = latestCharacterRef.current;
+    await onUpdateCharacter({ ...base, possibility: possibility - 1, coins: (Number(base.coins) || 0) + 80000, lastUpdated: Date.now() });
+  };
+
 
   const getSkillRewardPreview = (skill: Skill, count: number) => {
     // เก็บความคืบหน้าแยกตามสกิล และรองรับข้อมูลเก่าที่เคยเก็บไว้ระดับตัวละคร
@@ -795,6 +808,9 @@ export const StatusWindow: React.FC<StatusWindowProps> = ({
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
+              <div className="w-full text-xs text-fuchsia-300 font-black">ความเป็นไปได้: {formatCoins(character.possibility || 0)} P</div>
+              <button type="button" onClick={exchangeCoinsToPossibility} className="px-3 py-2 bg-fuchsia-600/80 hover:bg-fuchsia-500 text-white text-xs font-black rounded-xl">100,000 C → 1 P</button>
+              <button type="button" onClick={exchangePossibilityToCoins} className="px-3 py-2 bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-black rounded-xl">1 P → 80,000 C</button>
                 <span className="text-xs font-semibold px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800 tracking-wider">
                   [หน้าต่างสถานะตัวละคร]
                 </span>
