@@ -2858,7 +2858,5 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
     </div>
-    </div>
   );
 };
-
