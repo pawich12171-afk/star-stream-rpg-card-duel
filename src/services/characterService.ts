@@ -2983,7 +2983,9 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
       target.reflectTurns = Math.max(target.reflectTurns || 0, duration);
       result.message += ` • ${label} สะท้อน ${value}%`;
     } else {
-      const mode = 'nerf' as const;
+      // สถานะที่สร้างจาก modifier แบบ "status" มีทั้งฝั่งบัฟและดีบัฟ
+      // regen เป็นบัฟ ส่วนสถานะก่อผลเสียเป็นดีบัฟ เพื่อให้ผลต่อเทิร์นทำงานตรงกับชนิดที่เลือก
+      const mode = effect.kind === 'regen' ? 'buff' as const : 'nerf' as const;
       const existing = target.adminStatusEffects || [];
       const kind = effect.kind === 'freeze' ? 'stun' : effect.kind;
       // เอฟเฟกต์ชื่อเดิมต้องสะสมเวลา "ตามระยะเวลาที่ตั้งไว้" ของเอฟเฟกต์นี้
