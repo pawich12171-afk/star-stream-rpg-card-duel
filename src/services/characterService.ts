@@ -3100,7 +3100,7 @@ export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect
   const configuredCooldown = skill.cooldownTurns == null ? 3 : skill.cooldownTurns;
   const cooldownTurns = Math.max(0, Math.min(99, Math.round(configuredCooldown)));
   const duration = Math.max(1, Math.min(10, Math.round(Number(skill.battleEffectDuration) || 1)));
-  const power = Math.max(1, skill.battlePower ?? (effect === "reflect" ? percent || 35 : effect === "defense" ? 5 : 5));
+  const power = Math.max(1, skill.battlePower ?? ((effect === "reflect" || effect === "damage_taken_increase") ? percent || 35 : effect === "defense" ? 5 : 5));
   return { effect, power, cooldownTurns, duration };
 }
 
@@ -3153,6 +3153,10 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
       target.damageReductionPercent = Math.min(100, Math.max(0, value));
       target.damageReductionTurns = Math.max(target.damageReductionTurns || 0, duration);
       result.message += ` • 🛡️ ${label} ลดความเสียหาย ${value}% ${duration} เทิร์น`;
+    } else if (effect.kind === 'damage_taken_increase') {
+      target.damageTakenIncreasePercent = Math.min(1000, Math.max(0, value));
+      target.damageTakenIncreaseTurns = Math.max(target.damageTakenIncreaseTurns || 0, duration);
+      result.message += ` • 💥 ${label} ทำให้รับดาเมจเพิ่ม ${value}% ${duration} เทิร์น`;
     } else if (effect.kind === 'reflect') {
       target.reflectPercent = Math.max(target.reflectPercent || 0, Math.min(100, value));
       target.reflectTurns = Math.max(target.reflectTurns || 0, duration);
@@ -3220,12 +3224,19 @@ function getDefenseStatDamageReduction(defenseStat: unknown): number {
 
 function getAdminIncomingDamageMultiplier(unit: BattleCombatant): number {
   // Skill damage reduction is applied explicitly at hit resolution so it is
-  // never multiplied twice. This helper only handles percentage shield status.
-  return getActiveAdminStatusEffects(unit).reduce((multiplier, effect) => {
-    if (effect.kind !== 'shield') return multiplier;
-    const percent = Math.min(100, Math.max(0, Number(effect.power) || 0)) / 100;
-    return multiplier * (effect.mode === 'buff' ? 1 - percent : 1 + percent);
+  // never multiplied twice. This helper also applies the temporary
+  // "damage taken increase" debuff configured by skills/statuses.
+  const statusMultiplier = getActiveAdminStatusEffects(unit).reduce((multiplier, effect) => {
+    if (effect.kind === 'shield') {
+      const percent = Math.min(100, Math.max(0, Number(effect.power) || 0)) / 100;
+      return multiplier * (effect.mode === 'buff' ? 1 - percent : 1 + percent);
+    }
+    return multiplier;
   }, 1);
+  const takenPercent = unit.damageTakenIncreaseTurns && unit.damageTakenIncreaseTurns > 0
+    ? Math.min(1000, Math.max(0, Number(unit.damageTakenIncreasePercent) || 0))
+    : 0;
+  return statusMultiplier * (1 + takenPercent / 100);
 }
 
 function getAdminReflectPercent(unit: BattleCombatant): number {
@@ -3278,6 +3289,10 @@ function advanceAdminStatusEffects(unit: BattleCombatant) {
   if (unit.damageReductionTurns && unit.damageReductionTurns > 0) {
     unit.damageReductionTurns = Math.max(0, unit.damageReductionTurns - 1);
     if (unit.damageReductionTurns === 0) unit.damageReductionPercent = 0;
+  }
+  if (unit.damageTakenIncreaseTurns && unit.damageTakenIncreaseTurns > 0) {
+    unit.damageTakenIncreaseTurns = Math.max(0, unit.damageTakenIncreaseTurns - 1);
+    if (unit.damageTakenIncreaseTurns === 0) unit.damageTakenIncreasePercent = 0;
   }
   // Reflect duration must tick down each completed turn as well.
   if (unit.reflectTurns && unit.reflectTurns > 0) {
@@ -3998,6 +4013,10 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         current.damageReductionPercent = Math.min(100, skillProfile.power);
         current.damageReductionTurns = skillProfile.duration;
         result.message += ` • ใช้สกิล ${skillName} — ลดความเสียหาย ${current.damageReductionPercent}% เป็นเวลา ${skillProfile.duration} เทิร์น`;
+      } else if (skillProfile.effect === "damage_taken_increase") {
+        defender.damageTakenIncreasePercent = Math.min(1000, Math.max(0, skillProfile.power));
+        defender.damageTakenIncreaseTurns = skillProfile.duration;
+        result.message += ` • ใช้สกิล ${skillName} — ${defender.name} รับดาเมจเพิ่ม ${defender.damageTakenIncreasePercent}% เป็นเวลา ${skillProfile.duration} เทิร์น`;
       } else if (skillProfile.effect === "summon") {
         const summonName = String(skill?.summonName || 'ลูกน้อง').trim() || 'ลูกน้อง';
         const maxCount = Math.max(1, Math.min(20, Math.round(Number(skill?.summonMaxCount) || 1)));
@@ -4100,7 +4119,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
             result.message += ` • ${modifier.kind === 'buff' ? '✨' : '⚠️'} ${modifier.label || (modifier.kind === 'buff' ? 'บัฟ' : 'ดีบัฟ')} ${modifier.stat.toUpperCase()} ${modifier.kind === 'buff' ? '+' : '-'}${value} เป็นเวลา ${duration} เทิร์น`;
           } else if (modifier.kind === 'status' && modifier.status) {
             const extraKind = modifier.status as BattleExtraEffect['kind'];
-            const supported: BattleExtraEffect['kind'][] = ['bleeding','burn','poison','freeze','stun','regen','reduce_max_hp_percent','reduce_defense_percent','damage_percent','heal_percent','shield','reflect','damage_reduction'];
+            const supported: BattleExtraEffect['kind'][] = ['bleeding','burn','poison','freeze','stun','regen','reduce_max_hp_percent','reduce_defense_percent','damage_percent','heal_percent','shield','reflect','damage_reduction','damage_taken_increase'];
             if (supported.includes(extraKind)) {
               modifierTargets.forEach(target => { if (result) applyBattleExtraEffects(current, target, [{ kind: extraKind, value, duration, chance: 100, target: target.id === current.id ? 'self' : 'enemy', label: modifier.label || modifier.status }], result); });
             } else {
