@@ -160,6 +160,7 @@ export interface Item {
   battleDamagePercent?: number;
   /** ระยะเวลาบัฟดาเมจ (จำนวนเทิร์น) */
   battleDamageDuration?: number;
+  imageUrl?: string;
   /** ตัวคูณโชคระหว่างต่อสู้ เช่น 2 = โอกาส Passive/Effect/Crit เพิ่มเป็น 2 เท่า */
   battleLuckMultiplier?: number;
   /** โบนัสโอกาสคริติคอลจากไอเทม (%) */
@@ -228,6 +229,7 @@ export interface Item {
   /** ตั้งค่าสำหรับไอเทมเสกมอนสเตอร์/ลูกน้องระหว่างการต่อสู้ */
   summonName?: string;
   summonMaxCount?: number;
+  summonPerUse?: number;
   summonHp?: number;
   summonStrength?: number;
   summonDurability?: number;
@@ -360,6 +362,7 @@ export interface AdminStatusEffect {
   name: string;
   mode: 'buff' | 'nerf';
   power: number;
+  value?: number;
   duration: number;
   remaining: number;
   appliedAt: number;
@@ -572,7 +575,7 @@ export interface CardDuelRoom {
 }
 
 export type BattleMode = 'pvp' | 'pve' | 'random';
-export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect' | 'stun' | 'copy_ability' | 'immortal' | 'damage_reduction' | 'summon' | 'buff_stat';
+export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect' | 'reflect_no_damage' | 'stun' | 'copy_ability' | 'immortal' | 'damage_reduction' | 'summon' | 'buff_stat';
 export type BattleSkillTarget =
   | 'self'
   | 'enemy'
@@ -637,7 +640,7 @@ export interface BattleBotPassiveTraits {
   reflectImmunity?: boolean;
 }
 
-export type BattleExtraEffectKind = 'bleeding' | 'burn' | 'poison' | 'freeze' | 'stun' | 'reduce_max_hp_percent' | 'reduce_defense_percent' | 'damage_percent' | 'heal_percent' | 'shield' | 'reflect' | 'damage_reduction';
+export type BattleExtraEffectKind = 'bleeding' | 'burn' | 'poison' | 'freeze' | 'stun' | 'regen' | 'reduce_max_hp_percent' | 'reduce_defense_percent' | 'damage_percent' | 'heal_percent' | 'shield' | 'reflect' | 'damage_reduction';
 
 export interface BattleExtraEffect { kind: BattleExtraEffectKind; value: number; duration?: number; chance?: number; target?: 'self' | 'enemy'; label?: string; }
 export type BattleDiceEffect = 'damage' | 'critical' | 'heal' | 'miss' | 'stun' | 'defense' | 'reflect';
@@ -771,6 +774,7 @@ export interface BattleCombatant {
   defenseTurns?: number;
   reflectPercent?: number;
   reflectTurns?: number;
+  reflectNoDamageTurns?: number;
   skillCooldowns?: Record<string, number>;
   /** จำนวนครั้งที่สกิลแต่ละ ID ถูกใช้ในเกมนี้ */
   skillUses?: Record<string, number>;
