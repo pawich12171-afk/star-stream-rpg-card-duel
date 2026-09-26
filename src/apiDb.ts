@@ -107,7 +107,7 @@ export function writeBatch(_db: typeof db) {
   };
 }
 
-export async function runTransaction(_db: typeof db, callback: (tx: any) => Promise<void>) {
+export async function runTransaction<T>(_db: typeof db, callback: (tx: any) => Promise<T>): Promise<T> {
   const operations: any[] = [];
   const tx = {
     async get(ref: DocumentReference) { return getDoc(ref); },
@@ -115,7 +115,8 @@ export async function runTransaction(_db: typeof db, callback: (tx: any) => Prom
     update(ref: DocumentReference, data: any) { operations.push({ op: 'update', collection: ref.collection, id: ref.id, data }); },
     delete(ref: DocumentReference) { operations.push({ op: 'delete', collection: ref.collection, id: ref.id }); }
   };
-  await callback(tx);
+  const result = await callback(tx);
   await request(`${API_BASE}?transaction=1`, { method: 'POST', body: JSON.stringify({ operations }) });
+  return result;
 }
 export { db };
