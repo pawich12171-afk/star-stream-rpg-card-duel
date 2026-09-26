@@ -749,7 +749,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       buffStat: editingSkillEffect === 'buff_stat' ? editingSkillBuffStat : undefined,
       buffAmount: editingSkillEffect === 'buff_stat' ? Math.max(0, editingSkillBuffAmount) : undefined,
       buffDuration: editingSkillEffect === 'buff_stat' ? Math.max(1, editingSkillBuffDuration) : undefined,
-      summonUnits: editingSkillEffect === 'summon' && editingSkillSummonUnits.length ? [...editingSkillSummonUnits] : undefined,
+      summonUnits: editingSkillEffect === 'summon' ? [...editingSkillSummonUnits] : undefined,
       battleEffectDuration: Math.max(1, Math.min(10, Math.round(Number(editingSkillEffectDuration) || 1))),
       battlePower: Math.max(1, Number(editingSkillPower) || 1),
       damageScaling: editingSkillScaling,
@@ -818,7 +818,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         buffStat: newRewardBattleEffect === 'buff_stat' ? newRewardBuffStat : undefined,
         buffAmount: newRewardBattleEffect === 'buff_stat' ? Math.max(0, newRewardBuffAmount) : undefined,
         buffDuration: newRewardBattleEffect === 'buff_stat' ? Math.max(1, newRewardBuffDuration) : undefined,
-        summonUnits: newRewardBattleEffect === 'summon' && newRewardSummonUnits.length ? [...newRewardSummonUnits] : undefined,
+        summonUnits: newRewardBattleEffect === 'summon' ? [...newRewardSummonUnits] : undefined,
         battleEffectDuration: Math.max(1, Math.min(10, Math.round(Number(newRewardEffectDuration) || 1))),
         battlePower: Math.max(1, Number(newRewardBattlePower) || 1),
         damageScaling: newRewardDamageScaling,
@@ -2824,7 +2824,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 if(patch.buffDuration != null) setEditingSkillBuffDuration(Number(patch.buffDuration));
                 if(patch.summonUnits) setEditingSkillSummonUnits(patch.summonUnits);
               }}
-            />              <label className="text-[10px] text-slate-400">พลังสกิล<input type="number" min={1} value={editingSkillPower} onChange={e => setEditingSkillPower(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
+            />              <label className="text-[10px] text-slate-400">{editingSkillEffect === 'reflect' || editingSkillEffect === 'reflect_no_damage' ? '🔄 สะท้อนดาเมจ (%)' : editingSkillEffect === 'damage_reduction' ? '📉 ลดดาเมจ (%)' : editingSkillEffect === 'defense' ? '🛡️ ป้องกัน (% Max HP)' : editingSkillEffect === 'heal' ? '❤️ ฟื้นฟู (% Max HP)' : editingSkillEffect === 'damage' ? '⚔️ ดาเมจ' : 'พลังสกิล'}<input type="number" min={1} value={editingSkillPower} onChange={e => setEditingSkillPower(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
               <label className="text-[10px] text-slate-400">คูลดาวน์<input type="number" min={0} value={editingSkillCooldown} onChange={e => setEditingSkillCooldown(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /><input type="number" min={1} max={10} value={editingSkillEffectDuration} onChange={e => setEditingSkillEffectDuration(Math.max(1, Math.min(10, Number(e.target.value)||1)))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" placeholder="ระยะเวลาเอฟเฟกต์" /></label>
               {editingSkillEffect === 'damage' && <div className="sm:col-span-2 rounded-2xl border border-amber-500/30 bg-amber-950/10 p-3"><div className="text-xs font-black text-amber-200 mb-2">⚔️ ดาเมจตามค่าสเตตัส</div><div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><select value={editingSkillScaling} onChange={e => setEditingSkillScaling(e.target.value as NonNullable<Skill['damageScaling']>)} className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white"><option value="fixed">ค่าพลังสกิลคงที่</option><option value="strength">พละกำลัง (STR)</option><option value="durability">ความแข็งแกร่ง/ทนทาน (DUR)</option><option value="agility">ความว่องไว (AGI)</option><option value="magic">พลังเวท (MAG)</option></select><input type="number" min={0} step={0.1} value={editingSkillScalingMultiplier} onChange={e => setEditingSkillScalingMultiplier(Number(e.target.value))} placeholder="ตัวคูณ" className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></div><div className="text-[10px] text-slate-500 mt-1">เช่น STR 100 × 1.5 = 150 ดาเมจ</div></div>}
               <label className="text-[10px] text-slate-400">โอกาสคริ %<input type="number" min={0} max={100} step={0.1} value={editingSkillCritChance} onChange={e => setEditingSkillCritChance(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
