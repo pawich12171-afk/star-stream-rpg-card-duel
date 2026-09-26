@@ -3606,7 +3606,9 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
       isBoss: Boolean(normalizedItem.summonIsBoss),
       skillCooldowns: {},
       skillUses: {},
-      skills: Array.isArray(template?.skills) && template.skills.length ? template.skills.map((s: any) => ({ ...s })) : (Array.isArray(normalizedItem.summonSkills) ? normalizedItem.summonSkills.map((s: any) => ({ ...s })) : []),
+      skills: Array.isArray(template?.skills)
+        ? template.skills.map((s: any) => ({ ...s }))
+        : (Array.isArray(normalizedItem.summonSkills) ? normalizedItem.summonSkills.map((s: any) => ({ ...s })) : []),
     } as BattleCombatant;
     if (actor.team === 'a') normalizedRoom.teamA.push(summon); else normalizedRoom.teamB.push(summon);
     normalizedRoom.log = [{
