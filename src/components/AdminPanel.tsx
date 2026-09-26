@@ -2595,7 +2595,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if(patch.summonHp != null) setNewSummonHp(Number(patch.summonHp));
     if(patch.summonDamage != null) setNewSummonDamage(Number(patch.summonDamage));
     if(patch.summonAgility != null) setNewSummonAgility(Number(patch.summonAgility));
-    if(patch.summonUnits) setNewRewardSummonUnits(patch.summonUnits);
+    if(patch.summonUnits !== undefined) setNewRewardSummonUnits(patch.summonUnits);
   }}
 />
 
@@ -2823,7 +2823,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 if(patch.buffStat) setEditingSkillBuffStat(patch.buffStat);
                 if(patch.buffAmount != null) setEditingSkillBuffAmount(Number(patch.buffAmount));
                 if(patch.buffDuration != null) setEditingSkillBuffDuration(Number(patch.buffDuration));
-                if(patch.summonUnits) setEditingSkillSummonUnits(patch.summonUnits);
+                if(patch.summonUnits !== undefined) setEditingSkillSummonUnits(patch.summonUnits);
               }}
             />              <label className="text-[10px] text-slate-400">{editingSkillEffect === 'reflect' || editingSkillEffect === 'reflect_no_damage' ? '🔄 สะท้อนดาเมจ (%)' : editingSkillEffect === 'damage_reduction' ? '📉 ลดดาเมจ (%)' : editingSkillEffect === 'defense' ? '🛡️ ป้องกัน (% Max HP)' : editingSkillEffect === 'heal' ? '❤️ ฟื้นฟู (% Max HP)' : editingSkillEffect === 'damage' ? '⚔️ ดาเมจ' : 'พลังสกิล'}<input type="number" min={1} value={editingSkillPower} onChange={e => setEditingSkillPower(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
               <label className="text-[10px] text-slate-400">คูลดาวน์
