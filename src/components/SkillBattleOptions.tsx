@@ -123,7 +123,12 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
               <div className="rounded-xl border border-cyan-400/20 bg-cyan-950/10 p-3 space-y-2">
                 <div className="text-[11px] font-black text-cyan-100">🧩 โครงสร้างประเภทสกิล</div>
                 <label className="block text-[10px] text-slate-400">ประเภทสกิล
-                  <select value={s.skillCategory || (s.battleEffect==='heal'?'heal':s.battleEffect==='defense'?'defense':s.battleEffect==='stun'?'control':'attack')} onChange={e=>updateUnitSkill(u,s.id,{skillCategory:e.target.value as any})} className="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-white text-xs">
+                  <select value={s.skillCategory || (s.battleEffect==='heal'?'heal':s.battleEffect==='defense'?'defense':s.battleEffect==='stun'?'control':'attack')} onChange={e=>{
+                    const next=e.target.value as any;
+                    const defaults:any={attack:'damage',buff:'buff_stat',debuff:'damage_reduction',control:'stun',heal:'heal',defense:'defense',utility:'damage'};
+                    const targets:any={heal:'selected_ally',defense:'self',buff:'self',debuff:'enemy',control:'enemy'};
+                    updateUnitSkill(u,s.id,{skillCategory:next,battleEffect:defaults[next] || 'damage',targetMode:targets[next] || s.targetMode || 'enemy'});
+                  }} className="mt-1 w-full rounded-xl bg-slate-900 border border-cyan-400/30 px-3 py-2 text-white text-xs shadow-[0_0_18px_rgba(34,211,238,0.08)]">
                     <option value="attack">⚔️ โจมตี / ดาเมจ</option><option value="buff">✨ บัฟ</option><option value="debuff">⚠️ ดีบัฟ</option><option value="control">💫 ควบคุม</option><option value="heal">❤️ ฟื้นฟู</option><option value="defense">🛡️ ป้องกัน</option><option value="utility">🧬 Utility</option>
                   </select>
                 </label>
@@ -139,7 +144,11 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
                     </select>
                   </label>
                 </div>
-                <div className="text-[9px] leading-relaxed text-slate-500">คำอธิบาย: ประเภทคือหมวดของสกิล ส่วนผลหลักคือสิ่งที่สกิลทำจริง และเป้าหมายกำหนดว่าจะส่งผลกับใคร</div>
+                <div className="rounded-lg border border-white/5 bg-slate-950/50 p-2 text-[9px] leading-relaxed text-slate-400">
+                  <div className="font-bold text-cyan-200">💡 ประเภทสกิลคือ “หน้าที่หลัก”</div>
+                  <div>โจมตี = ทำดาเมจ • ฟื้นฟู = เติม HP • ป้องกัน = เพิ่มการป้องกัน • บัฟ = เพิ่มความสามารถ • ดีบัฟ = ลดความสามารถ/ใส่สถานะ • ควบคุม = สตันหรือหยุดการกระทำ</div>
+                  <div className="mt-1 text-slate-500">เมื่อเปลี่ยนประเภท ระบบจะเลือก “ผลหลัก” และ “เป้าหมาย” ที่เหมาะสมให้อัตโนมัติ แต่คุณแก้เองได้</div>
+                </div>
               </div>
               {s.battleEffect === 'damage' && <div className="rounded-xl border border-rose-400/20 bg-rose-950/10 p-3"><div className="mb-2 text-[10px] font-black text-rose-200">⚔️ ค่าการโจมตี</div><div className="grid grid-cols-2 gap-2"><label className="text-[9px] text-slate-400">พลัง/ดาเมจ<input type="number" value={s.battlePower ?? 10} onChange={e=>updateUnitSkill(u,s.id,{battlePower:num(e.target.value,10)})} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white"/></label><label className="text-[9px] text-slate-400">คูลดาวน์ (เทิร์น)<input type="number" min="0" value={s.cooldownTurns ?? 0} onChange={e=>updateUnitSkill(u,s.id,{cooldownTurns:Math.max(0,num(e.target.value))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white"/></label></div></div>}
               {s.battleEffect === 'heal' && <div className="rounded-xl border border-emerald-400/20 bg-emerald-950/10 p-3"><div className="mb-2 text-[10px] font-black text-emerald-200">❤️ ค่าฟื้นฟู</div><div className="grid grid-cols-2 gap-2"><label className="text-[9px] text-slate-400">ฟื้นฟูจาก Max HP (%)<input type="number" min="0" max="100" value={statValue('heal_percent')} onChange={e=>setStat('heal_percent',Math.max(0,Math.min(100,num(e.target.value))))} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white"/></label><label className="text-[9px] text-slate-400">ฟื้นฟูเพิ่มแบบค่าคงที่<input type="number" min="0" value={s.battlePower ?? 0} onChange={e=>updateUnitSkill(u,s.id,{battlePower:Math.max(0,num(e.target.value))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white"/></label></div><div className="mt-2 text-[9px] text-emerald-100/70">ตัวอย่าง: 20% = ฟื้น 20% ของ Max HP ของผู้รับผล</div></div>}
