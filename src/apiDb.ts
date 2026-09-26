@@ -4,7 +4,7 @@ type SnapshotDoc = { id: string; data(): any; exists(): boolean; ref: DocumentRe
 type QuerySnapshot = { docs: SnapshotDoc[]; empty: boolean; metadata: { fromCache: boolean; hasPendingWrites: boolean }; forEach(cb: (doc: SnapshotDoc) => void): void };
 type DocSnapshot = SnapshotDoc & { metadata: { fromCache: boolean; hasPendingWrites: boolean } };
 
-const API_BASE = '/api/database';
+const API_BASE = '/.netlify/functions/database';
 const db = { type: 'star-stream-api' };
 
 function collectionPath(ref: CollectionReference) { return `${API_BASE}?collection=${encodeURIComponent(ref.collection)}`; }
