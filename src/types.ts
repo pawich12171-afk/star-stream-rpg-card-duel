@@ -631,14 +631,26 @@ export interface BattleSkillModifier {
 }
 
 export interface BattleBotPassiveTraits {
-  /** ไม่รับสถานะผิดปกติ */
+  /** ไม่รับสถานะผิดปกติทั้งหมด */
   statusImmunity?: boolean;
+  /** ไม่รับสถานะผิดปกติทั้งหมดที่เลือกไว้ */
+  statusImmunityAll?: boolean;
+  /** รายการสถานะผิดปกติที่ป้องกันแบบเลือกเอง */
+  statusImmunityStatuses?: string[];
   /** ตัวคูณการฟื้นฟู HP ที่ได้รับจากทุกแหล่ง เช่น 2 = 2 เท่า */
   healingReceivedMultiplier?: number;
   /** ไม่สามารถถูกสกิลคัดลอกความสามารถ */
   copyImmunity?: boolean;
   /** ไม่ได้รับความเสียหายจากการสะท้อนกลับ */
   reflectImmunity?: boolean;
+  /** ถ้ายังมีลูกน้องของตัวเองมีชีวิตอยู่ จะไม่รับดาเมจ */
+  damageBlockedWhileSummonsAlive?: boolean;
+  /** Passive ลบสถานะผิดปกติเป็นช่วง ๆ */
+  cleanseAbnormalStatuses?: string[];
+  /** ถ้า true จะลบสถานะผิดปกติทั้งหมดตามรอบ */
+  cleanseAllAbnormalStatuses?: boolean;
+  /** ทุกกี่เทิร์นของมอน/บอสที่จะล้างสถานะ */
+  cleanseAbnormalEveryTurns?: number;
 }
 
 export type BattleExtraEffectKind = 'bleeding' | 'burn' | 'poison' | 'freeze' | 'stun' | 'regen' | 'reduce_max_hp_percent' | 'reduce_defense_percent' | 'damage_percent' | 'heal_percent' | 'shield' | 'reflect' | 'damage_reduction' | 'damage_taken_increase';
@@ -821,6 +833,8 @@ export interface BattleCombatant {
   copiedAbilityTurns?: number;
   /** Passive ของมอน/บอส */
   passiveTraits?: BattleBotPassiveTraits;
+  /** ตัวนับเทิร์นของ Passive ล้างสถานะ */
+  passiveCleanseTurnCounter?: number;
 }
 
 export interface BattleLogEntry {
