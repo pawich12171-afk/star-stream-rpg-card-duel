@@ -1228,11 +1228,39 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
 <label className="text-[11px] text-slate-400">คูลดาวน์ (เทิร์น)<input className={inputClass+" mt-1"} type="number" min="0" value={minionDraft.skillCooldown} onChange={e=>setMinionDraft({...minionDraft,skillCooldown:e.target.value})} /></label>
 <SkillBattleOptions config={{skillCategory:minionDraft.skillCategory,targetMode:minionDraft.skillTargetMode,targetConfig:minionDraft.skillTargetConfig,skillModifiers:minionDraft.skillModifiers,battleEffect:minionDraft.skillEffect}} onChange={patch=>setMinionDraft(prev=>({...prev,skillCategory:patch.skillCategory ?? prev.skillCategory,skillTargetMode:patch.targetMode ?? prev.skillTargetMode,skillTargetConfig:patch.targetConfig ?? prev.skillTargetConfig,skillModifiers:patch.skillModifiers ?? prev.skillModifiers,skillEffect:patch.battleEffect ?? prev.skillEffect}))} /><label className="text-[11px] text-slate-400">จำนวนครั้งต่อเกม<select className={inputClass+" mt-1"} value={minionSkillUseLimit} onChange={e=>setMinionSkillUseLimit(e.target.value as 'unlimited' | 'once_per_battle')}><option value="unlimited">ใช้ได้หลายครั้งตามคูลดาวน์</option><option value="once_per_battle">ใช้ได้ 1 ครั้งต่อเกม</option></select></label>
 
-</div>
-<button type="button" className={buttonClass+" mt-2 bg-violet-500 text-white"} onClick={saveMinionDraftSkill}>{editingMinionSkillId ? "💾 บันทึกการแก้ไขสกิล" : "+ เพิ่มสกิลให้ลูกน้องตัวนี้"}</button>
-{editingMinionSkillId && <button type="button" className={buttonClass+" mt-2 ml-2 bg-slate-700 text-white"} onClick={()=>{setEditingMinionSkillId("");setMinionDraft(prev=>({...prev,skillName:"",skillDescription:"",skillPower:"5",skillPowerMode:"flat",skillEffectDuration:"1",skillChance:"100",skillCooldown:"0",skillEffect:"damage",skillCategory:"attack",skillTargetMode:"enemy",skillTargetConfig:undefined,skillModifiers:[]}));}}>ยกเลิกแก้ไข</button>}
-{minionDraft.skills.length>0&&<div className="mt-2 space-y-1">{minionDraft.skills.map((s,i)=><div key={s.id} className="rounded-lg border border-slate-700 px-2 py-2 text-[11px]"><div className="flex flex-wrap items-center gap-2"><b>{i+1}. {s.name}</b><span className="text-slate-400">— {s.description}</span><span className="text-fuchsia-300">· พลัง {s.battlePower} · {s.battleEffect}</span>{['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(s.battleEffect)) && <span className="rounded border border-amber-400/30 bg-amber-950/20 px-1.5 py-0.5 text-amber-200">⏱️ {Math.max(1, Number(s.battleEffectDuration) || 1)} เทิร์น</span>}</div><div className="mt-1 flex gap-3"><button type="button" className="text-sky-300 font-bold" onClick={()=>editMinionDraftSkill(s)}>✏️ แก้ไข</button><button type="button" className="text-rose-300 font-bold" onClick={()=>deleteMinionDraftSkill(s.id)}>🗑️ ลบ</button></div></div>)}</div>
-</div>
+      </div>
+      <button type="button" className={buttonClass+" mt-2 bg-violet-500 text-white"} onClick={saveMinionDraftSkill}>
+        {editingMinionSkillId ? "💾 บันทึกการแก้ไขสกิล" : "+ เพิ่มสกิลให้ลูกน้องตัวนี้"}
+      </button>
+      {editingMinionSkillId && (
+        <button type="button" className={buttonClass+" mt-2 ml-2 bg-slate-700 text-white"} onClick={()=>{
+          setEditingMinionSkillId("");
+          setMinionDraft(prev=>({...prev,skillName:"",skillDescription:"",skillPower:"5",skillPowerMode:"flat",skillEffectDuration:"1",skillChance:"100",skillCooldown:"0",skillEffect:"damage",skillCategory:"attack",skillTargetMode:"enemy",skillTargetConfig:undefined,skillModifiers:[]}));
+        }}>ยกเลิกแก้ไข</button>
+      )}
+      {minionDraft.skills.length > 0 && (
+        <div className="mt-2 space-y-1">
+          {minionDraft.skills.map((s,i) => (
+            <div key={s.id} className="rounded-lg border border-slate-700 px-2 py-2 text-[11px]">
+              <div className="flex flex-wrap items-center gap-2">
+                <b>{i+1}. {s.name}</b>
+                <span className="text-slate-400">— {s.description}</span>
+                <span className="text-fuchsia-300">· พลัง {s.battlePower} · {s.battleEffect}</span>
+                {['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(s.battleEffect)) && (
+                  <span className="rounded border border-amber-400/30 bg-amber-950/20 px-1.5 py-0.5 text-amber-200">
+                    ⏱️ {Math.max(1, Number(s.battleEffectDuration) || 1)} เทิร์น
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 flex gap-3">
+                <button type="button" className="text-sky-300 font-bold" onClick={()=>editMinionDraftSkill(s)}>✏️ แก้ไข</button>
+                <button type="button" className="text-rose-300 font-bold" onClick={()=>deleteMinionDraftSkill(s.id)}>🗑️ ลบ</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
       </div>
       <div className="flex gap-2 mt-2">
         <button type="button" className={buttonClass+" flex-1 bg-cyan-500 text-slate-950"} onClick={addConfiguredMinion}>{editingMinionId ? "💾 บันทึกการแก้ไขลูกน้อง" : "+ เพิ่มลูกน้องตัวนี้"}</button>
