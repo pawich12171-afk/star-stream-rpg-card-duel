@@ -29,6 +29,7 @@ import {
   BattleRoom,
   BattleCombatant,
   BattleRollResult,
+  BattleExtraEffect,
   AdminStatusEffect,
   BattleSkillEffect,
   Skill,
@@ -3560,7 +3561,7 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     const failed = normalizedItem.useConditions.filter((condition: any) => condition && condition.enabled !== false).some((condition: any) => {
       const value = Number(condition.value) || 0;
       const hpPercent = actor.maxHp > 0 ? (actor.hp / actor.maxHp) * 100 : 0;
-      const statValue = Number(actor.stats?.[condition.stat]) || 0;
+      const statValue = condition.stat && condition.stat in actor.stats ? Number(actor.stats[condition.stat as keyof CharacterStats]) || 0 : 0;
       switch (condition.type) {
         case 'hp_below_percent': return !(hpPercent < value);
         case 'hp_above_percent': return !(hpPercent > value);
@@ -3896,6 +3897,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       if (current.equippedDrawbacks.length) result.message += ' • ⚠️ ข้อเสียจากอุปกรณ์ทำงาน';
     }
     if (skillProfile) {
+      if (!result) return { room: nextRoom, result: null };
       result.skillEffect = skillProfile.effect;
       result.skillPower = skillProfile.power;
       const targetMode = skill?.targetMode || 'enemy';
@@ -4098,7 +4100,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
             result.message += ` • ${modifier.kind === 'buff' ? '✨' : '⚠️'} ${modifier.label || (modifier.kind === 'buff' ? 'บัฟ' : 'ดีบัฟ')} ${modifier.stat.toUpperCase()} ${modifier.kind === 'buff' ? '+' : '-'}${value} เป็นเวลา ${duration} เทิร์น`;
           } else if (modifier.kind === 'status' && modifier.status) {
             const extraKind = modifier.status as BattleExtraEffect['kind'];
-            const supported: BattleExtraEffect['kind'][] = ['bleeding','burn','poison','freeze','stun','reduce_max_hp_percent','reduce_defense_percent','damage_percent','heal_percent','shield','reflect','damage_reduction'];
+            const supported: BattleExtraEffect['kind'][] = ['bleeding','burn','poison','freeze','stun','regen','reduce_max_hp_percent','reduce_defense_percent','damage_percent','heal_percent','shield','reflect','damage_reduction'];
             if (supported.includes(extraKind)) {
               modifierTargets.forEach(target => applyBattleExtraEffects(current, target, [{ kind: extraKind, value, duration, chance: 100, target: target.id === current.id ? 'self' : 'enemy', label: modifier.label || modifier.status }], result));
             } else {
