@@ -7,11 +7,13 @@ interface Props {
   config: Partial<Skill>;
   onChange: (patch: Partial<Skill>) => void;
   showTarget?: boolean;
+  /** Persist summon-unit skill edits immediately when the parent editor supports it. */
+  onSaveSummonUnits?: (units: SummonUnit[]) => void | Promise<void>;
 }
 
 const num = (v: unknown, fallback = 0) => Number.isFinite(Number(v)) ? Number(v) : fallback;
 
-export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarget = true }) => {
+export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarget = true, onSaveSummonUnits }) => {
   const target = config.targetMode || 'enemy';
   const modifiers = Array.isArray(config.skillModifiers) ? config.skillModifiers : [];
   const addModifier = (kind: BattleSkillEffectKind) => onChange({ skillModifiers: [...modifiers, { id: 'skill-mod-' + Date.now() + '-' + (modifiers.length + 1), kind, stat: 'strength', value: 10, duration: 3, chance: 100, label: kind === 'buff' ? 'บัฟใหม่' : 'ดีบัฟใหม่' }] });
@@ -55,6 +57,11 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
     updateUnit(unit.id, { skills: (unit.skills || []).map(s => s.id === skillId ? { ...s, ...patch } : s) });
   const removeUnitSkill = (unit: SummonUnit, skillId: string) =>
     updateUnit(unit.id, { skills: (unit.skills || []).filter(s => s.id !== skillId) });
+  const saveSummonUnits = async () => {
+    const nextUnits = units.map(unit => ({ ...unit, skills: Array.isArray(unit.skills) ? unit.skills.map(skill => ({ ...skill })) : [] }));
+    onChange({ summonUnits: nextUnits });
+    if (onSaveSummonUnits) await onSaveSummonUnits(nextUnits);
+  };
   const [editingUnitSkillKey, setEditingUnitSkillKey] = useState<string | null>(null);
 
   return <div className="space-y-3 rounded-xl border border-violet-500/25 bg-violet-950/10 p-3">
@@ -131,9 +138,10 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
         <div className="space-y-1">
           {(u.skills || []).map(s => (
             <div key={s.id} className="col-span-2 rounded-xl border border-violet-400/20 bg-slate-950/60 p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
                   <div className="text-xs font-black text-violet-100">✨ {s.name || 'สกิลลูกน้อง'}</div>
+                  <div className="mt-1 text-[9px] text-slate-500">ตั้งค่าแยกจากสกิลหลักของตัวแม่</div>
                   {['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(s.battleEffect)) && <div className="mt-1 inline-flex rounded-md border border-amber-400/40 bg-amber-950/30 px-2 py-1 text-[10px] font-black text-amber-200">⏱️ ระยะเวลาสกิล: {Math.max(1, Number(s.battleEffectDuration) || 1)} เทิร์น</div>}
                 </div>
                 <div className="flex gap-1">
