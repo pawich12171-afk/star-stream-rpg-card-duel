@@ -2941,7 +2941,7 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
     const duration = Math.max(1, Math.floor(Number(effect.duration) || 1));
     const target = effect.target === 'self' ? attacker : defender;
     const isStatusEffect = ['stun', 'freeze', 'poison', 'burn', 'bleeding', 'slow', 'curse', 'weakness'].includes(effect.kind);
-    if (isStatusEffect && target.statusImmunityTurns && target.statusImmunityTurns > 0) {
+    if (isStatusEffect && (target.passiveTraits?.statusImmunity || (target.statusImmunityTurns && target.statusImmunityTurns > 0))) {
       result.message += ` • 🚫 ${target.name} ต้านสถานะ ${label}`;
       continue;
     }
@@ -2955,8 +2955,10 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
         result.message += ` • ${label} +${value}% ดาเมจ`;
       }
     } else if (effect.kind === 'heal_percent') {
-      result.heal += Math.max(0, Math.round(target.maxHp * value / 100));
-      result.message += ` • ${label} ฟื้น HP ${value}%`;
+      const healMultiplier = Math.max(0, Number(target.passiveTraits?.healingReceivedMultiplier) || 1);
+      const healed = Math.max(0, Math.round(target.maxHp * value / 100 * healMultiplier));
+      result.heal += healed;
+      result.message += ` • ${label} ฟื้น HP ${value}%${healMultiplier !== 1 ? ` ×${healMultiplier}` : ''}`;
     } else if (effect.kind === 'reduce_max_hp_percent') {
       const reduced = Math.max(1, Math.round(target.maxHp * (1 - Math.min(100, value) / 100)));
       const lost = Math.max(0, target.maxHp - reduced);
@@ -3744,8 +3746,9 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         if (healTargets.length > 1) {
           let totalHealed = 0;
           healTargets.forEach(unit => {
-            const flatHeal = Math.max(0, skillProfile.power);
-            const percentHeal = healPercent > 0 ? Math.round(unit.maxHp * healPercent / 100) : 0;
+            const healMultiplier = Math.max(0, Number(unit.passiveTraits?.healingReceivedMultiplier) || 1);
+            const flatHeal = Math.max(0, skillProfile.power * healMultiplier);
+            const percentHeal = healPercent > 0 ? Math.round(unit.maxHp * healPercent / 100 * healMultiplier) : 0;
             const before = unit.hp;
             unit.hp = Math.min(unit.maxHp, unit.hp + flatHeal + percentHeal);
             totalHealed += Math.max(0, unit.hp - before);
@@ -3754,8 +3757,9 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
           result.message += ` • ใช้สกิล ${skillName} ฮีลหมู่ ${healTargets.length} คน รวม +${totalHealed} HP`;
         } else {
           const healTarget = healTargets[0] || current;
-          const flatHeal = Math.max(0, skillProfile.power);
-          const percentHeal = healPercent > 0 ? Math.round(healTarget.maxHp * healPercent / 100) : 0;
+          const healMultiplier = Math.max(0, Number(healTarget.passiveTraits?.healingReceivedMultiplier) || 1);
+          const flatHeal = Math.max(0, skillProfile.power * healMultiplier);
+          const percentHeal = healPercent > 0 ? Math.round(healTarget.maxHp * healPercent / 100 * healMultiplier) : 0;
           const totalHeal = flatHeal + percentHeal;
           const beforeHeal = healTarget.hp;
           healTarget.hp = Math.min(healTarget.maxHp, healTarget.hp + totalHeal);
@@ -3830,9 +3834,11 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
           }
           result.message += ` • 🧿 ${current.name} เสกลูกน้อง ${spawnCount} ตัว (รวม ${currentCount + spawnCount}/${maxCount})`;
         }
-      } else if (skillProfile.effect === "copy_ability") {      } else if (skillProfile.effect === "copy_ability") {
+      } else if (skillProfile.effect === "copy_ability") {
         const sourceSkill = defender.skills?.[0];
-        if (sourceSkill) {
+        if (defender.passiveTraits?.copyImmunity) {
+          result.message += ` • 🚫 ${defender.name} มี Passive กัน Copy ความสามารถ`;
+        } else if (sourceSkill) {
           current.copiedAbility = { ...sourceSkill };
           current.copiedAbilityTurns = skillProfile.duration;
           if (sourceSkill.passiveEffects?.length) current.activeSkillPassives = [...(current.activeSkillPassives || []), ...sourceSkill.passiveEffects.map(effect => ({ ...effect, id: `copy:${current.id}:${effect.id}`, name: `คัดลอก: ${effect.name}` }))];
@@ -4054,7 +4060,8 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         defender.defenseValue = 0;
       }
       const adminReflectPercent = getAdminReflectPercent(defender);
-      const reflectPercent = Math.max(defender.reflectTurns && defender.reflectPercent ? defender.reflectPercent : 0, adminReflectPercent);
+      const reflectPercent = defender.passiveTraits?.reflectImmunity ? 0 : Math.max(defender.reflectTurns && defender.reflectPercent ? defender.reflectPercent : 0, adminReflectPercent);
+      if (defender.passiveTraits?.reflectImmunity && adminReflectPercent > 0) result.message += ` • 🛡️ ${defender.name} ต้านความเสียหายสะท้อน`;
       if (reflectPercent > 0 && finalDamage > 0) {
         const reflected = Math.max(1, Math.round(finalDamage * reflectPercent / 100));
         current.hp = Math.max(0, current.hp - reflected);
@@ -4073,7 +4080,10 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       result.message += ` • 💠 True Damage ${appliedTrueDamage}`;
       result.trueDamage = appliedTrueDamage;
     }
-    if (result.heal > 0 && !['all_allies','all_combatants'].includes(String(skill?.targetMode || 'enemy'))) current.hp = Math.min(current.maxHp, current.hp + result.heal);
+    if (result.heal > 0 && !['all_allies','all_combatants'].includes(String(skill?.targetMode || 'enemy'))) {
+      const healMultiplier = Math.max(0, Number(current.passiveTraits?.healingReceivedMultiplier) || 1);
+      current.hp = Math.min(current.maxHp, current.hp + Math.round(result.heal * healMultiplier));
+    }
     if (result.face.effect === "stun" && defender.hp > 0) defender.stunnedTurns = 1;
     nextRoom.log.unshift({
       id: "battle-log-" + Date.now(),
