@@ -3358,6 +3358,15 @@ function advanceAdminStatusEffects(unit: BattleCombatant) {
         if (removeAll || selected.has('stun') || selected.has('freeze')) unit.stunnedTurns = 0;
         if (removeAll || selected.has('freeze')) unit.frozenTurns = 0;
       }
+      if (removeAll || selected.has('damage_taken_increase')) {
+        unit.damageTakenIncreasePercent = 0;
+        unit.damageTakenIncreaseTurns = 0;
+      }
+      if (removeAll || selected.has('reflect')) {
+        unit.reflectPercent = 0;
+        unit.reflectTurns = 0;
+        unit.reflectNoDamageTurns = 0;
+      }
       unit.passiveCleanseTurnCounter = 0;
     }
   }
