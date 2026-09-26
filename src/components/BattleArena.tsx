@@ -1017,7 +1017,10 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   <div className="mt-2 space-y-1">
     {(botForm.drops || []).map(drop => (
       <div key={drop.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs">
-        <span>{drop.type === 'coin' ? '💰' : '📦'} {drop.type === 'coin' ? Number(drop.amount).toLocaleString() + ' Coins' : drop.name + ' ×' + Number(drop.amount)} · โอกาส {Number(drop.dropChancePercent ?? 100)}%</span>
+        <span className="flex min-w-0 items-center gap-2">
+        {drop.type === 'coin' ? <span className="text-base">💰</span> : drop.itemData?.imageUrl ? <img src={drop.itemData.imageUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover border border-slate-700" /> : null}
+        <span className="truncate">{drop.type === 'coin' ? Number(drop.amount).toLocaleString() + ' Coins' : drop.name + ' ×' + Number(drop.amount)} · โอกาส {Number(drop.dropChancePercent ?? 100)}%</span>
+      </span>
         <button type="button" className="text-rose-300" onClick={() => removeBotDrop(drop.id)}>ลบ</button>
       </div>
     ))}
@@ -1187,7 +1190,7 @@ setBotSummonName(skill.summonName||'ลูกน้อง');setBotSummonMaxCount
                 <input type="checkbox" checked={selectedBotIds.includes(bot.id)} onChange={() => toggleBot(bot.id)} />
                 <img src={bot.avatarUrl} alt="" className="h-8 w-8 rounded-lg object-cover" />
                 <span className="font-bold text-white">{bot.name}</span>
-                {bot.isBoss ? <span className="ml-auto flex items-center gap-1 text-[10px] font-black text-amber-300"><Skull className="h-3 w-3" />BOSS</span> : <span className="ml-auto text-[10px] text-slate-500">HP {bot.maxHp}</span>}
+                <span className="ml-auto flex items-center gap-2 text-[10px] text-slate-400"><span>HP {Math.max(0, Number(bot.hp) || 0)}/{Math.max(1, Number(bot.maxHp) || 1)}</span>{bot.isBoss && <span className="flex items-center gap-1 font-black text-amber-300"><Skull className="h-3 w-3" />BOSS</span>}</span>
               </label>
             ))}
           </div>
