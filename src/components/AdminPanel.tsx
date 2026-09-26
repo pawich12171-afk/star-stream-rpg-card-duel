@@ -749,7 +749,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       buffStat: editingSkillEffect === 'buff_stat' ? editingSkillBuffStat : undefined,
       buffAmount: editingSkillEffect === 'buff_stat' ? Math.max(0, editingSkillBuffAmount) : undefined,
       buffDuration: editingSkillEffect === 'buff_stat' ? Math.max(1, editingSkillBuffDuration) : undefined,
-      summonUnits: editingSkillEffect === 'summon' ? [...editingSkillSummonUnits] : undefined,
+      // บันทึก [] ด้วยเสมอ เพื่อให้การลบลูกน้อง/สกิลลูกน้องมีผลจริงหลังรีเฟรช
+      summonUnits: [...editingSkillSummonUnits],
       battleEffectDuration: Math.max(1, Math.min(10, Math.round(Number(editingSkillEffectDuration) || 1))),
       battlePower: Math.max(1, Number(editingSkillPower) || 1),
       damageScaling: editingSkillScaling,
