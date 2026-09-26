@@ -346,7 +346,7 @@ export default function App() {
       nickname: String(candidate.nickname || ''),
       avatarUrl: String(candidate.avatarUrl || '/avatars/system.svg'),
       characteristics: Array.isArray(candidate.characteristics) ? candidate.characteristics : [],
-      stats: { strength: 0, durability: 0, agility: 0, magic: 0, ...(candidate.stats || {}) },
+      stats: { strength: Number(candidate.stats?.strength) || 0, durability: Number(candidate.stats?.durability) || 0, agility: Number(candidate.stats?.agility) || 0, magic: Number(candidate.stats?.magic) || 0 },
       skills: Array.isArray(candidate.skills) ? candidate.skills : [],
       inventory: Array.isArray(candidate.inventory) ? candidate.inventory : [],
       quests: Array.isArray(candidate.quests) ? candidate.quests : [],
