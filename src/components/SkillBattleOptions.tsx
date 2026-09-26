@@ -133,7 +133,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
               <div className="flex items-center justify-between">
                 <div className="text-xs font-black text-violet-100">✨ {s.name || 'สกิลลูกน้อง'}</div>
                 <div className="flex gap-1">
-                  <button type="button" onClick={() => setEditingUnitSkillKey(editingUnitSkillKey === `${u.id}:${s.id}` ? null : `${u.id}:${s.id}`)} className="rounded-lg bg-violet-950/50 px-2 py-1 text-[10px] text-violet-200">✏️ {editingUnitSkillKey === `${u.id}:${s.id}` ? 'ปิดการแก้ไข' : 'แก้ไข'}</button>
+                  <button type="button" onClick={() => setEditingUnitSkillKey(editingUnitSkillKey === `${u.id}:${s.id}` ? null : `${u.id}:${s.id}`)} className="rounded-lg bg-violet-700/70 px-3 py-1.5 text-[11px] font-bold text-white border border-violet-300/30">✏️ {editingUnitSkillKey === `${u.id}:${s.id}` ? 'ปิดการแก้ไข' : 'แก้ไขสกิล'}</button>
                   <button type="button" onClick={() => { removeUnitSkill(u, s.id); if (editingUnitSkillKey === `${u.id}:${s.id}`) setEditingUnitSkillKey(null); }} className="rounded-lg bg-rose-950/50 px-2 py-1 text-[10px] text-rose-300">ลบ</button>
                 </div>
               </div>
@@ -182,8 +182,8 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
                   <input type="number" min="0" max={['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(s.battleEffect)) ? 100 : undefined}
                     value={s.battlePower ?? 10} onChange={e => updateUnitSkill(u, s.id, {battlePower: Math.max(0, Math.min(['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(s.battleEffect)) ? 100 : 999999, num(e.target.value, 10)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white" />
                 </label>
-                {['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(s.battleEffect)) && <label className="text-[9px] text-slate-400">⏱️ ระยะเวลา (เทิร์น)
-                  <input type="number" min="1" value={s.battleEffectDuration ?? 1} onChange={e => updateUnitSkill(u, s.id, {battleEffectDuration: Math.max(1, num(e.target.value, 1))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white" />
+                {['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(s.battleEffect)) && <label className="text-[9px] text-slate-400">⏱️ ระยะเวลาคงอยู่ (เทิร์น)
+                  <input type="number" min="1" step="1" value={s.battleEffectDuration ?? 1} onChange={e => updateUnitSkill(u, s.id, {battleEffectDuration: Math.max(1, Math.floor(num(e.target.value, 1)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-amber-400/40 px-2 py-2 text-white" />
                 </label>}
                 <label className="text-[9px] text-slate-400">โอกาสใช้สกิล (%)
                   <input type="number" min="0" max="100" value={s.aiChancePercent ?? 100} onChange={e => updateUnitSkill(u, s.id, {aiChancePercent: Math.max(0, Math.min(100, num(e.target.value, 100)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white" />
