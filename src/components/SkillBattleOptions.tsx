@@ -159,7 +159,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <label className="text-[9px] text-slate-400">ผลหลัก
-                  <select value={s.battleEffect || 'damage'} onChange={e => updateUnitSkill(u, s.id, {battleEffect: e.target.value as BattleSkillEffectKind})} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white">
+                  <select value={s.battleEffect || 'damage'} onChange={e => updateUnitSkill(u, s.id, {battleEffect: e.target.value as BattleSkillEffect})} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white">
                     <option value="damage">⚔️ ดาเมจ</option>
                     <option value="heal">❤️ ฟื้นฟู</option>
                     <option value="defense">🛡️ ป้องกัน</option>
