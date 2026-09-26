@@ -3535,7 +3535,7 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     const amount = Math.max(0, Number(normalizedItem.effectValue) || 0);
     if (itemTargets.length > 1) {
       itemTargets.forEach(target => {
-        target.stats = { ...target.stats, [stat]: Math.max(0, Number(target.stats?.[stat]) || 0) + amount };
+        target.stats = { ...target.stats, [stat]: Math.max(0, Number((target.stats as unknown as Record<string, number>)[String(stat)]) || 0) + amount };
       });
     } else if (stat in stats) {
       stats[stat] = Math.max(0, Number(stats[stat]) || 0) + amount;
@@ -3561,7 +3561,7 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
     const failed = normalizedItem.useConditions.filter((condition: any) => condition && condition.enabled !== false).some((condition: any) => {
       const value = Number(condition.value) || 0;
       const hpPercent = actor.maxHp > 0 ? (actor.hp / actor.maxHp) * 100 : 0;
-      const statValue = condition.stat && condition.stat in actor.stats ? Number(actor.stats[condition.stat as keyof CharacterStats]) || 0 : 0;
+      const statValue = condition.stat && condition.stat in actor.stats ? Number((actor.stats as unknown as Record<string, number>)[String(condition.stat)]) || 0 : 0;
       switch (condition.type) {
         case 'hp_below_percent': return !(hpPercent < value);
         case 'hp_above_percent': return !(hpPercent > value);
