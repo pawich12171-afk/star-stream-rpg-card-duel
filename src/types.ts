@@ -41,6 +41,8 @@ export interface Skill {
   upgradeCount?: number;
   battleEffect?: BattleSkillEffect;
   battlePower?: number;
+  /** หน่วยของค่าผลหลัก: จำนวนคงที่ หรือเปอร์เซ็นต์ของ Max HP (สำหรับฮีล/โล่) */
+  battlePowerMode?: 'flat' | 'percent';
   /** วิธีคำนวณดาเมจ: คงที่ หรือผูกกับค่าสเตตัสของผู้โจมตี */
   damageScaling?: 'fixed' | 'strength' | 'durability' | 'agility' | 'magic';
   /** ตัวคูณของสเตตัส เช่น 1.5 = 150% ของค่า stat */
