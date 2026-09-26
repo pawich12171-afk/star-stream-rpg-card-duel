@@ -36,7 +36,15 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
   };
   const updateUnit = (id: string, patch: Partial<SummonUnit>) =>
     onChange({ summonUnits: units.map(u => u.id === id ? { ...u, ...patch } : u) });
-  const removeUnit = (id: string) => onChange({ summonUnits: units.filter(u => u.id !== id) });
+  const persistUnits = async (nextUnits: SummonUnit[]) => {
+    // Persist the exact post-edit array, including an intentionally empty skills[].
+    // This prevents deleted minion skills from being restored by a later stale save.
+    onChange({ summonUnits: nextUnits });
+    if (onSaveSummonUnits) await onSaveSummonUnits(nextUnits);
+  };
+  const removeUnit = (id: string) => {
+    void persistUnits(units.filter(u => u.id !== id));
+  };
   const addUnitSkill = (unit: SummonUnit) => {
     const skill: BattleBotSkill = {
       id: `summon-unit-skill-${Date.now()}`,
@@ -55,12 +63,20 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
   };
   const updateUnitSkill = (unit: SummonUnit, skillId: string, patch: Partial<BattleBotSkill>) =>
     updateUnit(unit.id, { skills: (unit.skills || []).map(s => s.id === skillId ? { ...s, ...patch } : s) });
-  const removeUnitSkill = (unit: SummonUnit, skillId: string) =>
-    updateUnit(unit.id, { skills: (unit.skills || []).filter(s => s.id !== skillId) });
+  const removeUnitSkill = (unit: SummonUnit, skillId: string) => {
+    const nextUnits = units.map(u => u.id === unit.id
+      ? { ...u, skills: (u.skills || []).filter(s => s.id !== skillId) }
+      : u
+    );
+    void persistUnits(nextUnits);
+  };
   const saveSummonUnits = async () => {
-    const nextUnits = units.map(unit => ({ ...unit, skills: Array.isArray(unit.skills) ? unit.skills.map(skill => ({ ...skill })) : [] }));
-    onChange({ summonUnits: nextUnits });
-    if (onSaveSummonUnits) await onSaveSummonUnits(nextUnits);
+    const nextUnits = units.map(unit => ({
+      ...unit,
+      // Always persist [] when the user removed every skill.
+      skills: Array.isArray(unit.skills) ? unit.skills.map(skill => ({ ...skill })) : [],
+    }));
+    await persistUnits(nextUnits);
   };
   const [editingUnitSkillKey, setEditingUnitSkillKey] = useState<string | null>(null);
 
