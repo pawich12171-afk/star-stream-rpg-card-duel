@@ -180,7 +180,12 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <label className="text-[10px] text-slate-400">ผลหลัก
-                    <select value={s.battleEffect || 'damage'} onChange={e=>updateUnitSkill(u,s.id,{battleEffect:e.target.value as any})} className="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-white text-xs">
+                    <select value={s.battleEffect || 'damage'} onChange={e=>{
+                      const next=e.target.value as any;
+                      const categoryByEffect:any={heal:'heal',defense:'defense',damage_reduction:'defense',buff_stat:'buff',stun:'control',damage:'attack'};
+                      const targetByEffect:any={heal:'selected_ally',defense:'self',damage_reduction:'self',buff_stat:'self',stun:'enemy',damage:'enemy'};
+                      updateUnitSkill(u,s.id,{battleEffect:next,skillCategory:categoryByEffect[next] || s.skillCategory || 'attack',targetMode:targetByEffect[next] || s.targetMode || 'enemy'});
+                    }} className="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-white text-xs">
                       <option value="damage">⚔️ โจมตี / ดาเมจ</option><option value="heal">❤️ ฟื้นฟู HP</option><option value="defense">🛡️ ป้องกัน</option><option value="damage_reduction">🛡️ ลดดาเมจ (%)</option><option value="buff_stat">✨ เพิ่มสเตตัส</option><option value="stun">💫 สตัน</option><option value="reflect">🔄 สะท้อนดาเมจ</option><option value="summon">🧿 เสกลูกน้อง</option>
                     </select>
                   </label>
@@ -190,6 +195,19 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
                     </select>
                   </label>
                 </div>
+                {s.battleEffect === 'heal' && <div className="rounded-xl border-2 border-emerald-400/30 bg-emerald-950/20 p-3">
+                  <div className="text-[11px] font-black text-emerald-200">❤️ ตั้งค่าการฟื้นฟู HP โดยตรง</div>
+                  <div className="mt-1 text-[9px] text-emerald-100/70">ตรงนี้คือ “ความแรงของการฟื้นฟู” ไม่ใช่โอกาสใช้สกิล</div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <label className="text-[9px] text-slate-300">💚 ฟื้นฟูจาก Max HP (%)
+                      <input type="number" min="0" max="100" value={statValue('heal_percent')} onChange={e=>setStat('heal_percent',Math.max(0,Math.min(100,num(e.target.value))))} className="mt-1 w-full rounded-lg bg-slate-900 border border-emerald-400/30 px-2 py-2 text-white" placeholder="เช่น 20"/>
+                    </label>
+                    <label className="text-[9px] text-slate-300">❤️ ฟื้นฟู HP คงที่
+                      <input type="number" min="0" value={s.battlePower ?? 0} onChange={e=>updateUnitSkill(u,s.id,{battlePower:Math.max(0,num(e.target.value))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-emerald-400/30 px-2 py-2 text-white" placeholder="เช่น 50"/>
+                    </label>
+                  </div>
+                  <div className="mt-2 rounded-lg bg-emerald-400/5 p-2 text-[9px] text-emerald-100/80">ตัวอย่าง: ตั้ง <b>20%</b> = ฟื้น 20% ของ Max HP ผู้รับ + ค่า HP คงที่ถ้ามี</div>
+                </div>}
                 <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
                   <div className="mb-1 flex items-center justify-between"><span className="text-[9px] uppercase tracking-wider text-slate-500">รายละเอียดประเภทที่เลือก</span><span className="text-[9px] text-cyan-200">{s.skillCategory || 'attack'}</span></div>
                   <div className="text-[10px] leading-relaxed text-slate-200">{categoryGuide[s.skillCategory || 'attack']}</div>
