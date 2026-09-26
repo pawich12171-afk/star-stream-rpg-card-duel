@@ -3278,6 +3278,11 @@ function advanceAdminStatusEffects(unit: BattleCombatant) {
     unit.damageReductionTurns = Math.max(0, unit.damageReductionTurns - 1);
     if (unit.damageReductionTurns === 0) unit.damageReductionPercent = 0;
   }
+  // Reflect duration must tick down each completed turn as well.
+  if (unit.reflectTurns && unit.reflectTurns > 0) {
+    unit.reflectTurns = Math.max(0, unit.reflectTurns - 1);
+    if (unit.reflectTurns === 0) unit.reflectPercent = 0;
+  }
   if (unit.skillStatModifiers?.length) {
     const nextModifiers = unit.skillStatModifiers.map(mod => ({ ...mod, remaining: Math.max(0, mod.remaining - 1) }));
     const expired = nextModifiers.filter(mod => mod.remaining === 0);
