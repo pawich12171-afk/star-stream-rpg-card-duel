@@ -3283,6 +3283,9 @@ function advanceAdminStatusEffects(unit: BattleCombatant) {
     unit.reflectTurns = Math.max(0, unit.reflectTurns - 1);
     if (unit.reflectTurns === 0) unit.reflectPercent = 0;
   }
+  if (unit.reflectNoDamageTurns && unit.reflectNoDamageTurns > 0) {
+    unit.reflectNoDamageTurns = Math.max(0, unit.reflectNoDamageTurns - 1);
+  }
   if (unit.skillStatModifiers?.length) {
     const nextModifiers = unit.skillStatModifiers.map(mod => ({ ...mod, remaining: Math.max(0, mod.remaining - 1) }));
     const expired = nextModifiers.filter(mod => mod.remaining === 0);
@@ -3971,10 +3974,16 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         result.message += defenseMode === 'percent'
           ? ` • ใช้สกิล ${skillName} สร้างโล่ ${Math.min(100, rawDefense)}% Max HP = ${defensePower} HP เป็นเวลา ${skillProfile.duration} เทิร์น`
           : ` • ใช้สกิล ${skillName} สร้างโล่ ${defensePower} HP เป็นเวลา ${skillProfile.duration} เทิร์น`;
-      } else if (skillProfile.effect === "reflect") {
+      } else if (skillProfile.effect === "reflect" || skillProfile.effect === "reflect_no_damage") {
         current.reflectPercent = Math.min(100, skillProfile.power);
         current.reflectTurns = skillProfile.duration;
-        result.message += ` • ใช้สกิล ${skillName} สะท้อนดาเมจ ${current.reflectPercent}% เป็นเวลา ${skillProfile.duration} เทิร์น`;
+        if (skillProfile.effect === "reflect_no_damage") {
+          current.reflectNoDamageTurns = skillProfile.duration;
+          result.message += ` • ใช้สกิล ${skillName} สะท้อนดาเมจ ${current.reflectPercent}% และไม่รับดาเมจ เป็นเวลา ${skillProfile.duration} เทิร์น`;
+        } else {
+          current.reflectNoDamageTurns = 0;
+          result.message += ` • ใช้สกิล ${skillName} สะท้อนดาเมจ ${current.reflectPercent}% เป็นเวลา ${skillProfile.duration} เทิร์น`;
+        }
       } else if (skillProfile.effect === "stun") {
         defender.stunnedTurns = Math.max(1, Math.min(99, Math.floor(Number(skillProfile.duration) || 1)));
         result.message += ` • ใช้สกิล ${skillName} ทำให้ ${defender.name} ติดสตัน ${skillProfile.duration} เทิร์น`;
@@ -4248,7 +4257,9 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       const damageAfterStatDefense = Math.max(0, Math.round(damageAfterStatus * (1 - statDefenseReduction / 100)));
       const statDefenseBlocked = Math.max(0, damageAfterStatus - damageAfterStatDefense);
       const blocked = Math.min(damageAfterStatDefense, defender.defenseTurns ? (defender.defenseValue || 0) : 0);
-      const finalDamage = Math.max(0, damageAfterStatDefense - blocked);
+      const finalDamageBeforeReflectImmunity = Math.max(0, damageAfterStatDefense - blocked);
+      const reflectNoDamage = Boolean(defender.reflectNoDamageTurns && defender.reflectNoDamageTurns > 0);
+      const finalDamage = reflectNoDamage ? 0 : finalDamageBeforeReflectImmunity;
       if (statusBlocked > 0) result.message += ` • สถานะลดดาเมจ ${statusBlocked}`;
       if (statDefenseReduction > 0) result.message += ` • 🛡️ Defense ${Number(defender.stats?.durability) || 0} ลดดาเมจ ${statDefenseReduction}%`;
       defender.hp = Math.max(0, defender.hp - finalDamage);
