@@ -3998,9 +3998,19 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
             const summonDurability = Math.max(0, Math.round(Number(template?.durability ?? skill?.summonDurability) || 0));
             const summonAgility = Math.max(0, Math.round(Number(template?.agility ?? skill?.summonAgility) || 1));
             const summonMagic = Math.max(0, Math.round(Number(template?.magic ?? skill?.summonMagic) || 0));
-            const summonSkills = Array.isArray(template?.skills) && template.skills.length
-              ? template.skills.map(item => ({ ...item }))
-              : (Array.isArray(skill?.summonSkills) ? skill.summonSkills.map(item => ({ ...item })) : []);
+            const rawSummonSkills = Array.isArray(template?.skills) && template.skills.length
+              ? template.skills
+              : (Array.isArray(skill?.summonSkills) ? skill.summonSkills : []);
+            const summonSkills = rawSummonSkills.filter(Boolean).map((item: any, skillIndex: number) => ({
+              ...item,
+              id: String(item.id ?? `minion-skill-${current.id}-${skillIndex}`),
+              name: String(item.name || 'สกิลลูกน้อง'),
+              battleEffect: item.battleEffect || item.effect || 'damage',
+              battlePower: Number.isFinite(Number(item.battlePower)) ? Number(item.battlePower) : 0,
+              cooldownTurns: Math.max(0, Math.floor(Number(item.cooldownTurns) || 0)),
+              aiChancePercent: Math.max(0, Math.min(100, Number(item.aiChancePercent ?? 100) || 0)),
+              battleEffectDuration: Math.max(1, Math.floor(Number(item.battleEffectDuration) || 1)),
+            }));
             const ordinal = currentCount + spawnIndex + 1;
             const summonId = `${prefix}:${ordinal}`;
             const summoned: BattleCombatant = {
