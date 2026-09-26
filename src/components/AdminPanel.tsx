@@ -2917,7 +2917,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <label className="text-[10px] text-slate-400">โอกาสตีซ้ำ %<input type="number" min={0} max={100} step={0.1} value={editingSkillRepeatChance} onChange={e => setEditingSkillRepeatChance(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
               <label className="text-[10px] text-slate-400">ตีซ้ำสูงสุด<input type="number" min={1} max={20} value={editingSkillMaxRepeats} onChange={e => setEditingSkillMaxRepeats(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
             </div>
-            <div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingSkillRewardId(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">ยกเลิก</button><button type="button" onClick={saveEditedSkill} className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black">💾 บันทึกการแก้ไข</button></div>
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingSkillRewardId(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">ยกเลิก</button><button type="button" onClick={() => void saveEditedSkill()} className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black">💾 บันทึกการแก้ไข</button></div>
           </div>
         </div>
       )}
