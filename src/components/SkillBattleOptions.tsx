@@ -93,7 +93,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
         <label className="text-[10px] text-slate-400 flex items-center gap-2 rounded-lg bg-slate-950 border border-slate-700 px-2"><input type="checkbox" checked={Boolean(config.summonIsBoss)} onChange={e=>onChange({summonIsBoss:e.target.checked})}/> Boss</label>
       </div>
       <div className="text-[10px] text-violet-200 font-black">🧿 ตั้งค่าลูกน้องแต่ละตัวแยกกัน</div>
-      {units.map((u,index)=>{ return (<div key={u.id} className="rounded-lg border border-slate-700 bg-slate-950/70 p-2 space-y-2">
+      {units.map((u,index)=>(<div key={u.id} className="rounded-lg border border-slate-700 bg-slate-950/70 p-2 space-y-2">
         <div className="flex items-center justify-between"><span className="text-xs font-bold text-white">ตัวที่ {index+1}</span><button type="button" onClick={()=>removeUnit(u.id)} className="text-rose-300 text-[10px]">ลบ</button></div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <input value={u.name} onChange={e=>updateUnit(u.id,{name:e.target.value})} className="rounded bg-slate-900 border border-slate-700 px-2 py-1.5 text-white text-xs" placeholder="ชื่อ"/>
@@ -201,7 +201,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
             </div>
               </div>
           <button type="button" onClick={()=>addUnitSkill(u)} className="w-full rounded-xl border border-violet-300/30 bg-gradient-to-r from-violet-600/30 to-fuchsia-600/20 py-2.5 text-[11px] font-black text-violet-100 shadow-[0_0_20px_rgba(139,92,246,0.12)] transition hover:from-violet-600/40 hover:to-fuchsia-600/30">✨ + เพิ่มสกิลให้ลูกน้องตัวนี้</button>
-      </div>); })}
+      </div>))}
       <button type="button" onClick={addUnit} className="w-full rounded-lg bg-violet-600/25 border border-violet-500/40 py-2 text-xs font-bold text-violet-100">+ เพิ่มลูกน้องอีกตัว</button>
       <div className="text-[9px] text-slate-500">ถ้าไม่เพิ่มรายตัว ระบบจะใช้ค่ากลางด้านบนเป็นค่าเริ่มต้น</div>
     </div>}
