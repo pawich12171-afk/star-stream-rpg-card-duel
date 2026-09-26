@@ -3104,6 +3104,27 @@ export function getBattleSkillProfile(skill: Skill): { effect: BattleSkillEffect
   return { effect, power, cooldownTurns, duration };
 }
 
+const ABNORMAL_STATUS_KINDS = ['stun','freeze','poison','burn','bleeding','slow','curse','weakness','damage_taken_increase'];
+
+function isAbnormalStatusBlocked(unit: BattleCombatant, kind: string): boolean {
+  const passive = unit.passiveTraits;
+  if (!passive) return false;
+  if (passive.statusImmunity || passive.statusImmunityAll) return true;
+  return Array.isArray(passive.statusImmunityStatuses) && passive.statusImmunityStatuses.includes(kind);
+}
+
+function getLivingSummonsFor(unit: BattleCombatant, allCombatants: BattleCombatant[]): BattleCombatant[] {
+  return allCombatants.filter(other =>
+    other.type === 'bot' &&
+    other.team === unit.team &&
+    other.hp > 0 &&
+    (
+      String(other.sourceId || '').startsWith(`summon:${unit.id}:`) ||
+      String(other.sourceId || '').startsWith(`summon-item:${unit.id}:`)
+    )
+  );
+}
+
 function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleCombatant, effects: NonNullable<Skill['battleEffects']>, result: BattleRollResult) {
   for (const effect of effects || []) {
     const baseChance = effect.chance == null ? 100 : Math.max(0, Math.min(100, Number(effect.chance) || 0));
@@ -3114,7 +3135,7 @@ function applyBattleExtraEffects(attacker: BattleCombatant, defender: BattleComb
     const duration = Math.max(1, Math.floor(Number(effect.duration) || 1));
     const target = effect.target === 'self' ? attacker : defender;
     const isStatusEffect = ['stun', 'freeze', 'poison', 'burn', 'bleeding', 'slow', 'curse', 'weakness', 'damage_taken_increase'].includes(effect.kind);
-    if (isStatusEffect && (target.passiveTraits?.statusImmunity || (target.statusImmunityTurns && target.statusImmunityTurns > 0))) {
+    if (isStatusEffect && (isAbnormalStatusBlocked(target, effect.kind) || (target.statusImmunityTurns && target.statusImmunityTurns > 0))) {
       result.message += ` • 🚫 ${target.name} ต้านสถานะ ${label}`;
       continue;
     }
@@ -3322,6 +3343,22 @@ function advanceAdminStatusEffects(unit: BattleCombatant) {
       unit.itemCriticalChancePercent = 0;
       unit.itemRepeatAttackChancePercent = 0;
       unit.itemPassiveChanceMultiplier = 1;
+    }
+  }
+  const cleanseEvery = Math.max(0, Math.floor(Number(unit.passiveTraits?.cleanseAbnormalEveryTurns) || 0));
+  if (unit.passiveTraits && cleanseEvery > 0 && (unit.passiveTraits.cleanseAllAbnormalStatuses || (unit.passiveTraits.cleanseAbnormalStatuses || []).length > 0)) {
+    unit.passiveCleanseTurnCounter = Math.max(0, Number(unit.passiveCleanseTurnCounter) || 0) + 1;
+    if (unit.passiveCleanseTurnCounter >= cleanseEvery) {
+      const selected = new Set(unit.passiveTraits.cleanseAbnormalStatuses || []);
+      const removeAll = Boolean(unit.passiveTraits.cleanseAllAbnormalStatuses);
+      const before = unit.adminStatusEffects || [];
+      const removed = before.filter(effect => removeAll || selected.has(effect.kind));
+      if (removed.length > 0) {
+        unit.adminStatusEffects = before.filter(effect => !(removeAll || selected.has(effect.kind)));
+        if (removeAll || selected.has('stun') || selected.has('freeze')) unit.stunnedTurns = 0;
+        if (removeAll || selected.has('freeze')) unit.frozenTurns = 0;
+      }
+      unit.passiveCleanseTurnCounter = 0;
     }
   }
   if (!unit.adminStatusEffects) return;
@@ -4262,6 +4299,13 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       current.reflectTurns = 1;
     }
     if (result.damage > 0) {
+      const livingSummons = defender.passiveTraits?.damageBlockedWhileSummonsAlive
+        ? getLivingSummonsFor(defender, getBattleCombatants(nextRoom))
+        : [];
+      if (livingSummons.length > 0) {
+        result.message += ` • 🧿 ${defender.name} ไม่รับดาเมจ — ยังมีลูกน้องมีชีวิต ${livingSummons.length} ตัว`;
+        result.damage = 0;
+      }
       if (defender.immortalTurns && defender.immortalTurns > 0) {
         result.message += ` • ♾️ ${defender.name} อมตะ — ไม่ได้รับดาเมจ`;
         result.damage = 0;
@@ -4314,7 +4358,14 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
       result.damage = finalDamage;
     }
     if ((result.trueDamage || 0) > 0) {
-      const appliedTrueDamage = defender.immortalTurns && defender.immortalTurns > 0 ? 0 : Math.min(defender.hp, Math.max(0, Math.round(result.trueDamage || 0)));
+      const livingSummons = defender.passiveTraits?.damageBlockedWhileSummonsAlive
+        ? getLivingSummonsFor(defender, getBattleCombatants(nextRoom))
+        : [];
+      const summonProtected = livingSummons.length > 0;
+      const appliedTrueDamage = summonProtected || (defender.immortalTurns && defender.immortalTurns > 0)
+        ? 0
+        : Math.min(defender.hp, Math.max(0, Math.round(result.trueDamage || 0)));
+      if (summonProtected) result.message += ` • 🧿 ${defender.name} กัน True Damage — ยังมีลูกน้องมีชีวิต ${livingSummons.length} ตัว`;
       if (defender.immortalTurns && defender.immortalTurns > 0) result.message += ` • ♾️ ${defender.name} อมตะ — กัน True Damage ด้วย`;
       defender.hp = Math.max(0, defender.hp - appliedTrueDamage);
       result.message += ` • 💠 True Damage ${appliedTrueDamage}`;
