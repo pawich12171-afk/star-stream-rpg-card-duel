@@ -311,7 +311,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
           }),
         ].filter(Boolean);
         if (rewardLines.length > 0) {
-          alert(`🏆 ชนะการต่อสู้!\\import { ItemPicker } from './ItemPicker';\nn\\n${rewardLines.join('\\n')}`);
+          alert(`🏆 ชนะการต่อสู้!\n\n${rewardLines.join('\n')}`);
         }
       }).catch(error => console.warn('ไม่สามารถจ่ายรางวัลการต่อสู้ได้', error));
     });
