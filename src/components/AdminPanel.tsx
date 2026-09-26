@@ -730,7 +730,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setter(JSON.stringify(list, null, 2));
   };
 
-  const saveEditedSkill = async () => {
+  const saveEditedSkill = async (summonUnitsOverride = editingSkillSummonUnits, closeEditor = true) => {
     const reward = gachaRewards.find(item => item.id === editingSkillRewardId);
     if (!reward?.skillData) return;
     const oldSkill = reward.skillData;
@@ -750,7 +750,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       buffAmount: editingSkillEffect === 'buff_stat' ? Math.max(0, editingSkillBuffAmount) : undefined,
       buffDuration: editingSkillEffect === 'buff_stat' ? Math.max(1, editingSkillBuffDuration) : undefined,
       // บันทึก [] ด้วยเสมอ เพื่อให้การลบลูกน้อง/สกิลลูกน้องมีผลจริงหลังรีเฟรช
-      summonUnits: [...editingSkillSummonUnits],
+      summonUnits: summonUnitsOverride.map(unit => ({ ...unit, skills: Array.isArray(unit.skills) ? unit.skills.map(skill => ({ ...skill })) : [] })),
       battleEffectDuration: Math.max(1, Math.min(10, Math.round(Number(editingSkillEffectDuration) || 1))),
       battlePower: Math.max(1, Number(editingSkillPower) || 1),
       damageScaling: editingSkillScaling,
@@ -767,8 +767,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     };
     try {
       await onAddGachaReward({ ...reward, name: skill.name, description: skill.description, skillData: skill });
-      setEditingSkillRewardId(null);
-      alert('แก้ไขสกิลเรียบร้อยแล้ว');
+      if (closeEditor) {
+        setEditingSkillRewardId(null);
+        alert('แก้ไขสกิลเรียบร้อยแล้ว');
+      } else {
+        alert('บันทึกสกิลลูกน้องเรียบร้อยแล้ว');
+      }
     } catch (error) {
       console.error(error);
       alert('แก้ไขสกิลไม่สำเร็จ');
@@ -2824,6 +2828,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 if(patch.buffAmount != null) setEditingSkillBuffAmount(Number(patch.buffAmount));
                 if(patch.buffDuration != null) setEditingSkillBuffDuration(Number(patch.buffDuration));
                 if(patch.summonUnits !== undefined) setEditingSkillSummonUnits(patch.summonUnits);
+              }}
+              onSaveSummonUnits={async (units) => {
+                setEditingSkillSummonUnits(units);
+                await saveEditedSkill(units, false);
               }}
             />              <label className="text-[10px] text-slate-400">{editingSkillEffect === 'reflect' || editingSkillEffect === 'reflect_no_damage' ? '🔄 สะท้อนดาเมจ (%)' : editingSkillEffect === 'damage_reduction' ? '📉 ลดดาเมจ (%)' : editingSkillEffect === 'defense' ? '🛡️ ป้องกัน (% Max HP)' : editingSkillEffect === 'heal' ? '❤️ ฟื้นฟู (% Max HP)' : editingSkillEffect === 'damage' ? '⚔️ ดาเมจ' : 'พลังสกิล'}<input type="number" min={1} value={editingSkillPower} onChange={e => setEditingSkillPower(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white" /></label>
               <label className="text-[10px] text-slate-400">คูลดาวน์
