@@ -54,6 +54,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
     updateUnit(unit.id, { skills: (unit.skills || []).map(s => s.id === skillId ? { ...s, ...patch } : s) });
   const removeUnitSkill = (unit: SummonUnit, skillId: string) =>
     updateUnit(unit.id, { skills: (unit.skills || []).filter(s => s.id !== skillId) });
+  const [editingUnitSkillKey, setEditingUnitSkillKey] = useState<string | null>(null);
 
   return <div className="space-y-3 rounded-xl border border-violet-500/25 bg-violet-950/10 p-3">
     {showTarget && <label className="block text-[10px] text-slate-400">
@@ -83,11 +84,24 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
       </select>
     </label>}
     {showTarget && <div className="grid grid-cols-2 gap-2 rounded-lg border border-cyan-400/20 bg-cyan-950/10 p-2">
-      <label className="text-[9px] text-slate-400">ค่าผลหลัก {['reflect','reflect_no_damage','damage_reduction'].includes(String(config.battleEffect)) ? '(%)' : ''}
-        <input type="number" min="0" max={['reflect','reflect_no_damage','damage_reduction'].includes(String(config.battleEffect)) ? 100 : undefined} value={config.battlePower ?? 10} onChange={e=>onChange({battlePower:Math.max(0, Math.min(['reflect','reflect_no_damage','damage_reduction'].includes(String(config.battleEffect)) ? 100 : 999999, num(e.target.value,10)))})} className="mt-1 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1.5 text-white"/>
+      <label className="text-[9px] text-slate-400">
+        {config.battleEffect === 'reflect' ? '🔄 สะท้อนดาเมจ (%)' :
+         config.battleEffect === 'reflect_no_damage' ? '🛡️ สะท้อนดาเมจ (%)' :
+         config.battleEffect === 'damage_reduction' ? '📉 ลดดาเมจ (%)' :
+         config.battleEffect === 'defense' ? '🛡️ ป้องกัน (% Max HP)' :
+         config.battleEffect === 'heal' ? '❤️ ฟื้นฟู (% Max HP)' :
+         config.battleEffect === 'damage' ? '⚔️ ดาเมจ' : 'ค่าผล'}
+        <input type="number" min="0"
+          max={['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(config.battleEffect)) ? 100 : undefined}
+          value={config.battlePower ?? 10}
+          onChange={e=>onChange({battlePower:Math.max(0, Math.min(['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(config.battleEffect)) ? 100 : 999999, num(e.target.value,10)))})}
+          className="mt-1 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1.5 text-white"/>
       </label>
-      {['reflect','reflect_no_damage','damage_reduction','defense','stun','buff_stat','heal'].includes(String(config.battleEffect)) && <label className="text-[9px] text-slate-400">ระยะเวลาคงอยู่ (เทิร์น)
-        <input type="number" min="1" value={config.battleEffectDuration ?? 1} onChange={e=>onChange({battleEffectDuration:Math.max(1, Math.floor(num(e.target.value,1)))})} className="mt-1 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1.5 text-white"/>
+      {['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(config.battleEffect)) && <label className="text-[9px] text-slate-400">
+        ⏱️ ระยะเวลาคงอยู่ (เทิร์น)
+        <input type="number" min="1" value={config.battleEffectDuration ?? 1}
+          onChange={e=>onChange({battleEffectDuration:Math.max(1, Math.floor(num(e.target.value,1)))})}
+          className="mt-1 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1.5 text-white"/>
       </label>}
     </div>}
     {showTarget && ['selected_enemy','selected_ally','selected_bots','selected_bosses'].includes(String(target)) && <div className="grid grid-cols-2 gap-2 rounded-lg border border-amber-400/20 bg-amber-950/10 p-2"><label className="text-[9px] text-slate-400">จำนวนเป้าหมายสูงสุด<input type="number" min="1" max="20" value={config.targetConfig?.maxTargets ?? 1} onChange={e=>onChange({targetConfig:{...(config.targetConfig || {mode: target as any}), mode: target as any, allowMultiple: Number(e.target.value) > 1, maxTargets: Math.max(1, Math.min(20, Number(e.target.value) || 1))}})} className="mt-1 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1.5 text-white"/></label><label className="flex items-center gap-2 text-[9px] text-slate-300"><input type="checkbox" checked={Boolean(config.targetConfig?.allowMultiple)} onChange={e=>onChange({targetConfig:{...(config.targetConfig || {mode: target as any}), mode: target as any, allowMultiple:e.target.checked, maxTargets: config.targetConfig?.maxTargets ?? 1}})}/> เลือกหลายเป้าหมาย</label></div>}
@@ -138,9 +152,12 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
             <div key={s.id} className="col-span-2 rounded-xl border border-violet-400/20 bg-slate-950/60 p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-black text-violet-100">✨ {s.name || 'สกิลลูกน้อง'}</div>
-                <button type="button" onClick={() => removeUnitSkill(u, s.id)} className="rounded-lg bg-rose-950/50 px-2 py-1 text-[10px] text-rose-300">ลบ</button>
+                <div className="flex gap-1">
+                  <button type="button" onClick={() => setEditingUnitSkillKey(editingUnitSkillKey === `${u.id}:${s.id}` ? null : `${u.id}:${s.id}`)} className="rounded-lg bg-violet-950/50 px-2 py-1 text-[10px] text-violet-200">✏️ {editingUnitSkillKey === `${u.id}:${s.id}` ? 'ปิดการแก้ไข' : 'แก้ไข'}</button>
+                  <button type="button" onClick={() => { removeUnitSkill(u, s.id); if (editingUnitSkillKey === `${u.id}:${s.id}`) setEditingUnitSkillKey(null); }} className="rounded-lg bg-rose-950/50 px-2 py-1 text-[10px] text-rose-300">ลบ</button>
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {editingUnitSkillKey === `${u.id}:${s.id}` && <><div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <label className="text-[9px] text-slate-400">ชื่อสกิล
                   <input value={s.name || ''} onChange={e => updateUnitSkill(u, s.id, {name: e.target.value})} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white" />
                 </label>
@@ -183,7 +200,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
                     <option value="all_combatants">🌐 ทุกคน</option>
                   </select>
                 </label>
-              </div>
+              </div></>}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <label className="text-[9px] text-slate-400">พลัง / ค่าเอฟเฟกต์
                   <input type="number" min="0" value={s.battlePower ?? 10} onChange={e => updateUnitSkill(u, s.id, {battlePower: Math.max(0, num(e.target.value, 10))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white" />
