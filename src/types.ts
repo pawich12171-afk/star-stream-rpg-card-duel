@@ -345,6 +345,7 @@ export interface NotificationItem {
 }
 
 export type AdminStatusEffectKind =
+  | 'damage_taken_increase'
   | 'bleeding'
   | 'burn'
   | 'poison'
@@ -575,7 +576,7 @@ export interface CardDuelRoom {
 }
 
 export type BattleMode = 'pvp' | 'pve' | 'random';
-export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect' | 'reflect_no_damage' | 'stun' | 'copy_ability' | 'immortal' | 'damage_reduction' | 'summon' | 'buff_stat';
+export type BattleSkillEffect = 'damage' | 'heal' | 'defense' | 'reflect' | 'reflect_no_damage' | 'stun' | 'copy_ability' | 'immortal' | 'damage_reduction' | 'damage_taken_increase' | 'summon' | 'buff_stat';
 export type BattleSkillTarget =
   | 'self'
   | 'enemy'
@@ -640,7 +641,7 @@ export interface BattleBotPassiveTraits {
   reflectImmunity?: boolean;
 }
 
-export type BattleExtraEffectKind = 'bleeding' | 'burn' | 'poison' | 'freeze' | 'stun' | 'regen' | 'reduce_max_hp_percent' | 'reduce_defense_percent' | 'damage_percent' | 'heal_percent' | 'shield' | 'reflect' | 'damage_reduction';
+export type BattleExtraEffectKind = 'bleeding' | 'burn' | 'poison' | 'freeze' | 'stun' | 'regen' | 'reduce_max_hp_percent' | 'reduce_defense_percent' | 'damage_percent' | 'heal_percent' | 'shield' | 'reflect' | 'damage_reduction' | 'damage_taken_increase';
 
 export interface BattleExtraEffect { kind: BattleExtraEffectKind; value: number; duration?: number; chance?: number; target?: 'self' | 'enemy'; label?: string; }
 export type BattleDiceEffect = 'damage' | 'critical' | 'heal' | 'miss' | 'stun' | 'defense' | 'reflect';
@@ -804,6 +805,9 @@ export interface BattleCombatant {
   immortalTurns?: number;
   damageReductionPercent?: number;
   damageReductionTurns?: number;
+  /** ดีบัฟทำให้เป้าหมายรับความเสียหายเพิ่มขึ้น (%) */
+  damageTakenIncreasePercent?: number;
+  damageTakenIncreaseTurns?: number;
   /** เอฟเฟกต์จากไอเทมใช้ระหว่างต่อสู้ */
   dodgeChancePercent?: number;
   lifestealPercent?: number;
