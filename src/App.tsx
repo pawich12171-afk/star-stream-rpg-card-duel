@@ -46,7 +46,11 @@ import {
   finalizeMarketplaceAuction,
   cancelMarketplaceListing,
   cancelMarketplaceAuction,
-  buyMarketplaceListing
+  buyMarketplaceListing,
+  subscribeToItemTrades,
+  createItemTrade,
+  acceptItemTrade,
+  cancelItemTrade
 } from './services/characterService';
 import { StatusWindow } from './components/StatusWindow';
 import { ShopInventory } from './components/ShopInventory';
@@ -199,6 +203,7 @@ export default function App() {
   const [duelRooms, setDuelRooms] = useState<CardDuelRoom[]>(() => []);
   const [marketplaceListings, setMarketplaceListings] = useState<import('./types').MarketplaceListing[]>(() => []);
   const [marketplaceAuctions, setMarketplaceAuctions] = useState<import('./types').MarketplaceAuction[]>(() => []);
+  const [itemTrades, setItemTrades] = useState<import('./types').ItemTrade[]>(() => []);
   const [craftingRecipes, setCraftingRecipes] = useState<import('./types').CraftingRecipe[]>(() => []);
   const [isRealtimeLinked, setIsRealtimeLinked] = useState(false);
   const charactersRef = useRef<CharacterProfile[]>([]);
@@ -297,6 +302,10 @@ export default function App() {
       }));
       cleanups.push(subscribeToMarketplace((listings) => setMarketplaceListings(listings)));
       cleanups.push(subscribeToMarketplaceAuctions((auctions) => setMarketplaceAuctions(auctions)));
+      // Trade requests are scoped to the currently selected character.
+      // Re-subscribe when the selected profile changes so requests never leak
+      // between characters on the same device.
+      cleanups.push(() => {});
       cleanups.push(subscribeToCraftingRecipes((recipes) => setCraftingRecipes(recipes)));
     };
 
@@ -311,6 +320,14 @@ export default function App() {
       cleanups.forEach(cleanup => cleanup());
     };
   }, []);
+
+  useEffect(() => {
+    if (!currentUserId) {
+      setItemTrades([]);
+      return () => {};
+    }
+    return subscribeToItemTrades(currentUserId, (trades) => setItemTrades(trades));
+  }, [currentUserId]);
 
   // Keep the shell usable even if localStorage contains an empty collection
   // from an earlier failed sync. The realtime snapshot can still replace it.
@@ -967,6 +984,12 @@ export default function App() {
             onBuyMarketplaceListing={async (listingId, quantity) => { const result = await buyMarketplaceListing(listingId, currentUser.id, quantity); if (!result.success) alert(result.message); return result.success; }}
             allCharacters={characters}
             onTransferItem={(recipientId, itemInstanceId, quantity) => transferInventoryItem(currentUser.id, recipientId, itemInstanceId, quantity)}
+            itemTrades={itemTrades}
+            onCreateItemTrade={(recipientId, offeredItemInstanceId, offeredQuantity, offeredCoins, requestedItemInstanceId, requestedQuantity, requestedCoins) =>
+              createItemTrade(currentUser.id, recipientId, offeredItemInstanceId, offeredQuantity, offeredCoins, requestedItemInstanceId, requestedQuantity, requestedCoins)
+            }
+            onAcceptItemTrade={(tradeId) => acceptItemTrade(tradeId, currentUser.id)}
+            onCancelItemTrade={(tradeId) => cancelItemTrade(tradeId, currentUser.id)}
             marketplaceAuctions={marketplaceAuctions}
             onCreateMarketplaceAuction={(item, price, durationMs, quantity) => createMarketplaceAuction(currentUser.id, item, price, durationMs, quantity)}
             onPlaceMarketplaceBid={(auctionId, bid) => placeMarketplaceBid(auctionId, currentUser.id, bid)}
