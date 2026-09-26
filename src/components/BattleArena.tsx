@@ -126,8 +126,18 @@ function makeBotCombatant(bot: BattleBot, team: 'a' | 'b'): BattleCombatant {
     maxHp: Math.max(1, Number(bot.maxHp) || 1),
     isBoss: bot.isBoss,
     passiveTraits: bot.passiveTraits ? { ...bot.passiveTraits } : undefined,
-    skills: (bot.skills || []).map(skill => ({ ...skill })),
+    skills: (bot.skills || []).filter(Boolean).map((skill, index) => ({
+      ...skill,
+      id: String(skill.id ?? `bot-skill-${bot.id}-${index}`),
+      name: String(skill.name || 'สกิล'),
+      battleEffect: skill.battleEffect || (skill as any).effect || 'damage',
+      battlePower: Number.isFinite(Number(skill.battlePower)) ? Number(skill.battlePower) : 0,
+      cooldownTurns: Math.max(0, Math.floor(Number(skill.cooldownTurns) || 0)),
+      aiChancePercent: Math.max(0, Math.min(100, Number(skill.aiChancePercent ?? 100) || 0)),
+      battleEffectDuration: Math.max(1, Math.floor(Number(skill.battleEffectDuration) || 1)),
+    })),
     skillCooldowns: {},
+    skillUses: {},
   };
 }
 
@@ -612,7 +622,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
         && Number(bot.skillUses?.[id] || 0) >= 1;
       return !useLimitReached
         && (Number(bot.skillCooldowns?.[id] || 0) <= 0)
-        && (Number((skill as BattleBotSkill).aiChancePercent ?? 0) > 0)
+        && (Number((skill as BattleBotSkill).aiChancePercent ?? 100) > 0)
         && skillConditionsMet(skill, bot, [...(room?.teamA || []), ...(room?.teamB || [])].find(unit => unit.team !== bot.team && unit.hp > 0), room);
     });
     if (!candidates.length) return undefined;
