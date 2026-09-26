@@ -3266,7 +3266,7 @@ function getAdminReflectPercent(unit: BattleCombatant): number {
     .reduce((percent, effect) => Math.max(percent, Math.min(100, Math.max(0, Number(effect.power) || 0))), 0);
 }
 
-function tickAdminStatusEffects(unit: BattleCombatant): { message: string; skipTurn: boolean } {
+function tickAdminStatusEffects(unit: BattleCombatant, allCombatants: BattleCombatant[] = []): { message: string; skipTurn: boolean } {
   const active = getActiveAdminStatusEffects(unit);
   let damage = 0;
   let healing = 0;
@@ -3279,8 +3279,15 @@ function tickAdminStatusEffects(unit: BattleCombatant): { message: string; skipT
     if (effect.kind === 'stun') skipTurn = true;
   });
   if (damage > 0) {
-    unit.hp = Math.max(0, unit.hp - damage);
-    messages.push(unit.name + ' ได้รับความเสียหายจากสถานะ ' + damage);
+    const livingSummons = unit.passiveTraits?.damageBlockedWhileSummonsAlive
+      ? getLivingSummonsFor(unit, allCombatants)
+      : [];
+    if (livingSummons.length > 0) {
+      messages.push(unit.name + ' ไม่รับความเสียหายจากสถานะ เพราะยังมีลูกน้องมีชีวิต ' + livingSummons.length + ' ตัว');
+    } else {
+      unit.hp = Math.max(0, unit.hp - damage);
+      messages.push(unit.name + ' ได้รับความเสียหายจากสถานะ ' + damage);
+    }
   }
   if (healing > 0) {
     const restored = Math.min(healing, Math.max(0, unit.maxHp - unit.hp));
@@ -3874,7 +3881,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
   // opponent's turn. This keeps a 1-turn effect active for the full opposing
   // turn and makes duration behavior symmetric for Team A and Team B.
   advanceAdminStatusEffects(current);
-  const statusTick = tickAdminStatusEffects(current);
+  const statusTick = tickAdminStatusEffects(current, all);
   if (statusTick.skipTurn) current.stunnedTurns = Math.max(current.stunnedTurns || 0, 1);
   let result: BattleRollResult | null = null;
   if (current.hp <= 0) {
