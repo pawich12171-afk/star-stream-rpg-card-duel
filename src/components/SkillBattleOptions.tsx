@@ -47,6 +47,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
       battlePower: 10,
       cooldownTurns: 0,
       battleUseLimit: 'unlimited',
+      battleEffectDuration: 1,
     };
     updateUnit(unit.id, { skills: [...(unit.skills || []), skill] });
   };
@@ -133,7 +134,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-xs font-black text-violet-100">✨ {s.name || 'สกิลลูกน้อง'}</div>
-                  {['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(s.battleEffect)) && <div className="mt-1 text-[9px] font-bold text-amber-300">⏱️ คงอยู่ {Math.max(1, Number(s.battleEffectDuration) || 1)} เทิร์น</div>}
+                  {['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(s.battleEffect)) && <div className="mt-1 inline-flex rounded-md border border-amber-400/40 bg-amber-950/30 px-2 py-1 text-[10px] font-black text-amber-200">⏱️ ระยะเวลาสกิล: {Math.max(1, Number(s.battleEffectDuration) || 1)} เทิร์น</div>}
                 </div>
                 <div className="flex gap-1">
                   <button type="button" onClick={() => setEditingUnitSkillKey(editingUnitSkillKey === `${u.id}:${s.id}` ? null : `${u.id}:${s.id}`)} className="rounded-lg bg-violet-600 px-3 py-2 text-[11px] font-black text-white border-2 border-violet-300/50 shadow-lg">✏️ {editingUnitSkillKey === `${u.id}:${s.id}` ? 'ปิดการแก้ไข' : '✏️ แก้ไขสกิล'}</button>
