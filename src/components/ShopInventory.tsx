@@ -204,7 +204,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
   onBuyMarketplaceListing,
   allCharacters = [], onTransferItem, itemTrades = [], onCreateItemTrade, onAcceptItemTrade, onCancelItemTrade, marketplaceAuctions = [], onCreateMarketplaceAuction, onPlaceMarketplaceBid, onFinalizeMarketplaceAuction, onCancelMarketplaceAuction,
 }) => {
-  const [activeTab, setActiveTab] = useState<'shop' | 'inventory' | 'market'>('shop');
+  const [activeTab, setActiveTab] = useState<'shop' | 'inventory' | 'market' | 'trade'>('shop');
   const [marketSellItem, setMarketSellItem] = useState<InventoryItem | null>(null);
   const [marketSellPrice, setMarketSellPrice] = useState('');
   const [marketSellQuantity, setMarketSellQuantity] = useState('1');
@@ -1049,6 +1049,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
             ร้านค้าดวงดาว (Shop)
           </button>
           <button type="button" id="tab-market" onClick={() => setActiveTab('market')} className={`px-5 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'market' ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}><Coins className="w-4 h-4" /> ตลาดผู้เล่น <span className="px-2 py-0.5 rounded-full bg-slate-950 text-violet-300 text-[10px]">{marketplaceListings.length}</span></button>
+          <button type="button" id="tab-trade" onClick={() => setActiveTab('trade')} className={`px-5 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'trade' ? 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}><ArrowLeftRight className="w-4 h-4" /> เทรด <span className="px-2 py-0.5 rounded-full bg-slate-950 text-fuchsia-300 text-[10px]">{itemTrades.length}</span></button>
           <button
             id="tab-inventory"
             onClick={() => setActiveTab('inventory')}
@@ -1669,7 +1670,7 @@ export const ShopInventory: React.FC<ShopInventoryProps> = ({
         </div>
       )}
 
-      {itemTrades.length > 0 && (
+      {activeTab === 'trade' && (
         <div className="mb-5 rounded-2xl border border-fuchsia-500/30 bg-fuchsia-950/10 p-4">
           <div className="flex items-center justify-between gap-3 mb-3"><div className="font-black text-fuchsia-200">🔄 คำขอเทรดของฉัน</div><span className="rounded-full bg-fuchsia-500/15 border border-fuchsia-500/30 px-2 py-1 text-[10px] font-black text-fuchsia-200">{itemTrades.length} รายการ</span></div>
           <div className="space-y-2">
