@@ -163,6 +163,62 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
               reflect:'กำหนดค่าการสะท้อนและจำนวนเทิร์น',
               summon:'สร้างลูกน้องตามจำนวนที่กำหนด'
             };
+            const primaryEffectPanel = <div className="rounded-xl border-2 border-violet-400/30 bg-violet-950/20 p-3 space-y-2">
+              <div className="text-[11px] font-black text-violet-100">🎛️ ตั้งค่าผลหลักของสกิล</div>
+              <div className="text-[9px] text-violet-100/70">ช่องด้านล่างนี้เปลี่ยนตาม “ผลหลักของสกิล” โดยตรง ไม่ใช่โอกาสที่ AI จะเลือกใช้สกิล</div>
+              {s.battleEffect === 'damage' && <div className="grid grid-cols-2 gap-2">
+                <label className="text-[9px] text-slate-300">⚔️ พลัง / ดาเมจ
+                  <input type="number" min="0" value={s.battlePower ?? 10} onChange={e=>updateUnitSkill(u,s.id,{battlePower:Math.max(0,num(e.target.value))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-rose-400/30 px-2 py-2 text-white"/>
+                </label>
+                <div className="rounded-lg bg-rose-400/5 p-2 text-[9px] text-rose-100/80">ค่าความแรงของการโจมตีโดยตรง</div>
+              </div>}
+              {s.battleEffect === 'heal' && <div className="grid grid-cols-2 gap-2">
+                <label className="text-[9px] text-slate-300">💚 ฟื้นฟูจาก Max HP (%)
+                  <input type="number" min="0" max="100" value={statValue('heal_percent')} onChange={e=>setStat('heal_percent',Math.max(0,Math.min(100,num(e.target.value))))} className="mt-1 w-full rounded-lg bg-slate-900 border border-emerald-400/30 px-2 py-2 text-white" placeholder="เช่น 20"/>
+                </label>
+                <label className="text-[9px] text-slate-300">❤️ ฟื้นฟู HP คงที่
+                  <input type="number" min="0" value={s.battlePower ?? 0} onChange={e=>updateUnitSkill(u,s.id,{battlePower:Math.max(0,num(e.target.value))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-emerald-400/30 px-2 py-2 text-white" placeholder="เช่น 50"/>
+                </label>
+              </div>}
+              {s.battleEffect === 'defense' && <div className="grid grid-cols-2 gap-2">
+                <label className="text-[9px] text-slate-300">🛡️ ค่าป้องกัน
+                  <input type="number" min="0" value={statValue('defense_power') || s.battlePower || 0} onChange={e=>{const v=Math.max(0,num(e.target.value)); updateUnitSkill(u,s.id,{battlePower:v}); setStat('defense_power',v)}} className="mt-1 w-full rounded-lg bg-slate-900 border border-sky-400/30 px-2 py-2 text-white"/>
+                </label>
+                <label className="text-[9px] text-slate-300">⏱️ ระยะเวลา (เทิร์น)
+                  <input type="number" min="1" max="99" value={s.battleEffectDuration ?? 1} onChange={e=>updateUnitSkill(u,s.id,{battleEffectDuration:Math.max(1,Math.min(99,num(e.target.value,1)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-sky-400/30 px-2 py-2 text-white"/>
+                </label>
+              </div>}
+              {s.battleEffect === 'damage_reduction' && <div className="grid grid-cols-2 gap-2">
+                <label className="text-[9px] text-slate-300">📉 ลดดาเมจ (%)
+                  <input type="number" min="0" max="100" value={s.battlePower ?? 0} onChange={e=>updateUnitSkill(u,s.id,{battlePower:Math.max(0,Math.min(100,num(e.target.value)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-blue-400/30 px-2 py-2 text-white"/>
+                </label>
+                <label className="text-[9px] text-slate-300">⏱️ ระยะเวลา (เทิร์น)
+                  <input type="number" min="1" max="99" value={s.battleEffectDuration ?? 1} onChange={e=>updateUnitSkill(u,s.id,{battleEffectDuration:Math.max(1,Math.min(99,num(e.target.value,1)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-blue-400/30 px-2 py-2 text-white"/>
+                </label>
+              </div>}
+              {s.battleEffect === 'buff_stat' && <div className="grid grid-cols-3 gap-2">
+                <label className="text-[9px] text-slate-300">📊 Stat<select value={s.buffStat || 'strength'} onChange={e=>updateUnitSkill(u,s.id,{buffStat:e.target.value as keyof CharacterStats})} className="mt-1 w-full rounded-lg bg-slate-900 border border-fuchsia-400/30 px-2 py-2 text-white"><option value="strength">STR</option><option value="durability">DUR</option><option value="agility">AGI</option><option value="magic">MAG</option></select></label>
+                <label className="text-[9px] text-slate-300">➕ จำนวน<input type="number" min="0" value={s.buffAmount ?? 10} onChange={e=>updateUnitSkill(u,s.id,{buffAmount:Math.max(0,num(e.target.value))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-fuchsia-400/30 px-2 py-2 text-white"/></label>
+                <label className="text-[9px] text-slate-300">⏱️ ระยะเวลา<input type="number" min="1" max="99" value={s.buffDuration ?? 3} onChange={e=>updateUnitSkill(u,s.id,{buffDuration:Math.max(1,Math.min(99,num(e.target.value,3)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-fuchsia-400/30 px-2 py-2 text-white"/></label>
+              </div>}
+              {s.battleEffect === 'stun' && <div className="grid grid-cols-2 gap-2">
+                <label className="text-[9px] text-slate-300">🎲 โอกาสติดสตัน (%)
+                  <input type="number" min="0" max="100" value={s.battlePower ?? 100} onChange={e=>updateUnitSkill(u,s.id,{battlePower:Math.max(0,Math.min(100,num(e.target.value,100)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-amber-400/30 px-2 py-2 text-white"/>
+                </label>
+                <label className="text-[9px] text-slate-300">⏱️ ระยะเวลาสตัน (เทิร์น)
+                  <input type="number" min="1" max="99" value={s.battleEffectDuration ?? 1} onChange={e=>updateUnitSkill(u,s.id,{battleEffectDuration:Math.max(1,Math.min(99,num(e.target.value,1)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-amber-400/30 px-2 py-2 text-white"/>
+                </label>
+              </div>}
+              {s.battleEffect === 'reflect' && <div className="grid grid-cols-2 gap-2">
+                <label className="text-[9px] text-slate-300">🔄 สะท้อนดาเมจ (%)
+                  <input type="number" min="0" max="100" value={s.battlePower ?? 0} onChange={e=>updateUnitSkill(u,s.id,{battlePower:Math.max(0,Math.min(100,num(e.target.value)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-fuchsia-400/30 px-2 py-2 text-white"/>
+                </label>
+                <label className="text-[9px] text-slate-300">⏱️ ระยะเวลา (เทิร์น)
+                  <input type="number" min="1" max="99" value={s.battleEffectDuration ?? 1} onChange={e=>updateUnitSkill(u,s.id,{battleEffectDuration:Math.max(1,Math.min(99,num(e.target.value,1)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-fuchsia-400/30 px-2 py-2 text-white"/>
+                </label>
+              </div>}
+              {s.battleEffect === 'summon' && <div className="rounded-lg bg-violet-400/5 p-2 text-[9px] text-violet-100/80">🧿 รายละเอียดการเสกและการตั้งค่าลูกน้องจะแสดงในส่วน “เสกลูกน้อง” ด้านล่าง</div>}
+            </div>;
             return <div key={s.id} className="col-span-2 rounded-2xl border border-violet-400/20 bg-slate-950/50 p-3 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div><div className="text-xs font-black text-violet-100">✨ สร้างและแก้ไขสกิลลูกน้อง</div><div className="text-[9px] text-slate-500">ตั้งค่าแยกเฉพาะลูกน้องตัวนี้ ไม่มีค่าร่วมกับลูกน้องตัวอื่น</div></div>
@@ -212,6 +268,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
                     </select>
                   </label>
                 </div>
+                {primaryEffectPanel}
                 {s.battleEffect === 'heal' && <div className="rounded-xl border-2 border-emerald-400/30 bg-emerald-950/20 p-3">
                   <div className="text-[11px] font-black text-emerald-200">❤️ ตั้งค่าการฟื้นฟู HP โดยตรง</div>
                   <div className="mt-1 text-[9px] text-emerald-100/70">ตรงนี้คือ “ความแรงของการฟื้นฟู” ไม่ใช่โอกาสใช้สกิล</div>
