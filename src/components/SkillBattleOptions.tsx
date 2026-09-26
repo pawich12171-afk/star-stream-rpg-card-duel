@@ -109,7 +109,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
     </label>}
     {/* ค่าผลและระยะเวลาหลักใช้จากช่อง พลังสกิล/ระยะเวลาเอฟเฟกต์ ด้านบนเพียงชุดเดียว ไม่สร้างช่องซ้ำที่นี่ */}
     {showTarget && ['selected_enemy','selected_ally','selected_bots','selected_bosses'].includes(String(target)) && <div className="grid grid-cols-2 gap-2 rounded-lg border border-amber-400/20 bg-amber-950/10 p-2"><label className="text-[9px] text-slate-400">จำนวนเป้าหมายสูงสุด<input type="number" min="1" max="20" value={config.targetConfig?.maxTargets ?? 1} onChange={e=>onChange({targetConfig:{...(config.targetConfig || {mode: target as any}), mode: target as any, allowMultiple: Number(e.target.value) > 1, maxTargets: Math.max(1, Math.min(20, Number(e.target.value) || 1))}})} className="mt-1 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1.5 text-white"/></label><label className="flex items-center gap-2 text-[9px] text-slate-300"><input type="checkbox" checked={Boolean(config.targetConfig?.allowMultiple)} onChange={e=>onChange({targetConfig:{...(config.targetConfig || {mode: target as any}), mode: target as any, allowMultiple:e.target.checked, maxTargets: config.targetConfig?.maxTargets ?? 1}})}/> เลือกหลายเป้าหมาย</label></div>}
-    <div className="rounded-xl border border-fuchsia-400/20 bg-fuchsia-950/10 p-3 space-y-2"><div className="flex items-center justify-between gap-2"><div><div className="text-[11px] font-black text-fuchsia-100">✨/⚠️ บัฟและดีบัฟหลายรายการ</div><div className="text-[9px] text-slate-500">กำหนด Stat/สถานะ ค่า ระยะเวลา และโอกาสแยกกันได้</div></div><div className="flex gap-1"><button type="button" onClick={()=>addModifier('buff')} className="rounded-lg bg-emerald-500/20 px-2 py-1 text-[9px] text-emerald-100">+ บัฟ</button><button type="button" onClick={()=>addModifier('debuff')} className="rounded-lg bg-rose-500/20 px-2 py-1 text-[9px] text-rose-100">+ ดีบัฟ</button></div></div>{modifiers.map(item=><div key={item.id} className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 rounded-lg border border-slate-700 bg-slate-950/60 p-2">
+    <div className="rounded-xl border border-fuchsia-400/20 bg-fuchsia-950/10 p-3 space-y-2"><div className="flex items-center justify-between gap-2"><div><div className="text-[11px] font-black text-fuchsia-100">✨/⚠️ บัฟและดีบัฟหลายรายการ</div><div className="text-[9px] text-slate-500">กำหนด Stat/สถานะ ค่า ระยะเวลา และโอกาสแยกกันได้</div></div><div className="flex flex-wrap gap-1.5 w-full sm:w-auto"><button type="button" onClick={()=>addModifier('buff')} className="rounded-lg bg-emerald-500/20 px-2 py-1 text-[9px] text-emerald-100">+ บัฟ</button><button type="button" onClick={()=>addModifier('debuff')} className="rounded-lg bg-rose-500/20 px-2 py-1 text-[9px] text-rose-100">+ ดีบัฟ</button></div></div>{modifiers.map(item=><div key={item.id} className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 rounded-lg border border-slate-700 bg-slate-950/60 p-2">
         <label className="text-[8px] text-slate-500">ชนิด
           <select value={item.kind} onChange={e=>updateModifier(item.id,{kind:e.target.value as BattleSkillEffectKind})} className="mt-0.5 w-full rounded bg-slate-900 border border-slate-700 px-1.5 py-1 text-[9px] text-white"><option value="buff">✨ บัฟ</option><option value="debuff">⚠️ ดีบัฟ</option><option value="status">💫 สถานะ</option><option value="shield">🛡️ โล่</option><option value="cleanse">🧼 ล้างสถานะ</option></select>
         </label>
@@ -154,18 +154,18 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
         <div className="space-y-1">
           {(u.skills || []).map(s => (
             <div key={s.id} className="col-span-2 rounded-xl border border-violet-400/20 bg-slate-950/60 p-3 space-y-3">
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                 <div className="min-w-0">
                   <div className="text-xs font-black text-violet-100">✨ {s.name || 'สกิลลูกน้อง'}</div>
                   <div className="mt-1 text-[9px] text-slate-500">ตั้งค่าแยกจากสกิลหลักของตัวแม่</div>
                   {['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(s.battleEffect)) && <div className="mt-1 inline-flex rounded-md border border-amber-400/40 bg-amber-950/30 px-2 py-1 text-[10px] font-black text-amber-200">⏱️ ระยะเวลาสกิล: {Math.max(1, Number(s.battleEffectDuration) || 1)} เทิร์น</div>}
                 </div>
                 <div className="flex gap-1">
-                  <button type="button" onClick={() => setEditingUnitSkillKey(editingUnitSkillKey === `${u.id}:${s.id}` ? null : `${u.id}:${s.id}`)} className="rounded-lg bg-violet-600 px-4 py-2 text-[11px] font-black text-white border-2 border-violet-300/60 shadow-lg whitespace-nowrap">✏️ {editingUnitSkillKey === `${u.id}:${s.id}` ? 'ปิดการแก้ไข' : 'แก้ไขสกิล'}</button>
+                  <button type="button" onClick={() => setEditingUnitSkillKey(editingUnitSkillKey === `${u.id}:${s.id}` ? null : `${u.id}:${s.id}`)} className="rounded-lg bg-violet-600 px-4 py-2 text-[11px] font-black text-white border-2 border-violet-300/60 shadow-lg whitespace-nowrap min-h-10">✏️ {editingUnitSkillKey === `${u.id}:${s.id}` ? 'ปิดการแก้ไข' : 'แก้ไขสกิล'}</button>
                   <button type="button" onClick={() => { removeUnitSkill(u, s.id); if (editingUnitSkillKey === `${u.id}:${s.id}`) setEditingUnitSkillKey(null); }} className="rounded-lg bg-rose-950/50 px-2 py-1 text-[10px] text-rose-300">ลบ</button>
                 </div>
               </div>
-              {editingUnitSkillKey === `${u.id}:${s.id}` && <><div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {editingUnitSkillKey === `${u.id}:${s.id}` && <><div className="rounded-lg border border-violet-400/30 bg-violet-950/20 px-3 py-2 text-[10px] font-black text-violet-100">✏️ กำลังแก้ไขสกิลลูกน้อง: {s.name || 'สกิลลูกน้อง'} — กดปุ่ม “บันทึกการแก้ไขสกิลลูกน้อง” ด้านล่างเพื่อบันทึกถาวร</div><div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <label className="text-[9px] text-slate-400">ชื่อสกิล
                   <input value={s.name || ''} onChange={e => updateUnitSkill(u, s.id, {name: e.target.value})} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white" />
                 </label>
@@ -222,7 +222,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
               </div>
             </div>
           ))}
-          {onSaveSummonUnits && <button type="button" onClick={()=>void saveSummonUnits()} className="w-full rounded-xl border border-cyan-300/40 bg-cyan-500/15 py-2.5 text-[11px] font-black text-cyan-100">💾 บันทึกการแก้ไขสกิลลูกน้อง</button>}
+          {onSaveSummonUnits && <button type="button" onClick={()=>void saveSummonUnits()} className="w-full rounded-xl border-2 border-cyan-300/60 bg-cyan-500/20 py-3 text-[11px] font-black text-cyan-50 shadow-lg">💾 บันทึกการแก้ไขสกิลลูกน้องถาวร</button>}
           <button type="button" onClick={()=>addUnitSkill(u)} className="w-full rounded-xl border border-violet-300/30 bg-gradient-to-r from-violet-600/30 to-fuchsia-600/20 py-2.5 text-[11px] font-black text-violet-100 shadow-[0_0_20px_rgba(139,92,246,0.12)] transition hover:from-violet-600/40 hover:to-fuchsia-600/30">✨ + เพิ่มสกิลให้ลูกน้องตัวนี้</button>
         </div>
       </div>))}
