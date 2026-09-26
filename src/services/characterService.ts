@@ -3102,6 +3102,15 @@ function advanceAdminStatusEffects(unit: BattleCombatant) {
     unit.damageReductionTurns = Math.max(0, unit.damageReductionTurns - 1);
     if (unit.damageReductionTurns === 0) unit.damageReductionPercent = 0;
   }
+  if (unit.skillStatModifiers?.length) {
+    const nextModifiers = unit.skillStatModifiers.map(mod => ({ ...mod, remaining: Math.max(0, mod.remaining - 1) }));
+    const expired = nextModifiers.filter(mod => mod.remaining === 0);
+    expired.forEach(mod => {
+      const current = Number(unit.stats?.[mod.stat]) || 0;
+      unit.stats = { ...unit.stats, [mod.stat]: Math.max(0, current - mod.delta) };
+    });
+    unit.skillStatModifiers = nextModifiers.filter(mod => mod.remaining > 0);
+  }
   if (unit.copiedAbilityTurns && unit.copiedAbilityTurns > 0) {
     unit.copiedAbilityTurns = Math.max(0, unit.copiedAbilityTurns - 1);
     if (unit.copiedAbilityTurns === 0) { unit.copiedAbility = undefined; unit.activeSkillPassives = (unit.activeSkillPassives || []).filter(effect => !String(effect.id).startsWith(`copy:${unit.id}:`)); }
@@ -3828,6 +3837,52 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
           result.message += ` • 🧬 ${skillName} คัดลอกความสามารถ "${sourceSkill.name}" เป็นเวลา ${skillProfile.duration} เทิร์น`;
         } else {
           result.message += ` • 🧬 ${skillName} ไม่พบความสามารถให้คัดลอก`;
+        }
+      }
+      // Apply the configurable multi-effect modifiers from the skill editor.
+      // These are intentionally resolved here so minion skills use the same rules as
+      // normal battle skills: each modifier has its own chance/value/duration.
+      if (skill?.skillModifiers?.length) {
+        for (const modifier of skill.skillModifiers) {
+          const chance = getBattleChance(current, Math.max(0, Math.min(100, Number(modifier.chance ?? 100))));
+          if (Math.random() * 100 >= chance) continue;
+          const modifierTargets = targetMode === 'all_allies' ? skillAllies
+            : targetMode === 'all_enemies' ? skillEnemies
+            : targetMode === 'all_combatants' ? allCombatants.filter(unit => unit.hp > 0)
+            : targetMode === 'self' ? [current]
+            : skillTargets;
+          const value = Math.max(0, Number(modifier.value) || 0);
+          const duration = Math.max(1, Math.floor(Number(modifier.duration) || 1));
+          if (modifier.kind === 'shield') {
+            modifierTargets.forEach(target => {
+              target.defenseValue = Math.max(0, Number(target.defenseValue) || 0) + value;
+              target.defenseTurns = Math.max(target.defenseTurns || 0, duration);
+            });
+            result.message += ` • 🛡️ ${modifier.label || 'โล่'} +${value} HP เป็นเวลา ${duration} เทิร์น`;
+          } else if ((modifier.kind === 'buff' || modifier.kind === 'debuff') && modifier.stat) {
+            modifierTargets.forEach(target => {
+              const delta = modifier.kind === 'buff' ? value : -value;
+              target.stats = { ...target.stats, [modifier.stat!] : Math.max(0, (Number(target.stats?.[modifier.stat!]) || 0) + delta) };
+              target.skillStatModifiers = [...(target.skillStatModifiers || []), {
+                id: `skill-mod-${modifier.id}-${Date.now()}-${target.id}`,
+                stat: modifier.stat!,
+                delta,
+                remaining: duration,
+              }];
+            });
+            result.message += ` • ${modifier.kind === 'buff' ? '✨' : '⚠️'} ${modifier.label || (modifier.kind === 'buff' ? 'บัฟ' : 'ดีบัฟ')} ${modifier.stat.toUpperCase()} ${modifier.kind === 'buff' ? '+' : '-'}${value} เป็นเวลา ${duration} เทิร์น`;
+          } else if (modifier.kind === 'status' && modifier.status) {
+            const extraKind = modifier.status as BattleExtraEffect['kind'];
+            const supported: BattleExtraEffect['kind'][] = ['bleeding','burn','poison','freeze','stun','reduce_max_hp_percent','reduce_defense_percent','damage_percent','heal_percent','shield','reflect','damage_reduction'];
+            if (supported.includes(extraKind)) {
+              modifierTargets.forEach(target => applyBattleExtraEffects(current, target, [{ kind: extraKind, value, duration, chance: 100, target: target.id === current.id ? 'self' : 'enemy', label: modifier.label || modifier.status }], result));
+            } else {
+              result.message += ` • 💫 ${modifier.label || modifier.status} ${duration} เทิร์น`;
+            }
+          } else if (modifier.kind === 'cleanse') {
+            modifierTargets.forEach(target => { target.adminStatusEffects = []; target.stunnedTurns = 0; target.frozenTurns = 0; });
+            result.message += ` • 🧼 ${modifier.label || 'ล้างสถานะ'}`;
+          }
         }
       }
       if (skill?.battleEffects?.length) {
