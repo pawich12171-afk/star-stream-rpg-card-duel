@@ -198,7 +198,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
                 <div className="flex items-center justify-between"><div><div className="text-[10px] font-black text-violet-100">🎨 ค่าการทำงานและเปอร์เซ็นต์</div><div className="text-[9px] text-slate-400">กำหนดโอกาสเกิดเอฟเฟกต์ได้ทุกสกิล และค่าที่เป็นเปอร์เซ็นต์ในเอฟเฟกต์ที่รองรับ</div></div><span className="rounded-full border border-violet-300/20 bg-violet-300/10 px-2 py-0.5 text-[8px] text-violet-100">0–100%</span></div>
                 <div className="grid grid-cols-2 gap-2">
                   <label className="text-[9px] text-slate-400">โอกาสใช้/เกิดผล (%)<input type="number" min="0" max="100" value={s.aiChancePercent ?? 100} onChange={e=>updateUnitSkill(u,s.id,{aiChancePercent:Math.max(0,Math.min(100,num(e.target.value,100)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-violet-300/20 px-2 py-2 text-white" /></label>
-                  <label className="text-[9px] text-slate-400">โอกาสเอฟเฟกต์ (%)<input type="number" min="0" max="100" value={s.battleEffectChancePercent ?? 100} onChange={e=>updateUnitSkill(u,s.id,{battleEffectChancePercent:Math.max(0,Math.min(100,num(e.target.value,100)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-violet-300/20 px-2 py-2 text-white" /></label>
+                  <div className="rounded-lg border border-violet-300/10 bg-violet-300/5 px-2 py-2 text-[9px] text-violet-100/80">เปอร์เซ็นต์ของเอฟเฟกต์จะแสดงในช่องของเอฟเฟกต์ที่เลือก เช่น ฟื้น HP %, ลดดาเมจ % และโอกาสของบัฟ/ดีบัฟ</div>
                 </div>
                 <div className="text-[9px] text-violet-100/70">💡 เช่น โอกาสเอฟเฟกต์ 25% = มีโอกาส 25% ที่เอฟเฟกต์ของสกิลจะทำงานเมื่อสกิลถูกใช้</div>
               </div>
