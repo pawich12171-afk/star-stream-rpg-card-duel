@@ -336,8 +336,6 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
                 <div className="rounded-lg border border-violet-300/10 bg-violet-300/5 px-2 py-2 text-[9px] text-violet-100/70">เปอร์เซ็นต์การใช้สกิลตั้งไว้ด้านบนแล้ว เพื่อไม่ให้มีช่องซ้ำ</div>
               </div>
             </div>
-              </div>
-            </div>
           })}
           </div>
           <button type="button" onClick={()=>addUnitSkill(u)} className="w-full rounded-xl border border-violet-300/30 bg-gradient-to-r from-violet-600/30 to-fuchsia-600/20 py-2.5 text-[11px] font-black text-violet-100 shadow-[0_0_20px_rgba(139,92,246,0.12)] transition hover:from-violet-600/40 hover:to-fuchsia-600/30">✨ + เพิ่มสกิลให้ลูกน้องตัวนี้</button>
