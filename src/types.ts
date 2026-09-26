@@ -608,6 +608,17 @@ export interface BattleSkillModifier {
   label?: string;
 }
 
+export interface BattleBotPassiveTraits {
+  /** ไม่รับสถานะผิดปกติ */
+  statusImmunity?: boolean;
+  /** ตัวคูณการฟื้นฟู HP ที่ได้รับจากทุกแหล่ง เช่น 2 = 2 เท่า */
+  healingReceivedMultiplier?: number;
+  /** ไม่สามารถถูกสกิลคัดลอกความสามารถ */
+  copyImmunity?: boolean;
+  /** ไม่ได้รับความเสียหายจากการสะท้อนกลับ */
+  reflectImmunity?: boolean;
+}
+
 export type BattleExtraEffectKind = 'bleeding' | 'burn' | 'poison' | 'freeze' | 'stun' | 'reduce_max_hp_percent' | 'reduce_defense_percent' | 'damage_percent' | 'heal_percent' | 'shield' | 'reflect' | 'damage_reduction';
 
 export interface BattleExtraEffect { kind: BattleExtraEffectKind; value: number; duration?: number; chance?: number; target?: 'self' | 'enemy'; label?: string; }
@@ -718,6 +729,8 @@ export interface BattleBot {
   drops?: BattleBotDrop[];
   /** น้ำหนัก/โอกาสที่มอนหรือบอสตัวนี้จะถูกสุ่มเจอในโหมดสุ่ม (%) */
   encounterChancePercent?: number;
+  /** Passive ป้องกัน/เพิ่มประสิทธิภาพเฉพาะตัวของมอนหรือบอส */
+  passiveTraits?: BattleBotPassiveTraits;
   createdAt: number;
   updatedAt: number;
 }
@@ -780,6 +793,8 @@ export interface BattleCombatant {
   skillStatModifiers?: Array<{ id: string; stat: keyof CharacterStats; delta: number; remaining: number }>;
   copiedAbility?: Skill;
   copiedAbilityTurns?: number;
+  /** Passive ของมอน/บอส */
+  passiveTraits?: BattleBotPassiveTraits;
 }
 
 export interface BattleLogEntry {
