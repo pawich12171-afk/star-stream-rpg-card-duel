@@ -111,6 +111,25 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
             const addMod = (kind: BattleSkillEffectKind) => updateUnitSkill(u,s.id,{skillModifiers:[...modifiers,{id:`minion-mod-${Date.now()}-${modifiers.length+1}`,kind,stat:'strength',value:10,duration:3,chance:100}]});
             const updateMod = (id: string, patch: Partial<BattleSkillModifier>) => updateUnitSkill(u,s.id,{skillModifiers:modifiers.map(item=>item.id===id?{...item,...patch}:item)});
             const removeMod = (id: string) => updateUnitSkill(u,s.id,{skillModifiers:modifiers.filter(item=>item.id!==id)});
+            const categoryGuide: Record<string,string> = {
+              attack:'ทำดาเมจใส่เป้าหมาย เหมาะกับสกิลโจมตีหลัก',
+              buff:'เพิ่มความสามารถให้ฝ่ายเดียวกัน เช่น STR, DUR, AGI, MAG',
+              debuff:'ลดความสามารถหรือใส่สถานะเสียให้เป้าหมาย',
+              control:'ควบคุมการต่อสู้ เช่น สตันหรือหยุดการกระทำ',
+              heal:'ฟื้น HP ให้ตัวเองหรือพวกเดียวกัน กำหนดเป็น % Max HP ได้',
+              defense:'เพิ่มการป้องกันหรือสร้างผลลดความเสียหายตามจำนวนเทิร์น',
+              utility:'เอฟเฟกต์พิเศษที่ไม่ใช่ดาเมจ/ฮีลโดยตรง'
+            };
+            const effectGuide: Record<string,string> = {
+              damage:'กำหนดดาเมจพื้นฐานที่สกิลทำได้',
+              heal:'กำหนด % Max HP ที่ฟื้น และค่า HP แบบคงที่เพิ่มเติม',
+              defense:'กำหนดค่าป้องกันและจำนวนเทิร์นที่คงอยู่',
+              damage_reduction:'กำหนดเปอร์เซ็นต์ลดความเสียหายและจำนวนเทิร์น',
+              buff_stat:'เลือกสเตตัสที่จะเพิ่ม พร้อมจำนวนและระยะเวลา',
+              stun:'กำหนดค่าของเอฟเฟกต์และจำนวนเทิร์น',
+              reflect:'กำหนดค่าการสะท้อนและจำนวนเทิร์น',
+              summon:'สร้างลูกน้องตามจำนวนที่กำหนด'
+            };
             return <div key={s.id} className="col-span-2 rounded-2xl border border-violet-400/20 bg-slate-950/50 p-3 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div><div className="text-xs font-black text-violet-100">✨ สร้างและแก้ไขสกิลลูกน้อง</div><div className="text-[9px] text-slate-500">ตั้งค่าแยกเฉพาะลูกน้องตัวนี้ ไม่มีค่าร่วมกับลูกน้องตัวอื่น</div></div>
@@ -120,8 +139,19 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
                 <label className="text-[10px] text-slate-400">ชื่อสกิล<input value={s.name} onChange={e=>updateUnitSkill(u,s.id,{name:e.target.value})} className="mt-1 w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-white text-xs" placeholder="เช่น ฟันเงา"/></label>
                 <label className="text-[10px] text-slate-400">คำอธิบาย<textarea value={s.description || ''} onChange={e=>updateUnitSkill(u,s.id,{description:e.target.value})} className="mt-1 min-h-20 w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-white text-xs" placeholder="อธิบายผลของสกิลแบบละเอียด"/></label>
               </div>
+              <div className="overflow-hidden rounded-2xl border border-violet-400/30 bg-gradient-to-br from-violet-950/60 via-slate-950/70 to-cyan-950/40 shadow-[0_0_30px_rgba(139,92,246,0.12)]">
+                <div className="border-b border-white/10 bg-white/[0.03] px-3 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/20 text-lg">✨</div>
+                    <div>
+                      <div className="text-sm font-black text-white">สร้างและแก้ไขสกิลลูกน้อง</div>
+                      <div className="text-[9px] text-violet-200/70">ตั้งค่าเฉพาะลูกน้องตัวนี้ • ทุกค่าจะถูกบันทึกไปกับสกิล</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3 p-3">
               <div className="rounded-xl border border-cyan-400/20 bg-cyan-950/10 p-3 space-y-2">
-                <div className="text-[11px] font-black text-cyan-100">🧩 โครงสร้างประเภทสกิล</div>
+                <div className="flex items-center justify-between gap-2"><div className="text-[11px] font-black text-cyan-100">🧩 โครงสร้างประเภทสกิล</div><span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 text-[8px] text-cyan-100">ตั้งค่าแยก</span></div>
                 <label className="block text-[10px] text-slate-400">ประเภทสกิล
                   <select value={s.skillCategory || (s.battleEffect==='heal'?'heal':s.battleEffect==='defense'?'defense':s.battleEffect==='stun'?'control':'attack')} onChange={e=>{
                     const next=e.target.value as any;
@@ -144,6 +174,14 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
                     </select>
                   </label>
                 </div>
+                <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                  <div className="mb-1 flex items-center justify-between"><span className="text-[9px] uppercase tracking-wider text-slate-500">รายละเอียดประเภทที่เลือก</span><span className="text-[9px] text-cyan-200">{s.skillCategory || 'attack'}</span></div>
+                  <div className="text-[10px] leading-relaxed text-slate-200">{categoryGuide[s.skillCategory || 'attack']}</div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <div className="rounded-lg border border-white/5 bg-white/[0.03] p-2"><div className="text-[8px] text-slate-500">ผลหลัก</div><div className="mt-0.5 text-[9px] font-bold text-white">{effectGuide[s.battleEffect || 'damage'] || 'กำหนดเอฟเฟกต์ของสกิล'}</div></div>
+                    <div className="rounded-lg border border-white/5 bg-white/[0.03] p-2"><div className="text-[8px] text-slate-500">เป้าหมาย</div><div className="mt-0.5 text-[9px] font-bold text-white">{s.targetMode || 'enemy'}</div></div>
+                  </div>
+                </div>
                 <div className="rounded-lg border border-white/5 bg-slate-950/50 p-2 text-[9px] leading-relaxed text-slate-400">
                   <div className="font-bold text-cyan-200">💡 ประเภทสกิลคือ “หน้าที่หลัก”</div>
                   <div>โจมตี = ทำดาเมจ • ฟื้นฟู = เติม HP • ป้องกัน = เพิ่มการป้องกัน • บัฟ = เพิ่มความสามารถ • ดีบัฟ = ลดความสามารถ/ใส่สถานะ • ควบคุม = สตันหรือหยุดการกระทำ</div>
@@ -161,6 +199,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
                 <label className="text-[9px] text-slate-400">โอกาสใช้สกิล (%)<input type="number" min="0" max="100" value={s.aiChancePercent ?? 100} onChange={e=>updateUnitSkill(u,s.id,{aiChancePercent:Math.max(0,Math.min(100,num(e.target.value,100)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white"/></label>
               </div>
             </div>
+              </div>
           )}<button type="button" onClick={()=>addUnitSkill(u)} className="w-full rounded bg-violet-600/20 border border-violet-500/30 py-1.5 text-[10px] text-violet-100">+ เพิ่มสกิลให้ตัวนี้</button>
         </div>
       </div>)}
