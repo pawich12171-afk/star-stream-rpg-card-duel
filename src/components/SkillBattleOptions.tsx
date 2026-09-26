@@ -194,9 +194,9 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
                   <input type="number" min="0" max={['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(s.battleEffect)) ? 100 : undefined}
                     value={s.battlePower ?? 10} onChange={e => updateUnitSkill(u, s.id, {battlePower: Math.max(0, Math.min(['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(s.battleEffect)) ? 100 : 999999, num(e.target.value, 10)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white" />
                 </label>
-                {['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(s.battleEffect)) && <label className="text-[9px] text-slate-400">⏱️ ระยะเวลาคงอยู่ (เทิร์น)
+                <label className="text-[9px] text-slate-400">⏱️ ระยะเวลาคงอยู่ (เทิร์น)
                   <input type="number" min="1" step="1" value={s.battleEffectDuration ?? 1} onChange={e => updateUnitSkill(u, s.id, {battleEffectDuration: Math.max(1, Math.floor(num(e.target.value, 1)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-amber-400/40 px-2 py-2 text-white" />
-                </label>}
+                </label>
                 <label className="text-[9px] text-slate-400">โอกาสใช้สกิล (%)
                   <input type="number" min="0" max="100" value={s.aiChancePercent ?? 100} onChange={e => updateUnitSkill(u, s.id, {aiChancePercent: Math.max(0, Math.min(100, num(e.target.value, 100)))})} className="mt-1 w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-2 text-white" />
                 </label>
@@ -206,6 +206,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
               </div>
             </div>
           ))}
+          {onSaveSummonUnits && <button type="button" onClick={()=>void saveSummonUnits()} className="w-full rounded-xl border border-cyan-300/40 bg-cyan-500/15 py-2.5 text-[11px] font-black text-cyan-100">💾 บันทึกการแก้ไขสกิลลูกน้อง</button>}
           <button type="button" onClick={()=>addUnitSkill(u)} className="w-full rounded-xl border border-violet-300/30 bg-gradient-to-r from-violet-600/30 to-fuchsia-600/20 py-2.5 text-[11px] font-black text-violet-100 shadow-[0_0_20px_rgba(139,92,246,0.12)] transition hover:from-violet-600/40 hover:to-fuchsia-600/30">✨ + เพิ่มสกิลให้ลูกน้องตัวนี้</button>
         </div>
       </div>))}
