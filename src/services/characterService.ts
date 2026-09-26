@@ -3741,13 +3741,20 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         const scalingLabel = scaling === 'fixed' ? 'คงที่' : `ตาม ${scaling.toUpperCase()} × ${scalingMultiplier}`;
         result.message += ` • ใช้สกิล ${skillName} เพิ่มดาเมจ ${skillDamage} [${scalingLabel}]`;
       } else if (skillProfile.effect === "heal") {
-        const healPercent = Math.max(0, Math.min(100, getSkillStat(skill, 'heal_percent')));
+        // "percent" means battlePower itself is % of each target's Max HP.
+        // Legacy skills continue to use flat HP plus optional battleStats heal_percent.
+        const powerMode = skill?.battlePowerMode === 'percent' ? 'percent' : 'flat';
+        const configuredHealPercent = powerMode === 'percent'
+          ? Math.max(0, Math.min(100, Number(skillProfile.power) || 0))
+          : 0;
+        const legacyHealPercent = Math.max(0, Math.min(100, getSkillStat(skill, 'heal_percent')));
+        const healPercent = Math.max(configuredHealPercent, legacyHealPercent);
         const healTargets = skillTargets.filter(unit => unit.hp > 0);
         if (healTargets.length > 1) {
           let totalHealed = 0;
           healTargets.forEach(unit => {
             const healMultiplier = Math.max(0, Number(unit.passiveTraits?.healingReceivedMultiplier) || 1);
-            const flatHeal = Math.max(0, skillProfile.power * healMultiplier);
+            const flatHeal = powerMode === 'percent' ? 0 : Math.max(0, skillProfile.power * healMultiplier);
             const percentHeal = healPercent > 0 ? Math.round(unit.maxHp * healPercent / 100 * healMultiplier) : 0;
             const before = unit.hp;
             unit.hp = Math.min(unit.maxHp, unit.hp + flatHeal + percentHeal);
@@ -3758,7 +3765,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         } else {
           const healTarget = healTargets[0] || current;
           const healMultiplier = Math.max(0, Number(healTarget.passiveTraits?.healingReceivedMultiplier) || 1);
-          const flatHeal = Math.max(0, skillProfile.power * healMultiplier);
+          const flatHeal = powerMode === 'percent' ? 0 : Math.max(0, skillProfile.power * healMultiplier);
           const percentHeal = healPercent > 0 ? Math.round(healTarget.maxHp * healPercent / 100 * healMultiplier) : 0;
           const totalHeal = flatHeal + percentHeal;
           const beforeHeal = healTarget.hp;
@@ -3775,9 +3782,18 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         });
         result.message += ` • ใช้สกิล ${skillName} บัพ ${stat.toUpperCase()} +${amount} ให้ ${buffTargets.length > 1 ? 'ทีม' : buffTargets[0]?.name || current.name}` + (skill?.buffDuration ? ` ${skill.buffDuration} เทิร์น` : '');
       } else if (skillProfile.effect === "defense") {
-        current.defenseValue = Math.max(0, skillProfile.power + getSkillStat(skill, 'defense_power'));
+        // A defense skill can now be configured as either a flat HP shield
+        // or a percentage of the caster's Max HP. Legacy skills remain flat.
+        const defenseMode = skill?.battlePowerMode === 'percent' ? 'percent' : 'flat';
+        const rawDefense = Math.max(0, Number(skillProfile.power) || 0);
+        const defensePower = defenseMode === 'percent'
+          ? Math.round(current.maxHp * Math.min(100, rawDefense) / 100)
+          : Math.round(rawDefense + getSkillStat(skill, 'defense_power'));
+        current.defenseValue = defensePower;
         current.defenseTurns = skillProfile.duration;
-        result.message += ` • ใช้สกิล ${skillName} ป้องกันดาเมจ ${skillProfile.power} เป็นเวลา ${skillProfile.duration} เทิร์น`;
+        result.message += defenseMode === 'percent'
+          ? ` • ใช้สกิล ${skillName} สร้างโล่ ${Math.min(100, rawDefense)}% Max HP = ${defensePower} HP เป็นเวลา ${skillProfile.duration} เทิร์น`
+          : ` • ใช้สกิล ${skillName} สร้างโล่ ${defensePower} HP เป็นเวลา ${skillProfile.duration} เทิร์น`;
       } else if (skillProfile.effect === "reflect") {
         current.reflectPercent = Math.min(100, skillProfile.power);
         current.reflectTurns = skillProfile.duration;
