@@ -631,6 +631,178 @@ export async function buyMarketplaceListing(listingId: string, buyerId: string, 
 
 const ITEM_TRANSFER_COLLECTION = "item_transfers";
 const MARKETPLACE_AUCTIONS_COLLECTION = "marketplace_auctions";
+const ITEM_TRADE_COLLECTION = "item_trades";
+
+export function subscribeToItemTrades(characterId: string, callback: (trades: import("../types").ItemTrade[]) => void) {
+  if (!characterId) { callback([]); return () => {}; }
+  try {
+    const q = collection(db, ITEM_TRADE_COLLECTION);
+    return onSnapshot(q, (snapshot: any) => {
+      const list: import("../types").ItemTrade[] = [];
+      snapshot.forEach((d: any) => {
+        const trade = { ...d.data(), id: d.id } as import("../types").ItemTrade;
+        if (trade.status === 'pending' && (trade.senderId === characterId || trade.recipientId === characterId)) list.push(trade);
+      });
+      callback(list.sort((a,b) => b.createdAt - a.createdAt));
+    }, () => callback([]));
+  } catch { callback([]); return () => {}; }
+}
+
+export async function createItemTrade(
+  senderId: string,
+  recipientId: string,
+  offeredItemInstanceId: string,
+  offeredQuantity: number,
+  offeredCoins: number = 0,
+  requestedItemInstanceId?: string,
+  requestedQuantity: number = 0,
+  requestedCoins: number = 0
+): Promise<void> {
+  if (!senderId || !recipientId || senderId === recipientId) throw new Error("ผู้รับเทรดไม่ถูกต้อง");
+  const sr = doc(db, CHARACTERS_COLLECTION, senderId);
+  const rr = doc(db, CHARACTERS_COLLECTION, recipientId);
+  const tradeId = `trade-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  const tr = doc(db, ITEM_TRADE_COLLECTION, tradeId);
+
+  await runTransaction(db, async tx => {
+    const ss = await tx.get(sr), rs = await tx.get(rr);
+    if (!ss.exists() || !rs.exists()) throw new Error("ไม่พบผู้เล่น");
+    const sender = { ...ss.data(), id: ss.id } as CharacterProfile;
+    const receiver = { ...rs.data(), id: rs.id } as CharacterProfile;
+    const inv = [...(sender.inventory || [])];
+    const idx = inv.findIndex(x => x.instanceId === offeredItemInstanceId);
+    if (idx < 0) throw new Error("ไม่พบไอเทมที่ต้องการเทรด");
+    if (inv[idx].isEquipped) throw new Error("ต้องถอดอุปกรณ์ก่อนเทรด");
+    const qty = Math.min(Math.max(1, Math.floor(Number(offeredQuantity) || 1)), Math.max(1, Number(inv[idx].quantity) || 1));
+    const coins = Math.max(0, Math.floor(Number(offeredCoins) || 0));
+    if (Math.floor(Number(sender.coins) || 0) < coins) throw new Error("Coins ของคุณไม่พอ");
+
+    let requestedItem: InventoryItem | undefined;
+    const reqQty = Math.max(0, Math.floor(Number(requestedQuantity) || 0));
+    if (requestedItemInstanceId && reqQty > 0) {
+      const requested = (receiver.inventory || []).find(x => x.instanceId === requestedItemInstanceId);
+      if (!requested) throw new Error("ไม่พบไอเทมที่ต้องการขอ");
+      if (requested.isEquipped) throw new Error("ไอเทมที่ขอถูกสวมใส่อยู่");
+      const available = Math.max(1, Number(requested.quantity) || 1);
+      if (reqQty > available) throw new Error("จำนวนไอเทมที่ขอเกินจำนวนที่มี");
+      requestedItem = { ...requested, quantity: reqQty, isEquipped: false, equippedQuantity: 0 };
+    }
+
+    const requestedCoinAmount = Math.max(0, Math.floor(Number(requestedCoins) || 0));
+    if (Math.floor(Number(receiver.coins) || 0) < requestedCoinAmount) {
+      throw new Error("Coins ของผู้รับไม่พอสำหรับข้อเสนอ");
+    }
+
+    const trade: import("../types").ItemTrade = {
+      id: tradeId,
+      senderId,
+      senderName: sender.displayName,
+      recipientId,
+      recipientName: receiver.displayName,
+      offeredItem: { ...inv[idx], quantity: qty, isEquipped: false, equippedQuantity: 0 },
+      offeredQuantity: qty,
+      offeredCoins: coins,
+      requestedItem,
+      requestedQuantity: requestedItem ? reqQty : 0,
+      requestedCoins: requestedCoinAmount,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      status: 'pending',
+    };
+    tx.set(tr, sanitizeForFirestore(trade));
+  });
+}
+
+export async function cancelItemTrade(tradeId: string, characterId: string): Promise<void> {
+  const tr = doc(db, ITEM_TRADE_COLLECTION, tradeId);
+  await runTransaction(db, async tx => {
+    const snap = await tx.get(tr);
+    if (!snap.exists()) throw new Error("ไม่พบคำขอเทรด");
+    const trade = { ...snap.data(), id: snap.id } as import("../types").ItemTrade;
+    if (trade.status !== 'pending') throw new Error("คำขอเทรดนี้ดำเนินการไปแล้ว");
+    if (trade.senderId !== characterId && trade.recipientId !== characterId) throw new Error("ไม่มีสิทธิ์");
+    tx.update(tr, sanitizeForFirestore({ ...trade, status: 'cancelled', updatedAt: Date.now() }));
+  });
+}
+
+export async function acceptItemTrade(tradeId: string, recipientId: string): Promise<void> {
+  const tr = doc(db, ITEM_TRADE_COLLECTION, tradeId);
+  await runTransaction(db, async tx => {
+    const ts = await tx.get(tr);
+    if (!ts.exists()) throw new Error("ไม่พบคำขอเทรด");
+    const trade = { ...ts.data(), id: ts.id } as import("../types").ItemTrade;
+    if (trade.status !== 'pending') throw new Error("คำขอเทรดนี้ดำเนินการไปแล้ว");
+    if (trade.recipientId !== recipientId) throw new Error("ไม่มีสิทธิ์รับเทรดนี้");
+
+    const sr = doc(db, CHARACTERS_COLLECTION, trade.senderId);
+    const rr = doc(db, CHARACTERS_COLLECTION, trade.recipientId);
+    const ss = await tx.get(sr), rs = await tx.get(rr);
+    if (!ss.exists() || !rs.exists()) throw new Error("ไม่พบผู้เล่น");
+    const sender = { ...ss.data(), id: ss.id } as CharacterProfile;
+    const receiver = { ...rs.data(), id: rs.id } as CharacterProfile;
+
+    const senderInv = [...(sender.inventory || [])];
+    const receiverInv = [...(receiver.inventory || [])];
+    const offeredIdx = senderInv.findIndex(x => x.instanceId === trade.offeredItem.instanceId);
+    if (offeredIdx < 0 || senderInv[offeredIdx].isEquipped) throw new Error("ผู้เสนอไม่มีไอเทมนี้แล้ว หรือกำลังสวมใส่อยู่");
+    const offeredQty = Math.max(1, Math.min(Math.floor(Number(trade.offeredQuantity)||1), Number(senderInv[offeredIdx].quantity)||1));
+    if (offeredQty !== Math.max(1, Number(trade.offeredQuantity)||1)) throw new Error("จำนวนไอเทมที่เสนอเปลี่ยนไป กรุณาสร้างข้อเสนอใหม่");
+    const offeredCoins = Math.max(0, Math.floor(Number(trade.offeredCoins)||0));
+    if (Math.floor(Number(sender.coins)||0) < offeredCoins) throw new Error("ผู้เสนอมี Coins ไม่พอแล้ว");
+
+    let requestedItem: InventoryItem | undefined;
+    const requestedQty = Math.max(0, Math.floor(Number(trade.requestedQuantity)||0));
+    if (trade.requestedItem && requestedQty > 0) {
+      const reqIdx = receiverInv.findIndex(x => x.instanceId === trade.requestedItem!.instanceId);
+      if (reqIdx < 0 || receiverInv[reqIdx].isEquipped) throw new Error("ผู้รับไม่มีไอเทมที่ขอแล้ว หรือกำลังสวมใส่อยู่");
+      const available = Math.max(1, Number(receiverInv[reqIdx].quantity)||1);
+      if (available < requestedQty) throw new Error("ผู้รับมีไอเทมไม่พอแล้ว");
+      requestedItem = { ...receiverInv[reqIdx], quantity: requestedQty, isEquipped: false, equippedQuantity: 0 };
+    }
+
+    const requestedCoins = Math.max(0, Math.floor(Number(trade.requestedCoins)||0));
+    if (Math.floor(Number(receiver.coins)||0) < requestedCoins) throw new Error("Coins ของผู้รับไม่พอแล้ว");
+
+    const removeFromStack = (list: InventoryItem[], instanceId: string, qty: number) => {
+      const idx = list.findIndex(x => x.instanceId === instanceId);
+      if (idx < 0) throw new Error("ไม่พบไอเทม");
+      const item = list[idx];
+      const available = Math.max(1, Number(item.quantity)||1);
+      if (available < qty) throw new Error("จำนวนไอเทมไม่พอ");
+      if (available === qty) list.splice(idx, 1);
+      else list[idx] = { ...item, quantity: available - qty, equippedQuantity: Math.min(Number(item.equippedQuantity)||0, available - qty), isEquipped: Boolean(item.isEquipped && Number(item.equippedQuantity||0) > 0) };
+    };
+    const addToStack = (list: InventoryItem[], item: InventoryItem, prefix: string) => {
+      const key = [String(item.name||'').trim().toLowerCase(),String(item.category||''),String(item.effectType||''),String(item.targetStat||''),String(item.effectValue??''),String(item.hpBonus??'')].join('|');
+      const idx = list.findIndex(x => [String(x.name||'').trim().toLowerCase(),String(x.category||''),String(x.effectType||''),String(x.targetStat||''),String(x.effectValue??''),String(x.hpBonus??'')].join('|') === key);
+      if (idx >= 0) list[idx] = { ...list[idx], quantity: (Number(list[idx].quantity)||0) + Math.max(1, Number(item.quantity)||1) };
+      else list.push({ ...item, instanceId: `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, isEquipped:false, equippedQuantity:0 });
+    };
+
+    removeFromStack(senderInv, trade.offeredItem.instanceId, offeredQty);
+    addToStack(receiverInv, { ...trade.offeredItem, quantity: offeredQty }, 'trade-in');
+    if (requestedItem) {
+      removeFromStack(receiverInv, requestedItem.instanceId, requestedQty);
+      addToStack(senderInv, requestedItem, 'trade-out');
+    }
+
+    const senderCoins = Math.floor(Number(sender.coins)||0) - offeredCoins + requestedCoins;
+    const receiverCoins = Math.floor(Number(receiver.coins)||0) - requestedCoins + offeredCoins;
+    const now = Date.now();
+    const senderNotification = {
+      id: `notif-trade-${trade.id}-sender`, title: "เทรดสำเร็จ", message: `เทรดกับ ${receiver.displayName} สำเร็จ`, timestamp: now, read:false, type:"trade" as const
+    };
+    const receiverNotification = {
+      id: `notif-trade-${trade.id}-receiver`, title: "เทรดสำเร็จ", message: `เทรดกับ ${sender.displayName} สำเร็จ`, timestamp: now, read:false, type:"trade" as const
+    };
+    const updatedSender = { ...sender, coins: senderCoins, inventory: senderInv, notifications: [senderNotification, ...(sender.notifications||[])].slice(0,100), lastUpdated:now };
+    const updatedReceiver = { ...receiver, coins: receiverCoins, inventory: receiverInv, notifications: [receiverNotification, ...(receiver.notifications||[])].slice(0,100), lastUpdated:now };
+    tx.update(sr, sanitizeForFirestore({ ...updatedSender, powerScore: calculatePowerScore(updatedSender) }));
+    tx.update(rr, sanitizeForFirestore({ ...updatedReceiver, powerScore: calculatePowerScore(updatedReceiver) }));
+    tx.update(tr, sanitizeForFirestore({ ...trade, status:'completed', updatedAt:now }));
+  });
+}
+
 
 export async function transferInventoryItem(senderId: string, recipientId: string, itemInstanceId: string, requestedQuantity: number = 1): Promise<void> {
   if (senderId === recipientId) throw new Error("ไม่สามารถโอนให้ตัวเองได้");
