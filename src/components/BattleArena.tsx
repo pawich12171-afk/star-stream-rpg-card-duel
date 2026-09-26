@@ -227,6 +227,8 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const [botSkillName, setBotSkillName] = useState('');
   const [botSkillDescription, setBotSkillDescription] = useState('');
   const [botSkillPower, setBotSkillPower] = useState('10');
+  const [botSkillPowerMode, setBotSkillPowerMode] = useState<'flat' | 'percent'>('flat');
+  const [botSkillEffectDuration, setBotSkillEffectDuration] = useState('1');
   const [botSkillCooldown, setBotSkillCooldown] = useState('2');
   const [botSkillUseLimit, setBotSkillUseLimit] = useState<'unlimited' | 'once_per_battle'>('unlimited');
   const [minionSkillUseLimit, setMinionSkillUseLimit] = useState<'unlimited' | 'once_per_battle'>('unlimited');
@@ -247,6 +249,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const [botSummonSkillName, setBotSummonSkillName] = useState('');
   const [botSummonSkillDescription, setBotSummonSkillDescription] = useState('');
   const [botSummonSkillPower, setBotSummonSkillPower] = useState('5');
+  const [botSummonSkillPowerMode, setBotSummonSkillPowerMode] = useState<'flat' | 'percent'>('flat');
   const [botSummonSkillChance, setBotSummonSkillChance] = useState('100');
   const [botSummonSkillCooldown, setBotSummonSkillCooldown] = useState('0');
   const [botSummonSkillEffect, setBotSummonSkillEffect] = useState<NonNullable<Skill['battleEffect']>>('damage');
@@ -254,7 +257,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   const [botSummonAvatarFileName, setBotSummonAvatarFileName] = useState('');
   type ConfiguredMinion = NonNullable<Skill['summonUnits']>[number];
   const [botSummonUnits, setBotSummonUnits] = useState<ConfiguredMinion[]>([]);
-  const [minionDraft, setMinionDraft] = useState({name:'', hp:'20', strength:'5', durability:'1', agility:'1', magic:'0', avatarUrl:'', avatarFileName:'', skills:[] as BattleBotSkill[], skillName:'', skillDescription:'', skillPower:'5', skillChance:'100', skillCooldown:'0', skillEffect:'damage' as NonNullable<Skill['battleEffect']>, skillCategory:'attack' as NonNullable<Skill['skillCategory']>, skillTargetMode:'enemy' as NonNullable<Skill['targetMode']>, skillTargetConfig:undefined as NonNullable<Skill['targetConfig']> | undefined, skillModifiers:[] as NonNullable<Skill['skillModifiers']>});
+  const [minionDraft, setMinionDraft] = useState({name:'', hp:'20', strength:'5', durability:'1', agility:'1', magic:'0', avatarUrl:'', avatarFileName:'', skills:[] as BattleBotSkill[], skillName:'', skillDescription:'', skillPower:'5', skillPowerMode:'flat' as 'flat' | 'percent', skillEffectDuration:'1', skillChance:'100', skillCooldown:'0', skillEffect:'damage' as NonNullable<Skill['battleEffect']>, skillCategory:'attack' as NonNullable<Skill['skillCategory']>, skillTargetMode:'enemy' as NonNullable<Skill['targetMode']>, skillTargetConfig:undefined as NonNullable<Skill['targetConfig']> | undefined, skillModifiers:[] as NonNullable<Skill['skillModifiers']>});
 
   const [selectedBattleItemId, setSelectedBattleItemId] = useState('');
   const [usingBattleItemId, setUsingBattleItemId] = useState('');
@@ -743,6 +746,8 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
           id:'minion-skill-'+Date.now(), name:botSummonSkillName.trim(), level:1, multiplier:1, type:'monster-minion',
           description:botSummonSkillDescription.trim() || 'สกิลเฉพาะของลูกน้อง',
           battlePower:Math.max(0,Number(botSummonSkillPower)||0),
+          battlePowerMode:botSummonSkillPowerMode,
+          battleEffectDuration:Math.max(1,Math.min(99,Math.floor(Number(botSkillEffectDuration)||1))),
           cooldownTurns:Math.max(0,Math.floor(Number(botSummonSkillCooldown)||0)),
           aiChancePercent:Math.max(0,Math.min(100,Number(botSummonSkillChance)||0)),
           damageScaling:'fixed', battleEffect:botSummonSkillEffect,
@@ -753,7 +758,9 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     const skill: BattleBotSkill = {
       id:'bot-skill-'+Date.now(), name, level:1, multiplier:1, type:'monster',
       description:botSkillDescription.trim() || 'สกิลเฉพาะของมอน/บอส',
-      battlePower:Math.max(0,Number(botSkillPower)||0),
+      battlePower:Math.max(0,Math.min(botSkillPowerMode === 'percent' ? 100 : 1000000000,Number(botSkillPower)||0)),
+      battlePowerMode:botSkillPowerMode,
+      battleEffectDuration:Math.max(1,Math.min(99,Math.floor(Number(botSkillEffectDuration)||1))),
       cooldownTurns:Math.max(0,Math.floor(Number(botSkillCooldown)||0)),
       battleUseLimit: botSkillUseLimit,
       aiChancePercent:Math.max(0,Math.min(100,Number(botSkillChance)||0)),
@@ -772,10 +779,10 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       } : {}),
     };
     setBotForm(prev=>({...prev,skills: botSkillDraftId ? prev.skills.map(existing => getSkillId(existing) === botSkillDraftId ? { ...skill, id: botSkillDraftId } : existing) : [...prev.skills, skill]}));
-    setBotSkillName(''); setBotSkillDescription(''); setBotSkillDraftId(''); setBotSkillEffect('damage'); setBotSkillCategory('attack'); setBotSkillTargetMode('enemy'); setBotSkillTargetConfig(undefined); setBotSkillModifiers([]); setBotSkillUseLimit('unlimited');
+    setBotSkillName(''); setBotSkillDescription(''); setBotSkillDraftId(''); setBotSkillPower('10'); setBotSkillPowerMode('flat'); setBotSkillEffectDuration('1'); setBotSkillEffect('damage'); setBotSkillCategory('attack'); setBotSkillTargetMode('enemy'); setBotSkillTargetConfig(undefined); setBotSkillModifiers([]); setBotSkillUseLimit('unlimited');
     setBotSummonName('ลูกน้อง'); setBotSummonMaxCount('1'); setBotSummonHp('20'); setBotSummonDamage('5'); setBotSummonAgility('1');
     setBotSummonSkillsText('[]'); setBotSummonSkillName(''); setBotSummonSkillDescription(''); setBotSummonSkillPower('5');
-    setBotSummonSkillChance('100'); setBotSummonSkillCooldown('0'); setBotSummonSkillEffect('damage'); setBotSummonSkillMode('normal');
+    setBotSummonSkillChance('100'); setBotSummonSkillCooldown('0'); setBotSummonSkillEffect('damage'); setBotSummonSkillPowerMode('flat'); setBotSummonSkillMode('normal');
     setBotSummonAvatarUrl(''); setBotSummonAvatarFileName(''); setBotSummonUnits([]); setBotSkillConditions([]);
   };
 
@@ -786,7 +793,9 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
     if (minionDraft.skillName.trim()) skills.push({
       id:'minion-skill-'+Date.now(), name:minionDraft.skillName.trim(), level:1, multiplier:1, type:'monster-minion',
       description:minionDraft.skillDescription.trim() || 'สกิลเฉพาะของลูกน้องตัวนี้',
-      battlePower:Math.max(0,Number(minionDraft.skillPower)||0),
+      battlePower:Math.max(0,Math.min(minionDraft.skillPowerMode === 'percent' ? 100 : 1000000000,Number(minionDraft.skillPower)||0)),
+      battlePowerMode:minionDraft.skillPowerMode,
+      battleEffectDuration:Math.max(1,Math.min(99,Math.floor(Number(minionDraft.skillEffectDuration)||1))),
       cooldownTurns:Math.max(0,Math.floor(Number(minionDraft.skillCooldown)||0)),
       battleUseLimit:minionSkillUseLimit,
       aiChancePercent:Math.max(0,Math.min(100,Number(minionDraft.skillChance)||0)),
@@ -801,7 +810,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       magic:Math.max(0,Number(minionDraft.magic)||0), avatarUrl:minionDraft.avatarUrl||undefined,
       avatarFileName:minionDraft.avatarFileName||undefined, skills
     }]);
-    setMinionDraft({name:'',hp:'20',strength:'5',durability:'1',agility:'1',magic:'0',avatarUrl:'',avatarFileName:'',skills:[],skillName:'',skillDescription:'',skillPower:'5',skillChance:'100',skillCooldown:'0',skillEffect:'damage'}); setEditingMinionId(''); setMinionSkillUseLimit('unlimited');
+    setMinionDraft({name:'',hp:'20',strength:'5',durability:'1',agility:'1',magic:'0',avatarUrl:'',avatarFileName:'',skills:[],skillName:'',skillDescription:'',skillPower:'5',skillPowerMode:'flat',skillEffectDuration:'1',skillChance:'100',skillCooldown:'0',skillEffect:'damage'}); setEditingMinionId(''); setMinionSkillUseLimit('unlimited');
   };
 
   const removeBotSkill = (skillId: string) => {
@@ -979,7 +988,20 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
   <div className="grid gap-2 sm:grid-cols-2">
     <label className="text-[11px] text-slate-400">ชื่อสกิล<input className={inputClass+" mt-1"} value={botSkillName} onChange={e=>setBotSkillName(e.target.value)} placeholder="ชื่อที่จะแสดงในสนามรบ" /></label>
     <label className="text-[11px] text-slate-400">คำอธิบายสกิล<textarea className={inputClass+" mt-1 min-h-16"} value={botSkillDescription} onChange={e=>setBotSkillDescription(e.target.value)} placeholder="บอกว่าสกิลนี้ทำอะไร" /></label>
-    <label className="text-[11px] text-slate-400">พลัง/ดาเมจ<input className={inputClass+" mt-1"} type="number" value={botSkillPower} onChange={e=>setBotSkillPower(e.target.value)} /></label>
+    <div className="grid gap-2 sm:grid-cols-2">
+      <label className="text-[11px] text-slate-400">{botSkillEffect==='defense' ? '🛡️ ค่าโล่ป้องกัน' : botSkillEffect==='heal' ? '❤️ ค่าฟื้นฟู HP' : botSkillEffect==='reflect' ? '🔄 สะท้อนดาเมจ (%)' : botSkillEffect==='damage_reduction' ? '🛡️ ลดดาเมจ (%)' : '⚔️ พลัง/ดาเมจ'}
+        <input className={inputClass+" mt-1"} type="number" min="0" max={['reflect','damage_reduction'].includes(botSkillEffect) || botSkillPowerMode==='percent' ? "100" : undefined} value={botSkillPower} onChange={e=>setBotSkillPower(e.target.value)} />
+      </label>
+      {['defense','heal'].includes(botSkillEffect) && <label className="text-[11px] text-slate-400">หน่วยของผล
+        <select className={inputClass+" mt-1"} value={botSkillPowerMode} onChange={e=>{const mode=e.target.value as 'flat'|'percent';setBotSkillPowerMode(mode);if(mode==='percent')setBotSkillPower(v=>String(Math.max(0,Math.min(100,Number(v)||0))));}}>
+          <option value="flat">{botSkillEffect==='defense' ? 'HP โล่คงที่' : 'HP ฟื้นฟูคงที่'}</option>
+          <option value="percent">% Max HP</option>
+        </select>
+      </label>}
+      {['defense','heal'].includes(botSkillEffect) && <label className="text-[11px] text-slate-400">ระยะเวลาผล (เทิร์น)
+        <input className={inputClass+" mt-1"} type="number" min="1" max="99" value={botSkillEffectDuration} onChange={e=>setBotSkillEffectDuration(e.target.value)} />
+      </label>}
+    </div>
     <label className="text-[11px] text-slate-400">คูลดาวน์ (เทิร์น)<input className={inputClass+" mt-1"} type="number" min="0" value={botSkillCooldown} onChange={e=>setBotSkillCooldown(e.target.value)} /></label>
     <label className="text-[11px] text-slate-400">จำนวนครั้งต่อเกม<select className={inputClass+" mt-1"} value={botSkillUseLimit} onChange={e=>setBotSkillUseLimit(e.target.value as 'unlimited' | 'once_per_battle')}><option value="unlimited">ใช้ได้หลายครั้งตามคูลดาวน์</option><option value="once_per_battle">ใช้ได้ 1 ครั้งต่อเกม</option></select></label>
     <label className="text-[11px] text-slate-400">เอฟเฟกต์<select className={inputClass+" mt-1"} value={botSkillEffect} onChange={e=>setBotSkillEffect(e.target.value as NonNullable<Skill['battleEffect']>)}><option value="damage">⚔️ โจมตี/ทำดาเมจ</option><option value="heal">❤️ ฟื้นฟู HP</option><option value="defense">🛡️ เพิ่มการป้องกัน</option><option value="stun">💫 ทำให้ติดสตัน</option><option value="damage_reduction">🔻 ลดดาเมจเป้าหมาย</option><option value="summon">🧿 เสกลูกน้อง</option></select></label>
@@ -1023,7 +1045,19 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
 <div className="grid gap-2 sm:grid-cols-2">
 <label className="text-[11px] text-slate-400">ชื่อสกิล<input className={inputClass+" mt-1"} value={minionDraft.skillName} onChange={e=>setMinionDraft({...minionDraft,skillName:e.target.value})} placeholder="เช่น ฟันเงา" /></label>
 <label className="text-[11px] text-slate-400">คำอธิบาย<textarea className={inputClass+" mt-1 min-h-16"} value={minionDraft.skillDescription} onChange={e=>setMinionDraft({...minionDraft,skillDescription:e.target.value})} placeholder="สกิลนี้ทำอะไร" /></label>
-<label className="text-[11px] text-slate-400">พลัง / ดาเมจ<input className={inputClass+" mt-1"} type="number" min="0" value={minionDraft.skillPower} onChange={e=>setMinionDraft({...minionDraft,skillPower:e.target.value})} /></label>
+<div className="grid gap-2 sm:grid-cols-2">
+<label className="text-[11px] text-slate-400">{minionDraft.skillEffect==='defense' ? '🛡️ ค่าโล่ป้องกัน' : minionDraft.skillEffect==='heal' ? '❤️ ค่าฟื้นฟู HP' : minionDraft.skillEffect==='reflect' ? '🔄 สะท้อนดาเมจ (%)' : minionDraft.skillEffect==='damage_reduction' ? '🛡️ ลดดาเมจ (%)' : '⚔️ พลัง / ดาเมจ'}
+<input className={inputClass+" mt-1"} type="number" min="0" max={['reflect','damage_reduction'].includes(minionDraft.skillEffect) || minionDraft.skillPowerMode==='percent' ? "100" : undefined} value={minionDraft.skillPower} onChange={e=>setMinionDraft({...minionDraft,skillPower:e.target.value})} />
+</label>
+{['defense','heal'].includes(minionDraft.skillEffect) && <label className="text-[11px] text-slate-400">หน่วยของผล
+<select className={inputClass+" mt-1"} value={minionDraft.skillPowerMode} onChange={e=>{const mode=e.target.value as 'flat'|'percent';setMinionDraft({...minionDraft,skillPowerMode:mode,skillPower:mode==='percent'?String(Math.max(0,Math.min(100,Number(minionDraft.skillPower)||0))):minionDraft.skillPower});}}>
+<option value="flat">{minionDraft.skillEffect==='defense' ? 'HP โล่คงที่' : 'HP ฟื้นฟูคงที่'}</option>
+<option value="percent">% Max HP</option>
+</select></label>}
+{['defense','heal'].includes(minionDraft.skillEffect) && <label className="text-[11px] text-slate-400">ระยะเวลาผล (เทิร์น)
+<input className={inputClass+" mt-1"} type="number" min="1" max="99" value={minionDraft.skillEffectDuration} onChange={e=>setMinionDraft({...minionDraft,skillEffectDuration:e.target.value})} />
+</label>}
+</div>
 <label className="text-[11px] text-slate-400">โอกาสใช้ (%)<input className={inputClass+" mt-1"} type="number" min="0" max="100" value={minionDraft.skillChance} onChange={e=>setMinionDraft({...minionDraft,skillChance:e.target.value})} /></label>
 <label className="text-[11px] text-slate-400">คูลดาวน์ (เทิร์น)<input className={inputClass+" mt-1"} type="number" min="0" value={minionDraft.skillCooldown} onChange={e=>setMinionDraft({...minionDraft,skillCooldown:e.target.value})} /></label>
 <SkillBattleOptions config={{skillCategory:minionDraft.skillCategory,targetMode:minionDraft.skillTargetMode,targetConfig:minionDraft.skillTargetConfig,skillModifiers:minionDraft.skillModifiers,battleEffect:minionDraft.skillEffect}} onChange={patch=>setMinionDraft(prev=>({...prev,skillCategory:patch.skillCategory ?? prev.skillCategory,skillTargetMode:patch.targetMode ?? prev.skillTargetMode,skillTargetConfig:patch.targetConfig ?? prev.skillTargetConfig,skillModifiers:patch.skillModifiers ?? prev.skillModifiers,skillEffect:patch.battleEffect ?? prev.skillEffect}))} /><label className="text-[11px] text-slate-400">จำนวนครั้งต่อเกม<select className={inputClass+" mt-1"} value={minionSkillUseLimit} onChange={e=>setMinionSkillUseLimit(e.target.value as 'unlimited' | 'once_per_battle')}><option value="unlimited">ใช้ได้หลายครั้งตามคูลดาวน์</option><option value="once_per_battle">ใช้ได้ 1 ครั้งต่อเกม</option></select></label>
@@ -1034,14 +1068,14 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
 </div>
       </div>
       <button type="button" className={buttonClass+" mt-2 bg-cyan-500 text-slate-950"} onClick={addConfiguredMinion}>+ เพิ่มลูกน้องตัวนี้</button>
-      <div className="mt-3 space-y-2">{botSummonUnits.map((m,idx)=><div key={m.id} className="rounded-xl border border-slate-700 bg-slate-950/60 p-3"><div className="flex items-center gap-3"><img src={m.avatarUrl||'/avatars/system.svg'} alt="" className="h-10 w-10 rounded-lg object-cover"/><div className="flex-1"><div className="font-bold text-white">{idx+1}. {m.name}</div><div className="text-[10px] text-slate-400">HP {m.hp} · STR {m.strength} · DEF {m.durability} · SPD {m.agility} · MAG {m.magic} · สกิล {m.skills?.length||0}</div></div><button type="button" className="text-sky-300" onClick={()=>{setEditingMinionId(m.id);setMinionDraft({name:m.name,hp:String(m.hp),strength:String(m.strength),durability:String(m.durability),agility:String(m.agility),magic:String(m.magic),avatarUrl:m.avatarUrl||'',avatarFileName:m.avatarFileName||'',skills:(m.skills||[]).map(x=>({...x})),skillName:'',skillDescription:'',skillPower:'5',skillChance:'100',skillCooldown:'0',skillEffect:'damage',skillCategory:'attack',skillTargetMode:'enemy',skillTargetConfig:undefined,skillModifiers:[]});}}>✏️</button> <button type="button" className="text-rose-300" onClick={()=>setBotSummonUnits(prev=>prev.filter(x=>x.id!==m.id))}>ลบ</button></div></div>)}</div>
+      <div className="mt-3 space-y-2">{botSummonUnits.map((m,idx)=><div key={m.id} className="rounded-xl border border-slate-700 bg-slate-950/60 p-3"><div className="flex items-center gap-3"><img src={m.avatarUrl||'/avatars/system.svg'} alt="" className="h-10 w-10 rounded-lg object-cover"/><div className="flex-1"><div className="font-bold text-white">{idx+1}. {m.name}</div><div className="text-[10px] text-slate-400">HP {m.hp} · STR {m.strength} · DEF {m.durability} · SPD {m.agility} · MAG {m.magic} · สกิล {m.skills?.length||0}</div></div><button type="button" className="text-sky-300" onClick={()=>{setEditingMinionId(m.id);setMinionDraft({name:m.name,hp:String(m.hp),strength:String(m.strength),durability:String(m.durability),agility:String(m.agility),magic:String(m.magic),avatarUrl:m.avatarUrl||'',avatarFileName:m.avatarFileName||'',skills:(m.skills||[]).map(x=>({...x})),skillName:'',skillDescription:'',skillPower:'5',skillPowerMode:'flat',skillEffectDuration:'1',skillChance:'100',skillCooldown:'0',skillEffect:'damage',skillCategory:'attack',skillTargetMode:'enemy',skillTargetConfig:undefined,skillModifiers:[]});}}>✏️</button> <button type="button" className="text-rose-300" onClick={()=>setBotSummonUnits(prev=>prev.filter(x=>x.id!==m.id))}>ลบ</button></div></div>)}</div>
       
     </div>}
   </div>
     <button type="button" className={buttonClass+" sm:col-span-2 bg-fuchsia-500 text-white"} onClick={addBotSkill}>+ สร้างสกิลมอน / บอส</button>
   </div>
   {botForm.skills.length > 0 && <div className="mt-4 rounded-xl border border-sky-500/30 bg-sky-950/20 px-3 py-2 text-xs font-black text-sky-200">🛠️ สกิลของมอน/บอส — กด ✏️ แก้ไขสกิลที่มีอยู่ได้เลย</div>}
-  <div className="mt-3 space-y-2">{botForm.skills.map(skill=><div key={getSkillId(skill)} className="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs"><div className="font-bold text-white">✨ {skill.name}</div><div className="mt-1 text-slate-400">{skill.description}</div><div className="mt-1 text-[10px] text-fuchsia-300">พลัง {Number(skill.battlePower??0)} · โอกาสใช้ {Number(skill.aiChancePercent??0)}%</div><button type="button" className="mt-1 mr-3 text-sky-300" onClick={()=>{setBotSkillDraftId(getSkillId(skill));setBotSkillName(skill.name);setBotSkillDescription(skill.description||'');setBotSkillPower(String(skill.battlePower??5));setBotSkillCooldown(String(skill.cooldownTurns??0));setBotSkillChance(String(skill.aiChancePercent??100));setBotSkillEffect(skill.battleEffect||'damage');setBotSkillUseLimit(skill.battleUseLimit||'unlimited');setBotSkillConditions(Array.isArray(skill.conditions)?skill.conditions.map(x=>({...x})):[]);
+  <div className="mt-3 space-y-2">{botForm.skills.map(skill=><div key={getSkillId(skill)} className="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-xs"><div className="font-bold text-white">✨ {skill.name}</div><div className="mt-1 text-slate-400">{skill.description}</div><div className="mt-1 text-[10px] text-fuchsia-300">พลัง {Number(skill.battlePower??0)} · โอกาสใช้ {Number(skill.aiChancePercent??0)}%</div><button type="button" className="mt-1 mr-3 text-sky-300" onClick={()=>{setBotSkillDraftId(getSkillId(skill));setBotSkillName(skill.name);setBotSkillDescription(skill.description||'');setBotSkillPower(String(skill.battlePower??5));setBotSkillPowerMode(skill.battlePowerMode||((skill.battleEffect==='reflect'||skill.battleEffect==='damage_reduction')?'percent':'flat'));setBotSkillEffectDuration(String(skill.battleEffectDuration??1));setBotSkillCooldown(String(skill.cooldownTurns??0));setBotSkillChance(String(skill.aiChancePercent??100));setBotSkillEffect(skill.battleEffect||'damage');setBotSkillUseLimit(skill.battleUseLimit||'unlimited');setBotSkillConditions(Array.isArray(skill.conditions)?skill.conditions.map(x=>({...x})):[]);
 setBotSummonName(skill.summonName||'ลูกน้อง');setBotSummonMaxCount(String(skill.summonMaxCount??1));setBotSummonHp(String(skill.summonHp??20));setBotSummonDamage(String(skill.summonDamage??5));setBotSummonAgility(String(skill.summonAgility??1));setBotSummonAvatarUrl(skill.summonAvatarUrl||'');setBotSummonAvatarFileName(skill.summonAvatarFileName||'');setBotSummonSkillsText(JSON.stringify(skill.summonSkills||[],null,2));setBotSummonUnits((skill.summonUnits||[]).map(x=>({...x,skills:(x.skills||[]).map(y=>({...y}))})));}}>✏️ แก้ไข</button><button type="button" className="mt-1 text-rose-300" onClick={()=>removeBotSkill(getSkillId(skill))}>ลบ</button></div>)}</div>
 <button type="submit" className={buttonClass + ' w-full bg-rose-500 text-white hover:bg-rose-400'}><Plus className="mr-1 inline h-4 w-4" />{editingBotId ? "บันทึกการแก้ไขบอท" : "สร้างบอท"}</button></form></div>{bots.length > 0 && <div className="mt-6 grid gap-3 md:grid-cols-2">{bots.map(bot => <div key={bot.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/50 p-3"><div className="flex min-w-0 items-center gap-3"><img src={bot.avatarUrl} alt="" className="h-10 w-10 rounded-xl border border-slate-700 object-cover" /><div className="min-w-0"><div className="flex items-center gap-2 truncate font-bold text-white">{bot.isBoss && <Crown className="h-3.5 w-3.5 text-amber-300" />}{bot.name}</div><div className="text-[11px] text-slate-500">HP {bot.maxHp} · พลัง {bot.stats.strength} · {bot.description}</div></div></div><button type="button" onClick={() => { setEditingBotId(bot.id); setBotForm({ name: bot.name, description: bot.description, hp: String(bot.maxHp), strength: String(bot.stats.strength), durability: String(bot.stats.durability), agility: String(bot.stats.agility), magic: String(bot.stats.magic), isBoss: bot.isBoss, avatarUrl: bot.avatarUrl, avatarFileName: bot.avatarFileName || '', encounterChancePercent: String(bot.encounterChancePercent ?? 10), passiveTraits: { statusImmunity: Boolean(bot.passiveTraits?.statusImmunity), healingReceivedMultiplier: String(bot.passiveTraits?.healingReceivedMultiplier ?? 1), copyImmunity: Boolean(bot.passiveTraits?.copyImmunity), reflectImmunity: Boolean(bot.passiveTraits?.reflectImmunity) }, skills: (bot.skills || []).map(skill => ({ ...skill })), drops: (bot.drops || []).map(drop => ({ ...drop, itemData: drop.itemData ? { ...drop.itemData } : undefined })) }); setBotDropChance('100'); }} className="rounded-lg p-2 text-sky-300 hover:bg-sky-500/15">✏️</button><button type="button" onClick={() => void deleteBattleBot(bot.id)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-500/15 hover:text-rose-300"><Trash2 className="h-4 w-4" /></button></div>)}</div>}</section>}
 
