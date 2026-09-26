@@ -83,27 +83,7 @@ export const SkillBattleOptions: React.FC<Props> = ({ config, onChange, showTarg
         <option value="all_allies">💚 พวกเดียวกันทั้งหมด (หมู่)</option><option value="all_enemies">🔥 ศัตรูทั้งหมด (หมู่)</option><option value="all_combatants">🌐 ทุกคนในสนาม</option>
       </select>
     </label>}
-    {showTarget && <div className="grid grid-cols-2 gap-2 rounded-lg border border-cyan-400/20 bg-cyan-950/10 p-2">
-      <label className="text-[9px] text-slate-400">
-        {config.battleEffect === 'reflect' ? '🔄 สะท้อนดาเมจ (%)' :
-         config.battleEffect === 'reflect_no_damage' ? '🛡️ สะท้อนดาเมจ (%)' :
-         config.battleEffect === 'damage_reduction' ? '📉 ลดดาเมจ (%)' :
-         config.battleEffect === 'defense' ? '🛡️ ป้องกัน (% Max HP)' :
-         config.battleEffect === 'heal' ? '❤️ ฟื้นฟู (% Max HP)' :
-         config.battleEffect === 'damage' ? '⚔️ ดาเมจ' : 'ค่าผล'}
-        <input type="number" min="0"
-          max={['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(config.battleEffect)) ? 100 : undefined}
-          value={config.battlePower ?? 10}
-          onChange={e=>onChange({battlePower:Math.max(0, Math.min(['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(config.battleEffect)) ? 100 : 999999, num(e.target.value,10)))})}
-          className="mt-1 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1.5 text-white"/>
-      </label>
-      {['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(String(config.battleEffect)) && <label className="text-[9px] text-slate-400">
-        ⏱️ ระยะเวลาคงอยู่ (เทิร์น)
-        <input type="number" min="1" value={config.battleEffectDuration ?? 1}
-          onChange={e=>onChange({battleEffectDuration:Math.max(1, Math.floor(num(e.target.value,1)))})}
-          className="mt-1 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1.5 text-white"/>
-      </label>}
-    </div>}
+    {/* ค่าผลและระยะเวลาหลักใช้จากช่อง พลังสกิล/ระยะเวลาเอฟเฟกต์ ด้านบนเพียงชุดเดียว ไม่สร้างช่องซ้ำที่นี่ */}
     {showTarget && ['selected_enemy','selected_ally','selected_bots','selected_bosses'].includes(String(target)) && <div className="grid grid-cols-2 gap-2 rounded-lg border border-amber-400/20 bg-amber-950/10 p-2"><label className="text-[9px] text-slate-400">จำนวนเป้าหมายสูงสุด<input type="number" min="1" max="20" value={config.targetConfig?.maxTargets ?? 1} onChange={e=>onChange({targetConfig:{...(config.targetConfig || {mode: target as any}), mode: target as any, allowMultiple: Number(e.target.value) > 1, maxTargets: Math.max(1, Math.min(20, Number(e.target.value) || 1))}})} className="mt-1 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1.5 text-white"/></label><label className="flex items-center gap-2 text-[9px] text-slate-300"><input type="checkbox" checked={Boolean(config.targetConfig?.allowMultiple)} onChange={e=>onChange({targetConfig:{...(config.targetConfig || {mode: target as any}), mode: target as any, allowMultiple:e.target.checked, maxTargets: config.targetConfig?.maxTargets ?? 1}})}/> เลือกหลายเป้าหมาย</label></div>}
     <div className="rounded-xl border border-fuchsia-400/20 bg-fuchsia-950/10 p-3 space-y-2"><div className="flex items-center justify-between gap-2"><div><div className="text-[11px] font-black text-fuchsia-100">✨/⚠️ บัฟและดีบัฟหลายรายการ</div><div className="text-[9px] text-slate-500">กำหนด Stat/สถานะ ค่า ระยะเวลา และโอกาสแยกกันได้</div></div><div className="flex gap-1"><button type="button" onClick={()=>addModifier('buff')} className="rounded-lg bg-emerald-500/20 px-2 py-1 text-[9px] text-emerald-100">+ บัฟ</button><button type="button" onClick={()=>addModifier('debuff')} className="rounded-lg bg-rose-500/20 px-2 py-1 text-[9px] text-rose-100">+ ดีบัฟ</button></div></div>{modifiers.map(item=><div key={item.id} className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 rounded-lg border border-slate-700 bg-slate-950/60 p-2">
         <label className="text-[8px] text-slate-500">ชนิด
