@@ -1113,7 +1113,7 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
           <option value="percent">% Max HP</option>
         </select>
       </label>}
-      {['defense','heal'].includes(botSkillEffect) && <label className="text-[11px] text-slate-400">ระยะเวลาผล (เทิร์น)
+      {['reflect','reflect_no_damage','damage_reduction','defense','heal'].includes(botSkillEffect) && <label className="text-[11px] text-slate-400">⏱️ ระยะเวลาผล (เทิร์น)
         <input className={inputClass+" mt-1"} type="number" min="1" max="99" value={botSkillEffectDuration} onChange={e=>setBotSkillEffectDuration(e.target.value)} />
       </label>}
     </div>
