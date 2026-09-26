@@ -3531,7 +3531,7 @@ export async function useBattleItem(room: BattleRoom, playerId: string, itemInst
       hp = Math.min(maxHp, hp + baseHeal);
     }
   } else if (item.effectType === 'buff_stat' && normalizedItem.targetStat) {
-    const stat = String(normalizedItem.targetStat);
+    const stat = String(normalizedItem.targetStat) as keyof typeof stats;
     const amount = Math.max(0, Number(normalizedItem.effectValue) || 0);
     if (itemTargets.length > 1) {
       itemTargets.forEach(target => {
@@ -4102,7 +4102,7 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
             const extraKind = modifier.status as BattleExtraEffect['kind'];
             const supported: BattleExtraEffect['kind'][] = ['bleeding','burn','poison','freeze','stun','regen','reduce_max_hp_percent','reduce_defense_percent','damage_percent','heal_percent','shield','reflect','damage_reduction'];
             if (supported.includes(extraKind)) {
-              modifierTargets.forEach(target => applyBattleExtraEffects(current, target, [{ kind: extraKind, value, duration, chance: 100, target: target.id === current.id ? 'self' : 'enemy', label: modifier.label || modifier.status }], result));
+              modifierTargets.forEach(target => { if (result) applyBattleExtraEffects(current, target, [{ kind: extraKind, value, duration, chance: 100, target: target.id === current.id ? 'self' : 'enemy', label: modifier.label || modifier.status }], result); });
             } else {
               result.message += ` • 💫 ${modifier.label || modifier.status} ${duration} เทิร์น`;
             }
