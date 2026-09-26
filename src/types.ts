@@ -776,6 +776,8 @@ export interface BattleCombatant {
   statusImmunityTurns?: number;
   shieldPercent?: number;
   shieldTurns?: number;
+  /** บัฟ/ดีบัฟ Stat ชั่วคราวจาก skillModifiers */
+  skillStatModifiers?: Array<{ id: string; stat: keyof CharacterStats; delta: number; remaining: number }>;
   copiedAbility?: Skill;
   copiedAbilityTurns?: number;
 }
