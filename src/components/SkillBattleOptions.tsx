@@ -1,5 +1,5 @@
 import React from 'react';
-import type { BattleBotSkill, BattleSkillCategory, BattleSkillTarget, BattleSkillEffectKind, BattleSkillModifier, BattleSkillStatKind, CharacterStats, Skill } from '../types';
+import type { BattleBotSkill, BattleSkillCategory, BattleSkillTarget, BattleSkillEffect, BattleSkillEffectKind, BattleSkillModifier, BattleSkillStatKind, CharacterStats, Skill } from '../types';
 
 type SummonUnit = NonNullable<Skill['summonUnits']>[number];
 
