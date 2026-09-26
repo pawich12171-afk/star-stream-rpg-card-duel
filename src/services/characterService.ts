@@ -4060,9 +4060,13 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
         current.damageReductionTurns = skillProfile.duration;
         result.message += ` • ใช้สกิล ${skillName} — ลดความเสียหาย ${current.damageReductionPercent}% เป็นเวลา ${skillProfile.duration} เทิร์น`;
       } else if (skillProfile.effect === "damage_taken_increase") {
-        defender.damageTakenIncreasePercent = Math.min(1000, Math.max(0, skillProfile.power));
-        defender.damageTakenIncreaseTurns = skillProfile.duration;
-        result.message += ` • ใช้สกิล ${skillName} — ${defender.name} รับดาเมจเพิ่ม ${defender.damageTakenIncreasePercent}% เป็นเวลา ${skillProfile.duration} เทิร์น`;
+        if (isAbnormalStatusBlocked(defender, "damage_taken_increase") || (defender.statusImmunityTurns && defender.statusImmunityTurns > 0)) {
+          result.message += ` • 🚫 ${defender.name} ต้านสถานะรับดาเมจมากขึ้น`;
+        } else {
+          defender.damageTakenIncreasePercent = Math.min(1000, Math.max(0, skillProfile.power));
+          defender.damageTakenIncreaseTurns = skillProfile.duration;
+          result.message += ` • ใช้สกิล ${skillName} — ${defender.name} รับดาเมจเพิ่ม ${defender.damageTakenIncreasePercent}% เป็นเวลา ${skillProfile.duration} เทิร์น`;
+        }
       } else if (skillProfile.effect === "summon") {
         const summonName = String(skill?.summonName || 'ลูกน้อง').trim() || 'ลูกน้อง';
         const maxCount = Math.max(1, Math.min(20, Math.round(Number(skill?.summonMaxCount) || 1)));
