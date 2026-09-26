@@ -818,15 +818,33 @@ export function BattleArena({ currentUser, allCharacters, shopItems, isAdmin }: 
       aiChancePercent:Math.max(0,Math.min(100,Number(minionDraft.skillChance)||0)),
       damageScaling:'fixed', battleEffect:minionDraft.skillEffect, skillCategory:minionDraft.skillCategory, targetMode:minionDraft.skillTargetMode, targetConfig:minionDraft.skillTargetConfig, skillModifiers:minionDraft.skillModifiers.length ? [...minionDraft.skillModifiers] : undefined,
     });
-    setBotSummonUnits(prev=>editingMinionId ? prev.map(existing => existing.id === editingMinionId ? {
-      ...existing, name, hp:Math.max(1,Number(minionDraft.hp)||1), strength:Math.max(0,Number(minionDraft.strength)||0), durability:Math.max(0,Number(minionDraft.durability)||0), agility:Math.max(0,Number(minionDraft.agility)||0), magic:Math.max(0,Number(minionDraft.magic)||0), avatarUrl:minionDraft.avatarUrl||undefined, avatarFileName:minionDraft.avatarFileName||undefined, skills
-    } : existing) : [...prev,{
-      id:'minion-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), name,
-      hp:Math.max(1,Number(minionDraft.hp)||1), strength:Math.max(0,Number(minionDraft.strength)||0),
-      durability:Math.max(0,Number(minionDraft.durability)||0), agility:Math.max(0,Number(minionDraft.agility)||0),
-      magic:Math.max(0,Number(minionDraft.magic)||0), avatarUrl:minionDraft.avatarUrl||undefined,
-      avatarFileName:minionDraft.avatarFileName||undefined, skills
-    }]);
+    const updatedMinion = editingMinionId
+      ? botSummonUnits.find(existing => existing.id === editingMinionId)
+      : undefined;
+    const nextUnits = editingMinionId
+      ? botSummonUnits.map(existing => existing.id === editingMinionId ? {
+          ...existing, name, hp:Math.max(1,Number(minionDraft.hp)||1), strength:Math.max(0,Number(minionDraft.strength)||0),
+          durability:Math.max(0,Number(minionDraft.durability)||0), agility:Math.max(0,Number(minionDraft.agility)||0),
+          magic:Math.max(0,Number(minionDraft.magic)||0), avatarUrl:minionDraft.avatarUrl||undefined,
+          avatarFileName:minionDraft.avatarFileName||undefined, skills
+        } : existing)
+      : [...botSummonUnits,{
+          id:'minion-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), name,
+          hp:Math.max(1,Number(minionDraft.hp)||1), strength:Math.max(0,Number(minionDraft.strength)||0),
+          durability:Math.max(0,Number(minionDraft.durability)||0), agility:Math.max(0,Number(minionDraft.agility)||0),
+          magic:Math.max(0,Number(minionDraft.magic)||0), avatarUrl:minionDraft.avatarUrl||undefined,
+          avatarFileName:minionDraft.avatarFileName||undefined, skills
+        }];
+    setBotSummonUnits(nextUnits);
+    // สำคัญ: ปุ่มบันทึกลูกน้องต้องอัปเดต skill ใน botForm ด้วย ไม่ใช่แค่ state ของรายการลูกน้อง
+    if (botSummonOwnerSkillId) {
+      setBotForm(prev => ({
+        ...prev,
+        skills: prev.skills.map(skill => getSkillId(skill) === botSummonOwnerSkillId && skill.battleEffect === 'summon'
+          ? { ...skill, summonUnits: nextUnits.map(x => ({ ...x, skills: (x.skills || []).map(y => ({ ...y })) })) }
+          : skill)
+      }));
+    }
     setMinionDraft({name:'',hp:'20',strength:'5',durability:'1',agility:'1',magic:'0',avatarUrl:'',avatarFileName:'',skills:[],skillName:'',skillDescription:'',skillPower:'5',skillPowerMode:'flat',skillEffectDuration:'1',skillChance:'100',skillCooldown:'0',skillEffect:'damage'}); setEditingMinionId(''); setMinionSkillUseLimit('unlimited');
   };
 
