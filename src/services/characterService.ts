@@ -4012,7 +4012,10 @@ export function resolveBattleTurn(room: BattleRoom, config: BattleConfig, skill?
             const summonDurability = Math.max(0, Math.round(Number(template?.durability ?? skill?.summonDurability) || 0));
             const summonAgility = Math.max(0, Math.round(Number(template?.agility ?? skill?.summonAgility) || 1));
             const summonMagic = Math.max(0, Math.round(Number(template?.magic ?? skill?.summonMagic) || 0));
-            const rawSummonSkills = Array.isArray(template?.skills) && template.skills.length
+            // ถ้ามีการกำหนด skills ของลูกน้องไว้แล้ว ต้องใช้ค่าของลูกน้องตรง ๆ
+            // แม้จะเป็น [] เพราะ [] หมายถึงผู้ใช้ลบสกิลทั้งหมดแล้ว
+            // ห้าม fallback กลับไปใช้ summonSkills ของสกิลแม่ ไม่เช่นนั้นสกิลที่ลบจะเด้งกลับมา
+            const rawSummonSkills = Array.isArray(template?.skills)
               ? template.skills
               : (Array.isArray(skill?.summonSkills) ? skill.summonSkills : []);
             const summonSkills = rawSummonSkills.filter(Boolean).map((item: any, skillIndex: number) => ({
